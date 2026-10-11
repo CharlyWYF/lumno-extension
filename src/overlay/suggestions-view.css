@@ -551,8 +551,11 @@
   vertical-align: middle;
 }
 
-/* A title long enough to fill the row still leaves some of the address or passage beside it. */
+/* A title long enough to fill the row still leaves some of the address or passage beside it.
+   It does not shrink otherwise: its share of the line's shrinking is a fraction of a pixel,
+   enough to draw an ellipsis but too little to count as truncated for its tooltip. */
 :is(#_x_extension_overlay_2024_unique_, #_x_extension_onboarding_overlay_demo_2026_unique_) .x-ov-suggestion-title:has(~ .x-ov-suggestion-url-line) {
+  flex-shrink: 0;
   max-width: 70%;
 }
 

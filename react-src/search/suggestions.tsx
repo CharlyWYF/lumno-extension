@@ -2235,10 +2235,17 @@ function SearchSuggestionRowComponent({
     const urlLine = item.querySelector<HTMLElement>(
       `.${surfaceClass(options, 'x-nt-suggestion-url-line')}`
     );
-    bindTextTooltip(options, urlLine, suggestion.url || '');
+    // A help center page's line shows the matched passage, so its tooltip shows the passage too.
+    bindTextTooltip(
+      options,
+      urlLine,
+      suggestion.type === 'helpArticle' ? suggestion.detail || '' : suggestion.url || ''
+    );
   }, [
     options,
     suggestion.title,
+    suggestion.type,
+    suggestion.detail,
     suggestion.url
   ]);
 
