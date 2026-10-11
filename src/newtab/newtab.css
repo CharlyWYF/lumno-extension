@@ -6331,6 +6331,40 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
   background: #cfe8ff;
   color: #1e3a8a;
 }
+/* Close-other-tabs sits between the clear button and the settings icon. */
+.x-nt-close-other-tabs {
+  all: unset;
+  position: absolute;
+  right: calc(var(--x-ext-input-right-icon-inset, 7px) + 36px);
+  top: var(--x-ext-input-right-icon-inset, 7px);
+  width: 30px;
+  height: 30px;
+  border-radius: var(--x-ext-input-right-icon-radius, 10px);
+  z-index: 2;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--x-ext-input-icon, #9ca3af);
+  cursor: pointer;
+  transition: background-color var(--lumno-duration-xs, 140ms) ease, color var(--lumno-duration-xs, 140ms) ease;
+}
+.x-nt-close-other-tabs[data-hover-active="true"] {
+  background: var(--x-nt-settings-action-hover-bg, rgba(148, 163, 184, 0.16));
+  color: var(--x-nt-settings-action-hover-color, #4b5563);
+}
+.x-nt-close-other-tabs .ri-icon {
+  transition: transform var(--lumno-duration-sm, 160ms) ease;
+}
+.x-nt-close-other-tabs[data-hover-active="true"] .ri-icon {
+  transform: scale(1.06);
+}
+@supports (corner-shape: superellipse(1.25)) {
+  .x-nt-close-other-tabs {
+    corner-shape: superellipse(1.25);
+  }
+}
 @media (max-width: 860px) {
   :root {
     --x-nt-shortcuts-reserved-height: 82px;

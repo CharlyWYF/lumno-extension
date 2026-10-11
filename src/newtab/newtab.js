@@ -6721,7 +6721,7 @@
       'border-bottom': 'none',
       'color': 'var(--x-nt-text, #111827)',
       'caret-color': 'var(--x-nt-link, #2563EB)',
-      'padding': '8px 64px 8px 44px',
+      'padding': '8px 100px 8px 44px',
       'min-height': '44px',
       'height': '44px',
       'line-height': '24px'
@@ -6741,11 +6741,17 @@
       ariaLabel: t('search_input_clear', '清空'),
       html: getRiSvg('ri-close-line', 'ri-size-16'),
       styleOverrides: {
-        '--x-ext-input-clear-right': '43px',
+        '--x-ext-input-clear-right': '79px',
         '--x-ext-input-clear-top': '7px',
         '--x-ext-input-icon-hover-bg': 'var(--x-nt-settings-action-hover-bg, rgba(148, 163, 184, 0.16))',
         '--x-ext-input-icon-hover': 'var(--x-nt-settings-action-hover-color, #4B5563)'
       }
+    },
+    secondaryAction: {
+      id: '_x_extension_newtab_close_other_tabs_2026_unique_',
+      className: 'x-nt-close-other-tabs',
+      ariaLabel: t('overlay_close_other_tabs_tooltip', '关闭其他标签页'),
+      html: getRiSvg('ri-brush-2-line', 'ri-size-16')
     },
     onInput: function(event) {
       searchSuggestionsDismissed = false;
@@ -7348,7 +7354,7 @@
   }
 
   const searchClearButton = inputParts.clearAction;
-  // Width the clear button adds to the right-side actions: 30px button + 6px gap.
+  // Width the clear button adds left of the close-other-tabs button: 30px button + 6px gap.
   const SEARCH_CLEAR_BUTTON_INSET = 36;
   if (searchClearButton) {
     const searchClearTooltipText = () => t('search_input_clear', '清空');
@@ -7361,6 +7367,48 @@
     bindSearchInputCursorTooltip(searchClearButton, searchClearTooltipText);
     searchClearButton.addEventListener('click', hideSearchInputCursorTooltip);
     searchInput.addEventListener('input', updateInputRightPadding);
+  }
+
+  const closeOtherTabsButton = inputParts.secondaryAction;
+  if (closeOtherTabsButton) {
+    const closeOtherTabsTooltipText = () => t('overlay_close_other_tabs_tooltip', '关闭其他标签页');
+    const applyCloseOtherTabsTooltip = () => {
+      closeOtherTabsButton.setAttribute('aria-label', closeOtherTabsTooltipText());
+      closeOtherTabsButton.setAttribute('data-tooltip', closeOtherTabsTooltipText());
+    };
+    const resetCloseOtherTabsButtonVisualState = () => {
+      closeOtherTabsButton.removeAttribute('data-hover-active');
+    };
+    applyCloseOtherTabsTooltip();
+    onLanguageChange(applyCloseOtherTabsTooltip);
+    bindSearchInputCursorTooltip(closeOtherTabsButton, closeOtherTabsTooltipText);
+    closeOtherTabsButton.addEventListener('mouseenter', () => {
+      closeOtherTabsButton.setAttribute('data-hover-active', 'true');
+    });
+    closeOtherTabsButton.addEventListener('mouseleave', resetCloseOtherTabsButtonVisualState);
+    closeOtherTabsButton.addEventListener('blur', resetCloseOtherTabsButtonVisualState);
+    closeOtherTabsButton.addEventListener('pointerup', resetCloseOtherTabsButtonVisualState);
+    closeOtherTabsButton.addEventListener('pointercancel', resetCloseOtherTabsButtonVisualState);
+    closeOtherTabsButton.addEventListener('click', function(event) {
+      if (!event || event.isTrusted !== true) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      hideSearchInputCursorTooltip();
+      chrome.runtime.sendMessage({ action: 'closeOtherTabsForOverlay' }, (response) => {
+        resetCloseOtherTabsButtonVisualState();
+        closeOtherTabsButton.blur();
+        if (chrome.runtime.lastError || !response || response.ok !== true) {
+          return;
+        }
+        // Closed tabs may still be listed among the open-tab suggestions.
+        const query = searchInput.value.trim();
+        if (query) {
+          requestSuggestions(query, { immediate: true });
+        }
+      });
+    });
   }
 
   function dismissWebdavFeatureHint() {
@@ -7486,8 +7534,8 @@
     defaultPlaceholder,
     defaultCaretColor,
     modeBadgeElement: modeBadge,
-    rightReserveBase: 64,
-    rightAnchorOffset: 52,
+    rightReserveBase: 100,
+    rightAnchorOffset: 88,
     getExtraRightInset: () => (inputParts.syncClearAction() ? SEARCH_CLEAR_BUTTON_INSET : 0),
     baseInputPaddingLeft: 44,
     getThemeForMode,
