@@ -285,7 +285,7 @@ function flushMicrotasks() {
 
   const helpCenterAskHint = featureHints.getFeatureHint('newtab-help-center-ask');
   assert(helpCenterAskHint, 'the Help Center ask hint should be registered');
-  assert.strictEqual(helpCenterAskHint.introducedIn, '0.9.62',
+  assert.strictEqual(helpCenterAskHint.introducedIn, '1.0.0',
     'the Help Center ask hint should reach everyone updating to the release that added it');
   assert.strictEqual(helpCenterAskHint.placement, 'above search input');
   assert.strictEqual(helpCenterAskHint.arrowSide, 'bottom', 'the Help Center ask hint should point down at the input');

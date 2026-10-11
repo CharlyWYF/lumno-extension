@@ -99,7 +99,7 @@
     // New installs and everyone updating to this version see it until they close it or ask a question.
     NEWTAB_HELP_CENTER_ASK: Object.freeze({
       id: 'newtab-help-center-ask',
-      introducedIn: '0.9.62',
+      introducedIn: '1.0.0',
       surface: 'newtab',
       placement: 'above search input',
       className: 'x-lumno-feature-hint--newtab-help-center-ask',
