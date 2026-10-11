@@ -4276,7 +4276,7 @@ body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-open="true"]:not(
     calc(100dvh - 84px),
     calc(100dvh - 76px - var(--x-nt-top-occupied-inset, 0px))
   );
-  /* The bottom inset lives in the scroll area, so content scrolls all the way to the panel edge. */
+  /* No bottom inset: the scroll area and the pinned help footer bring their own. */
   padding: var(--x-nt-panel-padding) var(--x-nt-panel-padding) 0;
   border-radius: var(--lumno-radius-dialog);
   background: rgb(255 255 255);
@@ -4342,8 +4342,6 @@ body[data-theme="dark"] .x-nt-wallpaper-panel {
 }
 .x-nt-wallpaper-panel-scroll::-webkit-scrollbar-track {
   background: transparent;
-  /* Keeps the thumb clear of the panel's rounded bottom corner. */
-  margin-bottom: var(--x-nt-panel-padding);
 }
 .x-nt-wallpaper-panel-title {
   color: var(--x-nt-text, #111827);
@@ -4390,12 +4388,14 @@ body[data-theme="dark"] .x-nt-wallpaper-panel {
 body[data-theme="dark"] .x-nt-appearance-header {
   background: rgb(20 20 20);
 }
-/* Quiet way out to the help center at the very end of the panel. */
+/* Quiet way out to the help center, pinned under the scrolling settings. */
 .x-nt-appearance-help-footer {
   flex: 0 0 auto;
   min-width: 0;
-  margin: 24px 0 0;
-  padding: 0 2px;
+  /* Ends where the section dividers do, beside the scroll area's 8px scrollbar gutter. */
+  margin: 0 8px 0 0;
+  padding: 12px 2px 14px;
+  border-top: 1px solid var(--x-nt-panel-border, rgba(0, 0, 0, 0.08));
   display: flex;
   flex-wrap: wrap;
   align-items: center;

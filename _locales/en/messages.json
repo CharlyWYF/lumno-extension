@@ -81,7 +81,7 @@
     "message": "Selection quick actions"
   },
   "settings_selection_quick_actions_desc": {
-    "message": "Show contextual AI actions for selected text and open results in a new tab"
+    "message": "Show AI actions when you select text"
   },
   "settings_selection_quick_actions_provider_title": {
     "message": "Preferred provider"
@@ -233,8 +233,20 @@
   "settings_feedback_support_wechat_action": {
     "message": "Join WeChat group"
   },
-  "settings_feedback_support_help_center_action": {
+  "settings_help_center_title": {
     "message": "Help Center"
+  },
+  "settings_help_center_desc": {
+    "message": "Not sure how a feature works? Every feature is explained here."
+  },
+  "settings_help_center_action": {
+    "message": "Open"
+  },
+  "settings_feedback_contact_title": {
+    "message": "Bugs & ideas"
+  },
+  "settings_feedback_contact_desc": {
+    "message": "Found a problem or have an idea? Let the author know."
   },
   "settings_feedback_support_review_action": {
     "message": "Rate Lumno"
@@ -246,7 +258,7 @@
     "message": "Contact the author"
   },
   "settings_onboarding_tutorial_action": {
-    "message": "Tutorial"
+    "message": "Welcome tour"
   },
   "settings_language_title": {
     "message": "Language"
@@ -404,8 +416,11 @@
   "settings_macos_ctrl_suggestion_navigation_title": {
     "message": "Mac keyboard navigation"
   },
+  "settings_macos_ctrl_suggestion_navigation_tooltip": {
+    "message": "Works in New Tab and the command bar on macOS. Thanks to @wanghanzhen for the contribution."
+  },
   "settings_macos_ctrl_suggestion_navigation_desc": {
-    "message": "On macOS, use Ctrl+N / Ctrl+P to select the next / previous result in New Tab and the command bar. Thanks to @wanghanzhen for the contribution."
+    "message": "Use Ctrl+N / Ctrl+P to select the next / previous result"
   },
   "document_pip_picker_hint": {
     "message": "Move over the page to choose an element. Click to open PiP, scroll to switch parents, Esc to cancel."
@@ -3084,7 +3099,7 @@
     "message": "Keep pinned shows and novels up to date"
   },
   "settings_progress_tracking_desc": {
-    "message": "When you pin a show or novel page in Site Cards on the New Tab page, the pinned card moves to the next episode or chapter as you reach it, so it opens where you left off"
+    "message": "Pin a show or novel and its card follows you to the next episode or chapter, so it opens where you left off"
   },
   "recent_progress_track": {
     "message": "Track progress"

@@ -63,7 +63,7 @@ assert(groupToggleTag, 'Labs should render the optional selection group toggle')
 assert.doesNotMatch(groupToggleTag[0], /\bchecked\b/, 'selection grouping should be off by default');
 assert(
   /data-i18n="settings_selection_quick_actions_group_title">在后台查询</.test(optionsHtml) &&
-    /data-i18n="settings_selection_quick_actions_group_desc">所有 AI 网页皆归入「AI 查询」标签组</.test(optionsHtml),
+    /data-i18n-tooltip="settings_selection_quick_actions_group_desc" data-tooltip="所有 AI 网页皆归入「AI 查询」标签组"/.test(optionsHtml),
   'the group-enabled behavior should be described as a background query rather than tab creation'
 );
 assert(!optionsHtml.includes('selection_quick_actions_icon_set'),

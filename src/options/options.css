@@ -514,6 +514,12 @@ html[data-options-theme-mode="dark"] #_x_extension_overlay_page_theme_adaptation
   align-items: center;
   gap: 4px;
 }
+/* Group headers whose explanation lives in an info tooltip next to the title. */
+._x_extension_section_title_with_icon_2026_unique_ {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
 ._x_extension_sync_title_with_status_2026_unique_ {
   gap: 10px;
 }
@@ -577,94 +583,126 @@ html[data-options-theme-mode="dark"] #_x_extension_overlay_page_theme_adaptation
   color: var(--panel-text);
 }
 ._x_extension_section_header_2026_unique_,
-._x_extension_feedback_support_header_2026_unique_,
 ._x_extension_shortcut_group_header_2024_unique_ {
   min-height: var(--settings-section-header-height);
 }
 ._x_extension_feedback_support_section_2026_unique_ {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-  padding: var(--settings-row-block-space) var(--settings-content-edge-space);
 }
-._x_extension_feedback_support_header_2026_unique_ {
-  display: flex;
-  align-items: center;
-  flex: 0 0 auto;
-}
-._x_extension_feedback_support_links_2026_unique_ {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  min-width: 0;
-}
-._x_extension_feedback_support_link_2026_unique_ {
-  --feedback-support-link-bg: var(--control-bg);
-  --feedback-support-link-hover-bg: rgba(15, 23, 42, 0.07);
-  --feedback-support-link-icon-color: rgba(107, 114, 128, 0.86);
-  box-sizing: border-box;
-  min-width: 0;
-  min-height: 40px;
-  padding: 0 10px 0 12px;
-  border-radius: var(--lumno-radius-lg);
-  background: var(--feedback-support-link-bg);
-  color: var(--panel-text);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--lumno-font-size-sm);
-  font-weight: 500;
-  line-height: 1.2;
-  white-space: nowrap;
-  text-decoration: none;
-  transition: background-color var(--lumno-duration-sm) ease, color var(--lumno-duration-sm) ease;
-}
-._x_extension_feedback_support_link_2026_unique_ > i:first-child {
-  flex: 0 0 auto;
-  color: var(--feedback-support-link-icon-color);
-  transition: color var(--lumno-duration-sm) ease;
-}
-._x_extension_feedback_support_link_2026_unique_ > span {
+._x_extension_feedback_support_copy_2026_unique_ {
   flex: 1 1 auto;
   min-width: 0;
+}
+._x_extension_feedback_support_links_2026_unique_ {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 2px;
+}
+/* Same quiet text button as the onboarding guide link: no surface until hover. */
+._x_extension_shortcut_submit_2024_unique_._x_extension_feedback_support_action_2026_unique_ {
+  --settings-button-min-height: 28px;
+  --settings-button-padding: 0 10px;
+  --settings-button-gap: 5px;
+  --settings-button-border-color: transparent;
+  --settings-button-bg: transparent;
+  --settings-button-color: rgba(107, 114, 128, 0.86);
+  --settings-button-shadow: none;
+  --settings-button-hover-bg: rgba(15, 23, 42, 0.045);
+  --settings-button-hover-color: var(--panel-text);
+  --settings-button-hover-shadow: none;
+  --settings-button-font-size: 12px;
+  flex-shrink: 0;
+  align-self: center;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+}
+._x_extension_feedback_support_action_2026_unique_[data-open="true"] {
+  --settings-button-bg: var(--settings-button-hover-bg);
+  --settings-button-color: var(--settings-button-hover-color);
+}
+._x_extension_feedback_support_qr_anchor_2026_unique_ {
+  position: relative;
+  display: inline-flex;
+}
+/* The WeChat group QR opens in place, under its button. */
+._x_extension_feedback_support_qr_popover_2026_unique_ {
+  --x-extension-menu-surface-transform-origin: top left;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  width: 232px;
+  padding: 8px 8px 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--lumno-radius-2xl);
+  background: var(--menu-bg);
+  box-shadow: var(--sync-menu-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  visibility: hidden;
+}
+._x_extension_feedback_support_qr_popover_2026_unique_[data-open="true"] {
+  visibility: visible;
+}
+._x_extension_feedback_support_qr_header_2026_unique_ {
+  min-height: 28px;
+  padding-left: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+._x_extension_feedback_support_qr_header_2026_unique_ > p {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--panel-text);
+  font-size: var(--lumno-font-size-sm);
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
-._x_extension_feedback_support_link_2026_unique_ > .ri-external-link-line {
-  flex: 0 0 auto;
-  color: var(--feedback-support-link-icon-color);
-  opacity: 0.7;
-  transition:
-    opacity var(--lumno-duration-sm) ease,
-    transform var(--lumno-duration-xl) cubic-bezier(0.34, 1.56, 0.64, 1);
+._x_extension_feedback_support_qr_close_2026_unique_ {
+  all: unset;
+  box-sizing: border-box;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--lumno-radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--panel-subtext);
+  cursor: pointer;
+  transition: background-color var(--lumno-duration-sm) ease, color var(--lumno-duration-sm) ease;
 }
-._x_extension_feedback_support_link_2026_unique_:hover {
-  background: var(--feedback-support-link-hover-bg);
-}
-._x_extension_feedback_support_link_2026_unique_:hover > i:first-child {
+._x_extension_feedback_support_qr_close_2026_unique_:hover {
+  background: var(--control-hover-bg);
   color: var(--panel-text);
 }
-._x_extension_feedback_support_link_2026_unique_:hover > .ri-external-link-line {
-  opacity: 1;
-  transform: translate(2px, -2px);
-}
-._x_extension_feedback_support_link_2026_unique_:focus-visible {
+._x_extension_feedback_support_qr_close_2026_unique_:focus-visible {
   outline: 2px solid var(--input-focus-color);
-  outline-offset: 2px;
+  outline-offset: 1px;
 }
-body[data-theme="dark"] ._x_extension_feedback_support_link_2026_unique_ {
-  --feedback-support-link-bg: color-mix(in srgb, var(--control-bg) 72%, transparent);
-  --feedback-support-link-hover-bg: var(--control-hover-bg);
-  --feedback-support-link-icon-color: var(--panel-subtext);
+._x_extension_feedback_support_qr_image_2026_unique_ {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--lumno-radius-xl);
+  background: #f2f4f8;
 }
-@media (prefers-reduced-motion: reduce) {
-  ._x_extension_feedback_support_link_2026_unique_ > .ri-external-link-line {
-    transition: none;
-  }
-  ._x_extension_feedback_support_link_2026_unique_:hover > .ri-external-link-line {
-    transform: none;
-  }
+body[data-theme="dark"] ._x_extension_feedback_support_qr_image_2026_unique_ {
+  background: #18181b;
+}
+body[data-theme="dark"] ._x_extension_feedback_support_action_2026_unique_ {
+  --settings-button-color: var(--panel-subtext);
+  --settings-button-hover-bg: color-mix(in srgb, var(--control-hover-bg) 72%, transparent);
+  --settings-button-hover-color: var(--panel-text);
 }
 ._x_extension_shortcut_submit_2024_unique_._x_extension_onboarding_guide_button_2026_unique_ {
   margin-left: auto;
@@ -2308,8 +2346,14 @@ body[data-theme="dark"] ._x_extension_shortcut_secondary_2024_unique_ {
   ._x_extension_aggregate_search_source_grid_2026_unique_ {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* The contact buttons drop under their description and start where it starts. */
+  ._x_extension_feedback_support_row_2026_unique_ {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
   ._x_extension_feedback_support_links_2026_unique_ {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: flex-start;
+    margin-left: -10px;
   }
   ._x_extension_settings_tabs_frame_2026_unique_ {
     width: 100%;
@@ -2388,9 +2432,6 @@ body[data-theme="dark"] ._x_extension_shortcut_secondary_2024_unique_ {
   #_x_extension_settings_panel_2024_unique_ {
     --settings-content-edge-space: 8px;
     padding: 12px;
-  }
-  ._x_extension_feedback_support_link_2026_unique_ > .ri-external-link-line {
-    display: none;
   }
   ._x_extension_shortcut_submit_2024_unique_._x_extension_shortcuts_link_2026_unique_ {
     align-self: flex-start;

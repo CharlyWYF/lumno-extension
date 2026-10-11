@@ -81,7 +81,7 @@
     "message": "選字快捷操作"
   },
   "settings_selection_quick_actions_desc": {
-    "message": "根據所選文字動態顯示 AI 操作，並在新分頁中開啟結果"
+    "message": "選取文字後顯示 AI 操作"
   },
   "settings_selection_quick_actions_provider_title": {
     "message": "優先 Provider"
@@ -233,8 +233,20 @@
   "settings_feedback_support_wechat_action": {
     "message": "加入回饋群"
   },
-  "settings_feedback_support_help_center_action": {
+  "settings_help_center_title": {
     "message": "說明中心"
+  },
+  "settings_help_center_desc": {
+    "message": "不清楚某個功能怎麼用？每個功能的用法都寫在這裡。"
+  },
+  "settings_help_center_action": {
+    "message": "查看"
+  },
+  "settings_feedback_contact_title": {
+    "message": "問題與建議"
+  },
+  "settings_feedback_contact_desc": {
+    "message": "遇到問題或有想法，歡迎告訴作者"
   },
   "settings_feedback_support_review_action": {
     "message": "為 Lumno 評分"
@@ -246,7 +258,7 @@
     "message": "聯絡作者"
   },
   "settings_onboarding_tutorial_action": {
-    "message": "使用教學"
+    "message": "新手導覽"
   },
   "settings_language_title": {
     "message": "語言"
@@ -404,8 +416,11 @@
   "settings_macos_ctrl_suggestion_navigation_title": {
     "message": "Mac 鍵盤導覽"
   },
+  "settings_macos_ctrl_suggestion_navigation_tooltip": {
+    "message": "在 macOS 的新分頁與指令列中可用。感謝 @wanghanzhen 的貢獻。"
+  },
   "settings_macos_ctrl_suggestion_navigation_desc": {
-    "message": "在 macOS 的新分頁與指令列中，用 Ctrl+N / Ctrl+P 選擇下一項 / 上一項。感謝 @wanghanzhen 的貢獻。"
+    "message": "用 Ctrl+N / Ctrl+P 選擇下一項 / 上一項"
   },
   "document_pip_picker_hint": {
     "message": "移動滑鼠選擇元素，點按開啟浮動視窗，滾輪切換父層，Esc 取消。"
@@ -3084,7 +3099,7 @@
     "message": "釘選劇集、小說時自動更新進度"
   },
   "settings_progress_tracking_desc": {
-    "message": "在新分頁的網站卡片中釘選劇集或小說頁面後，繼續看同一部作品的下一集或下一章時，釘選的卡片會自動換成最新的那一集，下次點開直接接著看"
+    "message": "釘選劇集或小說後，看到下一集、下一章時卡片會自動跟上，下次點開直接接著看"
   },
   "recent_progress_track": {
     "message": "追蹤觀看進度"

@@ -132,7 +132,9 @@ describe('New Tab React wallpaper view', () => {
     expect(helpFooterLink.getAttribute('target')).toBe('_blank');
     expect(helpFooterLink.closest('.x-nt-appearance-help-footer')).not.toBeNull();
     expect(controller.getRefs().helpFooterPrompt.parentElement).toBe(helpFooterLink.parentElement);
-    expect(helpFooterLink.closest('.x-nt-wallpaper-panel-scroll')?.lastElementChild)
+    // Pinned under the scroll area, so it stays visible while settings scroll.
+    expect(helpFooterLink.closest('.x-nt-wallpaper-panel-scroll')).toBeNull();
+    expect(helpFooterLink.closest('.x-nt-wallpaper-panel')?.lastElementChild)
       .toBe(helpFooterLink.parentElement);
     expect(controller.getRefs().bingTab.textContent).toBe('Bing');
     expect(controller.getRefs().bingDailyToggle.getAttribute('role')).toBe('switch');

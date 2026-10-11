@@ -81,7 +81,7 @@
     "message": "選択テキストのクイック操作"
   },
   "settings_selection_quick_actions_desc": {
-    "message": "選択したテキストに応じて AI 操作を表示し、結果を新しいタブで開きます"
+    "message": "テキストを選択すると AI 操作を表示"
   },
   "settings_selection_quick_actions_provider_title": {
     "message": "優先プロバイダー"
@@ -233,8 +233,20 @@
   "settings_feedback_support_wechat_action": {
     "message": "WeChat グループに参加"
   },
-  "settings_feedback_support_help_center_action": {
+  "settings_help_center_title": {
     "message": "ヘルプセンター"
+  },
+  "settings_help_center_desc": {
+    "message": "機能の使い方がわからないときは、こちらにすべてまとめています"
+  },
+  "settings_help_center_action": {
+    "message": "開く"
+  },
+  "settings_feedback_contact_title": {
+    "message": "不具合・要望"
+  },
+  "settings_feedback_contact_desc": {
+    "message": "不具合や改善のアイデアは作者までお寄せください"
   },
   "settings_feedback_support_review_action": {
     "message": "Lumno を評価"
@@ -246,7 +258,7 @@
     "message": "作者に連絡"
   },
   "settings_onboarding_tutorial_action": {
-    "message": "使い方"
+    "message": "初回ガイド"
   },
   "settings_language_title": {
     "message": "言語"
@@ -404,8 +416,11 @@
   "settings_macos_ctrl_suggestion_navigation_title": {
     "message": "Mac キーボードナビゲーション"
   },
+  "settings_macos_ctrl_suggestion_navigation_tooltip": {
+    "message": "macOS の新しいタブとコマンドバーで使えます。コントリビューションを提供した @wanghanzhen に感謝します。"
+  },
   "settings_macos_ctrl_suggestion_navigation_desc": {
-    "message": "macOS の新しいタブとコマンドバーで Ctrl+N / Ctrl+P を使い、次 / 前の候補を選択します。コントリビューションを提供した @wanghanzhen に感謝します。"
+    "message": "Ctrl+N / Ctrl+P で次 / 前の候補を選択"
   },
   "document_pip_picker_hint": {
     "message": "マウスを動かして要素を選択し、クリックするとWebクリップで表示します。ホイールで親要素へ切り替え、Escでキャンセルできます。"
@@ -3084,7 +3099,7 @@
     "message": "固定したドラマや小説の進捗を自動更新"
   },
   "settings_progress_tracking_desc": {
-    "message": "新しいタブの最近使ったサイトでドラマや小説のページを固定すると、同じ作品の次の話や章に進んだときに固定したカードが自動で切り替わり、次回は続きから開けます"
+    "message": "ドラマや小説を固定すると、次の話や章に進んだときにカードも自動で追従し、次回は続きから開けます"
   },
   "recent_progress_track": {
     "message": "進捗を追跡"

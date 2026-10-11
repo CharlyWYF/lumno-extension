@@ -30,8 +30,8 @@ assert(
 );
 assert.match(
   appearanceContent,
-  /data-i18n="settings_motion_effects_desc">如遇卡顿，或倾向于更利落的唤起方式，可关闭</,
-  'the simplified Chinese fallback should use the requested guidance'
+  /data-i18n-tooltip="settings_motion_effects_desc" data-tooltip="如遇卡顿，或倾向于更利落的唤起方式，可关闭"/,
+  'the simplified Chinese fallback should keep the requested guidance in the title tooltip'
 );
 assert.match(
   appearanceContent,

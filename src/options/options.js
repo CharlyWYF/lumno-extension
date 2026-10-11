@@ -1689,15 +1689,22 @@
     feedbackSupportController.render({
       heading: getMessage('settings_feedback_support_section_title', '反馈与支持'),
       headingKey: 'settings_feedback_support_section_title',
+      help: {
+        description: getMessage('settings_help_center_desc', '不清楚某个功能怎么用？每个功能的用法都写在这里。'),
+        descriptionKey: 'settings_help_center_desc',
+        href: COMMUNITY_LINKS.getHelpUrl(getFeedbackSupportWebLocale()),
+        label: getMessage('settings_help_center_action', '查看'),
+        labelKey: 'settings_help_center_action',
+        title: getMessage('settings_help_center_title', '帮助中心'),
+        titleKey: 'settings_help_center_title'
+      },
+      contact: {
+        description: getMessage('settings_feedback_contact_desc', '遇到问题或有想法，欢迎告诉作者'),
+        descriptionKey: 'settings_feedback_contact_desc',
+        title: getMessage('settings_feedback_contact_title', '问题与建议'),
+        titleKey: 'settings_feedback_contact_title'
+      },
       items: [
-        // Self-serve answers come before asking people.
-        {
-          href: COMMUNITY_LINKS.getHelpUrl(getFeedbackSupportWebLocale()),
-          iconClass: 'ri-book-open-line',
-          key: 'help-center',
-          label: getMessage('settings_feedback_support_help_center_action', '帮助中心'),
-          labelKey: 'settings_feedback_support_help_center_action'
-        },
         // Chinese readers get the WeChat group; elsewhere "contact the author" (X) below is the community entry.
         ...(communityIsWechat
           ? [{
@@ -1705,7 +1712,13 @@
               iconClass: 'ri-wechat-line',
               key: 'community',
               label: getMessage('settings_feedback_support_wechat_action', '加入反馈群'),
-              labelKey: 'settings_feedback_support_wechat_action'
+              labelKey: 'settings_feedback_support_wechat_action',
+              qr: {
+                alt: getMessage('newtab_feedback_wechat_qr_alt', 'Lumno 微信群二维码'),
+                closeLabel: getMessage('newtab_feedback_wechat_close_tooltip', '关闭'),
+                imageUrl: links.wechatQr,
+                title: getMessage('newtab_feedback_wechat_panel_title', 'Bug 反馈 & 新功能提需')
+              }
             }]
           : []),
         {

@@ -24,7 +24,7 @@ function getRule(selector) {
 
 assert.match(
   optionsHtml,
-  new RegExp(`<button[^>]+id="${buttonId}"[^>]+class="[^"]*${buttonClass}[^"]*"[^>]*>[\\s\\S]*?<span data-i18n="${labelKey}">使用教程<\\/span>[\\s\\S]*?<i class="ri-icon ri-size-14 ri-external-link-line"`),
+  new RegExp(`<button[^>]+id="${buttonId}"[^>]+class="[^"]*${buttonClass}[^"]*"[^>]*>[\\s\\S]*?<span data-i18n="${labelKey}">新手引导<\\/span>[\\s\\S]*?<i class="ri-icon ri-size-14 ri-external-link-line"`),
   'general settings header should expose a compact onboarding tutorial ghost action with the onboarding ghost icon'
 );
 

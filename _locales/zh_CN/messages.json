@@ -81,7 +81,7 @@
     "message": "划词快捷操作"
   },
   "settings_selection_quick_actions_desc": {
-    "message": "根据所选文字动态显示 AI 操作，并在新标签页中打开结果"
+    "message": "选中文字后显示 AI 操作"
   },
   "settings_selection_quick_actions_provider_title": {
     "message": "优先 Provider"
@@ -233,8 +233,20 @@
   "settings_feedback_support_wechat_action": {
     "message": "加入反馈群"
   },
-  "settings_feedback_support_help_center_action": {
+  "settings_help_center_title": {
     "message": "帮助中心"
+  },
+  "settings_help_center_desc": {
+    "message": "不清楚某个功能怎么用？每个功能的用法都写在这里。"
+  },
+  "settings_help_center_action": {
+    "message": "查看"
+  },
+  "settings_feedback_contact_title": {
+    "message": "问题与建议"
+  },
+  "settings_feedback_contact_desc": {
+    "message": "遇到问题或有想法，欢迎告诉作者"
   },
   "settings_feedback_support_review_action": {
     "message": "为 Lumno 评分"
@@ -246,7 +258,7 @@
     "message": "联系作者"
   },
   "settings_onboarding_tutorial_action": {
-    "message": "使用教程"
+    "message": "新手引导"
   },
   "settings_language_title": {
     "message": "语言"
@@ -404,8 +416,11 @@
   "settings_macos_ctrl_suggestion_navigation_title": {
     "message": "Mac 键盘导航"
   },
+  "settings_macos_ctrl_suggestion_navigation_tooltip": {
+    "message": "在 macOS 的新标签页和命令栏中可用。感谢 @wanghanzhen 的贡献。"
+  },
   "settings_macos_ctrl_suggestion_navigation_desc": {
-    "message": "在 macOS 的新标签页和命令栏中，用 Ctrl+N / Ctrl+P 选择下一项 / 上一项。感谢 @wanghanzhen 的贡献。"
+    "message": "用 Ctrl+N / Ctrl+P 选择下一项 / 上一项"
   },
   "document_pip_picker_hint": {
     "message": "移动鼠标选择元素，点击打开悬浮窗，滚轮切换父级，Esc 取消。"
@@ -3084,7 +3099,7 @@
     "message": "置顶剧集、小说时自动更新进度"
   },
   "settings_progress_tracking_desc": {
-    "message": "在新标签页的站点卡片中置顶剧集或小说页面后，继续看同一部作品的下一集或下一章时，置顶的卡片会自动换成最新的那一集，下次点开直接接着看"
+    "message": "置顶剧集或小说后，看到下一集、下一章时卡片会自动跟上，下次点开直接接着看"
   },
   "recent_progress_track": {
     "message": "跟踪观看进度"

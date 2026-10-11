@@ -36,9 +36,14 @@ assert.ok(
   'feedback support should appear above global settings'
 );
 assert.match(
+  feedbackReact,
+  /_x_extension_setting_row_2024_unique_ _x_extension_feedback_support_row_2026_unique_[\s\S]*?_x_extension_setting_title_2024_unique_[\s\S]*?_x_extension_setting_desc_2024_unique_/,
+  'feedback support should use the same title, description and right-side action rows as other settings'
+);
+assert.match(
   optionsHtml,
-  /_x_extension_feedback_support_section_2026_unique_[\s\S]*?flex-direction: column[\s\S]*?_x_extension_feedback_support_links_2026_unique_[\s\S]*?display: grid[\s\S]*?grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/,
-  'feedback support should lay the four links out as equal-width tiles below the heading'
+  /\._x_extension_shortcut_submit_2024_unique_\._x_extension_feedback_support_action_2026_unique_ \{[\s\S]*?--settings-button-bg: transparent;/,
+  'feedback actions should be quiet text buttons with no resting surface'
 );
 assert.match(
   feedbackReact,
@@ -47,8 +52,8 @@ assert.match(
 );
 assert.match(
   feedbackReact,
-  /item\.iconClass[\s\S]*?<span data-i18n=\{item\.labelKey\}>\{item\.label\}<\/span>[\s\S]*?ri-size-14 ri-external-link-line/,
-  'every feedback entry should keep its channel icon in the compact tutorial-link pattern'
+  /item\.iconClass[\s\S]*?<span data-i18n=\{item\.labelKey\}>\{item\.label\}<\/span>/,
+  'every feedback entry should keep its channel icon before its label'
 );
 [
   'community',
@@ -78,8 +83,8 @@ assert.match(
 );
 assert.match(
   optionsJs,
-  /\.\.\.\(communityIsWechat\s*\? \[\{\s*href: links\.wechatQr,\s*iconClass: 'ri-wechat-line',\s*key: 'community',[\s\S]*?labelKey: 'settings_feedback_support_wechat_action'\s*\}\]\s*: \[\]\)/,
-  'the WeChat group is the community entry in Chinese; elsewhere the contact-the-author X link is'
+  /\.\.\.\(communityIsWechat\s*\? \[\{\s*href: links\.wechatQr,\s*iconClass: 'ri-wechat-line',\s*key: 'community',[\s\S]*?labelKey: 'settings_feedback_support_wechat_action',\s*qr: \{[\s\S]*?imageUrl: links\.wechatQr,[\s\S]*?\}\s*\}\]\s*: \[\]\)/,
+  'the WeChat group is the community entry in Chinese and shows its QR code in a popover; elsewhere the contact-the-author X link is'
 );
 assert.doesNotMatch(optionsJs, /links\.discord|ri-discord-fill|settings_feedback_support_discord_action/);
 

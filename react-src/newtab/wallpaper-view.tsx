@@ -1271,20 +1271,20 @@ function WallpaperPanel({ model }: { model: Record<string, any> }) {
               </div>
             </div>
           </div>
-          <p className="x-nt-appearance-help-footer">
-            <span
-              {...ref('helpFooterPrompt')}
-              className="x-nt-appearance-help-footer-prompt"
-            />
-            <LinkButton
-              {...ref('helpFooterLink')}
-              className="x-nt-appearance-help-footer-link"
-              external
-              href={model.helpCenterUrl}
-              labelProps={ref('helpFooterText')}
-            />
-          </p>
         </div>
+        <p className="x-nt-appearance-help-footer">
+          <span
+            {...ref('helpFooterPrompt')}
+            className="x-nt-appearance-help-footer-prompt"
+          />
+          <LinkButton
+            {...ref('helpFooterLink')}
+            className="x-nt-appearance-help-footer-link"
+            external
+            href={model.helpCenterUrl}
+            labelProps={ref('helpFooterText')}
+          />
+        </p>
       </div>
       <button
         {...ref('button')}
