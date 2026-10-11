@@ -60,6 +60,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
   const SEARCH_UTILS = globalThis.LumnoSearchUtils;
   const HELP_CENTER_SEARCH = globalThis.LumnoHelpCenterSearch;
   const COMMUNITY_LINKS = globalThis.LumnoCommunityLinks;
+  const COMMUNITY_QR_DIALOG = globalThis.LumnoCommunityQrDialog;
   const SITE_SEARCH_STORE = globalThis.LumnoSiteSearchStore;
   const AGGREGATE_SEARCH_STORE = globalThis.LumnoAggregateSearchStore;
   const AGGREGATE_SEARCH_SURFACE = globalThis.LumnoAggregateSearchSurface;
@@ -1948,6 +1949,23 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       });
     overlay._lumnoInputHistoryController = inputHistoryController;
     const handledSearchInputEvents = new WeakSet();
+    // The WeChat group QR opens in a dialog over the page, never in a new tab.
+    // The overlay closes first, as it does for any result it opens.
+    function openOverlayCommunityQrDialog(qrUrl) {
+      const theme = overlay && overlay.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      removeOverlay(overlay);
+      if (!COMMUNITY_QR_DIALOG) {
+        return;
+      }
+      COMMUNITY_QR_DIALOG.open({
+        documentObj: document,
+        imageUrl: qrUrl || COMMUNITY_LINKS.FALLBACK_LINKS.wechatQr,
+        title: t('newtab_feedback_wechat_panel_title', 'Bug 反馈 & 新功能提需'),
+        alt: t('newtab_feedback_wechat_qr_alt', 'Lumno 微信群二维码'),
+        closeLabel: t('newtab_feedback_wechat_close_tooltip', '关闭'),
+        theme
+      });
+    }
     function overlayUpdateNoticeClaimsSessionSlot() {
       return Boolean(
         overlayUpdateNoticeController &&
@@ -2019,14 +2037,20 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         },
         onCommunity(event) {
           const disposition = getOpenDisposition(event, 'newTab');
+          const locale = overlayLanguageMode === 'system'
+            ? getSystemLocale()
+            : normalizeLocale(overlayLanguageMode);
+          const isWechat = ENGAGEMENT_NOTICE.getCommunityChannel(locale) === 'wechat';
           const communityUrlPromise =
             ENGAGEMENT_NOTICE.loadCommunityUrl({
               force: true,
-              locale: overlayLanguageMode === 'system'
-                ? getSystemLocale()
-                : normalizeLocale(overlayLanguageMode)
+              locale
             });
           communityUrlPromise.then((url) => {
+            if (isWechat) {
+              openOverlayCommunityQrDialog(url);
+              return;
+            }
             chrome.runtime.sendMessage({
               action: 'createTab',
               url,
@@ -6820,6 +6844,10 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
               searchInput.focus();
               return;
             }
+            if (selectedSuggestion.type === 'helpFeedback' && selectedSuggestion.feedbackKey === 'community') {
+              openOverlayCommunityQrDialog(selectedSuggestion.url);
+              return;
+            }
             if (selectedSuggestion.provider && selectedSuggestion.searchQuery) {
               if (openSiteSearchProviderQuery(selectedSuggestion.provider, selectedSuggestion.searchQuery, e)) {
                 finishOverlayResultActivation(e, true);
@@ -7154,6 +7182,10 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       if (suggestion.type === 'siteSearchPrompt' && suggestion.provider) {
         activateSiteSearch(suggestion.provider);
         searchInput.focus();
+        return;
+      }
+      if (suggestion.type === 'helpFeedback' && suggestion.feedbackKey === 'community') {
+        openOverlayCommunityQrDialog(suggestion.url);
         return;
       }
       if (suggestion.type === 'modeSwitch') {

@@ -246,6 +246,7 @@
   const UPDATE_NOTICE = globalThis.LumnoUpdateNotice;
   const ENGAGEMENT_NOTICE = globalThis.LumnoEngagementNotice;
   const COMMUNITY_LINKS = globalThis.LumnoCommunityLinks;
+  const COMMUNITY_QR_DIALOG = globalThis.LumnoCommunityQrDialog;
   const LUMNO_FEEDBACK_LINKS_FALLBACK = COMMUNITY_LINKS.FALLBACK_LINKS;
   const FAVICON_UTILS = globalThis.LumnoFaviconUtils;
   const NEWTAB_FAVICON_CACHE = globalThis.LumnoFaviconCache;
@@ -6353,6 +6354,7 @@
     sendRuntimeMessage,
     HELP_CENTER_SEARCH: window.LumnoHelpCenterSearch || null,
     COMMUNITY_LINKS: window.LumnoCommunityLinks || null,
+    openCommunityQrDialog: (...args) => openCommunityQrDialog(...args),
     getHelpCenterLocale: () => currentResolvedLocale ||
       (currentLanguageMode === 'system' ? getSystemLocale() : normalizeLocale(currentLanguageMode)),
     pageState: {
@@ -7017,6 +7019,10 @@
           focusSearchInputPreservingScroll();
           return true;
         }
+        if (selectedSuggestion.type === 'helpFeedback' && selectedSuggestion.feedbackKey === 'community') {
+          openCommunityQrDialog(selectedSuggestion.url);
+          return true;
+        }
         if (selectedSuggestion.provider && selectedSuggestion.searchQuery) {
           return runSiteSearchProviderQuery(
             selectedSuggestion.provider,
@@ -7301,14 +7307,35 @@
       },
       onCommunity(event) {
         const disposition = getOpenDisposition(event, 'newTab');
+        const locale = getFeedbackWebLocale();
+        const isWechat = ENGAGEMENT_NOTICE.getCommunityChannel(locale) === 'wechat';
         const communityUrlPromise = ENGAGEMENT_NOTICE.loadCommunityUrl({
           force: true,
-          locale: getFeedbackWebLocale()
+          locale
         });
         communityUrlPromise.then((url) => {
+          if (isWechat) {
+            openCommunityQrDialog(url);
+            return;
+          }
           openFeedbackExternalUrl(url, disposition);
         });
       }
+    });
+  }
+  // The WeChat group QR opens in a dialog over the page, never in a new tab.
+  function openCommunityQrDialog(qrUrl) {
+    if (!COMMUNITY_QR_DIALOG) {
+      return;
+    }
+    COMMUNITY_QR_DIALOG.open({
+      documentObj: document,
+      imageUrl: qrUrl || (feedbackLinks || LUMNO_FEEDBACK_LINKS_FALLBACK).wechatQr,
+      title: t('newtab_feedback_wechat_panel_title', 'Bug 反馈 & 新功能提需'),
+      alt: t('newtab_feedback_wechat_qr_alt', 'Lumno 微信群二维码'),
+      closeLabel: t('newtab_feedback_wechat_close_tooltip', '关闭'),
+      theme: document.body.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
+      returnFocus: document.activeElement
     });
   }
   inputParts.input.addEventListener('input', function() {

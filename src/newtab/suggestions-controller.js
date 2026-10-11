@@ -74,6 +74,7 @@
       sendRuntimeMessage,
       HELP_CENTER_SEARCH,
       COMMUNITY_LINKS,
+      openCommunityQrDialog,
       getHelpCenterLocale
     } = deps;
 
@@ -188,6 +189,11 @@
       if (suggestion.type === 'siteSearchPrompt' && suggestion.provider) {
         activateSiteSearch(suggestion.provider);
         focusSearchInputPreservingScroll();
+        return;
+      }
+      if (suggestion.type === 'helpFeedback' && suggestion.feedbackKey === 'community' &&
+          typeof openCommunityQrDialog === 'function') {
+        openCommunityQrDialog(suggestion.url);
         return;
       }
       if (suggestion.type === 'modeSwitch') {

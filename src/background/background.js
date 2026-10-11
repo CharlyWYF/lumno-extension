@@ -4610,6 +4610,7 @@ function openOverlayOnTab(activeTab, tabs, source, options) {
     'src/shared/favicon-utils.js',
     'src/shared/shortcut-favicon.js',
     'src/shared/community-links.js',
+    'src/shared/community-qr-dialog.js',
     'src/shared/help-center-search.js',
     'src/shared/browser-profile.js',
     'src/shared/feature-hints.js',
