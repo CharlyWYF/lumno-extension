@@ -26,6 +26,7 @@
       formatMessage,
       getDirectNavigationUrl,
       getUrlDisplay,
+      getHelpCenterLocale,
       SETTINGS
     } = deps;
 
@@ -35,11 +36,14 @@
     let siteSearchProvidersLoadPromise = null;
     let aggregateSearchRequestController = null;
 
-    function buildSearchUrl(template, query) {
+    function buildSearchUrl(template, query, provider) {
       if (!template) {
         return '';
       }
-      return template.replace(/\{query\}/g, encodeURIComponent(query));
+      const url = template.replace(/\{query\}/g, encodeURIComponent(query));
+      return provider && typeof getHelpCenterLocale === 'function'
+        ? SEARCH_UTILS.withHelpCenterLocale(url, provider, getHelpCenterLocale())
+        : url;
     }
 
     function isAiSiteSearchProvider(provider) {
@@ -99,7 +103,7 @@
         });
         return true;
       }
-      const siteUrl = buildSearchUrl(provider.template, trimmedQuery);
+      const siteUrl = buildSearchUrl(provider.template, trimmedQuery, provider);
       if (!siteUrl) {
         return false;
       }

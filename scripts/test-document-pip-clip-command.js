@@ -83,6 +83,12 @@ assert.match(
 );
 
 assert.match(
+  contentJs,
+  /function handlePiPLinkClick\(event, session\) \{[\s\S]*?url\.search === pageUrl\.search\) \{\s*\/\/[^\n]*\n\s*if \(!url\.hash\) \{\s*return;\s*\}[\s\S]*?action: 'createTab'/,
+  'a clipped href="#" link should not open the page again in a new tab'
+);
+
+assert.match(
   actionModelJs,
   /const COMMAND_SUGGESTION_TYPES = new Set\(\[[\s\S]*?'commandDocumentPip'[\s\S]*?\]\);[\s\S]*?COMMAND_SUGGESTION_TYPES\.has\(suggestion\.type\)[\s\S]*?return null;/,
   'web clip command rows should rely on whole-row activation without a redundant action button'

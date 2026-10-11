@@ -1448,8 +1448,12 @@
       return;
     }
     const pageUrl = new URL(window.location.href);
-    if (url.hash && url.origin === pageUrl.origin && url.pathname === pageUrl.pathname &&
+    if (url.origin === pageUrl.origin && url.pathname === pageUrl.pathname &&
         url.search === pageUrl.search) {
+      // href="#" is usually a script-driven button; it has nothing to open.
+      if (!url.hash) {
+        return;
+      }
       let anchorTarget = null;
       try {
         anchorTarget = session.pipDocument.getElementById(decodeURIComponent(url.hash.slice(1)));

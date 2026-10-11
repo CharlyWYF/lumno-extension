@@ -246,7 +246,7 @@
     "message": "在搜尋框中提問"
   },
   "settings_help_center_ask_caption": {
-    "message": "在新分頁或搜尋框輸入 lm，按 Tab，再寫下你的問題。"
+    "message": "在新分頁或指令列輸入 lm 或「說明中心」，按 Tab，再寫下你的問題。"
   },
   "settings_help_center_ask_demo_query": {
     "message": "怎麼修改快捷鍵"
@@ -870,7 +870,7 @@
     "message": "新功能"
   },
   "newtab_help_center_ask_feature_hint_text": {
-    "message": "不會用某個功能？輸入 lm 按 Tab，直接向說明中心提問。"
+    "message": "不會用某個功能？輸入 lm 或「說明中心」按 Tab，直接向說明中心提問。"
   },
   "newtab_help_center_ask_feature_hint_link": {
     "message": "試試看"

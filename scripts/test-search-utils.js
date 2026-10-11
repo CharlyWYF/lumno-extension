@@ -885,7 +885,7 @@ assert.ok(
     `${providerKey} should URL-encode multilingual queries`
   );
 });
-['lm', 'lumno'].forEach((trigger) => {
+['lm', 'lumno', '帮助中心', '說明中心', 'ヘルプセンター'].forEach((trigger) => {
   assert.strictEqual(
     (search.findSiteSearchProvider(trigger, search.getDefaultSiteSearchProviders()) || {}).key,
     'lm',

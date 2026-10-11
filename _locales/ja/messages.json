@@ -246,7 +246,7 @@
     "message": "検索ボックスで質問"
   },
   "settings_help_center_ask_caption": {
-    "message": "新しいタブまたはコマンドバーで lm と入力して Tab を押し、質問を入力します。"
+    "message": "新しいタブまたはコマンドバーで lm または「ヘルプセンター」と入力して Tab を押し、質問を入力します。"
   },
   "settings_help_center_ask_demo_query": {
     "message": "ショートカットを変更したい"
@@ -432,7 +432,7 @@
     "message": "Mac キーボードナビゲーション"
   },
   "settings_macos_ctrl_suggestion_navigation_tooltip": {
-    "message": "macOS の新しいタブとコマンドバーで使えます。コントリビューションを提供した @wanghanzhen に感謝します。"
+    "message": "macOS の新しいタブとコマンドバーで使えます。@wanghanzhen さんのコントリビューションに感謝します。"
   },
   "settings_macos_ctrl_suggestion_navigation_desc": {
     "message": "Ctrl+N / Ctrl+P で次 / 前の候補を選択"
@@ -870,7 +870,7 @@
     "message": "新機能"
   },
   "newtab_help_center_ask_feature_hint_text": {
-    "message": "使い方がわからないときは、lm と入力して Tab を押し、ヘルプセンターに質問できます。"
+    "message": "使い方がわからないときは、lm または「ヘルプセンター」と入力して Tab を押すと、ヘルプセンターに質問できます。"
   },
   "newtab_help_center_ask_feature_hint_link": {
     "message": "試してみる"

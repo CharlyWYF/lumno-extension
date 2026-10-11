@@ -2635,7 +2635,7 @@
     { key: 'jd', aliases: ['jingdong', '京东'], name: 'JD.com', template: 'https://search.jd.com/Search?keyword={query}' },
     { key: 'wk', aliases: ['wiki', 'wikipedia'], name: 'Wikipedia', template: 'https://en.wikipedia.org/wiki/Special:Search?search={query}' },
     { key: 'zw', aliases: ['zhwiki'], name: 'Wikipedia', template: 'https://zh.wikipedia.org/wiki/Special:Search?search={query}' },
-    { key: 'lm', aliases: ['lumno', 'lumno help', '帮助中心'], name: 'Lumno Help Center', template: 'https://lumno.kubai.design/help/what-is-lumno/?entry=ext&q={query}' }
+    { key: 'lm', aliases: ['lumno', 'lumno help', '帮助中心', '說明中心', 'ヘルプセンター'], name: 'Lumno Help Center', template: 'https://lumno.kubai.design/help/what-is-lumno/?entry=ext&q={query}' }
   ]);
 
   const SITE_SEARCH_PROVIDER_DISPLAY_NAME_MESSAGES = Object.freeze({
@@ -2705,6 +2705,22 @@
       return normalizeHost(url.hostname) === HELP_CENTER_HOST && url.pathname.startsWith('/help/');
     } catch (e) {
       return false;
+    }
+  }
+
+  // Help Center links carry the interface language its results came from (lang=), since the
+  // site otherwise follows the browser language for pages opened from the extension.
+  function withHelpCenterLocale(url, provider, locale) {
+    const lang = String(locale || '').trim().replace(/_/g, '-');
+    if (!url || !lang || !isHelpCenterSiteSearchProvider(provider)) {
+      return url;
+    }
+    try {
+      const next = new URL(url);
+      next.searchParams.set('lang', lang);
+      return next.href;
+    } catch (e) {
+      return url;
     }
   }
 
@@ -3379,6 +3395,7 @@
     getSearchSuggestionHost,
     getSiteSearchProviderDisplayNameMessage,
     isHelpCenterSiteSearchProvider,
+    withHelpCenterLocale,
     getSiteSearchProviderHost,
     getSiteSearchTriggerCandidate,
     getUrlHost,

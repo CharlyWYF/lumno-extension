@@ -246,7 +246,7 @@
     "message": "在搜索框中提问"
   },
   "settings_help_center_ask_caption": {
-    "message": "在新标签页或搜索框输入 lm 或「帮助中心」，按 Tab，再写下你的问题。"
+    "message": "在新标签页或命令栏输入 lm 或「帮助中心」，按 Tab，再写下你的问题。"
   },
   "settings_help_center_ask_demo_query": {
     "message": "怎么修改快捷键"

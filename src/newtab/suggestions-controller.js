@@ -415,7 +415,11 @@
           : null;
         let inlineSuggestion = null;
         if (inlineCandidate) {
-          const inlineUrl = buildSearchUrl(inlineCandidate.provider.template, inlineCandidate.query);
+          const inlineUrl = buildSearchUrl(
+            inlineCandidate.provider.template,
+            inlineCandidate.query,
+            inlineCandidate.provider
+          );
           if (inlineUrl) {
             inlineSuggestion = {
               type: 'inlineSiteSearch',
@@ -448,7 +452,7 @@
               const aggregateSearch = isAggregateSearchProvider(pageState.siteSearchState);
               const siteUrl = aggregateSearch
                 ? ''
-                : buildSearchUrl(pageState.siteSearchState.template, query);
+                : buildSearchUrl(pageState.siteSearchState.template, query, pageState.siteSearchState);
               if (!aggregateSearch && !siteUrl) {
                 return null;
               }

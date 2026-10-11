@@ -311,7 +311,7 @@
     },
     {
       "key": "lm",
-      "aliases": ["lumno", "lumno help", "帮助中心"],
+      "aliases": ["lumno", "lumno help", "帮助中心", "說明中心", "ヘルプセンター"],
       "name": "Lumno Help Center",
       "template": "https://lumno.kubai.design/help/what-is-lumno/?entry=ext&q={query}"
     }

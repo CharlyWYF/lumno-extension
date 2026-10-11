@@ -1700,7 +1700,7 @@
       headingKey: 'settings_feedback_support_section_title',
       help: {
         ask: helpCenterSearchEnabled !== true ? null : {
-          caption: getMessage('settings_help_center_ask_caption', '在新标签页或搜索框输入 lm 或「帮助中心」，按 Tab，再写下你的问题。'),
+          caption: getMessage('settings_help_center_ask_caption', '在新标签页或命令栏输入 lm 或「帮助中心」，按 Tab，再写下你的问题。'),
           captionKey: 'settings_help_center_ask_caption',
           iconUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
             ? chrome.runtime.getURL('assets/images/site-search/glyph-lm.png')

@@ -892,6 +892,7 @@
     formatMessage,
     getDirectNavigationUrl: (...args) => getDirectNavigationUrl(...args),
     getUrlDisplay: (...args) => getUrlDisplay(...args),
+    getHelpCenterLocale,
     SETTINGS,
     pageState: {
       get siteSearchIconCacheLoaded() {
@@ -6366,8 +6367,7 @@
     HELP_CENTER_SEARCH: window.LumnoHelpCenterSearch || null,
     COMMUNITY_LINKS: window.LumnoCommunityLinks || null,
     openCommunityQrDialog: (...args) => openCommunityQrDialog(...args),
-    getHelpCenterLocale: () => currentResolvedLocale ||
-      (currentLanguageMode === 'system' ? getSystemLocale() : normalizeLocale(currentLanguageMode)),
+    getHelpCenterLocale,
     pageState: {
       get suggestionsView() {
         return suggestionsView;
@@ -7334,6 +7334,12 @@
       }
     });
   }
+  // Help Center results and the page the search row opens both follow the interface language.
+  function getHelpCenterLocale() {
+    return currentResolvedLocale ||
+      (currentLanguageMode === 'system' ? getSystemLocale() : normalizeLocale(currentLanguageMode));
+  }
+
   // The WeChat group QR opens in a dialog over the page, never in a new tab.
   function openCommunityQrDialog(qrUrl) {
     if (!COMMUNITY_QR_DIALOG) {

@@ -209,6 +209,20 @@ assert.ok(
 assert.ok(
   !searchUtils.isHelpCenterSiteSearchProvider(searchUtils.getDefaultSiteSearchProviders().find((item) => item.key === 'gh'))
 );
+const helpSearchUrl = searchUtils.buildSearchUrlFromTemplate(builtinProvider.template, 'shortcut');
+assert.strictEqual(
+  searchUtils.withHelpCenterLocale(helpSearchUrl, builtinProvider, 'zh_TW'),
+  'https://lumno.kubai.design/help/what-is-lumno/?entry=ext&q=shortcut&lang=zh-TW',
+  'the help center page opens in the interface language its results came from'
+);
+assert.strictEqual(searchUtils.withHelpCenterLocale(helpSearchUrl, builtinProvider, ''), helpSearchUrl);
+const githubProvider = searchUtils.getDefaultSiteSearchProviders().find((item) => item.key === 'gh');
+const githubUrl = searchUtils.buildSearchUrlFromTemplate(githubProvider.template, 'shortcut');
+assert.strictEqual(
+  searchUtils.withHelpCenterLocale(githubUrl, githubProvider, 'ja'),
+  githubUrl,
+  'other site searches keep their URL'
+);
 assert.deepStrictEqual(
   searchUtils.getSiteSearchProviderDisplayNameMessage(builtinProvider),
   { messageKey: 'site_search_name_lumno_help', fallback: 'Lumno Help Center' }

@@ -5183,11 +5183,12 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       };
     }
 
-    function buildSearchUrl(template, query) {
+    function buildSearchUrl(template, query, provider) {
       if (!template) {
         return '';
       }
-      return template.replace(/\{query\}/g, encodeURIComponent(query));
+      const url = template.replace(/\{query\}/g, encodeURIComponent(query));
+      return provider ? SEARCH_UTILS.withHelpCenterLocale(url, provider, getHelpCenterLocale()) : url;
     }
 
     function isAiSiteSearchProvider(provider) {
@@ -5258,7 +5259,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         });
         return true;
       }
-      const siteUrl = buildSearchUrl(provider.template, trimmedQuery);
+      const siteUrl = buildSearchUrl(provider.template, trimmedQuery, provider);
       if (!siteUrl) {
         return false;
       }
@@ -7673,6 +7674,10 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       return SUGGESTION_ACTION_MODEL.getActionContextKey(options);
     }
 
+    function getHelpCenterLocale() {
+      return overlayLanguageMode === 'system' ? getSystemLocale() : normalizeLocale(overlayLanguageMode);
+    }
+
     function getHelpCenterSuggestions(query) {
       if (!HELP_CENTER_SEARCH || !SEARCH_UTILS.isHelpCenterSiteSearchProvider(siteSearchState)) {
         return [];
@@ -7696,7 +7701,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
           }
         });
       }
-      const locale = overlayLanguageMode === 'system' ? getSystemLocale() : normalizeLocale(overlayLanguageMode);
+      const locale = getHelpCenterLocale();
       return helpCenterSuggestionSource.getSuggestions(
         query,
         locale,
@@ -7840,7 +7845,11 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
           : null;
         let inlineSuggestion = null;
         if (inlineCandidate) {
-          const inlineUrl = buildSearchUrl(inlineCandidate.provider.template, inlineCandidate.query);
+          const inlineUrl = buildSearchUrl(
+            inlineCandidate.provider.template,
+            inlineCandidate.query,
+            inlineCandidate.provider
+          );
           if (inlineUrl) {
             inlineSuggestion = {
               type: 'inlineSiteSearch',
@@ -7858,7 +7867,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
               const aggregateSearch = isAggregateSearchProvider(siteSearchState);
               const siteUrl = aggregateSearch
                 ? ''
-                : buildSearchUrl(siteSearchState.template, query);
+                : buildSearchUrl(siteSearchState.template, query, siteSearchState);
               if (!aggregateSearch && !siteUrl) {
                 return null;
               }
