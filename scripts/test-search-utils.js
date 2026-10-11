@@ -885,6 +885,26 @@ assert.ok(
     `${providerKey} should URL-encode multilingual queries`
   );
 });
+['lm', 'lumno'].forEach((trigger) => {
+  assert.strictEqual(
+    (search.findSiteSearchProvider(trigger, search.getDefaultSiteSearchProviders()) || {}).key,
+    'lm',
+    `${trigger} should open the Lumno help center search`
+  );
+});
+assert.strictEqual(
+  search.buildSearchUrlFromTemplate(
+    search.getDefaultSiteSearchProviders().find((item) => item.key === 'lm').template,
+    '站内 搜索'
+  ),
+  'https://lumno.kubai.design/help/what-is-lumno/?entry=ext&q=%E7%AB%99%E5%86%85%20%E6%90%9C%E7%B4%A2',
+  'the help center reads q and follows the reader language for extension entries'
+);
+assert.strictEqual(
+  search.findSiteSearchProvider('help', search.getDefaultSiteSearchProviders()),
+  null,
+  'a generic word like help should not switch into Lumno help center search'
+);
 assert.strictEqual(
   search.isSearchEngineSiteSearchProvider({
     key: 'gg',

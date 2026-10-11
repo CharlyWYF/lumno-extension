@@ -874,6 +874,10 @@ function getSuggestionUrlLineText(
   options: NormalizedOptions,
   suggestion: Suggestion
 ): string {
+  // Help center pages show the section or passage that matched instead of their address.
+  if (suggestion.type === 'helpArticle') {
+    return String(suggestion.detail || '');
+  }
   const rawUrl = String(suggestion.url || '').trim();
   if (!rawUrl) {
     return '';
@@ -1574,7 +1578,7 @@ function getSuggestionIconSpec(
   }
   if (
     favicon &&
-    ['siteSearch', 'inlineSiteSearch', 'siteSearchPrompt'].includes(
+    ['siteSearch', 'inlineSiteSearch', 'siteSearchPrompt', 'helpArticle'].includes(
       type
     )
   ) {
@@ -2285,7 +2289,8 @@ function SearchSuggestionRowComponent({
 
   const showUrl =
     (suggestion.type === 'history' && !suggestion.isTopSite) ||
-    isTopSite(suggestion);
+    isTopSite(suggestion) ||
+    (suggestion.type === 'helpArticle' && Boolean(suggestion.detail));
   const urlLineText = getSuggestionUrlLineText(options, suggestion);
 
   return (

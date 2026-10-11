@@ -1766,6 +1766,9 @@
   "site_search_name_wikipedia": {
     "message": "Wikipedia"
   },
+  "site_search_name_lumno_help": {
+    "message": "Lumno Help Center"
+  },
   "search_in_site": {
     "message": "Search in {site}"
   },

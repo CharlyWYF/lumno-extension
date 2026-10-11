@@ -308,6 +308,12 @@
       "aliases": ["zhwiki"],
       "name": "Wikipedia",
       "template": "https://zh.wikipedia.org/wiki/Special:Search?search={query}"
+    },
+    {
+      "key": "lm",
+      "aliases": ["lumno", "lumno help", "帮助中心"],
+      "name": "Lumno Help Center",
+      "template": "https://lumno.kubai.design/help/what-is-lumno/?entry=ext&q={query}"
     }
   ]
 }

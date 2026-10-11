@@ -63,7 +63,8 @@
     dy: 'assets/images/site-search/tile-dy.png',
     jd: 'assets/images/site-search/tile-jd.png',
     wk: 'assets/images/site-search/tile-wk.png',
-    zw: 'assets/images/site-search/tile-zw.png'
+    zw: 'assets/images/site-search/tile-zw.png',
+    lm: 'assets/images/site-search/tile-lm.png'
   });
   // Shortcuts supply their own themed tile. Load the original artwork without
   // the background and rounded mask baked into the search-provider tiles.
@@ -113,7 +114,8 @@
     dy: 'assets/images/site-search/glyph-dy.png',
     jd: 'assets/images/site-search/glyph-jd.png',
     wk: 'assets/images/site-search/glyph-wk.svg',
-    zw: 'assets/images/site-search/glyph-zw.svg'
+    zw: 'assets/images/site-search/glyph-zw.svg',
+    lm: 'assets/images/site-search/glyph-lm.png'
   });
   // A provider's search often runs on its own subdomain (search.bilibili.com),
   // so list the hosts people actually save as shortcuts for the same brand.

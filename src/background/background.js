@@ -21,6 +21,8 @@ importScripts(
   chrome.runtime.getURL('src/shared/search-utils.js'),
   chrome.runtime.getURL('src/shared/selection-intent.js'),
   chrome.runtime.getURL('src/shared/site-search-store.js'),
+  chrome.runtime.getURL('src/shared/community-links.js'),
+  chrome.runtime.getURL('src/shared/help-center-search.js'),
   chrome.runtime.getURL('src/shared/aggregate-search-store.js'),
   chrome.runtime.getURL('src/background/ai-provider-submit.js'),
   chrome.runtime.getURL('src/background/aggregate-search.js'),
@@ -4608,6 +4610,7 @@ function openOverlayOnTab(activeTab, tabs, source, options) {
     'src/shared/favicon-utils.js',
     'src/shared/shortcut-favicon.js',
     'src/shared/community-links.js',
+    'src/shared/help-center-search.js',
     'src/shared/browser-profile.js',
     'src/shared/feature-hints.js',
     'src/shared/update-notice.js',
@@ -6281,6 +6284,7 @@ const BACKGROUND_MESSAGE_ROUTE_GROUPS = Object.freeze({
   siteSearch: {
     actions: [
       'getSiteSearchProviders',
+      'getHelpCenterSearchResults',
       'runSiteSearchProviderQuery',
       'runAggregateSearchQuery'
     ],
@@ -6869,6 +6873,24 @@ function deleteHistoryUrlFromSearch(targetUrl, sendResponse) {
   return true;
 }
 
+let helpCenterIndexLoader = null;
+
+// Help center pages matching the query, read from the index of the given interface language.
+function getHelpCenterSearchResults(query, locale) {
+  if (!String(query || '').trim()) {
+    return Promise.resolve([]);
+  }
+  if (!helpCenterIndexLoader) {
+    helpCenterIndexLoader = HELP_CENTER_SEARCH.createIndexLoader({
+      fetchImpl: (url, init) => fetch(url, init)
+    });
+  }
+  return helpCenterIndexLoader.load(COMMUNITY_LINKS.getHelpSearchIndexUrl(locale))
+    .then((index) => HELP_CENTER_SEARCH.searchIndex(index, query, {
+      origin: COMMUNITY_LINKS.WEB_ORIGIN
+    }));
+}
+
 function handleSiteSearchMessage(request, sender, sendResponse) {
   switch (request.action) {
     case 'getSiteSearchProviders': {
@@ -6879,6 +6901,14 @@ function handleSiteSearchMessage(request, sender, sendResponse) {
           items: [],
           reason: 'site-search-provider-load-failed'
         });
+      });
+      return true;
+    }
+    case 'getHelpCenterSearchResults': {
+      getHelpCenterSearchResults(request.query, request.locale).then((items) => {
+        sendResponse({ items });
+      }).catch(() => {
+        sendResponse({ items: [], reason: 'help-center-index-unavailable' });
       });
       return true;
     }
@@ -7241,6 +7271,8 @@ const FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY = '_x_extension_favicon_enhance
 const OVERLAY_OPEN_TABS_DEFAULT_VISIBLE_STORAGE_KEY = '_x_extension_overlay_open_tabs_default_visible_2026_unique_';
 const BLACKLIST_UTILS = globalThis.LumnoBlacklistUtils;
 const SEARCH_UTILS = globalThis.LumnoSearchUtils;
+const COMMUNITY_LINKS = globalThis.LumnoCommunityLinks;
+const HELP_CENTER_SEARCH = globalThis.LumnoHelpCenterSearch;
 const AI_PROVIDER_SUBMIT = globalThis.LumnoAiProviderSubmit;
 const SELECTION_INTENT = globalThis.LumnoSelectionIntent;
 const SELECTION_TARGET = globalThis.LumnoSelectionTarget;

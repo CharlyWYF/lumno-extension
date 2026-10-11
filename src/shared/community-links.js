@@ -172,6 +172,11 @@
     return `${WEB_ORIGIN}${HELP_LOCALE_PREFIXES[normalizeWebLocale(locale)]}/help/${page}/`;
   }
 
+  // The index behind the help center's search box, in the reader's language.
+  function getHelpSearchIndexUrl(locale) {
+    return `${WEB_ORIGIN}${HELP_LOCALE_PREFIXES[normalizeWebLocale(locale)]}/help/search-index.json`;
+  }
+
   function getRuntimeExtensionId() {
     const runtime = root && root.chrome && root.chrome.runtime ? root.chrome.runtime : null;
     return runtime && runtime.id ? String(runtime.id) : '';
@@ -305,6 +310,7 @@
     createLoader,
     getCommunityChannel,
     getCommunityUrl,
+    getHelpSearchIndexUrl,
     getHelpUrl,
     getLinks: defaultLoader.getLinks,
     getReviewUrl,

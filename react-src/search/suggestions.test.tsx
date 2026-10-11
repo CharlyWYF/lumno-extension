@@ -290,6 +290,22 @@ describe('Suggestions React island', () => {
     ).toBe('mall.xiaohongshu.com/finance/cashier/web');
   });
 
+  it('shows the matched section of a help center page instead of its address', () => {
+    const { view, items } = createView();
+
+    render(view, [{
+      type: 'helpArticle',
+      title: 'Keyboard shortcuts',
+      detail: 'Default shortcuts',
+      url: 'https://lumno.kubai.design/en/help/keyboard-shortcuts/#defaults',
+      favicon: 'chrome-extension://lumno/assets/images/site-search/tile-lm.png'
+    }]);
+
+    expect(
+      items[0].querySelector('.x-nt-suggestion-url-line')?.textContent
+    ).toBe('Default shortcuts');
+  });
+
   it('keeps a non-primary matching open tab visibly switchable', () => {
     const { view, items } = createView({
       surface: 'overlay',

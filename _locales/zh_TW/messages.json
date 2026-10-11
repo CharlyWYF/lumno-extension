@@ -1766,6 +1766,9 @@
   "site_search_name_wikipedia": {
     "message": "維基百科"
   },
+  "site_search_name_lumno_help": {
+    "message": "Lumno 說明中心"
+  },
   "search_in_site": {
     "message": "在 {site} 中搜尋"
   },

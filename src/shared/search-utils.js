@@ -2634,7 +2634,8 @@
     { key: 'dy', aliases: ['douyin', '抖音'], name: 'Douyin', template: 'https://www.douyin.com/search/{query}' },
     { key: 'jd', aliases: ['jingdong', '京东'], name: 'JD.com', template: 'https://search.jd.com/Search?keyword={query}' },
     { key: 'wk', aliases: ['wiki', 'wikipedia'], name: 'Wikipedia', template: 'https://en.wikipedia.org/wiki/Special:Search?search={query}' },
-    { key: 'zw', aliases: ['zhwiki'], name: 'Wikipedia', template: 'https://zh.wikipedia.org/wiki/Special:Search?search={query}' }
+    { key: 'zw', aliases: ['zhwiki'], name: 'Wikipedia', template: 'https://zh.wikipedia.org/wiki/Special:Search?search={query}' },
+    { key: 'lm', aliases: ['lumno', 'lumno help', '帮助中心'], name: 'Lumno Help Center', template: 'https://lumno.kubai.design/help/what-is-lumno/?entry=ext&q={query}' }
   ]);
 
   const SITE_SEARCH_PROVIDER_DISPLAY_NAME_MESSAGES = Object.freeze({
@@ -2660,8 +2661,12 @@
     xhs: ['site_search_name_xiaohongshu', 'Xiaohongshu'],
     dy: ['site_search_name_douyin', 'Douyin'],
     jd: ['site_search_name_jd', 'JD.com'],
-    zw: ['site_search_name_wikipedia', 'Wikipedia']
+    zw: ['site_search_name_wikipedia', 'Wikipedia'],
+    lm: ['site_search_name_lumno_help', 'Lumno Help Center']
   });
+
+  const HELP_CENTER_SITE_SEARCH_PROVIDER_KEY = 'lm';
+  const HELP_CENTER_HOST = 'lumno.kubai.design';
 
   function cloneSiteSearchProvider(provider) {
     return {
@@ -2683,6 +2688,24 @@
       messageKey: mapping[0],
       fallback: mapping[1]
     };
+  }
+
+  // The built-in Lumno Help Center search, also after the person edits it, as long as it
+  // still searches the help center: its results come from the site's own search index.
+  function isHelpCenterSiteSearchProvider(provider) {
+    if (!provider || provider._xIsAggregateSearch === true) {
+      return false;
+    }
+    const key = String(provider.builtinKey || provider.key || '').toLowerCase();
+    if (key !== HELP_CENTER_SITE_SEARCH_PROVIDER_KEY) {
+      return false;
+    }
+    try {
+      const url = new URL(String(provider.template || '').replace(/\{query\}/g, 'test'));
+      return normalizeHost(url.hostname) === HELP_CENTER_HOST && url.pathname.startsWith('/help/');
+    } catch (e) {
+      return false;
+    }
   }
 
   function getDefaultSiteSearchProviders() {
@@ -3355,6 +3378,7 @@
     getInlineSiteSearchCandidate,
     getSearchSuggestionHost,
     getSiteSearchProviderDisplayNameMessage,
+    isHelpCenterSiteSearchProvider,
     getSiteSearchProviderHost,
     getSiteSearchTriggerCandidate,
     getUrlHost,

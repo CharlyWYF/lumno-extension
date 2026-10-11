@@ -58,6 +58,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
   const SETTINGS = globalThis.LumnoSettings;
   const NAVIGATION_DISPOSITION = globalThis.LumnoNavigationDisposition;
   const SEARCH_UTILS = globalThis.LumnoSearchUtils;
+  const HELP_CENTER_SEARCH = globalThis.LumnoHelpCenterSearch;
   const SITE_SEARCH_STORE = globalThis.LumnoSiteSearchStore;
   const AGGREGATE_SEARCH_STORE = globalThis.LumnoAggregateSearchStore;
   const AGGREGATE_SEARCH_SURFACE = globalThis.LumnoAggregateSearchSurface;
@@ -557,6 +558,8 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
   let currentMessages = null;
   let defaultPlaceholderText = 'Search or enter URL…';
   let lastSuggestionResponse = [];
+  // Lumno Help Center search lists the matching help pages under its search row.
+  let helpCenterSuggestionSource = null;
   let overlaySearchEngineState = {
     id: '',
     name: '',
@@ -7631,6 +7634,36 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       return SUGGESTION_ACTION_MODEL.getActionContextKey(options);
     }
 
+    function getHelpCenterSuggestions(query) {
+      if (!HELP_CENTER_SEARCH || !SEARCH_UTILS.isHelpCenterSiteSearchProvider(siteSearchState)) {
+        return [];
+      }
+      if (!helpCenterSuggestionSource) {
+        helpCenterSuggestionSource = HELP_CENTER_SEARCH.createSuggestionSource({
+          sendMessage: (message, callback) => {
+            try {
+              chrome.runtime.sendMessage(message, (response) => {
+                callback(chrome.runtime.lastError ? null : response);
+              });
+              return true;
+            } catch (error) {
+              return false;
+            }
+          },
+          onUpdate: (updatedQuery) => {
+            if (updatedQuery === latestOverlayQuery) {
+              updateSearchSuggestions(lastSuggestionResponse, updatedQuery);
+            }
+          }
+        });
+      }
+      return helpCenterSuggestionSource.getSuggestions(
+        query,
+        overlayLanguageMode === 'system' ? getSystemLocale() : normalizeLocale(overlayLanguageMode),
+        getProviderIcon(siteSearchState)
+      );
+    }
+
     function updateSearchSuggestions(suggestions, query, options) {
       if (query !== latestOverlayQuery) {
         return;
@@ -7786,7 +7819,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
             item.type === localSearchScopeState.sourceType
           ))
           : (slashCommandModeActive ? [...preSuggestions] : (siteSearchQueryModeActive
-            ? (siteSearchSuggestion ? [siteSearchSuggestion] : [])
+            ? (siteSearchSuggestion ? [siteSearchSuggestion, ...getHelpCenterSuggestions(query)] : [])
             : (modeCommandActive ? [...preSuggestions] : [...preSuggestions, newTabSuggestion, /*chatGptSuggestion, perplexitySuggestion,*/ ...suggestions])));
         allSuggestions.forEach((item) => {
           if (!item || !item.url) {

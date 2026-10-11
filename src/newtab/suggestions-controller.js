@@ -70,7 +70,9 @@
       warmIconCache,
       setSuggestionsVisible,
       NEWTAB_DIRECT_NAVIGATION_SETTLE,
-      sendRuntimeMessage
+      sendRuntimeMessage,
+      HELP_CENTER_SEARCH,
+      getHelpCenterLocale
     } = deps;
 
     // Page state still owned by newtab.js; read and written through accessors.
@@ -78,6 +80,19 @@
 
     let lastRenderedQuery = '';
     let lastRenderedActionContextKey = '';
+    // Lumno Help Center search lists the matching help pages under its search row.
+    const helpCenterSuggestionSource = HELP_CENTER_SEARCH
+      ? HELP_CENTER_SEARCH.createSuggestionSource({
+        sendMessage: (message, callback) => sendRuntimeMessage(message, (response) => {
+          callback(chrome.runtime && chrome.runtime.lastError ? null : response);
+        }),
+        onUpdate: (query) => {
+          if (query === pageState.latestQuery) {
+            renderSuggestions(pageState.lastSuggestionResponse, query);
+          }
+        }
+      })
+      : null;
     let pendingProviderReload = false;
     let openInCurrentTabModifierActive = false;
     let openSwitchInNewTabModifierActive = false;
@@ -417,6 +432,15 @@
             })()
           : null;
 
+        const helpCenterSuggestions = siteSearchQueryModeActive && helpCenterSuggestionSource &&
+            SEARCH_UTILS.isHelpCenterSiteSearchProvider(pageState.siteSearchState)
+          ? helpCenterSuggestionSource.getSuggestions(
+            query,
+            getHelpCenterLocale(),
+            getProviderIcon(pageState.siteSearchState)
+          )
+          : [];
+
         const defaultSuggestions = [
           ...preSuggestions,
           newTabSuggestion,
@@ -436,7 +460,7 @@
             item.type === pageState.localSearchScopeState.sourceType
           ))
           : (slashCommandModeActive ? [...preSuggestions] : (siteSearchQueryModeActive
-            ? (siteSearchSuggestion ? [siteSearchSuggestion] : [])
+            ? (siteSearchSuggestion ? [siteSearchSuggestion, ...helpCenterSuggestions] : [])
             : (toggleCommandActive ? [...preSuggestions] : groupedDefaultSuggestions)));
         allSuggestions.forEach((item) => {
           if (!item || !item.url) {
