@@ -156,9 +156,10 @@ assert.strictEqual(
   `${ORIGIN}/en/help/keyboard-shortcuts/#change`,
   'a misspelt English word still finds the page'
 );
-assert.ok(
-  helpCenterSearch.searchIndex(aliasIndex, 'pinning', { origin: ORIGIN })[0].url.startsWith(`${ORIGIN}/en/help/pinned/`),
-  'English word forms match their stem'
+assert.strictEqual(
+  helpCenterSearch.searchIndex(aliasIndex, 'pinning', { origin: ORIGIN })[0].url,
+  `${ORIGIN}/en/help/pinned/#pin`,
+  'English word forms match their stem and open the section that names it'
 );
 assert.deepStrictEqual(
   helpCenterSearch.getExactTerms('我的最爱', [['收藏夹', '我的最爱']]),

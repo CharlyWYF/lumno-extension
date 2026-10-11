@@ -413,7 +413,8 @@
           }
           firstVariant = firstVariant || best.variant;
         }
-        section = section ? bestSection(doc, terms, weights, section) : null;
+        // Every spelling counts here, so a title hit on one (pinn) still opens the section another names (pin).
+        section = bestSection(doc, terms, weights, section);
         score += phraseBonus(doc, terms);
         return { doc, score, order, section, detail: section ? section.title : snippet(doc.text, firstVariant) };
       })
