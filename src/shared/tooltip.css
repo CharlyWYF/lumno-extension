@@ -85,6 +85,115 @@ body[data-theme="dark"] ._x_extension_tooltip_2026_unique_,
   --x-extension-tooltip-divider: rgba(255, 255, 255, 0.14);
 }
 
+/*
+ * A help center result's passage card (react-src/search/help-passage-card.ts): the tooltip's look,
+ * with the page's own headings, paragraphs, lists and tables, beside the result list.
+ */
+._x_extension_tooltip_2026_unique_._x_extension_help_passage_2026_unique_ {
+  --x-extension-tooltip-z-index: 2147483647;
+  --x-extension-help-passage-ink: #1f2328;
+  --x-extension-help-passage-accent: #0a78c2;
+  position: fixed;
+  max-width: min(340px, calc(100vw - 16px));
+  max-height: min(360px, calc(100vh - 16px));
+  overflow: hidden;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.6;
+  transform: translateX(-4px);
+}
+
+._x_extension_help_passage_2026_unique_[data-placement="left"] {
+  transform: translateX(4px);
+}
+
+._x_extension_help_passage_2026_unique_[data-placement="bottom"] {
+  transform: translateY(-4px);
+}
+
+._x_extension_tooltip_2026_unique_._x_extension_help_passage_2026_unique_[data-visible="true"] {
+  transform: none;
+}
+
+body[data-theme="dark"] ._x_extension_help_passage_2026_unique_,
+[data-theme="dark"] ._x_extension_help_passage_2026_unique_ {
+  --x-extension-help-passage-ink: #f8fafc;
+  --x-extension-help-passage-accent: #60b8f5;
+}
+
+._x_extension_help_passage_heading_2026_unique_,
+._x_extension_help_passage_text_2026_unique_,
+._x_extension_help_passage_list_2026_unique_,
+._x_extension_help_passage_table_2026_unique_ {
+  display: block;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+}
+
+._x_extension_help_passage_2026_unique_ > * + * {
+  margin-top: 6px;
+}
+
+._x_extension_help_passage_heading_2026_unique_ {
+  color: var(--x-extension-help-passage-ink);
+  font-weight: 600;
+}
+
+._x_extension_help_passage_list_2026_unique_ {
+  padding-left: 1.25em;
+  list-style-position: outside;
+}
+
+ul._x_extension_help_passage_list_2026_unique_ {
+  list-style-type: disc;
+}
+
+ol._x_extension_help_passage_list_2026_unique_ {
+  list-style-type: decimal;
+}
+
+._x_extension_help_passage_item_2026_unique_ {
+  display: list-item;
+  margin: 0;
+}
+
+._x_extension_help_passage_item_2026_unique_ + ._x_extension_help_passage_item_2026_unique_ {
+  margin-top: 2px;
+}
+
+._x_extension_help_passage_table_2026_unique_ {
+  display: table;
+  border-collapse: collapse;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+._x_extension_help_passage_th_2026_unique_,
+._x_extension_help_passage_td_2026_unique_ {
+  padding: 3px 12px 3px 0;
+  border-bottom: 1px solid var(--x-extension-tooltip-divider, rgba(70, 78, 92, 0.12));
+  text-align: left;
+  vertical-align: top;
+}
+
+._x_extension_help_passage_th_2026_unique_ {
+  color: var(--x-extension-help-passage-ink);
+  font-weight: 600;
+}
+
+tr:last-child > ._x_extension_help_passage_td_2026_unique_ {
+  border-bottom: 0;
+}
+
+._x_extension_help_passage_mark_2026_unique_ {
+  background: none;
+  color: var(--x-extension-help-passage-accent);
+  font-weight: 600;
+}
+
 @media (prefers-reduced-motion: reduce) {
   ._x_extension_tooltip_2026_unique_ {
     transition: none;

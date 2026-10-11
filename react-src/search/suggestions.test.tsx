@@ -306,6 +306,47 @@ describe('Suggestions React island', () => {
     ).toBe('Default shortcuts');
   });
 
+  it('lays a help center result\'s passage out in a card beside the list while it is picked', () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const { view: passageView } = createView({ getHelpPassageHost: () => host });
+
+    act(() => {
+      passageView.render({
+        query: 'shortcut',
+        suggestions: [{
+          type: 'helpArticle',
+          title: 'Keyboard shortcuts',
+          detail: 'Default shortcuts',
+          url: 'https://lumno.kubai.design/en/help/keyboard-shortcuts/#defaults',
+          context: [
+            { kind: 'heading', text: 'Default shortcuts' },
+            { kind: 'row', cells: ['Action', 'Shortcut'], header: true },
+            { kind: 'row', cells: ['Open the command bar', '⌘ ⇧ K'] },
+            { kind: 'step', marker: '2.', text: 'Click the shortcut field.' }
+          ]
+        }, {
+          type: 'history',
+          title: 'Example',
+          url: 'https://example.com/'
+        }]
+      });
+    });
+    const card = () => host.querySelector<HTMLElement>('._x_extension_help_passage_2026_unique_');
+    expect(card()).toBeNull();
+
+    act(() => passageView.updateSelection(0));
+    expect(card()?.getAttribute('data-visible')).toBe('true');
+    expect(card()?.querySelector('._x_extension_help_passage_heading_2026_unique_')?.textContent).toBe('Default shortcuts');
+    expect([...(card()?.querySelectorAll('th') || [])].map((cell) => cell.textContent)).toEqual(['Action', 'Shortcut']);
+    expect(card()?.querySelector('td')?.textContent).toBe('Open the command bar');
+    expect(card()?.querySelector('ol')?.getAttribute('start')).toBe('2');
+    expect(card()?.querySelector('mark')?.textContent?.toLowerCase()).toBe('shortcut');
+
+    act(() => passageView.updateSelection(1));
+    expect(card()?.getAttribute('data-visible')).toBe('false');
+  });
+
   it('keeps a non-primary matching open tab visibly switchable', () => {
     const { view, items } = createView({
       surface: 'overlay',

@@ -7351,6 +7351,8 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
             )
           )
         ),
+        // Fixed in the overlay's shadow root, like the mode menu's tooltip, so it can sit beside the panel.
+        getHelpPassageHost: () => overlayStyleRoot || document.body,
         getSearchActionLabel,
         getSiteSearchDisplayName,
         isAiSiteSearchProvider,

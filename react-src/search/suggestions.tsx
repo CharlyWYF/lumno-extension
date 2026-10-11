@@ -13,6 +13,7 @@ import {
 import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import { isElementTextTruncated } from '../shared/text-overflow';
+import { createHelpPassageCard, isHelpPassage } from './help-passage-card';
 
 type ThemeValue = Record<string, unknown> | null;
 type Translate = (key: string, fallback: string) => string;
@@ -281,6 +282,8 @@ export interface SuggestionsViewOptions {
     getText: () => string,
     options: CursorTooltipOptions
   ) => unknown;
+  // Where a help center result's passage card goes; the document body when left out.
+  getHelpPassageHost?: () => Node | null;
   getSearchActionLabel?: () => string;
   getSiteSearchDisplayName?: (
     provider: Record<string, unknown>
@@ -2235,17 +2238,21 @@ function SearchSuggestionRowComponent({
     const urlLine = item.querySelector<HTMLElement>(
       `.${surfaceClass(options, 'x-nt-suggestion-url-line')}`
     );
-    // A help center page's line shows the matched passage, so its tooltip shows the passage too.
+    // A help center page's line shows the matched passage, so its tooltip shows the passage too,
+    // unless the row has a passage card beside the list to show it in full.
     bindTextTooltip(
       options,
       urlLine,
-      suggestion.type === 'helpArticle' ? suggestion.detail || '' : suggestion.url || ''
+      suggestion.type === 'helpArticle'
+        ? isHelpPassage(suggestion.context) ? '' : suggestion.detail || ''
+        : suggestion.url || ''
     );
   }, [
     options,
     suggestion.title,
     suggestion.type,
     suggestion.detail,
+    suggestion.context,
     suggestion.url
   ]);
 
@@ -3220,6 +3227,24 @@ export function createSuggestionsView(
     kind: 'idle' | 'timeout';
   } | null = null;
   let tabRenderGeneration = 0;
+  const helpPassage = createHelpPassageCard({
+    document: options.document,
+    getHost: rawOptions.getHelpPassageHost || (() => options.document.body),
+    getList: () => options.container,
+    highlight: (text) => getHighlightedParts(options, text, queryStore.getSnapshot())
+  });
+  // A help center result shows its passage while it is hovered, or picked with the arrow keys.
+  function syncHelpPassage(selectedIndex?: number): void {
+    const hovered = options.items.find((item) => item._xIsHovering);
+    const row = hovered || (Number.isInteger(selectedIndex) ? options.items[Number(selectedIndex)] : undefined);
+    const suggestion = row?._xSuggestion;
+    if (!row || suggestion?.type !== 'helpArticle' || !isHelpPassage(suggestion.context)) {
+      helpPassage.hide();
+      return;
+    }
+    helpPassage.show(row, suggestion.context, { delay: Boolean(hovered) });
+  }
+  options.container.addEventListener('scroll', () => helpPassage.place(), { passive: true });
   const runtime: SuggestionsRuntime = {
     options,
     queryStore,
@@ -3230,6 +3255,7 @@ export function createSuggestionsView(
     },
     updateSelection(index) {
       updateSelectionForRuntime(runtime, index);
+      syncHelpPassage(index);
     }
   };
 
@@ -3258,6 +3284,7 @@ export function createSuggestionsView(
     }
     cancelPendingTabRender();
     options.hideTopActionTooltip();
+    helpPassage.hide();
     flushSync(() => root.render(null));
     lastRenderWasSuggestions = false;
     suggestionValueRefs.clear();
@@ -3522,6 +3549,7 @@ export function createSuggestionsView(
       }
       cancelPendingTabRender();
       options.hideTopActionTooltip();
+      helpPassage.destroy();
       flushSync(() => root.unmount());
       destroyed = true;
       lastRenderWasSuggestions = false;
