@@ -116,6 +116,65 @@ assert.ok(
   'recommendations only follow exact matches'
 );
 
+const aliasIndex = [
+  {
+    title: '外观',
+    href: '/help/appearance/',
+    aliases: ['界面好看吗'],
+    sections: [
+      { id: 'theme', title: '深色模式', aliases: ['晚上太亮怎么办'] },
+      { id: 'font', title: '字体' }
+    ],
+    text: '在设置中切换浅色、深色或跟随系统。'
+  },
+  {
+    title: 'Keyboard shortcuts',
+    href: '/en/help/keyboard-shortcuts/',
+    sections: [{ id: 'change', title: 'Change a shortcut' }],
+    text: 'The default shortcuts and how to change them.'
+  },
+  {
+    title: 'Pinned tabs',
+    href: '/en/help/pinned/',
+    sections: [{ id: 'pin', title: 'Pin a tab' }],
+    text: 'Pin the tabs you keep.'
+  }
+];
+const synonyms = [['深色模式', '暗色模式', '黑色主题', '夜间模式', 'dark mode']];
+assert.strictEqual(
+  helpCenterSearch.searchIndex(aliasIndex, '怎么设置黑色主题', { origin: ORIGIN, synonyms })[0].url,
+  `${ORIGIN}/help/appearance/#theme`,
+  'a synonym finds the section that uses another word for it'
+);
+assert.deepStrictEqual(
+  helpCenterSearch.searchIndex(aliasIndex, '晚上太亮', { origin: ORIGIN })[0],
+  { title: '外观', detail: '深色模式', url: `${ORIGIN}/help/appearance/#theme` },
+  'a section alias opens its section but shows the real heading, never the alias'
+);
+assert.strictEqual(
+  helpCenterSearch.searchIndex(aliasIndex, 'shorcut', { origin: ORIGIN })[0].url,
+  `${ORIGIN}/en/help/keyboard-shortcuts/#change`,
+  'a misspelt English word still finds the page'
+);
+assert.ok(
+  helpCenterSearch.searchIndex(aliasIndex, 'pinning', { origin: ORIGIN })[0].url.startsWith(`${ORIGIN}/en/help/pinned/`),
+  'English word forms match their stem'
+);
+assert.deepStrictEqual(
+  helpCenterSearch.getExactTerms('我的最爱', [['收藏夹', '我的最爱']]),
+  ['我的最爱'],
+  'a synonym keeps characters that would otherwise be dropped as filler'
+);
+assert.deepStrictEqual(
+  helpCenterSearch.searchIndex(aliasIndex, '天气', { origin: ORIGIN, synonyms: 'not a list' }),
+  [],
+  'a malformed synonym list is ignored'
+);
+
+assert.strictEqual(
+  communityLinks.getHelpSearchSynonymsUrl('zh_TW'),
+  `${ORIGIN}/zh-tw/help/search-synonyms.json`
+);
 assert.strictEqual(
   communityLinks.getHelpSearchIndexUrl('zh_CN'),
   `${ORIGIN}/help/search-index.json`,
@@ -271,6 +330,8 @@ const importBlock = backgroundSource.match(/importScripts\(([\s\S]*?)\);/)[1];
 assert.ok(importBlock.includes("'src/shared/community-links.js'") && importBlock.includes("'src/shared/help-center-search.js'"));
 assert.match(backgroundSource, /'getHelpCenterSearchResults',\n/, 'the message should be routed to the site search handler');
 assert.match(backgroundSource, /case 'getHelpCenterSearchResults':/);
+assert.match(backgroundSource, /parse: HELP_CENTER_SEARCH\.normalizeSynonyms/, 'background should load the synonym list');
+assert.match(backgroundSource, /response\.status === 404 \? \{ ok: true, json: \(\) => \[\] \}/, 'a missing synonym list should be cached as empty');
 const overlayFiles = backgroundSource.slice(backgroundSource.indexOf('const overlayInjectionFiles'));
 assert.ok(
   overlayFiles.indexOf("'src/shared/help-center-search.js'") > 0 &&

@@ -6874,21 +6874,32 @@ function deleteHistoryUrlFromSearch(targetUrl, sendResponse) {
 }
 
 let helpCenterIndexLoader = null;
+let helpCenterSynonymsLoader = null;
 
-// Help center pages matching the query, read from the index of the given interface language.
+// Help center pages matching the query, read from the index and synonym list of the given
+// interface language. Without synonyms the search still runs, only more literally.
 function getHelpCenterSearchResults(query, locale) {
   if (!String(query || '').trim()) {
     return Promise.resolve([]);
   }
   if (!helpCenterIndexLoader) {
-    helpCenterIndexLoader = HELP_CENTER_SEARCH.createIndexLoader({
-      fetchImpl: (url, init) => fetch(url, init)
+    const fetchImpl = (url, init) => fetch(url, init);
+    helpCenterIndexLoader = HELP_CENTER_SEARCH.createIndexLoader({ fetchImpl });
+    // A language with no synonym list (404) is cached as empty rather than asked for on every key.
+    helpCenterSynonymsLoader = HELP_CENTER_SEARCH.createIndexLoader({
+      fetchImpl: (url, init) => fetch(url, init).then((response) => (
+        response.status === 404 ? { ok: true, json: () => [] } : response
+      )),
+      parse: HELP_CENTER_SEARCH.normalizeSynonyms
     });
   }
-  return helpCenterIndexLoader.load(COMMUNITY_LINKS.getHelpSearchIndexUrl(locale))
-    .then((index) => HELP_CENTER_SEARCH.searchIndex(index, query, {
-      origin: COMMUNITY_LINKS.WEB_ORIGIN
-    }));
+  return Promise.all([
+    helpCenterIndexLoader.load(COMMUNITY_LINKS.getHelpSearchIndexUrl(locale)),
+    helpCenterSynonymsLoader.load(COMMUNITY_LINKS.getHelpSearchSynonymsUrl(locale)).catch(() => [])
+  ]).then(([index, synonyms]) => HELP_CENTER_SEARCH.searchIndex(index, query, {
+    origin: COMMUNITY_LINKS.WEB_ORIGIN,
+    synonyms
+  }));
 }
 
 function handleSiteSearchMessage(request, sender, sendResponse) {

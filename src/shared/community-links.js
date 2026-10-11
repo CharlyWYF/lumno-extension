@@ -177,6 +177,11 @@
     return `${WEB_ORIGIN}${HELP_LOCALE_PREFIXES[normalizeWebLocale(locale)]}/help/search-index.json`;
   }
 
+  // Words the help center treats as the same thing, in the reader's language.
+  function getHelpSearchSynonymsUrl(locale) {
+    return `${WEB_ORIGIN}${HELP_LOCALE_PREFIXES[normalizeWebLocale(locale)]}/help/search-synonyms.json`;
+  }
+
   function getRuntimeExtensionId() {
     const runtime = root && root.chrome && root.chrome.runtime ? root.chrome.runtime : null;
     return runtime && runtime.id ? String(runtime.id) : '';
@@ -311,6 +316,7 @@
     getCommunityChannel,
     getCommunityUrl,
     getHelpSearchIndexUrl,
+    getHelpSearchSynonymsUrl,
     getHelpUrl,
     getLinks: defaultLoader.getLinks,
     getReviewUrl,
