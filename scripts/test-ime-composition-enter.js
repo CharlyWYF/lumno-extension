@@ -70,6 +70,30 @@ assert.strictEqual(
   'guard should allow deliberate Enter after the composition commit window'
 );
 
+imeGuard.markCompositionStart({ target: input });
+imeGuard.markCompositionEnd({ target: input });
+imeGuard.markKeyUp();
+assert.strictEqual(
+  imeGuard.shouldIgnoreKeydown({
+    key: 'Enter',
+    keyCode: 13,
+    which: 13,
+    isComposing: false,
+    target: input
+  }),
+  false,
+  'guard should allow Enter right after the key that committed the IME text is released'
+);
+
+imeGuard.markCompositionStart({ target: input });
+imeGuard.markKeyUp();
+assert.strictEqual(
+  imeGuard.isComposing(),
+  true,
+  'keyup during a composition should not end it'
+);
+imeGuard.markCompositionEnd({ target: input });
+
 const newtabHtml = readPageSource('newtab.html');
 const backgroundJs = fs.readFileSync(path.join(repoRoot, 'src/background/background.js'), 'utf8');
 const newtabJs = readNewtabRuntimeSource();
@@ -95,6 +119,27 @@ assert.match(
   overlayJs,
   /const imeKeyGuard = LumnoImeKeyGuard\.createImeKeyGuard\(\);[\s\S]*?function isImeCompositionEvent\(event\)[\s\S]*?return imeKeyGuard\.shouldIgnoreKeydown\(event\);/,
   'overlay keydown handling should suppress IME commit Enter through the shared guard'
+);
+
+assert.match(
+  newtabJs,
+  /inputParts\.input\.addEventListener\('keyup', imeKeyGuard\.markKeyUp, true\);/,
+  'New Tab should end the IME commit window when the commit key is released'
+);
+
+assert.match(
+  overlayJs,
+  /if \(e\.type === 'keyup'\) \{\s*imeKeyGuard\.markKeyUp\(\);\s*\}/,
+  'overlay should end the IME commit window when the commit key is released'
+);
+
+const newtabCss = fs.readFileSync(path.join(repoRoot, 'src/newtab/newtab.css'), 'utf8');
+const newtabRootRule = newtabCss.match(/\n#_x_extension_newtab_root_2024_unique_ \{[^}]*\}/);
+assert.ok(newtabRootRule, 'New Tab search root rule should exist');
+assert.doesNotMatch(
+  newtabRootRule[0],
+  /visibility:\s*hidden/,
+  'New Tab search root should stay focusable before the page is ready so early keys reach the IME'
 );
 
 console.log('IME composition Enter tests passed');

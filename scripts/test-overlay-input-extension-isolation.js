@@ -108,9 +108,11 @@ const createHandler = new Function(
   'suggestionsContainer',
   'numberShortcutOptions',
   'getSuggestionNavigationKey',
+  'imeKeyGuard',
   `let overlayKeyCaptureHandler;\n${trustedHandlerSource}\nreturn overlayKeyCaptureHandler;`
 );
 const numberShortcutSignals = [];
+let imeKeyUpCount = 0;
 let macosCtrlNavigationEnabled = false;
 const overlayKeyCaptureHandler = createHandler(
   overlay,
@@ -153,7 +155,12 @@ const overlayKeyCaptureHandler = createHandler(
   },
   (event) => macosCtrlNavigationEnabled && event.ctrlKey && event.key.toLowerCase() === 'n'
     ? 'ArrowDown'
-    : ''
+    : '',
+  {
+    markKeyUp() {
+      imeKeyUpCount += 1;
+    }
+  }
 );
 
 window.addEventListener('keydown', overlayKeyCaptureHandler, true);
@@ -391,6 +398,10 @@ assert.deepStrictEqual(
   hostPageKeyups,
   [],
   'scope-panel keyup events should not reach host-page shortcuts'
+);
+assert.ok(
+  imeKeyUpCount > 0,
+  'overlay keyups should end the IME commit-Enter window'
 );
 
 console.log('overlay input extension isolation tests passed');

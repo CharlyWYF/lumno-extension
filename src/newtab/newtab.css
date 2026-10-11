@@ -532,14 +532,18 @@ html body ._x_extension_tooltip_2026_unique_._x_extension_cursor_tooltip_tag_202
   box-sizing: border-box;
   position: relative;
   z-index: 3;
-  visibility: hidden;
+  /* Hide with opacity, not visibility, so keys typed before the page is ready
+     already reach the focused input through the IME. */
+  opacity: 0;
+  pointer-events: none;
   min-height: 56px;
 }
 #_x_extension_newtab_root_2024_unique_:focus-within {
   box-shadow: var(--x-nt-panel-shadow-focus, var(--x-nt-panel-shadow));
 }
 body[data-nt-ready="1"] #_x_extension_newtab_root_2024_unique_ {
-  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
 }
 body[data-wallpaper-panel-open="true"] #_x_extension_newtab_root_2024_unique_ {
   background: rgb(255 255 255);

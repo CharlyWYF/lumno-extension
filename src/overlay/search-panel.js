@@ -6971,6 +6971,9 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       if (!overlay || !overlay.isConnected) {
         return;
       }
+      if (e.type === 'keyup') {
+        imeKeyGuard.markKeyUp();
+      }
       const searchRoot = searchInput && typeof searchInput.getRootNode === 'function'
         ? searchInput.getRootNode()
         : null;

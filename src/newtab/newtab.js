@@ -7889,6 +7889,8 @@
     clearAutocomplete();
   });
 
+  inputParts.input.addEventListener('keyup', imeKeyGuard.markKeyUp, true);
+
   inputParts.input.addEventListener('compositionend', function(event) {
     imeKeyGuard.markCompositionEnd(event);
     const rawValue = event.target.value;

@@ -44,6 +44,14 @@
       lastCompositionTarget = getEventTarget(event);
     }
 
+    // Releasing the key that committed the text (Space, a candidate number) ends
+    // the commit window, so an Enter typed right after it still submits.
+    function markKeyUp() {
+      if (!composing) {
+        lastCompositionEndAt = 0;
+      }
+    }
+
     function isNativeCompositionEvent(event) {
       return Boolean(
         event &&
@@ -80,6 +88,7 @@
       isComposing,
       markCompositionStart,
       markCompositionEnd,
+      markKeyUp,
       shouldIgnoreKeydown
     });
   }
