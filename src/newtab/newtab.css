@@ -5826,6 +5826,16 @@ body[data-theme="dark"] .x-nt-suggestion-number-shortcut {
   display: inline-block;
   vertical-align: middle;
 }
+/* Help center groups: "recommended reading", or ways to ask when nothing matched. */
+.x-nt-suggestion-caption {
+  all: unset;
+  display: block;
+  padding: 6px 16px 4px;
+  color: var(--x-nt-subtext, #6B7280);
+  font-size: var(--lumno-font-size-xs);
+  font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.4;
+}
 .x-nt-suggestion-bookmark-path {
   all: unset;
   color: var(--x-nt-link, #2563EB);

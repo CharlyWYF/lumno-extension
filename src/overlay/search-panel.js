@@ -59,6 +59,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
   const NAVIGATION_DISPOSITION = globalThis.LumnoNavigationDisposition;
   const SEARCH_UTILS = globalThis.LumnoSearchUtils;
   const HELP_CENTER_SEARCH = globalThis.LumnoHelpCenterSearch;
+  const COMMUNITY_LINKS = globalThis.LumnoCommunityLinks;
   const SITE_SEARCH_STORE = globalThis.LumnoSiteSearchStore;
   const AGGREGATE_SEARCH_STORE = globalThis.LumnoAggregateSearchStore;
   const AGGREGATE_SEARCH_SURFACE = globalThis.LumnoAggregateSearchSurface;
@@ -560,6 +561,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
   let lastSuggestionResponse = [];
   // Lumno Help Center search lists the matching help pages under its search row.
   let helpCenterSuggestionSource = null;
+  let helpCenterFeedbackLinksRequested = false;
   let overlaySearchEngineState = {
     id: '',
     name: '',
@@ -7660,11 +7662,34 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
           }
         });
       }
+      const locale = overlayLanguageMode === 'system' ? getSystemLocale() : normalizeLocale(overlayLanguageMode);
       return helpCenterSuggestionSource.getSuggestions(
         query,
-        overlayLanguageMode === 'system' ? getSystemLocale() : normalizeLocale(overlayLanguageMode),
-        getProviderIcon(siteSearchState)
+        locale,
+        getProviderIcon(siteSearchState),
+        getHelpCenterFeedback(query, locale)
       );
+    }
+
+    // Where to ask when the help center has nothing; community links are fetched fresh once.
+    function getHelpCenterFeedback(query, locale) {
+      if (!COMMUNITY_LINKS) {
+        return null;
+      }
+      if (!helpCenterFeedbackLinksRequested) {
+        helpCenterFeedbackLinksRequested = true;
+        COMMUNITY_LINKS.load().then(() => {
+          if (query === latestOverlayQuery) {
+            updateSearchSuggestions(lastSuggestionResponse, query);
+          }
+        });
+      }
+      const links = COMMUNITY_LINKS.getLinks();
+      return {
+        links,
+        channel: COMMUNITY_LINKS.getCommunityChannel(links, locale),
+        t
+      };
     }
 
     function updateSearchSuggestions(suggestions, query, options) {

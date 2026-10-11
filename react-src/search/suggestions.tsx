@@ -1,4 +1,5 @@
 import {
+  Fragment,
   memo,
   useLayoutEffect,
   useMemo,
@@ -1576,6 +1577,13 @@ function getSuggestionIconSpec(
       tone: 'subtext'
     };
   }
+  if (type === 'helpFeedback') {
+    return {
+      kind: 'inline',
+      iconName: String(suggestion.iconName || 'ri-feedback-line'),
+      tone: 'subtext'
+    };
+  }
   if (
     favicon &&
     ['siteSearch', 'inlineSiteSearch', 'siteSearchPrompt', 'helpArticle'].includes(
@@ -3062,6 +3070,29 @@ function EmptyState({
   );
 }
 
+// Help center pages that only loosely match the query sit under a "recommended reading"
+// caption; when nothing matches, the ways to ask instead sit under their own.
+function getHelpGroupCaption(
+  suggestion: Suggestion | undefined
+): [string, string] | null {
+  if (suggestion && suggestion.type === 'helpArticle' && suggestion.recommended) {
+    return ['help_center_recommended', '推荐阅读'];
+  }
+  if (suggestion && suggestion.type === 'helpFeedback') {
+    return ['help_center_no_results', '没有找到相关内容，欢迎与开发者联系'];
+  }
+  return null;
+}
+
+function getHelpGroupCaptionStart(
+  suggestions: Suggestion[],
+  index: number
+): [string, string] | null {
+  const caption = getHelpGroupCaption(suggestions[index]);
+  const previous = getHelpGroupCaption(suggestions[index - 1]);
+  return caption && (!previous || previous[0] !== caption[0]) ? caption : null;
+}
+
 function syncItems(options: NormalizedOptions): void {
   options.items.length = 0;
   options.container
@@ -3288,34 +3319,46 @@ export function createSuggestionsView(
     }
     flushSync(() => {
       root.render(
-        suggestions.map((suggestion, index) => (
-          <SearchSuggestionRow
-            key={renderKeys[index]}
-            runtime={runtime}
-            suggestionRef={nextValueRefs.refs[index]}
-            suggestionFingerprint={getSuggestionPresentationFingerprint(
-              suggestion,
-              {
-                includeDebugReasons: options.isTabRankScoreDebugEnabled()
+        suggestions.map((suggestion, index) => {
+          const caption = getHelpGroupCaptionStart(suggestions, index);
+          return (
+          <Fragment key={renderKeys[index]}>
+            {caption && (
+              <div
+                className={surfaceClass(options, 'x-nt-suggestion-caption')}
+                role="presentation"
+              >
+                {options.t(caption[0], caption[1])}
+              </div>
+            )}
+            <SearchSuggestionRow
+              runtime={runtime}
+              suggestionRef={nextValueRefs.refs[index]}
+              suggestionFingerprint={getSuggestionPresentationFingerprint(
+                suggestion,
+                {
+                  includeDebugReasons: options.isTabRankScoreDebugEnabled()
+                }
+              )}
+              index={index}
+              isPrimary={index === primaryHighlightIndex}
+              primaryHighlightReason={
+                payload.primaryHighlightReason || 'none'
               }
-            )}
-            index={index}
-            isPrimary={index === primaryHighlightIndex}
-            primaryHighlightReason={
-              payload.primaryHighlightReason || 'none'
-            }
-            isMergedHighlight={Boolean(
-              payload.mergedProvider &&
-              payload.primarySuggestion === suggestion &&
-              index === primaryHighlightIndex
-            )}
-            onlyKeywordSuggestions={Boolean(
-              payload.onlyKeywordSuggestions
-            )}
-            last={index === suggestions.length - 1}
-            simpleMode={simpleMode}
-          />
-        ))
+              isMergedHighlight={Boolean(
+                payload.mergedProvider &&
+                payload.primarySuggestion === suggestion &&
+                index === primaryHighlightIndex
+              )}
+              onlyKeywordSuggestions={Boolean(
+                payload.onlyKeywordSuggestions
+              )}
+              last={index === suggestions.length - 1}
+              simpleMode={simpleMode}
+            />
+          </Fragment>
+          );
+        })
       );
     });
     syncItems(options);

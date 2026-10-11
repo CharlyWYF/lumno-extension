@@ -1769,6 +1769,12 @@
   "site_search_name_lumno_help": {
     "message": "Lumno 說明中心"
   },
+  "help_center_recommended": {
+    "message": "推薦閱讀"
+  },
+  "help_center_no_results": {
+    "message": "沒有找到相關內容，歡迎與開發者聯繫"
+  },
   "search_in_site": {
     "message": "在 {site} 中搜尋"
   },

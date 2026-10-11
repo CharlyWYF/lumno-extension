@@ -61,6 +61,61 @@ assert.strictEqual(
   'results should respect the limit'
 );
 
+const shortcutIndex = helpCenterSearch.normalizeIndex([
+  {
+    title: '快捷键',
+    href: '/help/keyboard-shortcuts/',
+    sections: [{ id: 'change', title: '修改快捷键' }],
+    text: '下面是默认快捷键和修改方法。'
+  },
+  {
+    title: 'Keyboard shortcuts',
+    href: '/en/help/keyboard-shortcuts/',
+    sections: [{ id: 'change', title: 'Change a shortcut' }],
+    text: 'The default shortcuts and how to change them.'
+  },
+  {
+    title: '更换壁纸',
+    href: '/help/newtab-wallpaper/',
+    sections: [{ id: 'sources', title: '壁纸来源' }],
+    text: '选择名画和山水壁纸。'
+  }
+]);
+assert.deepStrictEqual(helpCenterSearch.getExactTerms('怎么改快捷键'), ['改快捷键'], 'question words are not required to match');
+assert.deepStrictEqual(helpCenterSearch.getExactTerms('how do I change the shortcut'), ['change', 'shortcut']);
+assert.deepStrictEqual(helpCenterSearch.getExactTerms('怎么'), ['怎么'], 'a query made only of filler words is kept as typed');
+assert.deepStrictEqual(
+  helpCenterSearch.searchIndex(shortcutIndex, '怎么改快捷键', { origin: ORIGIN }),
+  [{ title: '快捷键', detail: '修改快捷键', url: `${ORIGIN}/help/keyboard-shortcuts/#change` }],
+  'a question should match the heading that answers it'
+);
+assert.strictEqual(
+  helpCenterSearch.searchIndex(shortcutIndex, 'how do I change the shortcut', { origin: ORIGIN })[0].url,
+  `${ORIGIN}/en/help/keyboard-shortcuts/#change`
+);
+assert.deepStrictEqual(
+  helpCenterSearch.searchIndex(shortcutIndex, '快捷键没反应', { origin: ORIGIN }),
+  [{
+    title: '快捷键',
+    detail: '下面是默认快捷键和修改方法。',
+    url: `${ORIGIN}/help/keyboard-shortcuts/`,
+    recommended: true
+  }],
+  'a page sharing most of the query is recommended when no page contains it as typed'
+);
+assert.deepStrictEqual(
+  helpCenterSearch.searchIndex(shortcutIndex, '天气预报', { origin: ORIGIN }),
+  [],
+  'unrelated queries should not recommend anything'
+);
+const mixedResults = helpCenterSearch.searchIndex(index, '新标签页 外观面板', { origin: ORIGIN });
+assert.ok(mixedResults.length >= 1 && !mixedResults[0].recommended, 'exact matches come before recommendations');
+assert.ok(
+  helpCenterSearch.searchIndex(shortcutIndex, '改快捷键', { origin: ORIGIN, limit: 6 })
+    .every((item, i, all) => !item.recommended || all.slice(i).every((next) => next.recommended)),
+  'recommendations only follow exact matches'
+);
+
 assert.strictEqual(
   communityLinks.getHelpSearchIndexUrl('zh_CN'),
   `${ORIGIN}/help/search-index.json`,
@@ -120,6 +175,58 @@ async function testIndexLoader() {
   assert.strictEqual(requests.length, 4, 'each language keeps its own index');
 }
 
+function testFeedbackSuggestions() {
+  const links = {
+    wechatQr: `${ORIGIN}/qrcode.webp`,
+    githubIssue: 'https://github.com/kubai087/lumno-extension/issues/new',
+    x: 'https://x.com/kubai087',
+    chromeReview: 'https://chromewebstore.google.com/detail/lumno/reviews'
+  };
+  const t = (key, fallback) => `${key}|${fallback}`;
+  assert.deepStrictEqual(
+    helpCenterSearch.buildFeedbackSuggestions({ links, channel: 'wechat', t }).map((item) => [item.feedbackKey, item.url, item.iconName]),
+    [
+      ['community', links.wechatQr, 'ri-wechat-line'],
+      ['github-issue', links.githubIssue, 'ri-github-line'],
+      ['contact-author', links.x, 'ri-twitter-x-line']
+    ],
+    'an empty search offers the WeChat group, an issue and the author, but not a store rating'
+  );
+  assert.deepStrictEqual(
+    helpCenterSearch.buildFeedbackSuggestions({ links, channel: 'x', t }).map((item) => item.feedbackKey),
+    ['github-issue', 'contact-author'],
+    'readers outside the WeChat community reach the author on X'
+  );
+  assert.strictEqual(
+    helpCenterSearch.buildFeedbackSuggestions({ links, channel: 'wechat', t })[1].title,
+    'settings_feedback_support_github_issue_action|创建 Issue',
+    'the rows reuse the Settings labels'
+  );
+
+  const sent = [];
+  const source = helpCenterSearch.createSuggestionSource({
+    sendMessage: (message, callback) => {
+      sent.push(callback);
+      return true;
+    }
+  });
+  const feedback = { links, channel: 'wechat', t };
+  assert.deepStrictEqual(source.getSuggestions('天气预报', 'zh_CN', 'tile.png', feedback), [], 'nothing shows while the pages load');
+  sent[0]({ items: [] });
+  assert.deepStrictEqual(
+    source.getSuggestions('天气预报', 'zh_CN', 'tile.png', feedback).map((item) => item.type),
+    ['helpFeedback', 'helpFeedback', 'helpFeedback'],
+    'a search with no pages offers ways to ask instead'
+  );
+  source.getSuggestions('天气', 'zh_CN', 'tile.png', feedback);
+  sent[1]({ items: [], reason: 'help-center-index-unavailable' });
+  assert.deepStrictEqual(
+    source.getSuggestions('天气', 'zh_CN', 'tile.png', feedback),
+    [],
+    'an index that could not load is not reported as missing content'
+  );
+}
+
 function testSuggestionSource() {
   const sent = [];
   const updates = [];
@@ -145,7 +252,8 @@ function testSuggestionSource() {
     title: '新标签页的壁纸与外观',
     detail: '滤镜',
     url: `${ORIGIN}/help/newtab-wallpaper/`,
-    favicon: 'tile.png'
+    favicon: 'tile.png',
+    recommended: false
   }]);
   assert.strictEqual(
     source.getSuggestions('新标签页 壁纸', 'zh_CN', 'tile.png').length,
@@ -185,6 +293,7 @@ assert.match(
 );
 
 testSuggestionSource();
+testFeedbackSuggestions();
 testIndexLoader().then(() => {
   console.log('help center search tests passed');
 }).catch((error) => {

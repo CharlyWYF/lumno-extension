@@ -72,6 +72,7 @@
       NEWTAB_DIRECT_NAVIGATION_SETTLE,
       sendRuntimeMessage,
       HELP_CENTER_SEARCH,
+      COMMUNITY_LINKS,
       getHelpCenterLocale
     } = deps;
 
@@ -80,6 +81,29 @@
 
     let lastRenderedQuery = '';
     let lastRenderedActionContextKey = '';
+    let helpCenterFeedbackLinksRequested = false;
+
+    // Where to ask when the help center has nothing; community links are fetched fresh once.
+    function getHelpCenterFeedback(query) {
+      if (!COMMUNITY_LINKS) {
+        return null;
+      }
+      if (!helpCenterFeedbackLinksRequested) {
+        helpCenterFeedbackLinksRequested = true;
+        COMMUNITY_LINKS.load().then(() => {
+          if (query === pageState.latestQuery) {
+            renderSuggestions(pageState.lastSuggestionResponse, query);
+          }
+        });
+      }
+      const links = COMMUNITY_LINKS.getLinks();
+      return {
+        links,
+        channel: COMMUNITY_LINKS.getCommunityChannel(links, getHelpCenterLocale()),
+        t
+      };
+    }
+
     // Lumno Help Center search lists the matching help pages under its search row.
     const helpCenterSuggestionSource = HELP_CENTER_SEARCH
       ? HELP_CENTER_SEARCH.createSuggestionSource({
@@ -437,7 +461,8 @@
           ? helpCenterSuggestionSource.getSuggestions(
             query,
             getHelpCenterLocale(),
-            getProviderIcon(pageState.siteSearchState)
+            getProviderIcon(pageState.siteSearchState),
+            getHelpCenterFeedback(query)
           )
           : [];
 

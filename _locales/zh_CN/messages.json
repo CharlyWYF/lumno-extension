@@ -1769,6 +1769,12 @@
   "site_search_name_lumno_help": {
     "message": "Lumno 帮助中心"
   },
+  "help_center_recommended": {
+    "message": "推荐阅读"
+  },
+  "help_center_no_results": {
+    "message": "没有找到相关内容，欢迎与开发者联系"
+  },
   "search_in_site": {
     "message": "在 {site} 中搜索"
   },

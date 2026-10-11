@@ -1769,6 +1769,12 @@
   "site_search_name_lumno_help": {
     "message": "Lumno Help Center"
   },
+  "help_center_recommended": {
+    "message": "Suggested reading"
+  },
+  "help_center_no_results": {
+    "message": "Nothing found. Feel free to contact the developer."
+  },
   "search_in_site": {
     "message": "Search in {site}"
   },

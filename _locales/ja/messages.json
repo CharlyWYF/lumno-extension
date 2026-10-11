@@ -1769,6 +1769,12 @@
   "site_search_name_lumno_help": {
     "message": "Lumno ヘルプセンター"
   },
+  "help_center_recommended": {
+    "message": "おすすめの記事"
+  },
+  "help_center_no_results": {
+    "message": "見つかりませんでした。お気軽に開発者までご連絡ください。"
+  },
   "search_in_site": {
     "message": "{site} で検索"
   },

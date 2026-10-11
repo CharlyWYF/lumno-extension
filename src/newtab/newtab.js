@@ -6333,6 +6333,7 @@
     NEWTAB_DIRECT_NAVIGATION_SETTLE,
     sendRuntimeMessage,
     HELP_CENTER_SEARCH: window.LumnoHelpCenterSearch || null,
+    COMMUNITY_LINKS: window.LumnoCommunityLinks || null,
     getHelpCenterLocale: () => currentResolvedLocale ||
       (currentLanguageMode === 'system' ? getSystemLocale() : normalizeLocale(currentLanguageMode)),
     pageState: {

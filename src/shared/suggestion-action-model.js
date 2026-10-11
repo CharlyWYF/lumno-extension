@@ -218,6 +218,8 @@
       String(suggestion.url || ''),
       String(suggestion.favicon || ''),
       String(suggestion.path || ''),
+      String(suggestion.detail || ''),
+      suggestion.recommended === true,
       String(suggestion.commandText || ''),
       suggestion.isTopSite === true,
       getSuggestionProviderIdentity(suggestion),

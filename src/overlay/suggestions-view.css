@@ -525,6 +525,17 @@
   vertical-align: middle;
 }
 
+/* Help center groups: "recommended reading", or ways to ask when nothing matched. */
+:is(#_x_extension_overlay_2024_unique_, #_x_extension_onboarding_overlay_demo_2026_unique_) .x-ov-suggestion-caption {
+  all: unset;
+  display: block;
+  padding: 6px 16px 4px;
+  color: var(--x-ov-subtext, #6B7280);
+  font-size: var(--lumno-font-size-xs, 11px);
+  font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.4;
+}
+
 :is(#_x_extension_overlay_2024_unique_, #_x_extension_onboarding_overlay_demo_2026_unique_) .x-ov-suggestion-bookmark-path {
   all: unset;
   color: var(--x-ov-link, #2563EB);
