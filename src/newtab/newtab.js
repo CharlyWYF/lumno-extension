@@ -782,7 +782,8 @@
     resetShortcutDockHover,
     setShortcutDockHover,
     handleShortcutDockPointerOver,
-    handleShortcutDockPointerMove
+    handleShortcutDockPointerMove,
+    syncShortcutDockFolderMenu
   } = NEWTAB_SHORTCUT_DOCK.createShortcutDock({
     isShortcutDragActive: (...args) => isShortcutDragActive(...args),
     isBookmarkDragActive: (...args) => isBookmarkDragActive(...args),
@@ -4089,6 +4090,7 @@
     handleShortcutDragPointerDown: (...args) => handleShortcutDragPointerDown(...args),
     handleShortcutDockPointerOver,
     handleShortcutDockPointerMove,
+    syncShortcutDockFolderMenu,
     NEWTAB_SHORTCUT_DIALOG,
     bindShortcutDialogTooltip,
     hideShortcutDialogTooltip,

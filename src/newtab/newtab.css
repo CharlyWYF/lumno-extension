@@ -856,10 +856,12 @@ body[data-nt-bottom-dock-density="tiny"] {
 .x-nt-shortcut-tile[data-dock-side="after"][data-dock-distance="2"] .x-nt-shortcut-icon {
   --x-nt-shortcut-dock-shift-x: var(--x-nt-shortcut-hover-shift-far, 1px);
 }
-.x-nt-shortcuts-grid[data-dock-magnification="false"] .x-nt-shortcut-tile:not([data-shortcut-dragging="true"]):not([data-shortcut-dropping="true"]):not([data-shortcut-context-menu-open="true"]):hover .x-nt-shortcut-icon {
+.x-nt-shortcuts-grid[data-dock-magnification="false"] .x-nt-shortcut-tile:not([data-shortcut-dragging="true"]):not([data-shortcut-dropping="true"]):not([data-shortcut-context-menu-open="true"]):hover .x-nt-shortcut-icon,
+.x-nt-shortcuts-grid[data-dock-magnification="false"] .x-nt-shortcut-tile[aria-expanded="true"]:not([data-shortcut-dragging="true"]):not([data-shortcut-dropping="true"]):not([data-shortcut-context-menu-open="true"]) .x-nt-shortcut-icon {
   filter: brightness(0.96);
 }
-body[data-theme="dark"] .x-nt-shortcuts-grid[data-dock-magnification="false"] .x-nt-shortcut-tile:not([data-shortcut-dragging="true"]):not([data-shortcut-dropping="true"]):not([data-shortcut-context-menu-open="true"]):hover .x-nt-shortcut-icon {
+body[data-theme="dark"] .x-nt-shortcuts-grid[data-dock-magnification="false"] .x-nt-shortcut-tile:not([data-shortcut-dragging="true"]):not([data-shortcut-dropping="true"]):not([data-shortcut-context-menu-open="true"]):hover .x-nt-shortcut-icon,
+body[data-theme="dark"] .x-nt-shortcuts-grid[data-dock-magnification="false"] .x-nt-shortcut-tile[aria-expanded="true"]:not([data-shortcut-dragging="true"]):not([data-shortcut-dropping="true"]):not([data-shortcut-context-menu-open="true"]) .x-nt-shortcut-icon {
   filter: brightness(1.06);
 }
 .x-nt-shortcuts-grid[data-dock-magnification="false"] .x-nt-shortcut-tile .x-nt-shortcut-icon {

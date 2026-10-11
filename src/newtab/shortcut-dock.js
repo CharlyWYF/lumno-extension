@@ -15,6 +15,8 @@
 
     let shortcutDockPointerFrame = 0;
     let shortcutDockPendingTile = null;
+    // Folder tile whose menu is open; it keeps its hover look like a pressed dock item.
+    let shortcutDockFolderMenuTile = null;
 
     function getShortcutDockPointerX(event) {
       const value = Number(event && event.clientX);
@@ -137,6 +139,46 @@
       });
     }
 
+    function getShortcutDockIconCenterX(tile) {
+      const icon = getShortcutDockIcon(tile) || tile;
+      if (!icon || typeof icon.getBoundingClientRect !== 'function') {
+        return null;
+      }
+      const rect = icon.getBoundingClientRect();
+      const centerX = rect.left + (rect.width / 2);
+      return Number.isFinite(centerX) ? centerX : null;
+    }
+
+    function getOpenShortcutFolderMenuTile() {
+      const tile = shortcutDockFolderMenuTile;
+      if (tile && tile.isConnected && tile.getAttribute('aria-expanded') === 'true') {
+        return tile;
+      }
+      shortcutDockFolderMenuTile = null;
+      return null;
+    }
+
+    function syncShortcutDockFolderMenu(tile) {
+      if (!tile) {
+        return;
+      }
+      if (tile.getAttribute('aria-expanded') === 'true') {
+        shortcutDockFolderMenuTile = tile;
+        if (!tile.matches(':hover')) {
+          resetShortcutDockHover();
+        }
+        return;
+      }
+      if (tile !== shortcutDockFolderMenuTile) {
+        return;
+      }
+      shortcutDockFolderMenuTile = null;
+      // A pointer still over the row keeps driving the dock on its next move.
+      if (!pageState.shortcutGrid || !pageState.shortcutGrid.matches(':hover')) {
+        resetShortcutDockHover();
+      }
+    }
+
     function resetShortcutDockHover() {
       cancelShortcutDockPointerFrame();
       if (!pageState.shortcutGrid) {
@@ -148,6 +190,11 @@
           applyShortcutContextMenuDockHover(activeTile);
           return;
         }
+      }
+      const folderMenuTile = getOpenShortcutFolderMenuTile();
+      if (folderMenuTile) {
+        setShortcutDockHover(folderMenuTile, getShortcutDockIconCenterX(folderMenuTile));
+        return;
       }
       clearShortcutDockMagnificationState();
       clearShortcutContextMenuTileActive();
@@ -222,7 +269,8 @@
       resetShortcutDockHover,
       setShortcutDockHover,
       handleShortcutDockPointerOver,
-      handleShortcutDockPointerMove
+      handleShortcutDockPointerMove,
+      syncShortcutDockFolderMenu
     };
   }
 

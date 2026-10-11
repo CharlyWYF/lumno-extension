@@ -39,6 +39,7 @@ export interface ShortcutsViewOptions {
   getFolderIconSvg?: (idSuffix: string, folderId?: string) => string;
   initFolderIcon?: (icon: HTMLElement) => void;
   animateFolderIcon?: (icon: HTMLElement, active: boolean) => void;
+  onFolderMenuChange?: (tile: HTMLElement) => void;
   grid?: HTMLElement | null;
   tiles?: ShortcutTileElement[];
   maxShortcuts?: number;
@@ -108,6 +109,7 @@ interface NormalizedOptions {
   getFolderIconSvg: (idSuffix: string, folderId?: string) => string;
   initFolderIcon: (icon: HTMLElement) => void;
   animateFolderIcon: (icon: HTMLElement, active: boolean) => void;
+  onFolderMenuChange: (tile: HTMLElement) => void;
   grid: HTMLElement;
   tiles: ShortcutTileElement[];
   maxShortcuts: number;
@@ -175,6 +177,7 @@ function normalizeOptions(
     getFolderIconSvg: options.getFolderIconSvg || (() => ''),
     initFolderIcon: options.initFolderIcon || (() => {}),
     animateFolderIcon: options.animateFolderIcon || (() => {}),
+    onFolderMenuChange: options.onFolderMenuChange || (() => {}),
     grid: options.grid,
     tiles: Array.isArray(options.tiles) ? options.tiles : [],
     maxShortcuts: Number.isFinite(Number(options.maxShortcuts))
@@ -345,6 +348,7 @@ function ShortcutTile({
           tile.hasAttribute('data-shortcut-context-menu-open');
         tile.toggleAttribute('data-shortcut-folder-open', expanded);
         options.animateFolderIcon(icon, expanded);
+        options.onFolderMenuChange(tile);
       };
       return () => { delete tile._xSetBookmarkMenuVisualActive; };
     }
