@@ -59,6 +59,12 @@
   "newtab_appearance_settings_title": {
     "message": "外観設定"
   },
+  "newtab_help_footer_prompt": {
+    "message": "設定の意味がわからないときは"
+  },
+  "newtab_help_footer_action": {
+    "message": "ヘルプセンターへ"
+  },
   "newtab_more_settings": {
     "message": "その他の設定"
   },
@@ -226,6 +232,9 @@
   },
   "settings_feedback_support_wechat_action": {
     "message": "WeChat グループに参加"
+  },
+  "settings_feedback_support_help_center_action": {
+    "message": "ヘルプセンター"
   },
   "settings_feedback_support_review_action": {
     "message": "Lumno を評価"

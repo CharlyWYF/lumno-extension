@@ -532,6 +532,9 @@
     let wallpaperShortcutsAccordionExpanded = false;
     let wallpaperAppearanceMoreSettingsLink = null;
     let wallpaperAppearanceMoreSettingsText = null;
+    let wallpaperAppearanceHelpFooterPrompt = null;
+    let wallpaperAppearanceHelpFooterLink = null;
+    let wallpaperAppearanceHelpFooterText = null;
     let wallpaperSearchWidthSaveTimer = null;
     let wallpaperShortcutColumnsSaveTimer = null;
     let wallpaperShortcutSizeSaveTimer = null;
@@ -5506,6 +5509,17 @@
           wallpaperAppearanceMoreSettingsText.textContent = label;
         }
       }
+      if (wallpaperAppearanceHelpFooterPrompt) {
+        wallpaperAppearanceHelpFooterPrompt.textContent =
+          t('newtab_help_footer_prompt', 'Not sure what an option does?');
+      }
+      if (wallpaperAppearanceHelpFooterLink) {
+        wallpaperAppearanceHelpFooterLink.setAttribute('href', buildHelpCenterUrl());
+        if (wallpaperAppearanceHelpFooterText) {
+          wallpaperAppearanceHelpFooterText.textContent =
+            t('newtab_help_footer_action', 'Visit the Help Center');
+        }
+      }
       if (wallpaperAppearanceInfoButton) {
         wallpaperAppearanceInfoButton.setAttribute(
           'aria-label',
@@ -6079,6 +6093,16 @@
       if (quoteRuntime) quoteRuntime.updateLanguage();
     }
 
+    // The wallpaper article opens with how this panel works, so it is the panel's help page.
+    function buildHelpCenterUrl() {
+      const communityLinks = globalThis.LumnoCommunityLinks;
+      if (!communityLinks || typeof communityLinks.getHelpUrl !== 'function') {
+        return '';
+      }
+      const htmlLang = document.documentElement && document.documentElement.lang;
+      return communityLinks.getHelpUrl(htmlLang, 'newtab-wallpaper');
+    }
+
     function buildAppearanceSettingsUrl() {
       if (extensionRoutes && typeof extensionRoutes.buildOptionsUrl === 'function') {
         return extensionRoutes.buildOptionsUrl(chrome, 'appearance');
@@ -6151,6 +6175,7 @@
           wallpaper: getRiSvg('ri-t-shirt-2-line', 'ri-size-20')
         },
         moreSettingsUrl: buildAppearanceSettingsUrl(),
+        helpCenterUrl: buildHelpCenterUrl(),
         topContentOptions: [
           { value: 'brand', label: t('newtab_top_content_brand', 'Brand') },
           { value: 'time', label: t('newtab_top_content_time', 'Time') },
@@ -6279,6 +6304,9 @@
       wallpaperShortcutGapResetButton = refs.shortcutGapResetButton;
       wallpaperAppearanceMoreSettingsLink = refs.moreSettingsLink;
       wallpaperAppearanceMoreSettingsText = refs.moreSettingsText;
+      wallpaperAppearanceHelpFooterPrompt = refs.helpFooterPrompt;
+      wallpaperAppearanceHelpFooterLink = refs.helpFooterLink;
+      wallpaperAppearanceHelpFooterText = refs.helpFooterText;
       wallpaperOverlayLabel = refs.overlayLabel;
       wallpaperOverlaySlider = refs.overlaySlider;
       wallpaperEffectLabel = refs.effectLabel;

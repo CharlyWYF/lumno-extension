@@ -8,6 +8,14 @@
   const WEB_ORIGIN = 'https://lumno.kubai.design';
   const COMMUNITY_LINKS_URL = `${WEB_ORIGIN}/community-links.json`;
   const FETCH_TIMEOUT_MS = 2500;
+  // Help center paths per UI locale: Simplified Chinese is the site's root language.
+  const HELP_LOCALE_PREFIXES = Object.freeze({
+    'zh-CN': '',
+    'zh-TW': '/zh-tw',
+    ja: '/ja',
+    en: '/en'
+  });
+  const HELP_DEFAULT_SLUG = 'what-is-lumno';
   // Edge Add-ons assigns its own extension ID; every other install (Chrome Web
   // Store, including Edge users who installed from it, and keyed dev builds)
   // runs under the Chrome Web Store ID.
@@ -159,6 +167,11 @@
       : (source.x || FALLBACK_LINKS.x);
   }
 
+  function getHelpUrl(locale, slug) {
+    const page = String(slug || '').trim().replace(/^\/+|\/+$/g, '') || HELP_DEFAULT_SLUG;
+    return `${WEB_ORIGIN}${HELP_LOCALE_PREFIXES[normalizeWebLocale(locale)]}/help/${page}/`;
+  }
+
   function getRuntimeExtensionId() {
     const runtime = root && root.chrome && root.chrome.runtime ? root.chrome.runtime : null;
     return runtime && runtime.id ? String(runtime.id) : '';
@@ -292,6 +305,7 @@
     createLoader,
     getCommunityChannel,
     getCommunityUrl,
+    getHelpUrl,
     getLinks: defaultLoader.getLinks,
     getReviewUrl,
     getStoreListing,

@@ -35,6 +35,7 @@ describe('New Tab React wallpaper view', () => {
           favicons: [{ id: 'default', previewUrl: '/favicon.png' }],
           icons: { info: '<i class="ri-information-line"></i>' },
           moreSettingsUrl: '/options#appearance',
+          helpCenterUrl: 'https://lumno.kubai.design/help/newtab-wallpaper/',
           searchWidth: {
             min: 720,
             max: 1040,
@@ -126,6 +127,13 @@ describe('New Tab React wallpaper view', () => {
     expect(controller.getRefs().bingSelectedLink.querySelector('.ri-external-link-line')).not.toBeNull();
     expect(controller.getRefs().moreSettingsLink.classList.contains('x-lumno-link-button')).toBe(true);
     expect(controller.getRefs().moreSettingsLink.querySelector('.ri-external-link-line')).not.toBeNull();
+    const helpFooterLink = controller.getRefs().helpFooterLink;
+    expect(helpFooterLink.getAttribute('href')).toBe('https://lumno.kubai.design/help/newtab-wallpaper/');
+    expect(helpFooterLink.getAttribute('target')).toBe('_blank');
+    expect(helpFooterLink.closest('.x-nt-appearance-help-footer')).not.toBeNull();
+    expect(controller.getRefs().helpFooterPrompt.parentElement).toBe(helpFooterLink.parentElement);
+    expect(helpFooterLink.closest('.x-nt-wallpaper-panel-scroll')?.lastElementChild)
+      .toBe(helpFooterLink.parentElement);
     expect(controller.getRefs().bingTab.textContent).toBe('Bing');
     expect(controller.getRefs().bingDailyToggle.getAttribute('role')).toBe('switch');
     expect(controller.getRefs().bingSelectedSource.hidden).toBe(true);

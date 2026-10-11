@@ -59,6 +59,12 @@
   "newtab_appearance_settings_title": {
     "message": "Appearance settings"
   },
+  "newtab_help_footer_prompt": {
+    "message": "Not sure what an option does?"
+  },
+  "newtab_help_footer_action": {
+    "message": "Visit the Help Center"
+  },
   "newtab_more_settings": {
     "message": "More settings"
   },
@@ -226,6 +232,9 @@
   },
   "settings_feedback_support_wechat_action": {
     "message": "Join WeChat group"
+  },
+  "settings_feedback_support_help_center_action": {
+    "message": "Help Center"
   },
   "settings_feedback_support_review_action": {
     "message": "Rate Lumno"

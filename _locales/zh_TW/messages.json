@@ -59,6 +59,12 @@
   "newtab_appearance_settings_title": {
     "message": "外觀設定"
   },
+  "newtab_help_footer_prompt": {
+    "message": "不清楚某個選項的作用？"
+  },
+  "newtab_help_footer_action": {
+    "message": "查看說明中心"
+  },
   "newtab_more_settings": {
     "message": "更多設定"
   },
@@ -226,6 +232,9 @@
   },
   "settings_feedback_support_wechat_action": {
     "message": "加入回饋群"
+  },
+  "settings_feedback_support_help_center_action": {
+    "message": "說明中心"
   },
   "settings_feedback_support_review_action": {
     "message": "為 Lumno 評分"

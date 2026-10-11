@@ -1690,6 +1690,14 @@
       heading: getMessage('settings_feedback_support_section_title', '反馈与支持'),
       headingKey: 'settings_feedback_support_section_title',
       items: [
+        // Self-serve answers come before asking people.
+        {
+          href: COMMUNITY_LINKS.getHelpUrl(getFeedbackSupportWebLocale()),
+          iconClass: 'ri-book-open-line',
+          key: 'help-center',
+          label: getMessage('settings_feedback_support_help_center_action', '帮助中心'),
+          labelKey: 'settings_feedback_support_help_center_action'
+        },
         // Chinese readers get the WeChat group; elsewhere "contact the author" (X) below is the community entry.
         ...(communityIsWechat
           ? [{

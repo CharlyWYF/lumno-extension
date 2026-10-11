@@ -48,6 +48,7 @@ export interface InteractionSlot {
   kind?: string;
   label?: string;
   linkButton?: InteractionLinkButton;
+  trailingIcon?: string;
 }
 
 export interface InteractionsRenderModel {
@@ -261,7 +262,8 @@ function InteractionSlotCopy({
       (slot.infoTooltip.text || slot.infoTooltip.type)
   );
   const hasLinkButton = Boolean(slot.linkButton?.href);
-  const hasInlineAffordance = hasInfoTooltip || hasLinkButton;
+  const trailingIcon = String(slot.trailingIcon || '').trim();
+  const hasInlineAffordance = hasInfoTooltip || hasLinkButton || Boolean(trailingIcon);
 
   return (
     <>
@@ -316,6 +318,11 @@ function InteractionSlotCopy({
             />
           </>
         )}
+        {trailingIcon ? (
+          <span aria-hidden="true" className="interaction-trailing-icon">
+            <Icon className={trailingIcon} />
+          </span>
+        ) : null}
         {slot.description ? (
           <span className="interaction-description">
             {slot.description}

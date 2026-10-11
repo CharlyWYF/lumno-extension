@@ -4390,6 +4390,21 @@ body[data-theme="dark"] .x-nt-wallpaper-panel {
 body[data-theme="dark"] .x-nt-appearance-header {
   background: rgb(20 20 20);
 }
+/* Quiet way out to the help center at the very end of the panel. */
+.x-nt-appearance-help-footer {
+  flex: 0 0 auto;
+  min-width: 0;
+  margin: 24px 0 0;
+  padding: 0 2px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 4px;
+  row-gap: 2px;
+  color: var(--x-nt-subtext, #6b7280);
+  font-size: var(--lumno-font-size-sm);
+  line-height: 1.2;
+}
 .x-nt-appearance-header .x-nt-wallpaper-panel-title {
   flex: 1 1 auto;
   min-width: 0;

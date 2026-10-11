@@ -11,6 +11,22 @@ const { readNewtabRuntimeSource } = require('./helpers/newtab-source');
     'https://lumno.kubai.design/community-links.json',
     'all community surfaces should share one remote configuration endpoint'
   );
+  assert.deepStrictEqual(
+    ['zh-CN', 'zh_TW', 'ja', 'en', 'fr'].map((locale) => communityLinks.getHelpUrl(locale)),
+    [
+      'https://lumno.kubai.design/help/what-is-lumno/',
+      'https://lumno.kubai.design/zh-tw/help/what-is-lumno/',
+      'https://lumno.kubai.design/ja/help/what-is-lumno/',
+      'https://lumno.kubai.design/en/help/what-is-lumno/',
+      'https://lumno.kubai.design/en/help/what-is-lumno/'
+    ],
+    'help center links should follow the UI language and start at the first article'
+  );
+  assert.strictEqual(
+    communityLinks.getHelpUrl('zh-CN', 'newtab-wallpaper'),
+    'https://lumno.kubai.design/help/newtab-wallpaper/',
+    'surfaces can deep link to a specific help article'
+  );
   assert.strictEqual(
     communityLinks.normalizeHttpsUrl('http://example.com/qr.webp'),
     '',

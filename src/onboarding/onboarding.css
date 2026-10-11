@@ -983,6 +983,26 @@ html[lang="en"] .onboarding-shell[data-active-slide="intro"] .title-logo-mark {
   text-decoration: none;
 }
 
+/* A whole row that opens something: the label and its trailing icon darken together. */
+.interaction-slot[data-action]:not([data-action=""]) {
+  cursor: pointer;
+}
+
+.interaction-slot[data-action]:not([data-action=""]) .interaction-label,
+.interaction-slot[data-action]:not([data-action=""]) .interaction-row-icon {
+  color: inherit;
+  transition: color var(--lumno-duration-xs) ease;
+}
+
+.interaction-trailing-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  font-size: var(--lumno-font-size-md);
+  line-height: 1;
+}
+
 @media (prefers-color-scheme: dark) {
   .interaction-info-button {
     color: rgba(156, 163, 175, 0.82);

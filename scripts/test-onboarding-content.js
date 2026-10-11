@@ -394,8 +394,19 @@ assert.strictEqual(
 assert.strictEqual(fifthSlide.visual.visible, true);
 assert.deepStrictEqual(
   fifthSlide.left.interactionSlots,
-  [],
-  'final page should not render empty left-side placeholder interaction rows'
+  [
+    {
+      id: 'finish-interaction-1',
+      kind: 'help-row',
+      actionId: 'openHelpCenter',
+      accordionId: '',
+      icon: 'ri-book-open-line',
+      label: '每个功能的用法，都写在帮助中心',
+      description: '',
+      trailingIcon: 'ri-external-link-line'
+    }
+  ],
+  'final page should offer one quiet help center row instead of another button'
 );
 assert.deepStrictEqual(
   fifthSlide.actions,

@@ -1516,6 +1516,10 @@
       openExternalTab(COMMUNITY_LINKS.getStoreListing().url, disposition);
       return;
     }
+    if (id === 'openHelpCenter') {
+      openExternalTab(COMMUNITY_LINKS.getHelpUrl(blueprint && blueprint.htmlLang), disposition);
+      return;
+    }
     if (id === 'openNewtab') {
       if (disposition !== 'backgroundTab') {
         if (navigateOnboardingToNewtab()) {

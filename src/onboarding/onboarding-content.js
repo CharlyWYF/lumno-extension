@@ -95,7 +95,8 @@
         body: '围绕浏览器提效领域，做最关心用户体验的插件。',
         primaryAction: '开始体验',
         ratingAction: '为我们评分',
-        settingsAction: '设置'
+        settingsAction: '设置',
+        helpLabel: '每个功能的用法，都写在帮助中心'
       }),
       actions: Object.freeze({
         next: '下一页',
@@ -306,7 +307,8 @@
         body: '專注瀏覽器提效，也重視每一次體驗。',
         primaryAction: '開始體驗',
         ratingAction: '為我們評分',
-        settingsAction: '設定'
+        settingsAction: '設定',
+        helpLabel: '每個功能的用法，都寫在說明中心'
       }),
       actions: Object.freeze({ next: '下一頁', back: '返回', changeShortcut: '更換快速鍵' }),
       runtimeCopy: Object.freeze({
@@ -435,7 +437,8 @@
         body: 'ブラウザ作業を軽くし、使い心地まで丁寧に。',
         primaryAction: '使い始める',
         ratingAction: '評価する',
-        settingsAction: '設定'
+        settingsAction: '設定',
+        helpLabel: '各機能の使い方はヘルプセンターにまとめています'
       }),
       actions: Object.freeze({ next: '次へ', back: '戻る', changeShortcut: 'キーを変更' }),
       runtimeCopy: Object.freeze({
@@ -568,7 +571,8 @@
         body: 'Video popouts, new-tab polish, and useful extras.',
         primaryAction: 'Start using Lumno',
         ratingAction: 'Rate Lumno',
-        settingsAction: 'Settings'
+        settingsAction: 'Settings',
+        helpLabel: 'Every feature is explained in the Help Center'
       }),
       actions: Object.freeze({ next: 'Next', back: 'Back', changeShortcut: 'Change shortcut' }),
       runtimeCopy: Object.freeze({
@@ -1190,6 +1194,15 @@
         }),
         visualKind: 'feature-cards-surface',
         visualVisible: true,
+        interactionRows: Object.freeze([
+          Object.freeze({
+            kind: 'help-row',
+            actionId: 'openHelpCenter',
+            icon: 'ri-book-open-line',
+            label: text.finish.helpLabel,
+            trailingIcon: 'ri-external-link-line'
+          })
+        ]),
         cursorEnabled: true,
         actions: Object.freeze({
           primary: Object.freeze({
@@ -1225,6 +1238,9 @@
           label: row.label || '',
           description: String(row.description || '')
         };
+        if (row.trailingIcon) {
+          interactionSlot.trailingIcon = String(row.trailingIcon);
+        }
         copyBrowserOnly(row, interactionSlot);
         const browserAvatars = cloneBrowserAvatars(row.browserAvatars);
         if (browserAvatars && browserAvatars.browsers.length > 0) {
