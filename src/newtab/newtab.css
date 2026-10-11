@@ -170,7 +170,8 @@ body.x-nt-bottom-layout:not(.x-nt-mobile-flow) {
   --control-open-bg: rgba(255, 255, 255, 0.96);
   --panel-text: var(--lumno-color-text);
   --panel-subtext: var(--lumno-color-text-muted);
-  --menu-bg: rgba(255, 255, 255, 0.96);
+  /* Solid like the context menu: text behind a menu should never show through. */
+  --menu-bg: rgb(255 255 255);
   --select-hover-bg: var(--lumno-color-hover);
   --select-selected-bg: var(--lumno-color-selected);
   --select-selected-text: var(--lumno-color-selected-text);
@@ -354,7 +355,7 @@ body[data-theme="dark"] {
   --control-open-bg: rgba(55, 55, 55, 0.96);
   --panel-text: #f8fafc;
   --panel-subtext: #a8b0bc;
-  --menu-bg: rgba(31, 31, 31, 0.96);
+  --menu-bg: rgb(31 31 31);
   --select-hover-bg: var(--lumno-color-hover);
   --select-selected-bg: var(--lumno-color-selected);
   --select-selected-text: var(--lumno-color-selected-text);
@@ -1425,8 +1426,6 @@ body[data-nt-enter="run"] .x-nt-bookmark-cascade-debug-control {
   --x-extension-menu-surface-closed-transform: scale(0.96, 0.86);
   --x-extension-menu-surface-open-transform: scale(1, 1);
   top: calc(100% + 8px);
-  backdrop-filter: blur(18px) saturate(135%);
-  -webkit-backdrop-filter: blur(18px) saturate(135%);
 }
 .x-nt-section-mode-select ._x_extension_select_option_2024_unique_,
 .x-nt-section-mode-portal ._x_extension_select_option_2024_unique_ {
