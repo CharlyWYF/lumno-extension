@@ -89,8 +89,10 @@ assert.match(
   /function getSuggestionUrlLineText[\s\S]*?parsed\.hostname[\s\S]*?parsed\.pathname[\s\S]*?text=\{urlLineText\}/,
   'all search modes should share the compact host-and-path URL presentation'
 );
-assert.match(newtabHtml, /data-simple-mode="true"[^}]*x-nt-suggestion-url-line[\s\S]*?max-width: none;[\s\S]*?flex: 1 4 auto/);
-assert.match(overlayCss, /data-simple-mode="true"[^}]*x-ov-suggestion-url-line[\s\S]*?max-width: none;[\s\S]*?flex: 1 4 auto/);
+assert.match(newtabHtml, /\.x-nt-suggestion-url-line \{[^}]*flex: 0 1000 auto;[^}]*min-width: 0;/);
+assert.match(overlayCss, /\.x-ov-suggestion-url-line \{[^}]*flex: 0 1000 auto;[^}]*min-width: 0;/);
+assert.doesNotMatch(newtabHtml, /\.x-nt-suggestion-url-line \{[^}]*max-width: 60%/, 'the URL line should use the room the title leaves');
+assert.doesNotMatch(overlayCss, /\.x-ov-suggestion-url-line \{[^}]*max-width: 60%/, 'the URL line should use the room the title leaves');
 assert.match(
   suggestionsSource,
   /const useTheme = visible && themed && !simpleMode;/,

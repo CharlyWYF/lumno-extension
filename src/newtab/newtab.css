@@ -5747,8 +5747,6 @@ body[data-theme="dark"] .x-nt-suggestion-number-shortcut {
   background: transparent;
   display: inline-block;
   vertical-align: baseline;
-}
-.x-nt-suggestion-item[data-simple-mode="true"] .x-nt-suggestion-title {
   flex: 0 1 auto;
   min-width: 0;
 }
@@ -5853,6 +5851,10 @@ body[data-theme="dark"] .x-nt-suggestion-number-shortcut {
   display: inline-block;
   vertical-align: middle;
 }
+/* A title long enough to fill the row still leaves some of the address or passage beside it. */
+.x-nt-suggestion-title:has(~ .x-nt-suggestion-url-line) {
+  max-width: 70%;
+}
 .x-nt-suggestion-url-line {
   all: unset;
   color: var(--x-nt-link, #2563EB);
@@ -5860,7 +5862,9 @@ body[data-theme="dark"] .x-nt-suggestion-number-shortcut {
   font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   text-decoration: none;
   display: inline-block;
-  max-width: 60%;
+  /* Takes the room the title and tags leave, and gives up its own first when the row is tight. */
+  flex: 0 1000 auto;
+  min-width: 0;
   line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
@@ -5868,11 +5872,6 @@ body[data-theme="dark"] .x-nt-suggestion-number-shortcut {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-}
-.x-nt-suggestion-item[data-simple-mode="true"] .x-nt-suggestion-url-line {
-  max-width: none;
-  flex: 1 4 auto;
-  min-width: 0;
 }
 .x-nt-suggestion-right {
   all: unset;

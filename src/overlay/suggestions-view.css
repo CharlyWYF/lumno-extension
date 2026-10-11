@@ -454,9 +454,6 @@
   background: transparent;
   display: inline-block;
   vertical-align: baseline;
-}
-
-:is(#_x_extension_overlay_2024_unique_, #_x_extension_onboarding_overlay_demo_2026_unique_) .x-ov-suggestion-item[data-simple-mode="true"] .x-ov-suggestion-title {
   flex: 0 1 auto;
   min-width: 0;
 }
@@ -554,6 +551,11 @@
   vertical-align: middle;
 }
 
+/* A title long enough to fill the row still leaves some of the address or passage beside it. */
+:is(#_x_extension_overlay_2024_unique_, #_x_extension_onboarding_overlay_demo_2026_unique_) .x-ov-suggestion-title:has(~ .x-ov-suggestion-url-line) {
+  max-width: 70%;
+}
+
 :is(#_x_extension_overlay_2024_unique_, #_x_extension_onboarding_overlay_demo_2026_unique_) .x-ov-suggestion-url-line {
   all: unset;
   color: var(--x-ov-link, #2563EB);
@@ -561,7 +563,9 @@
   font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   text-decoration: none;
   display: inline-block;
-  max-width: 60%;
+  /* Takes the room the title and tags leave, and gives up its own first when the row is tight. */
+  flex: 0 1000 auto;
+  min-width: 0;
   line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
@@ -569,12 +573,6 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-}
-
-:is(#_x_extension_overlay_2024_unique_, #_x_extension_onboarding_overlay_demo_2026_unique_) .x-ov-suggestion-item[data-simple-mode="true"] .x-ov-suggestion-url-line {
-  max-width: none;
-  flex: 1 4 auto;
-  min-width: 0;
 }
 
 :is(#_x_extension_overlay_2024_unique_, #_x_extension_onboarding_overlay_demo_2026_unique_) .x-ov-tab-rank-debug {
