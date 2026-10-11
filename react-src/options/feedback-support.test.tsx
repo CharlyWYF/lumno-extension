@@ -1,6 +1,7 @@
 import { act } from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  buildAskDemoFrames,
   createFeedbackSupportApi,
   createFeedbackSupportController,
   type FeedbackSupportController,
@@ -10,12 +11,6 @@ import {
 let controllers: FeedbackSupportController[] = [];
 
 const model: FeedbackSupportRenderModel = {
-  contact: {
-    description: '遇到问题或有想法，欢迎告诉作者',
-    descriptionKey: 'settings_feedback_contact_desc',
-    title: '问题与建议',
-    titleKey: 'settings_feedback_contact_title'
-  },
   heading: '反馈与支持',
   headingKey: 'settings_feedback_support_section_title',
   items: [
@@ -59,6 +54,7 @@ function createFixture() {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   act(() => {
     controllers.forEach((controller) => controller.destroy());
   });
@@ -67,22 +63,19 @@ afterEach(() => {
 });
 
 describe('Options feedback support React island', () => {
-  it('lays the contact links out as one settings row of quiet icon buttons', () => {
+  it('lays the feedback channels out as one row of tiles under the heading', () => {
     const { controller, host } = createFixture();
     act(() => controller.render(model));
 
     expect(createFeedbackSupportApi().implementation).toBe('react');
     expect(host.dataset.reactIsland).toBe('options-feedback-support');
-    const rows = host.querySelectorAll('._x_extension_feedback_support_row_2026_unique_');
-    expect(rows).toHaveLength(1);
-    expect(rows[0].querySelector('._x_extension_setting_title_2024_unique_')?.textContent).toBe('问题与建议');
-    expect(rows[0].querySelector('._x_extension_setting_desc_2024_unique_')?.textContent)
-      .toBe('遇到问题或有想法，欢迎告诉作者');
-    const links = rows[0].querySelectorAll('nav a._x_extension_feedback_support_action_2026_unique_');
-    expect(links).toHaveLength(4);
-    links.forEach((link) => {
-      expect(link.firstElementChild?.classList.contains('ri-icon')).toBe(true);
-      expect(link.querySelector('span')?.textContent).toBeTruthy();
+    const nav = host.querySelector('nav._x_extension_feedback_support_links_2026_unique_');
+    const tiles = nav?.querySelectorAll('a._x_extension_feedback_support_link_2026_unique_') || [];
+    expect(tiles).toHaveLength(4);
+    tiles.forEach((tile) => {
+      expect(tile.firstElementChild?.classList.contains('ri-icon')).toBe(true);
+      expect(tile.querySelector('span')?.textContent).toBeTruthy();
+      expect(tile.lastElementChild?.classList.contains('ri-external-link-line')).toBe(true);
     });
   });
 
@@ -114,13 +107,98 @@ describe('Options feedback support React island', () => {
     }));
 
     const rows = host.querySelectorAll('._x_extension_feedback_support_row_2026_unique_');
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].nextElementSibling?.tagName).toBe('NAV');
     expect(rows[0].querySelector('._x_extension_setting_title_2024_unique_')?.textContent).toBe('帮助中心');
     const link = rows[0].querySelector<HTMLAnchorElement>('[data-feedback-support="help-center"]');
     expect(link?.href).toBe('https://lumno.kubai.design/help/what-is-lumno/');
     expect(link?.target).toBe('_blank');
     expect(link?.textContent).toBe('查看');
     expect(link?.querySelector('.ri-external-link-line')).not.toBeNull();
+    // Without the Help Center site search there is nothing to demo.
+    expect(rows[0].querySelector('[data-feedback-support="help-center-ask"]')).toBeNull();
+  });
+
+  it('plays a demo of asking the help center from the search box on hover or focus', () => {
+    vi.useFakeTimers();
+    const { controller, host } = createFixture();
+    act(() => controller.render({
+      ...model,
+      help: {
+        ask: {
+          caption: '输入 lm，按 Tab，再写下你的问题。',
+          captionKey: 'settings_help_center_ask_caption',
+          iconUrl: 'chrome-extension://id/assets/images/site-search/glyph-lm.png',
+          label: '在搜索框中提问',
+          labelKey: 'settings_help_center_ask_action',
+          prefix: 'lm',
+          providerName: 'Lumno 帮助中心',
+          query: '怎么改',
+          results: [{ detail: '修改快捷键', title: '快捷键' }]
+        },
+        description: '不清楚某个功能怎么用？',
+        descriptionKey: 'settings_help_center_desc',
+        href: 'https://lumno.kubai.design/help/what-is-lumno/',
+        label: '查看',
+        labelKey: 'settings_help_center_action',
+        title: '帮助中心',
+        titleKey: 'settings_help_center_title'
+      }
+    }));
+
+    const row = host.querySelector('._x_extension_feedback_support_row_2026_unique_');
+    const trigger = row?.querySelector<HTMLButtonElement>('button[data-feedback-support="help-center-ask"]');
+    expect(trigger?.nextElementSibling).not.toBeNull();
+    expect(trigger?.closest('._x_extension_help_ask_anchor_2026_unique_')?.nextElementSibling
+      ?.getAttribute('data-feedback-support')).toBe('help-center');
+    const popover = host.querySelector<HTMLElement>('[role="tooltip"]');
+    expect(popover?.dataset.open).toBe('false');
+    expect(trigger?.getAttribute('aria-describedby')).toBe(popover?.id);
+
+    act(() => {
+      trigger?.focus();
+      vi.advanceTimersByTime(0);
+    });
+    expect(popover?.dataset.open).toBe('true');
+
+    const demo = popover?.querySelector<HTMLElement>('._x_extension_help_ask_demo_2026_unique_');
+    const frames = buildAskDemoFrames('lm', '怎么改');
+    const playUntil = (phase: string) => {
+      for (let step = 0; step < frames.length * 2 && demo?.dataset.phase !== phase; step += 1) {
+        act(() => {
+          vi.advanceTimersByTime(3000);
+        });
+      }
+    };
+    // While the question is typed, placeholder rows stand in for each page about to appear.
+    const skeletonRows = demo?.querySelectorAll('._x_extension_help_ask_demo_skeleton_2026_unique_ li');
+    expect(skeletonRows).toHaveLength(1);
+    expect(skeletonRows?.[0].textContent).toBe('');
+    expect(demo?.querySelector<HTMLElement>('._x_extension_help_ask_demo_results_2026_unique_')?.dataset.visible)
+      .toBe('false');
+    playUntil('tab');
+    expect(demo?.querySelector('._x_extension_help_ask_demo_text_2026_unique_')?.textContent).toBe('lm');
+    expect(demo?.querySelector('kbd')?.dataset.pressed).toBe('true');
+    playUntil('results');
+    expect(demo?.querySelector('._x_extension_help_ask_demo_chip_2026_unique_')?.textContent).toBe('Lumno 帮助中心');
+    expect(demo?.querySelector('._x_extension_help_ask_demo_text_2026_unique_')?.textContent).toBe('怎么改');
+    const results = demo?.querySelector<HTMLElement>('._x_extension_help_ask_demo_results_2026_unique_');
+    expect(results?.dataset.visible).toBe('true');
+    expect(results?.querySelectorAll('._x_extension_help_ask_demo_list_2026_unique_ li')).toHaveLength(1);
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
+    });
+    expect(popover?.dataset.open).toBe('false');
+    expect(demo?.dataset.phase).toBe('idle');
+  });
+
+  it('builds one demo loop: keyword, Tab, the question letter by letter, then the pages', () => {
+    const frames = buildAskDemoFrames('lm', '快捷键');
+    expect(frames.map((frame) => frame.phase)).toEqual([
+      'idle', 'prefix', 'prefix', 'tab', 'question', 'question', 'question', 'question', 'results'
+    ]);
+    expect(frames.every((frame) => frame.duration > 0)).toBe(true);
   });
 
   it('opens the WeChat group QR code in a popover instead of a new tab', () => {
@@ -141,6 +219,8 @@ describe('Options feedback support React island', () => {
     }));
 
     const trigger = host.querySelector<HTMLButtonElement>('button[data-feedback-support="community"]');
+    expect(trigger?.classList.contains('_x_extension_feedback_support_link_2026_unique_')).toBe(true);
+    expect(trigger?.querySelector('.ri-qr-code-line')).not.toBeNull();
     const popover = host.querySelector<HTMLElement>('[role="dialog"]');
     expect(trigger?.getAttribute('aria-expanded')).toBe('false');
     expect(popover?.dataset.open).toBe('false');

@@ -242,11 +242,26 @@
   "settings_help_center_action": {
     "message": "查看"
   },
-  "settings_feedback_contact_title": {
-    "message": "问题与建议"
+  "settings_help_center_ask_action": {
+    "message": "在搜索框中提问"
   },
-  "settings_feedback_contact_desc": {
-    "message": "遇到问题或有想法，欢迎告诉作者"
+  "settings_help_center_ask_caption": {
+    "message": "在新标签页或搜索框输入 lm 或「帮助中心」，按 Tab，再写下你的问题。"
+  },
+  "settings_help_center_ask_demo_query": {
+    "message": "怎么修改快捷键"
+  },
+  "settings_help_center_ask_demo_result_1_title": {
+    "message": "快捷键"
+  },
+  "settings_help_center_ask_demo_result_1_detail": {
+    "message": "修改快捷键"
+  },
+  "settings_help_center_ask_demo_result_2_title": {
+    "message": "常见问题"
+  },
+  "settings_help_center_ask_demo_result_2_detail": {
+    "message": "快捷键没反应怎么办？"
   },
   "settings_feedback_support_review_action": {
     "message": "为 Lumno 评分"
@@ -850,6 +865,18 @@
   },
   "newtab_webdav_feature_hint_close": {
     "message": "关闭 WebDAV 提示"
+  },
+  "newtab_help_center_ask_feature_hint_badge": {
+    "message": "新功能"
+  },
+  "newtab_help_center_ask_feature_hint_text": {
+    "message": "不会用某个功能？输入 lm 或「帮助中心」按 Tab，直接向帮助中心提问。"
+  },
+  "newtab_help_center_ask_feature_hint_link": {
+    "message": "试一试"
+  },
+  "newtab_help_center_ask_feature_hint_close": {
+    "message": "关闭帮助中心提示"
   },
   "newtab_ai_quick_jump_feature_hint_badge": {
     "message": "新功能"

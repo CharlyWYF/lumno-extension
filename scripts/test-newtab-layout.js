@@ -966,7 +966,9 @@ function testInitialEntryMotionIsStaggeredAndTransient() {
     autoFocusGateMessage
   );
   assert.match(newtabSource, /featureHintVisibilityGate:\s*newtabEntryAnimationReadyPromise/, autoFocusGateMessage);
-  assert.match(newtabSource, /definition: 'newtab-webdav-sync',\s*visibilityGate: newtabEntryAnimationReadyPromise/, autoFocusGateMessage);
+  assert.match(newtabSource, /definition: 'newtab-help-center-ask',\s*visibilityGate: newtabEntryAnimationReadyPromise/, autoFocusGateMessage);
+  // WebDAV waits for the Help Center tip, which itself waits for the entry sequence.
+  assert.match(newtabSource, /definition: 'newtab-webdav-sync',\s*visibilityGate: helpCenterAskHintSettled/, autoFocusGateMessage);
   assert.match(
     newtabSource,
     /setAttribute\('data-nt-ready', '1'\);\s*startNewtabEntryAnimation\(\);/,

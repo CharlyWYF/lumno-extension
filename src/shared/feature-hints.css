@@ -164,6 +164,34 @@ body[data-nt-suggestions-open="true"] .x-lumno-feature-hint--newtab-webdav-sync 
   transform: scale(0.98);
 }
 
+/* Above the left end of the search input, where the question gets typed. */
+.x-lumno-feature-hint--newtab-help-center-ask {
+  left: 16px;
+  right: auto;
+  bottom: calc(100% + 14px);
+  top: auto;
+  width: max-content;
+  max-width: min(calc(100% - 32px), calc(100vw - 28px));
+  transform: scale(0.98);
+  transform-origin: left bottom;
+}
+
+.x-lumno-feature-hint--newtab-help-center-ask[data-width-mode="content"] {
+  white-space: normal;
+  flex-wrap: wrap;
+}
+
+.x-lumno-feature-hint--newtab-help-center-ask[data-visible="true"] {
+  transform: scale(1);
+}
+
+body[data-nt-suggestions-open="true"] .x-lumno-feature-hint--newtab-help-center-ask {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.98);
+}
+
 .x-lumno-feature-hint--update-notice {
   position: relative;
   left: auto;

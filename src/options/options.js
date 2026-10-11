@@ -1040,6 +1040,10 @@
   let customSiteSearchProviders = [];
   let customSiteSearchProviderIdsReady = true;
   let disabledSiteSearchKeys = new Set();
+  // Whether the Help Center site search (lm) is on; unknown (null) until the providers load,
+  // so the "ask in the search box" demo never shows for someone who turned it off.
+  let helpCenterSearchEnabled = null;
+  let siteSearchProvidersLoaded = false;
   let aggregateSearches = [];
   let aggregateSearchesReady = false;
   let aggregateSearchStateCoordinator = null;
@@ -1695,6 +1699,28 @@
       heading: getMessage('settings_feedback_support_section_title', '反馈与支持'),
       headingKey: 'settings_feedback_support_section_title',
       help: {
+        ask: helpCenterSearchEnabled !== true ? null : {
+          caption: getMessage('settings_help_center_ask_caption', '在新标签页或搜索框输入 lm 或「帮助中心」，按 Tab，再写下你的问题。'),
+          captionKey: 'settings_help_center_ask_caption',
+          iconUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
+            ? chrome.runtime.getURL('assets/images/site-search/glyph-lm.png')
+            : '../../assets/images/site-search/glyph-lm.png',
+          label: getMessage('settings_help_center_ask_action', '在搜索框中提问'),
+          labelKey: 'settings_help_center_ask_action',
+          prefix: 'lm',
+          providerName: getMessage('site_search_name_lumno_help', 'Lumno 帮助中心'),
+          query: getMessage('settings_help_center_ask_demo_query', '怎么修改快捷键'),
+          results: [
+            {
+              detail: getMessage('settings_help_center_ask_demo_result_1_detail', '修改快捷键'),
+              title: getMessage('settings_help_center_ask_demo_result_1_title', '快捷键')
+            },
+            {
+              detail: getMessage('settings_help_center_ask_demo_result_2_detail', '快捷键没反应怎么办？'),
+              title: getMessage('settings_help_center_ask_demo_result_2_title', '常见问题')
+            }
+          ]
+        },
         description: getMessage('settings_help_center_desc', '不清楚某个功能怎么用？每个功能的用法都写在这里。'),
         descriptionKey: 'settings_help_center_desc',
         href: COMMUNITY_LINKS.getHelpUrl(getFeedbackSupportWebLocale()),
@@ -1702,12 +1728,6 @@
         labelKey: 'settings_help_center_action',
         title: getMessage('settings_help_center_title', '帮助中心'),
         titleKey: 'settings_help_center_title'
-      },
-      contact: {
-        description: getMessage('settings_feedback_contact_desc', '遇到问题或有想法，欢迎告诉作者'),
-        descriptionKey: 'settings_feedback_contact_desc',
-        title: getMessage('settings_feedback_contact_title', '问题与建议'),
-        titleKey: 'settings_feedback_contact_title'
       },
       items: [
         // Chinese readers get the WeChat group; elsewhere "contact the author" (X) below is the community entry.
@@ -6108,7 +6128,26 @@
     });
   }
 
+  function syncHelpCenterSearchEnabled() {
+    if (!siteSearchProvidersLoaded) {
+      return;
+    }
+    const enabled = [
+      ...getActiveBuiltinSiteSearchProviders(
+        defaultSiteSearchProviders,
+        customSiteSearchProviders,
+        disabledSiteSearchKeys
+      ),
+      ...customSiteSearchProviders
+    ].some((item) => SEARCH_UTILS.isHelpCenterSiteSearchProvider(item));
+    if (enabled !== helpCenterSearchEnabled) {
+      helpCenterSearchEnabled = enabled;
+      renderFeedbackSupport();
+    }
+  }
+
   function renderSiteSearchList() {
+    syncHelpCenterSearchEnabled();
     if (!siteSearchEngineBuiltinList || !siteSearchCustomList || !siteSearchBuiltinList) {
       return;
     }
@@ -7186,6 +7225,7 @@
           customSiteSearchProviders = prepared.custom;
           customSiteSearchProviderIdsReady = true;
           disabledSiteSearchKeys = prepared.disabledKeys;
+          siteSearchProvidersLoaded = true;
           renderSiteSearchList();
           renderAggregateSearchList();
         },
@@ -7245,6 +7285,7 @@
   }
 
   function refreshSiteSearchProviders() {
+    syncHelpCenterSearchEnabled();
     if (!siteSearchEngineBuiltinList || !siteSearchCustomList || !siteSearchBuiltinList) {
       return Promise.resolve();
     }

@@ -594,13 +594,92 @@ html[data-options-theme-mode="dark"] #_x_extension_overlay_page_theme_adaptation
   flex: 1 1 auto;
   min-width: 0;
 }
+/* Feedback channels sit as one row of equal tiles, however many the locale shows. */
 ._x_extension_feedback_support_links_2026_unique_ {
-  flex: 0 1 auto;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 8px;
   min-width: 0;
+  padding: 4px var(--settings-content-edge-space) var(--settings-row-block-space);
+}
+._x_extension_feedback_support_link_2026_unique_ {
+  --feedback-support-link-bg: var(--control-bg);
+  --feedback-support-link-hover-bg: rgba(15, 23, 42, 0.07);
+  --feedback-support-link-icon-color: rgba(107, 114, 128, 0.86);
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  margin: 0;
+  padding: 0 10px 0 12px;
+  border: 0;
+  border-radius: var(--lumno-radius-lg);
+  background: var(--feedback-support-link-bg);
+  color: var(--panel-text);
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 2px;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: var(--lumno-font-size-sm);
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: left;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--lumno-duration-sm) ease, color var(--lumno-duration-sm) ease;
+}
+._x_extension_feedback_support_link_2026_unique_ > i:first-child {
+  flex: 0 0 auto;
+  color: var(--feedback-support-link-icon-color);
+  transition: color var(--lumno-duration-sm) ease;
+}
+._x_extension_feedback_support_link_2026_unique_ > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+._x_extension_feedback_support_link_2026_unique_ > i:last-child {
+  flex: 0 0 auto;
+  color: var(--feedback-support-link-icon-color);
+  opacity: 0.7;
+  transition:
+    opacity var(--lumno-duration-sm) ease,
+    transform var(--lumno-duration-xl) cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+._x_extension_feedback_support_link_2026_unique_:hover,
+._x_extension_feedback_support_link_2026_unique_[data-open="true"] {
+  background: var(--feedback-support-link-hover-bg);
+}
+._x_extension_feedback_support_link_2026_unique_:hover > i:first-child,
+._x_extension_feedback_support_link_2026_unique_[data-open="true"] > i:first-child {
+  color: var(--panel-text);
+}
+._x_extension_feedback_support_link_2026_unique_:hover > i:last-child,
+._x_extension_feedback_support_link_2026_unique_[data-open="true"] > i:last-child {
+  opacity: 1;
+}
+._x_extension_feedback_support_link_2026_unique_:hover > .ri-external-link-line {
+  transform: translate(2px, -2px);
+}
+._x_extension_feedback_support_link_2026_unique_:focus-visible {
+  outline: 2px solid var(--input-focus-color);
+  outline-offset: 2px;
+}
+body[data-theme="dark"] ._x_extension_feedback_support_link_2026_unique_ {
+  --feedback-support-link-bg: color-mix(in srgb, var(--control-bg) 72%, transparent);
+  --feedback-support-link-hover-bg: var(--control-hover-bg);
+  --feedback-support-link-icon-color: var(--panel-subtext);
+}
+@media (prefers-reduced-motion: reduce) {
+  ._x_extension_feedback_support_link_2026_unique_ > i:last-child {
+    transition: none;
+  }
+  ._x_extension_feedback_support_link_2026_unique_:hover > .ri-external-link-line {
+    transform: none;
+  }
 }
 /* Same quiet text button as the onboarding guide link: no surface until hover. */
 ._x_extension_shortcut_submit_2024_unique_._x_extension_feedback_support_action_2026_unique_ {
@@ -621,23 +700,21 @@ html[data-options-theme-mode="dark"] #_x_extension_overlay_page_theme_adaptation
   white-space: nowrap;
   text-decoration: none;
 }
-._x_extension_feedback_support_action_2026_unique_[data-open="true"] {
-  --settings-button-bg: var(--settings-button-hover-bg);
-  --settings-button-color: var(--settings-button-hover-color);
-}
 ._x_extension_feedback_support_qr_anchor_2026_unique_ {
   position: relative;
-  display: inline-flex;
+  min-width: 0;
+  display: flex;
 }
 /* The WeChat group QR opens in place, under its button. */
 ._x_extension_feedback_support_qr_popover_2026_unique_ {
   --x-extension-menu-surface-transform-origin: top left;
+  --feedback-support-qr-inset: 8px;
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
   z-index: 30;
   width: 232px;
-  padding: 8px 8px 10px;
+  padding: var(--feedback-support-qr-inset);
   border: 1px solid var(--panel-border);
   border-radius: var(--lumno-radius-2xl);
   background: var(--menu-bg);
@@ -693,11 +770,276 @@ html[data-options-theme-mode="dark"] #_x_extension_overlay_page_theme_adaptation
   display: block;
   width: 100%;
   height: auto;
-  border-radius: var(--lumno-radius-xl);
+  /* Concentric with the popover: its radius minus the inset around the image. */
+  border-radius: calc(var(--lumno-radius-2xl) - var(--feedback-support-qr-inset));
   background: #f2f4f8;
 }
 body[data-theme="dark"] ._x_extension_feedback_support_qr_image_2026_unique_ {
   background: #18181b;
+}
+/* "Ask in the search box": hover or focus plays a small demo of lm → Tab → question → pages. */
+._x_extension_help_ask_anchor_2026_unique_ {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-self: center;
+}
+._x_extension_feedback_support_action_2026_unique_[data-open="true"] {
+  --settings-button-bg: var(--settings-button-hover-bg);
+  --settings-button-color: var(--settings-button-hover-color);
+}
+._x_extension_help_ask_popover_2026_unique_ {
+  --x-extension-menu-surface-transform-origin: top right;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  padding: 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--lumno-radius-2xl);
+  background: var(--menu-bg);
+  box-shadow: var(--sync-menu-shadow);
+  visibility: hidden;
+  transition:
+    opacity 170ms ease,
+    transform 360ms var(--lumno-ease-menu, cubic-bezier(0.2, 1.45, 0.35, 1)),
+    visibility 0s linear 170ms;
+}
+._x_extension_help_ask_popover_2026_unique_[data-open="true"] {
+  visibility: visible;
+  transition-delay: 0s;
+}
+._x_extension_help_ask_demo_2026_unique_ {
+  padding: 10px;
+  border-radius: calc(var(--lumno-radius-2xl) - 4px);
+  background: var(--control-bg);
+}
+._x_extension_help_ask_demo_field_2026_unique_ {
+  position: relative;
+  box-sizing: border-box;
+  height: 34px;
+  padding: 0 6px 0 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--lumno-radius-pill);
+  background: var(--menu-bg);
+  color: var(--panel-text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--lumno-font-size-sm);
+  white-space: nowrap;
+  overflow: hidden;
+}
+._x_extension_help_ask_demo_field_2026_unique_ > .ri-icon {
+  flex: 0 0 auto;
+  color: var(--panel-subtext);
+}
+._x_extension_help_ask_demo_chip_2026_unique_ {
+  flex: 0 0 auto;
+  height: 22px;
+  padding: 0 6px 0 4px;
+  border-radius: 7px;
+  /* The same tint as the provider prefix in the real search input. */
+  background: rgba(59, 130, 246, 0.075);
+  color: rgb(51, 110, 209);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  animation: x-help-ask-chip-in 260ms var(--lumno-ease-menu, cubic-bezier(0.2, 1.45, 0.35, 1));
+}
+._x_extension_help_ask_demo_chip_2026_unique_ > img,
+._x_extension_help_ask_demo_results_2026_unique_ img {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
+/* Like a real input, a long question keeps its end (and the caret) in view. */
+._x_extension_help_ask_demo_text_2026_unique_ {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+._x_extension_help_ask_demo_text_2026_unique_ > span {
+  flex: 0 0 auto;
+  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+}
+._x_extension_help_ask_demo_caret_2026_unique_ {
+  width: 1.5px;
+  height: 14px;
+  margin-left: 1px;
+  border-radius: 1px;
+  background: currentColor;
+  animation: x-help-ask-caret 1s steps(1) infinite;
+}
+._x_extension_help_ask_demo_2026_unique_:is([data-phase="prefix"], [data-phase="question"]) ._x_extension_help_ask_demo_caret_2026_unique_ {
+  animation: none;
+}
+/* Floats at the right end so it never takes room from the typed text. */
+._x_extension_help_ask_demo_key_2026_unique_ {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  min-width: 30px;
+  padding: 2px 6px 1px;
+  border: 1px solid var(--panel-border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--menu-bg);
+  color: var(--panel-subtext);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(calc(-50% + 2px));
+  transition: opacity 160ms ease, transform 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+._x_extension_help_ask_demo_key_2026_unique_[data-visible="true"] {
+  opacity: 1;
+  transform: translateY(-50%);
+}
+._x_extension_help_ask_demo_key_2026_unique_[data-pressed="true"] {
+  border-bottom-width: 1px;
+  background: var(--control-hover-bg);
+  color: var(--panel-text);
+  transform: translateY(calc(-50% + 1px));
+}
+._x_extension_help_ask_demo_results_2026_unique_ {
+  position: relative;
+  margin-top: 6px;
+  padding: 4px;
+  border-radius: var(--lumno-radius-lg);
+  background: var(--menu-bg);
+}
+._x_extension_help_ask_demo_results_2026_unique_ ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+._x_extension_help_ask_demo_list_2026_unique_ {
+  position: absolute;
+  inset: 4px;
+}
+._x_extension_help_ask_demo_results_2026_unique_ li {
+  min-width: 0;
+  padding: 5px 6px;
+  border-radius: var(--lumno-radius-md, 6px);
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 1px;
+  align-items: center;
+}
+._x_extension_help_ask_demo_list_2026_unique_ > li {
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 200ms ease, transform 260ms ease;
+}
+._x_extension_help_ask_demo_results_2026_unique_[data-visible="true"] ._x_extension_help_ask_demo_list_2026_unique_ > li {
+  opacity: 1;
+  transform: none;
+  transition-delay: calc(var(--help-ask-demo-row, 0) * 90ms);
+}
+._x_extension_help_ask_demo_results_2026_unique_[data-visible="true"] ._x_extension_help_ask_demo_list_2026_unique_ > li:first-child {
+  background: var(--control-bg);
+}
+._x_extension_help_ask_demo_skeleton_2026_unique_ {
+  transition: opacity 160ms ease;
+}
+._x_extension_help_ask_demo_results_2026_unique_[data-visible="true"] ._x_extension_help_ask_demo_skeleton_2026_unique_ {
+  opacity: 0;
+}
+/* Bars the size of the rows they stand in for; they shimmer while the question is typed. */
+._x_extension_help_ask_demo_skeleton_2026_unique_ > li > span {
+  display: flex;
+  align-items: center;
+}
+._x_extension_help_ask_demo_skeleton_2026_unique_ > li > span::before {
+  content: "";
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--control-hover-bg);
+}
+._x_extension_help_ask_demo_skeleton_2026_unique_ > li > span:first-child::before {
+  width: 14px;
+  height: 14px;
+}
+._x_extension_help_ask_demo_skeleton_2026_unique_ ._x_extension_help_ask_demo_result_title_2026_unique_::before {
+  width: 42%;
+}
+._x_extension_help_ask_demo_skeleton_2026_unique_ ._x_extension_help_ask_demo_result_detail_2026_unique_::before {
+  width: 64%;
+  height: 6px;
+}
+._x_extension_help_ask_demo_skeleton_2026_unique_ > li:nth-child(2) ._x_extension_help_ask_demo_result_title_2026_unique_::before {
+  width: 56%;
+}
+._x_extension_help_ask_demo_2026_unique_[data-phase="question"] ._x_extension_help_ask_demo_skeleton_2026_unique_ > li > span::before {
+  animation: x-help-ask-skeleton 1.1s ease-in-out infinite;
+}
+._x_extension_help_ask_demo_result_title_2026_unique_,
+._x_extension_help_ask_demo_result_detail_2026_unique_ {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+._x_extension_help_ask_demo_result_title_2026_unique_ {
+  height: 16px;
+  color: var(--panel-text);
+  font-size: var(--lumno-font-size-sm);
+  font-weight: 600;
+  line-height: 16px;
+}
+._x_extension_help_ask_demo_result_detail_2026_unique_ {
+  grid-column: 2;
+  height: 15px;
+  color: var(--panel-subtext);
+  font-size: 11px;
+  line-height: 15px;
+}
+._x_extension_help_ask_caption_2026_unique_ {
+  margin: 8px 2px 0;
+  color: var(--panel-subtext);
+  font-size: var(--lumno-font-size-sm);
+  line-height: 1.5;
+}
+body[data-theme="dark"] ._x_extension_help_ask_demo_chip_2026_unique_ {
+  background: rgba(96, 165, 250, 0.14);
+  color: rgb(147, 187, 250);
+}
+@keyframes x-help-ask-skeleton {
+  50% { opacity: 0.45; }
+}
+@keyframes x-help-ask-caret {
+  50% { opacity: 0; }
+}
+@keyframes x-help-ask-chip-in {
+  from { opacity: 0; transform: scale(0.85); }
+}
+@media (prefers-reduced-motion: reduce) {
+  ._x_extension_help_ask_popover_2026_unique_,
+  ._x_extension_help_ask_demo_key_2026_unique_,
+  ._x_extension_help_ask_demo_skeleton_2026_unique_,
+  ._x_extension_help_ask_demo_list_2026_unique_ > li {
+    transition: none;
+  }
+  ._x_extension_help_ask_demo_caret_2026_unique_,
+  ._x_extension_help_ask_demo_chip_2026_unique_,
+  ._x_extension_help_ask_demo_skeleton_2026_unique_ > li > span::before {
+    animation: none !important;
+  }
 }
 body[data-theme="dark"] ._x_extension_feedback_support_action_2026_unique_ {
   --settings-button-color: var(--panel-subtext);
@@ -2346,14 +2688,28 @@ body[data-theme="dark"] ._x_extension_shortcut_secondary_2024_unique_ {
   ._x_extension_aggregate_search_source_grid_2026_unique_ {
     grid-template-columns: minmax(0, 1fr);
   }
-  /* The contact buttons drop under their description and start where it starts. */
+  ._x_extension_feedback_support_links_2026_unique_ {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  ._x_extension_feedback_support_link_2026_unique_ > i:last-child {
+    display: none;
+  }
+  /* The help center actions drop under the description and start where it starts. */
   ._x_extension_feedback_support_row_2026_unique_ {
     flex-wrap: wrap;
     row-gap: 6px;
   }
-  ._x_extension_feedback_support_links_2026_unique_ {
-    justify-content: flex-start;
+  ._x_extension_feedback_support_row_2026_unique_ > ._x_extension_feedback_support_copy_2026_unique_ {
+    flex-basis: 100%;
+  }
+  ._x_extension_help_ask_anchor_2026_unique_ {
     margin-left: -10px;
+  }
+  ._x_extension_help_ask_popover_2026_unique_ {
+    --x-extension-menu-surface-transform-origin: top left;
+    right: auto;
+    left: 0;
   }
   ._x_extension_settings_tabs_frame_2026_unique_ {
     width: 100%;

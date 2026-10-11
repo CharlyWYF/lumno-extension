@@ -19,6 +19,8 @@
       openExternalNewTabUrl,
       SHORTCUT_CONTEXT_MENU_REMOVE_VALUE,
       removeShortcutById,
+      BOOKMARK_CONTEXT_MENU_OPEN_GROUP_VALUE,
+      openBookmarkFolderTabGroupConfirmation,
       t,
       getShortcutContextMenuOptions,
       closeRecentContextMenu,
@@ -180,6 +182,15 @@
       }
       if (action === FOLDER_COLOR_CONTEXT_MENU_VALUE && shortcut.type === 'folder') {
         openFolderColorPicker(getShortcutFolderId(shortcut), shortcut.title, sourceElement);
+        return;
+      }
+      if (action === BOOKMARK_CONTEXT_MENU_OPEN_GROUP_VALUE && shortcut.type === 'folder') {
+        openBookmarkFolderTabGroupConfirmation({
+          isFolder: true,
+          bookmarkId: getShortcutFolderId(shortcut),
+          title: shortcut.title,
+          element: sourceElement
+        });
         return;
       }
       if (action === SHORTCUT_CONTEXT_MENU_EDIT_VALUE) {

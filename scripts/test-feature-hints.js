@@ -283,6 +283,19 @@ function flushMicrotasks() {
   assert.strictEqual(webdavHint.linkKey, 'newtab_webdav_feature_hint_link',
     'the WebDAV hint should link to its settings');
 
+  const helpCenterAskHint = featureHints.getFeatureHint('newtab-help-center-ask');
+  assert(helpCenterAskHint, 'the Help Center ask hint should be registered');
+  assert.strictEqual(helpCenterAskHint.introducedIn, '0.9.62',
+    'the Help Center ask hint should reach everyone updating to the release that added it');
+  assert.strictEqual(helpCenterAskHint.placement, 'above search input');
+  assert.strictEqual(helpCenterAskHint.arrowSide, 'bottom', 'the Help Center ask hint should point down at the input');
+  assert.strictEqual(helpCenterAskHint.arrowAlign, 'start', 'the Help Center ask hint should point where typing starts');
+  assert.strictEqual(helpCenterAskHint.dismissStorage, 'sync');
+  assert.strictEqual(helpCenterAskHint.rememberOnFirstShow, false,
+    'the Help Center ask hint should stay until it is closed or used');
+  assert.strictEqual(helpCenterAskHint.linkKey, 'newtab_help_center_ask_feature_hint_link',
+    'the Help Center ask hint should offer to enter the Help Center search');
+
   const wallpaperSourcesHint = featureHints.getFeatureHint('newtab-wallpaper-sources');
   assert(wallpaperSourcesHint, 'the new wallpapers hint should be registered');
   assert.strictEqual(wallpaperSourcesHint.introducedIn, '0.9.58');

@@ -242,11 +242,26 @@
   "settings_help_center_action": {
     "message": "開く"
   },
-  "settings_feedback_contact_title": {
-    "message": "不具合・要望"
+  "settings_help_center_ask_action": {
+    "message": "検索ボックスで質問"
   },
-  "settings_feedback_contact_desc": {
-    "message": "不具合や改善のアイデアは作者までお寄せください"
+  "settings_help_center_ask_caption": {
+    "message": "新しいタブまたはコマンドバーで lm と入力して Tab を押し、質問を入力します。"
+  },
+  "settings_help_center_ask_demo_query": {
+    "message": "ショートカットを変更したい"
+  },
+  "settings_help_center_ask_demo_result_1_title": {
+    "message": "キーボードショートカット"
+  },
+  "settings_help_center_ask_demo_result_1_detail": {
+    "message": "初期設定のショートカット"
+  },
+  "settings_help_center_ask_demo_result_2_title": {
+    "message": "Lumno にできないこと"
+  },
+  "settings_help_center_ask_demo_result_2_detail": {
+    "message": "設定ページでショートカットが効かない"
   },
   "settings_feedback_support_review_action": {
     "message": "Lumno を評価"
@@ -850,6 +865,18 @@
   },
   "newtab_webdav_feature_hint_close": {
     "message": "WebDAV のヒントを閉じる"
+  },
+  "newtab_help_center_ask_feature_hint_badge": {
+    "message": "新機能"
+  },
+  "newtab_help_center_ask_feature_hint_text": {
+    "message": "使い方がわからないときは、lm と入力して Tab を押し、ヘルプセンターに質問できます。"
+  },
+  "newtab_help_center_ask_feature_hint_link": {
+    "message": "試してみる"
+  },
+  "newtab_help_center_ask_feature_hint_close": {
+    "message": "ヘルプセンターのヒントを閉じる"
   },
   "newtab_ai_quick_jump_feature_hint_badge": {
     "message": "新機能"

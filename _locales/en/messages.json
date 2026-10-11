@@ -242,11 +242,26 @@
   "settings_help_center_action": {
     "message": "Open"
   },
-  "settings_feedback_contact_title": {
-    "message": "Bugs & ideas"
+  "settings_help_center_ask_action": {
+    "message": "Ask from the search box"
   },
-  "settings_feedback_contact_desc": {
-    "message": "Found a problem or have an idea? Let the author know."
+  "settings_help_center_ask_caption": {
+    "message": "In the New Tab or the command bar, type lm, press Tab, then write your question."
+  },
+  "settings_help_center_ask_demo_query": {
+    "message": "how to change a shortcut"
+  },
+  "settings_help_center_ask_demo_result_1_title": {
+    "message": "Keyboard shortcuts"
+  },
+  "settings_help_center_ask_demo_result_1_detail": {
+    "message": "Change a shortcut"
+  },
+  "settings_help_center_ask_demo_result_2_title": {
+    "message": "Shortcuts and bookmarks"
+  },
+  "settings_help_center_ask_demo_result_2_detail": {
+    "message": "Change a shortcut's icon"
   },
   "settings_feedback_support_review_action": {
     "message": "Rate Lumno"
@@ -850,6 +865,18 @@
   },
   "newtab_webdav_feature_hint_close": {
     "message": "Dismiss WebDAV tip"
+  },
+  "newtab_help_center_ask_feature_hint_badge": {
+    "message": "New"
+  },
+  "newtab_help_center_ask_feature_hint_text": {
+    "message": "Not sure how something works? Type lm, press Tab and ask the Help Center."
+  },
+  "newtab_help_center_ask_feature_hint_link": {
+    "message": "Try it"
+  },
+  "newtab_help_center_ask_feature_hint_close": {
+    "message": "Dismiss Help Center tip"
   },
   "newtab_ai_quick_jump_feature_hint_badge": {
     "message": "New"

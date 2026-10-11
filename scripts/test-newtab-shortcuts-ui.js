@@ -2391,6 +2391,18 @@ assertContains(
 );
 
 assertContains(
+  getFunctionSource(newtabJs, 'getShortcutContextMenuOptions'),
+  "label: t('bookmarks_open_in_new_tab_group', 'Open in new tab group')",
+  'shortcut folder context menu should offer opening the folder in a new tab group'
+);
+
+assertContains(
+  getFunctionSource(newtabJs, 'handleShortcutContextMenuAction'),
+  'openBookmarkFolderTabGroupConfirmation({',
+  'shortcut folder tab group action should reuse the bookmark folder confirmation'
+);
+
+assertContains(
   newtabJs,
   "label: t('shortcuts_remove', 'Remove')",
   'shortcut context menu should include a Remove action'

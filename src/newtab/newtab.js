@@ -651,6 +651,7 @@
   let updateNoticeController = null;
   let engagementNoticeController = null;
   let webdavFeatureHintController = null;
+  let helpCenterAskHintController = null;
   let pageNoticeController = null;
   let newtabTopContentMode = 'brand';
   let newtabTimeFontWeight = NEWTAB_TIME_FONT_WEIGHT_DEFAULT;
@@ -745,6 +746,8 @@
     openExternalNewTabUrl: (...args) => openExternalNewTabUrl(...args),
     SHORTCUT_CONTEXT_MENU_REMOVE_VALUE,
     removeShortcutById: (...args) => removeShortcutById(...args),
+    BOOKMARK_CONTEXT_MENU_OPEN_GROUP_VALUE,
+    openBookmarkFolderTabGroupConfirmation: (...args) => openBookmarkFolderTabGroupConfirmation(...args),
     t,
     getShortcutContextMenuOptions,
     closeRecentContextMenu: (...args) => closeRecentContextMenu(...args),
@@ -1551,6 +1554,9 @@
       },
       get webdavFeatureHintController() {
         return webdavFeatureHintController;
+      },
+      get helpCenterAskHintController() {
+        return helpCenterAskHintController;
       },
       get inputParts() {
         return inputParts;
@@ -4641,6 +4647,11 @@
       return [
         { action: NEWTAB_CONTEXT_MENU_OPEN_VALUE, value: NEWTAB_CONTEXT_MENU_OPEN_VALUE,
           label: t('newtab_shortcuts_open_folder', 'Open folder') },
+        { action: BOOKMARK_CONTEXT_MENU_OPEN_GROUP_VALUE, value: BOOKMARK_CONTEXT_MENU_OPEN_GROUP_VALUE,
+          label: t('bookmarks_open_in_new_tab_group', 'Open in new tab group'),
+          disabled: NEWTAB_BOOKMARKS_STORE.collectFolderBookmarkUrls(
+            bookmarksRuntime.getNode(getShortcutFolderId(shortcut))
+          ).length <= 0 },
         { action: SHORTCUT_CONTEXT_MENU_EDIT_VALUE, value: SHORTCUT_CONTEXT_MENU_EDIT_VALUE,
           label: t('folder_rename', 'Rename'), dividerBefore: true },
         { action: FOLDER_COLOR_CONTEXT_MENU_VALUE, value: FOLDER_COLOR_CONTEXT_MENU_VALUE,
@@ -7338,6 +7349,60 @@
       returnFocus: document.activeElement
     });
   }
+  // Above the search input, new installs and people updating to this version learn that the
+  // Help Center answers questions here (lm + Tab). It stays until closed or until they ask one,
+  // and only while the Help Center site search is enabled. Resolves to whether it is showing.
+  let helpCenterAskProvider = null;
+  const helpCenterAskHintSettled = (() => {
+    if (typeof FEATURE_HINTS.createFeatureHint !== 'function' ||
+        document.documentElement.getAttribute('data-nt-focus-route-pending') === 'true') {
+      return newtabEntryAnimationReadyPromise.then(() => false);
+    }
+    helpCenterAskHintController = FEATURE_HINTS.createFeatureHint({
+      documentObj: document,
+      windowObj: window,
+      chromeApi: chrome,
+      definition: 'newtab-help-center-ask',
+      visibilityGate: newtabEntryAnimationReadyPromise,
+      initiallyVisible: false,
+      t,
+      getRiSvg,
+      onLinkClick() {
+        dismissHelpCenterAskHint();
+        if (helpCenterAskProvider) {
+          activateSiteSearch(helpCenterAskProvider);
+        }
+        inputParts.input.focus({ preventScroll: true });
+      }
+    });
+    if (!helpCenterAskHintController || !helpCenterAskHintController.element) {
+      return newtabEntryAnimationReadyPromise.then(() => false);
+    }
+    inputParts.container.appendChild(helpCenterAskHintController.element);
+    const providerReady = getSiteSearchProviders()
+      .then((items) => (Array.isArray(items) ? items : [])
+        .find((item) => SEARCH_UTILS.isHelpCenterSiteSearchProvider(item)) || null)
+      .catch(() => null);
+    return Promise.all([providerReady, helpCenterAskHintController.ready]).then(([provider]) => {
+      helpCenterAskProvider = provider;
+      helpCenterAskHintController.setVisible(Boolean(provider));
+      return helpCenterAskHintController.isVisible();
+    });
+  })();
+
+  function dismissHelpCenterAskHint() {
+    if (helpCenterAskHintController && !helpCenterAskHintController.isDismissed()) {
+      helpCenterAskHintController.dismiss();
+    }
+  }
+
+  inputParts.input.addEventListener('input', function() {
+    // Typing a question in the Help Center search means the tip has done its job.
+    if (siteSearchState && SEARCH_UTILS.isHelpCenterSiteSearchProvider(siteSearchState)) {
+      dismissHelpCenterAskHint();
+    }
+  });
+
   inputParts.input.addEventListener('input', function() {
     if (!String(inputParts.input.value || '').trim() ||
         !engagementNoticeController ||
@@ -7379,6 +7444,7 @@
       window.open(optionsUrl, '_blank');
     });
     // Above the settings icon, point to WebDAV sync under Account & sync until it is dismissed.
+    // It shares the space above the input with the Help Center tip, so it waits its turn.
     if (typeof FEATURE_HINTS.createFeatureHint === 'function' &&
         document.documentElement.getAttribute('data-nt-focus-route-pending') !== 'true') {
       webdavFeatureHintController = FEATURE_HINTS.createFeatureHint({
@@ -7386,7 +7452,8 @@
         windowObj: window,
         chromeApi: chrome,
         definition: 'newtab-webdav-sync',
-        visibilityGate: newtabEntryAnimationReadyPromise,
+        visibilityGate: helpCenterAskHintSettled,
+        initiallyVisible: false,
         t,
         getRiSvg,
         onLinkClick(event) {
@@ -7400,6 +7467,11 @@
       });
       if (webdavFeatureHintController && webdavFeatureHintController.element) {
         inputParts.container.appendChild(webdavFeatureHintController.element);
+        helpCenterAskHintSettled.then((helpTipShowing) => {
+          if (!helpTipShowing && webdavFeatureHintController) {
+            webdavFeatureHintController.setVisible(true);
+          }
+        });
       }
     }
   }

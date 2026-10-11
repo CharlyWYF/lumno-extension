@@ -94,6 +94,10 @@
           typeof pageState.webdavFeatureHintController.updateLanguage === 'function') {
         pageState.webdavFeatureHintController.updateLanguage();
       }
+      if (pageState.helpCenterAskHintController &&
+          typeof pageState.helpCenterAskHintController.updateLanguage === 'function') {
+        pageState.helpCenterAskHintController.updateLanguage();
+      }
       if (pageState.inputParts && pageState.inputParts.input) {
         pageState.defaultPlaceholderText = t('search_placeholder', pageState.defaultPlaceholderText);
         if (!pageState.siteSearchState && !pageState.localSearchScopeState) {

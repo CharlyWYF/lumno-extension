@@ -139,11 +139,12 @@ const assertWithinBudget = (actualBytes, budgetKiB, label) => {
 // growth since 0.9.44 and the WebDAV connection cards; the total rises by the
 // same amount so it stays consistent with the per-page ceilings.
 // New Tab moved to 386 KiB at 0.9.61 for the shared search input clear button.
+// The total moved to 776 KiB at 0.9.62 for the Help Center ask demo in Options.
 const bundleBudgets = {
   newtab: { uncompressed: 386, gzip: 115 },
   options: { uncompressed: 290, gzip: 85 },
   overlay: { uncompressed: 271, gzip: 82 },
-  total: { uncompressed: 772, gzip: 225 }
+  total: { uncompressed: 776, gzip: 225 }
 };
 
 const retiredNewtabRendererScripts = [

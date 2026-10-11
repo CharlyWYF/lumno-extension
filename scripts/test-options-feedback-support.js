@@ -36,14 +36,14 @@ assert.ok(
   'feedback support should appear above global settings'
 );
 assert.match(
-  feedbackReact,
-  /_x_extension_setting_row_2024_unique_ _x_extension_feedback_support_row_2026_unique_[\s\S]*?_x_extension_setting_title_2024_unique_[\s\S]*?_x_extension_setting_desc_2024_unique_/,
-  'feedback support should use the same title, description and right-side action rows as other settings'
+  optionsHtml,
+  /\._x_extension_feedback_support_links_2026_unique_ \{[\s\S]*?display: grid;[\s\S]*?grid-auto-flow: column;[\s\S]*?grid-auto-columns: minmax\(0, 1fr\)/,
+  'feedback channels should sit in one row of equal-width tiles'
 );
 assert.match(
   optionsHtml,
-  /\._x_extension_shortcut_submit_2024_unique_\._x_extension_feedback_support_action_2026_unique_ \{[\s\S]*?--settings-button-bg: transparent;/,
-  'feedback actions should be quiet text buttons with no resting surface'
+  /\._x_extension_feedback_support_link_2026_unique_ \{[\s\S]*?background: var\(--feedback-support-link-bg\)/,
+  'feedback channels should keep their filled tile surface'
 );
 assert.match(
   feedbackReact,
@@ -52,8 +52,8 @@ assert.match(
 );
 assert.match(
   feedbackReact,
-  /item\.iconClass[\s\S]*?<span data-i18n=\{item\.labelKey\}>\{item\.label\}<\/span>/,
-  'every feedback entry should keep its channel icon before its label'
+  /item\.iconClass[\s\S]*?<span data-i18n=\{item\.labelKey\}>\{item\.label\}<\/span>[\s\S]*?ri-size-14 ri-external-link-line/,
+  'every feedback entry should keep its channel icon, label and external-link mark'
 );
 [
   'community',
@@ -131,5 +131,33 @@ locales.forEach((locale) => {
   const messages = JSON.parse(fs.readFileSync(path.join(repoRoot, `_locales/${locale}/messages.json`), 'utf8'));
   assert.ok(!messages.settings_feedback_support_discord_action, `${locale} should no longer carry Discord copy`);
 });
+
+// The "ask in the search box" demo follows the Help Center site search (lm): hidden until the
+// providers load, hidden while lm is off, and refreshed whenever the site search list changes.
+assert.match(
+  optionsJs,
+  /let helpCenterSearchEnabled = null;/,
+  'the Help Center ask demo should stay hidden until the site search providers have loaded'
+);
+assert.match(
+  optionsJs,
+  /ask: helpCenterSearchEnabled !== true \? null : \{/,
+  'the Help Center ask demo should only render while the lm site search is on'
+);
+assert.match(
+  optionsJs,
+  /function syncHelpCenterSearchEnabled\(\)[\s\S]*?getActiveBuiltinSiteSearchProviders\([\s\S]*?disabledSiteSearchKeys[\s\S]*?isHelpCenterSiteSearchProvider[\s\S]*?renderFeedbackSupport\(\)/,
+  'turning lm off or on should re-render the feedback section'
+);
+assert.match(
+  optionsJs,
+  /function renderSiteSearchList\(\) \{\s*syncHelpCenterSearchEnabled\(\);/,
+  'every site search list update should re-check the Help Center site search'
+);
+assert.match(
+  optionsJs,
+  /function refreshSiteSearchProviders\(\) \{\s*syncHelpCenterSearchEnabled\(\);/,
+  'site search changes that skip the list render should still re-check the Help Center site search'
+);
 
 console.log('options feedback support tests passed');

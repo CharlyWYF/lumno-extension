@@ -95,6 +95,30 @@
       linkFallback: 'Set up',
       closeLabelKey: 'newtab_webdav_feature_hint_close',
       closeLabelFallback: 'Dismiss WebDAV tip'
+    }),
+    // New installs and everyone updating to this version see it until they close it or ask a question.
+    NEWTAB_HELP_CENTER_ASK: Object.freeze({
+      id: 'newtab-help-center-ask',
+      introducedIn: '0.9.62',
+      surface: 'newtab',
+      placement: 'above search input',
+      className: 'x-lumno-feature-hint--newtab-help-center-ask',
+      arrowSide: 'bottom',
+      arrowAlign: 'start',
+      widthMode: 'content',
+      alignMode: 'auto',
+      dismissStorage: 'sync',
+      rememberOnFirstShow: false,
+      roundedArrowTip: true,
+      badgeIcon: 'ri-asterisk',
+      badgeKey: 'newtab_help_center_ask_feature_hint_badge',
+      badgeFallback: 'New',
+      textKey: 'newtab_help_center_ask_feature_hint_text',
+      textFallback: 'Not sure how something works? Type lm, press Tab and ask the Help Center.',
+      linkKey: 'newtab_help_center_ask_feature_hint_link',
+      linkFallback: 'Try it',
+      closeLabelKey: 'newtab_help_center_ask_feature_hint_close',
+      closeLabelFallback: 'Dismiss Help Center tip'
     })
   });
 

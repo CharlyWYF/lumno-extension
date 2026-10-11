@@ -86,7 +86,12 @@ assert.deepStrictEqual(helpCenterSearch.getExactTerms('how do I change the short
 assert.deepStrictEqual(helpCenterSearch.getExactTerms('怎么'), ['怎么'], 'a query made only of filler words is kept as typed');
 assert.deepStrictEqual(
   helpCenterSearch.searchIndex(shortcutIndex, '怎么改快捷键', { origin: ORIGIN }),
-  [{ title: '快捷键', detail: '修改快捷键', url: `${ORIGIN}/help/keyboard-shortcuts/#change` }],
+  [{
+    title: '快捷键',
+    detail: '修改快捷键',
+    context: [{ kind: 'text', text: '下面是默认快捷键和修改方法。' }],
+    url: `${ORIGIN}/help/keyboard-shortcuts/#change`
+  }],
   'a question should match the heading that answers it'
 );
 assert.strictEqual(
@@ -98,6 +103,7 @@ assert.deepStrictEqual(
   [{
     title: '快捷键',
     detail: '下面是默认快捷键和修改方法。',
+    context: [{ kind: 'text', text: '下面是默认快捷键和修改方法。' }],
     url: `${ORIGIN}/help/keyboard-shortcuts/`,
     recommended: true
   }],
@@ -148,7 +154,12 @@ assert.strictEqual(
 );
 assert.deepStrictEqual(
   helpCenterSearch.searchIndex(aliasIndex, '晚上太亮', { origin: ORIGIN })[0],
-  { title: '外观', detail: '深色模式', url: `${ORIGIN}/help/appearance/#theme` },
+  {
+    title: '外观',
+    detail: '深色模式',
+    context: [{ kind: 'text', text: '在设置中切换浅色、深色或跟随系统。' }],
+    url: `${ORIGIN}/help/appearance/#theme`
+  },
   'a section alias opens its section but shows the real heading, never the alias'
 );
 assert.strictEqual(
@@ -312,6 +323,7 @@ function testSuggestionSource() {
     title: '新标签页的壁纸与外观',
     detail: '滤镜',
     url: `${ORIGIN}/help/newtab-wallpaper/`,
+    context: [],
     favicon: 'tile.png',
     recommended: false
   }]);

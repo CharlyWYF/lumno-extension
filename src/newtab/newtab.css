@@ -3725,13 +3725,15 @@ body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:active {
   transform: scale(1);
 }
 .x-nt-feedback-control[data-detail-open="true"] .x-nt-feedback-popover {
+  --x-nt-feedback-detail-inset: 10px;
+  --x-nt-feedback-detail-radius: 16px;
   width: 264px;
   height: min(
     422px,
     calc(100dvh - 84px - var(--x-nt-top-occupied-inset, 0px))
   );
-  padding: 10px;
-  border-radius: 16px;
+  padding: var(--x-nt-feedback-detail-inset);
+  border-radius: var(--x-nt-feedback-detail-radius);
   overflow: hidden;
 }
 .x-nt-feedback-menu {
@@ -3946,7 +3948,8 @@ body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:active {
   height: auto;
   max-height: min(360px, calc(100vh - 142px));
   max-height: min(360px, calc(100dvh - 142px));
-  border-radius: var(--lumno-radius-xl);
+  /* Concentric with the popover: its radius minus the inset around the image. */
+  border-radius: calc(var(--x-nt-feedback-detail-radius, 16px) - var(--x-nt-feedback-detail-inset, 10px));
   object-fit: contain;
   background: #f2f4f8;
 }
