@@ -120,6 +120,7 @@
   const simpleModeToggle = document.getElementById('_x_extension_simple_mode_toggle_2026_unique_');
   const numberShortcutInstantToggle = document.getElementById('_x_extension_number_shortcut_instant_toggle_2026_unique_');
   const progressTrackingToggle = document.getElementById('_x_extension_progress_tracking_toggle_2026_unique_');
+  const newtabOpenInNewTabToggles = Array.from(document.querySelectorAll('input[data-newtab-open-in-new-tab-surface]'));
   const macosCtrlSuggestionNavigationToggle = document.getElementById('_x_extension_macos_ctrl_suggestion_navigation_toggle_2026_unique_');
   const fallbackShortcutInput = document.getElementById('_x_extension_shortcuts_input_2024_unique_');
   const fallbackShortcutTokens = document.getElementById('_x_extension_shortcuts_tokens_2024_unique_');
@@ -337,6 +338,7 @@
     [overlayTabQuickSwitchToggle, 'overlay-tab-quick-switch'],
     [newtabTimeSecondsToggle, 'newtab-time-seconds'],
     [newtabInputAutoFocusToggle, 'newtab-input-auto-focus'],
+    ...newtabOpenInNewTabToggles.map((input) => [input, 'newtab-open-in-new-tab']),
     [newtabShortcutsToggle, 'newtab-shortcuts'],
     [newtabShortcutAddToggle, 'newtab-shortcut-add'],
     [newtabShortcutDockMagnificationToggle, 'newtab-shortcut-dock-magnification'],
@@ -947,6 +949,8 @@
     '_x_extension_newtab_quote_prefs_2026_unique_';
   const PROGRESS_TRACKING_ENABLED_STORAGE_KEY = SETTINGS.PROGRESS_TRACKING_ENABLED_STORAGE_KEY ||
     '_x_extension_progress_tracking_enabled_2026_unique_';
+  const NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY = SETTINGS.NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY ||
+    '_x_extension_newtab_open_in_new_tab_2026_unique_';
   const SYNC_KEYS = [
     THEME_STORAGE_KEY,
     LANGUAGE_STORAGE_KEY,
@@ -1017,6 +1021,7 @@
     AGGREGATE_SEARCH_STORAGE_KEY,
     AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY,
     PROGRESS_TRACKING_ENABLED_STORAGE_KEY,
+    NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY,
     SEARCH_BLACKLIST_STORAGE_KEY,
     FAVICON_REQUEST_BLACKLIST_STORAGE_KEY,
     FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY,
@@ -4860,6 +4865,26 @@
       storageArea.set({ [PROGRESS_TRACKING_ENABLED_STORAGE_KEY]: next });
     });
   }
+  function setNewtabOpenInNewTabState(value) {
+    const normalized = SETTINGS.normalizeNewtabOpenInNewTab(value);
+    newtabOpenInNewTabToggles.forEach((input) => {
+      setOptionsToggleState(input, normalized[input.getAttribute('data-newtab-open-in-new-tab-surface')]);
+    });
+  }
+  newtabOpenInNewTabToggles.forEach((input) => {
+    input.addEventListener('change', () => {
+      const next = {};
+      newtabOpenInNewTabToggles.forEach((item) => {
+        next[item.getAttribute('data-newtab-open-in-new-tab-surface')] = Boolean(item.checked);
+      });
+      const normalized = SETTINGS.normalizeNewtabOpenInNewTab(next);
+      setNewtabOpenInNewTabState(normalized);
+      if (!storageArea) {
+        return;
+      }
+      storageArea.set({ [NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY]: normalized });
+    });
+  });
   if (numberShortcutInstantToggle) {
     numberShortcutInstantToggle.addEventListener('change', () => {
       const next = normalizeNumberShortcutInstantEnabled(numberShortcutInstantToggle.checked);
@@ -5647,6 +5672,9 @@
           SETTINGS.normalizeProgressTrackingEnabled(result[PROGRESS_TRACKING_ENABLED_STORAGE_KEY])
         );
       }
+    });
+    storageArea.get([NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY], (result) => {
+      setNewtabOpenInNewTabState(result[NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY]);
     });
     storageArea.get([NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY], (result) => {
       const rawValue = result[NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY];
@@ -7781,6 +7809,9 @@
         progressTrackingToggle,
         SETTINGS.normalizeProgressTrackingEnabled(changes[PROGRESS_TRACKING_ENABLED_STORAGE_KEY].newValue)
       );
+    }
+    if (changes[NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY]) {
+      setNewtabOpenInNewTabState(changes[NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY].newValue);
     }
     if (changes[NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY] && numberShortcutInstantToggle) {
       const raw = changes[NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY].newValue;

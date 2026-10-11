@@ -9,6 +9,7 @@
       SEARCH_UTILS,
       SUGGESTION_ACTION_MODEL,
       isBackgroundOpenEvent,
+      getSurfaceOpenDisposition,
       recordSearchSuggestionSelection,
       navigateToUrl
     } = deps;
@@ -186,16 +187,26 @@
       return shouldOpenSearchResultInBackgroundTab(event) ? 'backgroundTab' : 'newTab';
     }
 
+    // Option/Alt keeps a result in the current tab even when search results
+    // are set to open in a new tab.
+    function getSearchResultDisposition(event) {
+      if (event && event.altKey) {
+        return 'currentTab';
+      }
+      return getSurfaceOpenDisposition('search', shouldOpenSearchResultInBackgroundTab(event));
+    }
+
     function openSearchResultUrl(suggestion, query, event) {
       if (!suggestion || !suggestion.url) {
         return false;
       }
       recordSearchSuggestionSelection(suggestion, query);
-      if (shouldOpenSearchResultInBackgroundTab(event)) {
+      const disposition = getSearchResultDisposition(event);
+      if (disposition !== 'currentTab') {
         chrome.runtime.sendMessage({
           action: 'createTab',
           url: suggestion.url,
-          disposition: 'backgroundTab'
+          disposition
         });
         return true;
       }
@@ -285,6 +296,7 @@
       getMatchedOpenTabIdForSuggestion,
       shouldSwitchMatchedTabSuggestion,
       shouldOpenSearchResultInBackgroundTab,
+      getSearchResultDisposition,
       openSearchResultUrl,
       openMatchedTabSuggestion,
       refreshTabsForSearchContext,

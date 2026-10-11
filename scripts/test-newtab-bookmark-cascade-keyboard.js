@@ -502,13 +502,16 @@ async function flushPromises() {
   levels = documentObj.body.querySelectorAll('.x-nt-bookmark-cascade-level');
   rootItems = getMenuItems(levels[0]);
   rootItems[2].dispatchEvent(createFakeEvent('click'));
-  assert.deepStrictEqual(
-    openUrlCalls[0],
-    {
-      url: 'https://example.com/archive',
-      options: { openInBackgroundTab: false }
-    },
+  assert.strictEqual(
+    openUrlCalls[0].url,
+    'https://example.com/archive',
     'clicking a leaf inside the folder menu should open its bookmark'
+  );
+  assert.strictEqual(openUrlCalls[0].options.openInBackgroundTab, false);
+  assert.strictEqual(
+    openUrlCalls[0].options.anchor,
+    anchor,
+    'the opened bookmark should carry the menu anchor even though the menu closes first'
   );
   assert.strictEqual(
     runtime.isOpen(),
@@ -521,12 +524,10 @@ async function flushPromises() {
   levels = documentObj.body.querySelectorAll('.x-nt-bookmark-cascade-level');
   rootItems = getMenuItems(levels[0]);
   rootItems[2].dispatchEvent(createFakeEvent('auxclick', { button: 1 }));
-  assert.deepStrictEqual(
-    openUrlCalls[1],
-    {
-      url: 'https://example.com/archive',
-      options: { openInBackgroundTab: true }
-    },
+  assert.strictEqual(openUrlCalls[1].url, 'https://example.com/archive');
+  assert.strictEqual(
+    openUrlCalls[1].options.openInBackgroundTab,
+    true,
     'middle-clicking a leaf should open it in the background'
   );
   assert.strictEqual(

@@ -186,6 +186,8 @@
     '_x_extension_newtab_feedback_button_visible_2026_unique_';
   const NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY = SETTINGS.NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY ||
     '_x_extension_newtab_appearance_button_visible_2026_unique_';
+  const NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY = SETTINGS.NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY ||
+    '_x_extension_newtab_open_in_new_tab_2026_unique_';
   const NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY = SETTINGS.NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY ||
     '_x_extension_number_shortcut_instant_enabled_2026_unique_';
   const MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY =
@@ -3228,6 +3230,7 @@
   let enabledSearchResultSourceTypes = ['topSite', 'bookmark', 'history'];
   let searchResultDisplayLimit = 10;
   let openTabQuickSwitchEnabled = true;
+  let newtabOpenInNewTab = SETTINGS.normalizeNewtabOpenInNewTab(null);
   let searchInputRef = null;
   let faviconRequestBlacklistItems = [];
   let faviconEnhancedFetchEnabled = false;
@@ -3263,6 +3266,11 @@
         if (latestQuery) {
           renderSuggestions(lastSuggestionResponse, latestQuery);
         }
+      }
+      if (changes[NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY]) {
+        newtabOpenInNewTab = SETTINGS.normalizeNewtabOpenInNewTab(
+          changes[NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY].newValue
+        );
       }
       if (changes[NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY]) {
         numberShortcutInstantEnabled = normalizeNumberShortcutInstantEnabled(
@@ -3595,6 +3603,7 @@
     isMiddleClick,
     isBackgroundOpenEvent,
     getOpenDisposition,
+    getSurfaceOpenDisposition,
     openExternalNewTabUrl,
     openUrlFromNewtabCard,
     openShortcutUrl,
@@ -3615,6 +3624,9 @@
     pageState: {
       get numberShortcutInstantEnabled() {
         return numberShortcutInstantEnabled;
+      },
+      get newtabOpenInNewTab() {
+        return newtabOpenInNewTab;
       },
       get latestRawQuery() {
         return latestRawQuery;
@@ -5041,7 +5053,7 @@
     copyUrl: copyBookmarkUrl,
     onItemContextMenu: handleBookmarkItemContextMenu,
     navigateToUrl,
-    openUrl: openUrlFromNewtabCard
+    openUrl: (url, options) => openUrlFromNewtabCard(url, { ...options, surface: 'bookmarks' })
   });
   bookmarkCascadeRuntime = NEWTAB_BOOKMARK_CASCADE_MENU.createBookmarkCascadeMenuRuntime({
     documentObj: document,
@@ -5071,7 +5083,11 @@
       return bookmarksRuntime.getFolderItems(folderId);
     },
     navigateToUrl,
-    openUrl: openUrlFromNewtabCard,
+    // Folder shortcuts open their bookmarks as shortcuts.
+    openUrl: (url, options) => openUrlFromNewtabCard(url, {
+      ...options,
+      surface: isShortcutFolderAnchor(options && options.anchor) ? 'shortcuts' : 'bookmarks'
+    }),
     shouldSuppressHover: shouldSuppressBookmarkHover,
     bindCursorTooltip,
     hideCursorTooltip,
@@ -5176,7 +5192,7 @@
     navigateToUrl,
     bindCursorTooltip,
     hideCursorTooltip,
-    openUrl: openUrlFromNewtabCard,
+    openUrl: (url, options) => openUrlFromNewtabCard(url, { ...options, surface: 'recentSites' }),
     togglePinned: togglePinnedRecentSite,
     onItemContextMenu: handleRecentCardContextMenu,
     getProgressState: getRecentProgressState,
@@ -6211,6 +6227,7 @@
     getMatchedOpenTabIdForSuggestion,
     shouldSwitchMatchedTabSuggestion,
     shouldOpenSearchResultInBackgroundTab,
+    getSearchResultDisposition,
     openSearchResultUrl,
     openMatchedTabSuggestion,
     refreshTabsForSearchContext,
@@ -6223,6 +6240,7 @@
     SEARCH_UTILS,
     SUGGESTION_ACTION_MODEL,
     isBackgroundOpenEvent,
+    getSurfaceOpenDisposition,
     recordSearchSuggestionSelection,
     navigateToUrl,
     pageState: {
@@ -6272,6 +6290,7 @@
     openMatchedTabSuggestion,
     runSiteSearchProviderQuery,
     shouldOpenSearchResultInBackgroundTab,
+    getSearchResultDisposition,
     openSearchResultUrl,
     navigateToQuery,
     suggestionsContainer,
@@ -6609,6 +6628,19 @@
     }
   });
 
+  // Result labels follow where a plain click goes: 「前往」 in this tab, 「新开」 in a new one.
+  const newtabSuggestionActionModel = Object.assign({}, SUGGESTION_ACTION_MODEL, {
+    createSearchActionModel(input) {
+      const openInNewTab = newtabOpenInNewTab.search === true;
+      const model = SUGGESTION_ACTION_MODEL.createSearchActionModel({
+        ...input,
+        enterAction: openInNewTab ? 'openNewTab' : 'go'
+      });
+      return !openInNewTab && model.visitButtonAction === 'openNewTab'
+        ? { ...model, visitButtonAction: 'go' }
+        : model;
+    }
+  });
   suggestionsView = NEWTAB_SUGGESTIONS_VIEW.createSuggestionsView({
     document,
     container: suggestionsContainer,
@@ -6674,7 +6706,7 @@
     getDefaultSearchEngineThemeUrl,
     getBrandAccentForUrl,
     buildThemeFromAccent,
-    actionModel: SUGGESTION_ACTION_MODEL,
+    actionModel: newtabSuggestionActionModel,
     shouldSwitchMatchedTabSuggestion,
     defaultTheme,
     urlHighlightTheme,
@@ -6989,7 +7021,7 @@
           return runSiteSearchProviderQuery(
             selectedSuggestion.provider,
             selectedSuggestion.searchQuery,
-            shouldOpenSearchResultInBackgroundTab(event) ? 'backgroundTab' : 'currentTab'
+            getSearchResultDisposition(event)
           );
         }
         if (shouldSwitchMatchedTabSuggestion(selectedSuggestion, activeSuggestionIndex)) {
@@ -7000,7 +7032,7 @@
           return openSearchResultUrl(selectedSuggestion, query, event);
         }
         if (selectedSuggestion.forceSearch && selectedSuggestion.searchQuery) {
-          navigateToQuery(selectedSuggestion.searchQuery, true);
+          navigateToQuery(selectedSuggestion.searchQuery, true, getSearchResultDisposition(event));
           return true;
         }
         if (selectedSuggestion.url) {
@@ -7031,7 +7063,7 @@
         if (runSiteSearchProviderQuery(
           siteSearchState,
           query,
-          shouldOpenSearchResultInBackgroundTab(event) ? 'backgroundTab' : 'currentTab'
+          getSearchResultDisposition(event)
         )) {
           return;
         }
@@ -7043,7 +7075,7 @@
           if (runSiteSearchProviderQuery(
             inlineSearchState.provider,
             inlineSearchState.query,
-            shouldOpenSearchResultInBackgroundTab(event) ? 'backgroundTab' : 'currentTab'
+            getSearchResultDisposition(event)
           )) {
             return;
           }
@@ -7065,7 +7097,6 @@
         return;
       }
       resolveQuickNavigation(query).then((targetUrl) => {
-        const backgroundOpen = shouldOpenSearchResultInBackgroundTab(event);
         if (targetUrl) {
           openSearchResultUrl({
             url: targetUrl,
@@ -7074,15 +7105,7 @@
           }, query, event);
           return;
         }
-        if (backgroundOpen) {
-          chrome.runtime.sendMessage({
-            action: 'searchOrNavigate',
-            query: query,
-            disposition: 'backgroundTab'
-          });
-          return;
-        }
-        navigateToQuery(query);
+        navigateToQuery(query, false, getSearchResultDisposition(event));
       });
     }
   });
@@ -7501,7 +7524,8 @@
       SEARCH_RESULT_PRIORITY_STORAGE_KEY,
       SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY,
       SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY,
-      OVERLAY_TAB_PRIORITY_STORAGE_KEY
+      OVERLAY_TAB_PRIORITY_STORAGE_KEY,
+      NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY
     ], (result) => {
       const raw = result ? result[SEARCH_RESULT_PRIORITY_STORAGE_KEY] : null;
       const nextMode = normalizeSearchResultPriority(raw);
@@ -7513,6 +7537,9 @@
       searchResultDisplayLimit = normalizeSearchResultDisplayLimit(rawDisplayLimit);
       openTabQuickSwitchEnabled = normalizeOverlayTabPriorityMode(
         result ? result[OVERLAY_TAB_PRIORITY_STORAGE_KEY] : null
+      );
+      newtabOpenInNewTab = SETTINGS.normalizeNewtabOpenInNewTab(
+        result ? result[NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY] : null
       );
       if (raw !== nextMode) {
         storageArea.set({ [SEARCH_RESULT_PRIORITY_STORAGE_KEY]: nextMode });

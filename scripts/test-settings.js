@@ -19,7 +19,7 @@ assert.strictEqual(settings.addStorageChangeListener({
   storage: { onChanged: { addListener() {} } }
 }, null), false);
 
-assert.strictEqual(settings.CHROME_SYNC_STORAGE_KEYS.length, 73);
+assert.strictEqual(settings.CHROME_SYNC_STORAGE_KEYS.length, 74);
 assert.strictEqual(
   new Set(settings.CHROME_SYNC_STORAGE_KEYS).size,
   settings.CHROME_SYNC_STORAGE_KEYS.length
@@ -69,6 +69,25 @@ assert(!settings.CHROME_SYNC_STORAGE_KEYS.includes('_x_extension_newtab_local_wa
 assert.strictEqual(settings.normalizeNewtabInputAutoFocusEnabled(undefined), false);
 assert.strictEqual(settings.normalizeNewtabInputAutoFocusEnabled(true), true);
 assert.strictEqual(settings.normalizeNewtabInputAutoFocusEnabled(false), false);
+assert(settings.CHROME_SYNC_STORAGE_KEYS.includes(settings.NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY));
+assert.deepStrictEqual(settings.normalizeNewtabOpenInNewTab(undefined), {
+  search: false,
+  shortcuts: false,
+  bookmarks: false,
+  recentSites: false
+});
+assert.deepStrictEqual(settings.normalizeNewtabOpenInNewTab({ search: true, bookmarks: 'true', extra: true }), {
+  search: true,
+  shortcuts: false,
+  bookmarks: false,
+  recentSites: false
+});
+assert.deepStrictEqual(settings.normalizeNewtabOpenInNewTab(['search']), {
+  search: false,
+  shortcuts: false,
+  bookmarks: false,
+  recentSites: false
+});
 assert.strictEqual(settings.normalizeSimpleModeEnabled(undefined), false);
 assert.strictEqual(settings.normalizeSimpleModeEnabled(false), false);
 assert.strictEqual(settings.normalizeSimpleModeEnabled(true), true);

@@ -3110,6 +3110,24 @@
   "settings_progress_tracking_desc": {
     "message": "ドラマや小説を固定すると、次の話や章に進んだときにカードも自動で追従し、次回は続きから開けます"
   },
+  "settings_newtab_open_in_new_tab_title": {
+    "message": "新しいタブで開く"
+  },
+  "settings_newtab_open_in_new_tab_desc": {
+    "message": "オンにした項目はクリックすると新しいタブで開いて切り替わり、オフの項目は現在のタブで開きます。Command/Ctrl を押しながらクリック、または中クリックすると常にバックグラウンドで開きます。"
+  },
+  "settings_newtab_open_in_new_tab_search": {
+    "message": "検索結果"
+  },
+  "settings_newtab_open_in_new_tab_shortcuts": {
+    "message": "ショートカット"
+  },
+  "settings_newtab_open_in_new_tab_bookmarks": {
+    "message": "ブックマーク"
+  },
+  "settings_newtab_open_in_new_tab_recent_sites": {
+    "message": "サイトカード"
+  },
   "recent_progress_track": {
     "message": "進捗を追跡"
   },

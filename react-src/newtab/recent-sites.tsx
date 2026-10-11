@@ -108,10 +108,11 @@ export interface RecentSitesViewOptions {
   ) => void;
   hideTopActionTooltip?: () => void;
   navigateToUrl?: (url: string) => void;
+  // Returns where the URL opened; anything but 'currentTab' keeps this page.
   openUrl?: (
     url: string,
     options: { openInBackgroundTab: boolean }
-  ) => void;
+  ) => string | void;
   bindCursorTooltip?: (
     target: HTMLElement,
     getText: () => string,
@@ -595,14 +596,15 @@ function RecentSiteCard({
       card.classList.remove(ROLLBACK_CLASS_NAME);
     }
     const openInBackgroundTab = shouldOpenUrlInBackground(event);
-    if (!openInBackgroundTab) {
+    const disposition = options.openUrl(itemUrl, { openInBackgroundTab });
+    const navigatesAway = disposition
+      ? disposition === 'currentTab'
+      : !openInBackgroundTab;
+    if (navigatesAway) {
       bindNavigationSignals();
-    }
-    options.openUrl(itemUrl, { openInBackgroundTab });
-    if (openInBackgroundTab) {
-      resetBackgroundOpenGuard();
-    } else {
       scheduleRollbackIfPending();
+    } else {
+      resetBackgroundOpenGuard();
     }
   }
 

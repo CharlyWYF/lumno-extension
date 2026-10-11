@@ -3110,6 +3110,24 @@
   "settings_progress_tracking_desc": {
     "message": "Pin a show or novel and its card follows you to the next episode or chapter, so it opens where you left off"
   },
+  "settings_newtab_open_in_new_tab_title": {
+    "message": "Open in a new tab"
+  },
+  "settings_newtab_open_in_new_tab_desc": {
+    "message": "Items turned on open in a new tab and switch to it; items turned off open in the current tab. Command/Ctrl-click or middle-click always opens in the background."
+  },
+  "settings_newtab_open_in_new_tab_search": {
+    "message": "Search results"
+  },
+  "settings_newtab_open_in_new_tab_shortcuts": {
+    "message": "Shortcuts"
+  },
+  "settings_newtab_open_in_new_tab_bookmarks": {
+    "message": "Bookmarks"
+  },
+  "settings_newtab_open_in_new_tab_recent_sites": {
+    "message": "Site cards"
+  },
   "recent_progress_track": {
     "message": "Track progress"
   },

@@ -103,11 +103,11 @@
       if (!siteUrl) {
         return false;
       }
-      if (disposition === 'backgroundTab') {
+      if (disposition === 'backgroundTab' || disposition === 'newTab') {
         chrome.runtime.sendMessage({
           action: 'createTab',
           url: siteUrl,
-          disposition: 'backgroundTab'
+          disposition
         });
         return true;
       }

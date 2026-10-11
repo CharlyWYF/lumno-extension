@@ -93,6 +93,7 @@
     ['recent_count', 'settings_recent_sites_title'], ['recent_sites', 'settings_recent_sites_title'],
     ['newtab_width_mode', 'settings_newtab_width_title'], ['newtab_search_width', 'newtab_search_width_title'],
     ['input_auto_focus', 'newtab_input_auto_focus_title'], ['newtab_wallpaper', 'settings_wallpaper_title'],
+    ['newtab_open_in_new_tab', 'settings_newtab_open_in_new_tab_title'],
     ['overlay_size_mode', 'settings_overlay_size_title'], ['overlay_enter_animation', 'settings_overlay_enter_animation_title'],
     ['overlay_page_theme_adaptation', 'settings_overlay_page_theme_adaptation_title'],
     ['bookmark_count', 'settings_bookmarks_title'], ['bookmark_columns', 'settings_bookmark_columns_title'],

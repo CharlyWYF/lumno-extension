@@ -3110,6 +3110,24 @@
   "settings_progress_tracking_desc": {
     "message": "釘選劇集或小說後，看到下一集、下一章時卡片會自動跟上，下次點開直接接著看"
   },
+  "settings_newtab_open_in_new_tab_title": {
+    "message": "在新分頁開啟"
+  },
+  "settings_newtab_open_in_new_tab_desc": {
+    "message": "開啟的項目點擊後會新開分頁並切換過去，關閉時在目前頁面開啟。按住 Command/Ctrl 點擊或用滑鼠中鍵點擊，一律在背景開啟。"
+  },
+  "settings_newtab_open_in_new_tab_search": {
+    "message": "搜尋結果"
+  },
+  "settings_newtab_open_in_new_tab_shortcuts": {
+    "message": "捷徑"
+  },
+  "settings_newtab_open_in_new_tab_bookmarks": {
+    "message": "書籤"
+  },
+  "settings_newtab_open_in_new_tab_recent_sites": {
+    "message": "網站卡片"
+  },
   "recent_progress_track": {
     "message": "追蹤觀看進度"
   },

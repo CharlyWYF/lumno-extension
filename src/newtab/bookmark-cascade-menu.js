@@ -1327,9 +1327,10 @@
       return Boolean(event && (event.metaKey || event.ctrlKey || Number(event.button) === 1));
     }
 
-    function openBookmarkCascadeUrl(url, event) {
+    function openBookmarkCascadeUrl(url, event, anchor) {
       openUrl(url, {
-        openInBackgroundTab: shouldOpenUrlInBackground(event)
+        openInBackgroundTab: shouldOpenUrlInBackground(event),
+        anchor
       });
     }
 
@@ -1495,10 +1496,12 @@
         const navigateLeafItem = (event) => {
           cancelBookmarkCascadeHoverIntent();
           hideCursorTooltip();
+          // Closing the menu clears its anchor.
+          const anchor = bookmarkCascadeAnchor;
           if (!shouldOpenUrlInBackground(event)) {
             close();
           }
-          openBookmarkCascadeUrl(item.url, event);
+          openBookmarkCascadeUrl(item.url, event, anchor);
         };
 
         bookmarkCascadeItemActions.set(itemButton, {

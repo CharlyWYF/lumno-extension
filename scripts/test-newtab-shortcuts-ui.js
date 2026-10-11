@@ -106,12 +106,14 @@ function assertBrowserInternalShortcutNavigation() {
     },
     window: { location },
     NAVIGATION_DISPOSITION: require('../src/shared/navigation-disposition.js'),
-    numberShortcutInstantEnabled: false
+    numberShortcutInstantEnabled: false,
+    newtabOpenInNewTab: { search: false, shortcuts: false, bookmarks: false, recentSites: false }
   };
   vm.runInNewContext([
     'navigateToUrl',
     'isMiddleClick',
     'isBackgroundOpenEvent',
+    'getSurfaceOpenDisposition',
     'openUrlFromNewtabCard',
     'openShortcutUrl'
   ].map((name) => getFunctionSource(newtabJs, name)).join('\n'), sandbox);
@@ -131,6 +133,18 @@ function assertBrowserInternalShortcutNavigation() {
     assert.strictEqual(message.disposition, 'backgroundTab');
   });
   assert.strictEqual(navigations.length, 1);
+
+  // Shortcuts set to open in a new tab: a plain click opens a foreground tab,
+  // a Command/Ctrl click still opens in the background.
+  sandbox.newtabOpenInNewTab = { search: false, shortcuts: true, bookmarks: false, recentSites: false };
+  messages.length = 0;
+  sandbox.openShortcutUrl(shortcut, { button: 0 });
+  sandbox.openShortcutUrl(shortcut, { metaKey: true });
+  assert.deepStrictEqual(messages.map((message) => message.disposition), ['newTab', 'backgroundTab']);
+  assert.strictEqual(navigations.length, 1);
+  assert.strictEqual(sandbox.openUrlFromNewtabCard(shortcut.url, { surface: 'bookmarks' }), 'currentTab');
+  assert.strictEqual(sandbox.openUrlFromNewtabCard(shortcut.url, { surface: 'shortcuts' }), 'newTab');
+  assert.strictEqual(navigations.length, 2);
 }
 
 assertBrowserInternalShortcutNavigation();

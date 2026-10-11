@@ -3110,6 +3110,24 @@
   "settings_progress_tracking_desc": {
     "message": "置顶剧集或小说后，看到下一集、下一章时卡片会自动跟上，下次点开直接接着看"
   },
+  "settings_newtab_open_in_new_tab_title": {
+    "message": "在新标签页打开"
+  },
+  "settings_newtab_open_in_new_tab_desc": {
+    "message": "开启的项目点击后会新开标签页并切换过去，关闭时在当前页打开。按住 Command/Ctrl 点击或用鼠标中键点击，始终在后台打开。"
+  },
+  "settings_newtab_open_in_new_tab_search": {
+    "message": "搜索结果"
+  },
+  "settings_newtab_open_in_new_tab_shortcuts": {
+    "message": "快捷方式"
+  },
+  "settings_newtab_open_in_new_tab_bookmarks": {
+    "message": "书签"
+  },
+  "settings_newtab_open_in_new_tab_recent_sites": {
+    "message": "站点卡片"
+  },
   "recent_progress_track": {
     "message": "跟踪观看进度"
   },

@@ -11,6 +11,7 @@
       openMatchedTabSuggestion,
       runSiteSearchProviderQuery,
       shouldOpenSearchResultInBackgroundTab,
+      getSearchResultDisposition,
       openSearchResultUrl,
       navigateToQuery,
       suggestionsContainer,
@@ -207,7 +208,7 @@
         runSiteSearchProviderQuery(
           suggestion.provider,
           suggestion.searchQuery,
-          shouldOpenSearchResultInBackgroundTab(event) ? 'backgroundTab' : 'currentTab'
+          getSearchResultDisposition(event)
         );
         return;
       }
@@ -216,7 +217,7 @@
         return;
       }
       if (suggestion.forceSearch && suggestion.searchQuery) {
-        navigateToQuery(suggestion.searchQuery, true);
+        navigateToQuery(suggestion.searchQuery, true, getSearchResultDisposition(event));
         return;
       }
       openSearchResultUrl(suggestion, query, event);

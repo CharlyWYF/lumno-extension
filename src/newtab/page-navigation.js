@@ -80,21 +80,35 @@
       return true;
     }
 
+    // A plain click opens in the current tab unless the surface's "open in a new
+    // tab" setting is on; a background-open click wins either way.
+    function getSurfaceOpenDisposition(surface, openInBackgroundTab) {
+      if (openInBackgroundTab) {
+        return 'backgroundTab';
+      }
+      const prefs = pageState.newtabOpenInNewTab;
+      return prefs && prefs[surface] === true ? 'newTab' : 'currentTab';
+    }
+
+    // Returns where the URL went, so a card can tell whether the New Tab is
+    // navigating away or staying behind.
     function openUrlFromNewtabCard(url, options) {
       if (!url) {
-        return;
+        return '';
       }
       const config = options && typeof options === 'object' ? options : {};
-      if (config.openInBackgroundTab &&
+      const disposition = getSurfaceOpenDisposition(config.surface, config.openInBackgroundTab);
+      if (disposition !== 'currentTab' &&
           chrome && chrome.runtime && typeof chrome.runtime.sendMessage === 'function') {
         chrome.runtime.sendMessage({
           action: 'createTab',
           url: url,
-          disposition: 'backgroundTab'
+          disposition
         });
-        return;
+        return disposition;
       }
       navigateToUrl(url);
+      return 'currentTab';
     }
 
     function openShortcutUrl(shortcut, event) {
@@ -114,7 +128,8 @@
         return;
       }
       openUrlFromNewtabCard(shortcut.url, {
-        openInBackgroundTab: isBackgroundOpenEvent(event)
+        openInBackgroundTab: isBackgroundOpenEvent(event),
+        surface: 'shortcuts'
       });
     }
 
@@ -179,7 +194,17 @@
       return false;
     }
 
-    function navigateToQuery(query, forceSearch) {
+    function navigateToQuery(query, forceSearch, disposition) {
+      if (disposition && disposition !== 'currentTab' &&
+          chrome && chrome.runtime && typeof chrome.runtime.sendMessage === 'function') {
+        chrome.runtime.sendMessage({
+          action: 'searchOrNavigate',
+          query: query,
+          forceSearch: Boolean(forceSearch),
+          disposition
+        });
+        return;
+      }
       const directUrl = !forceSearch ? getDirectNavigationUrl(query) : '';
       let targetUrl = query;
       if (directUrl) {
@@ -203,6 +228,7 @@
       isMiddleClick,
       isBackgroundOpenEvent,
       getOpenDisposition,
+      getSurfaceOpenDisposition,
       openExternalNewTabUrl,
       openUrlFromNewtabCard,
       openShortcutUrl,

@@ -84,6 +84,9 @@
   const AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY =
     '_x_extension_aggregate_search_auto_group_enabled_2026_unique_';
   const PROGRESS_TRACKING_ENABLED_STORAGE_KEY = '_x_extension_progress_tracking_enabled_2026_unique_';
+  // Which New Tab surfaces open a plain click in a new foreground tab instead of the New Tab itself.
+  const NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY = '_x_extension_newtab_open_in_new_tab_2026_unique_';
+  const NEWTAB_OPEN_IN_NEW_TAB_SURFACES = Object.freeze(['search', 'shortcuts', 'bookmarks', 'recentSites']);
   // Bookmark bar material is chosen against the wallpaper. Browser sync
   // carries no custom wallpapers, so these values never enter Chrome Sync.
   const BOOKMARK_TOPBAR_LOCAL_STORAGE_KEYS = Object.freeze([
@@ -167,6 +170,7 @@
     AGGREGATE_SEARCH_STORAGE_KEY,
     AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY,
     PROGRESS_TRACKING_ENABLED_STORAGE_KEY,
+    NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY,
     '_x_extension_search_blacklist_2026_unique_',
     '_x_extension_favicon_request_blacklist_2026_unique_',
     '_x_extension_favicon_enhanced_fetch_enabled_2026_unique_',
@@ -424,6 +428,15 @@
     } catch (_error) {
       // The copy is only a fast path; the focus entry falls back to reading storage.
     }
+  }
+
+  function normalizeNewtabOpenInNewTab(value) {
+    const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    const normalized = {};
+    NEWTAB_OPEN_IN_NEW_TAB_SURFACES.forEach((surface) => {
+      normalized[surface] = source[surface] === true;
+    });
+    return normalized;
   }
 
   function normalizeBookmarkFolderIconsVisible(value) {
@@ -1045,6 +1058,8 @@
     NEWTAB_SHORTCUT_GAP_MAX,
     NEWTAB_SHORTCUT_GAP_DEFAULT,
     NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY,
+    NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY,
+    NEWTAB_OPEN_IN_NEW_TAB_SURFACES,
     NEWTAB_STARTUP_STORAGE_KEYS_CACHE_KEY,
     NEWTAB_INPUT_AUTO_FOCUS_CACHE_KEY,
     NEWTAB_QUOTE_PREFS_STORAGE_KEY,
@@ -1108,6 +1123,7 @@
     inferNewtabShortcutColumnsFromWidth,
     normalizeNewtabInputAutoFocusEnabled,
     cacheNewtabInputAutoFocusEnabled,
+    normalizeNewtabOpenInNewTab,
     normalizeBookmarkCount,
     normalizeBookmarkColumns,
     normalizeBookmarkFolderIconsVisible,
