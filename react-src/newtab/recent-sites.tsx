@@ -130,6 +130,9 @@ export interface RecentSitesViewOptions {
     item: RecentSiteItem;
     element: RecentCardElement;
   }) => void;
+  // True while a card context menu is open or has just closed, so presses
+  // meant for the menu do not open the card underneath.
+  isActivationSuppressed?: () => boolean;
   // Progress tracking: 'available' on a pinned card that is not tracked,
   // '' where tracking does not apply.
   getProgressState?: (item: RecentSiteItem) => RecentProgressState;
@@ -213,6 +216,9 @@ interface NormalizedRecentSitesOptions {
   togglePinned: NonNullable<RecentSitesViewOptions['togglePinned']>;
   onItemContextMenu: NonNullable<
     RecentSitesViewOptions['onItemContextMenu']
+  >;
+  isActivationSuppressed: NonNullable<
+    RecentSitesViewOptions['isActivationSuppressed']
   >;
   getProgressState: NonNullable<RecentSitesViewOptions['getProgressState']>;
   toggleProgressTracking: NonNullable<RecentSitesViewOptions['toggleProgressTracking']>;
@@ -398,6 +404,10 @@ function normalizeOptions(
       typeof rawOptions.onItemContextMenu === 'function'
         ? rawOptions.onItemContextMenu
         : () => {},
+    isActivationSuppressed:
+      typeof rawOptions.isActivationSuppressed === 'function'
+        ? rawOptions.isActivationSuppressed
+        : () => false,
     getProgressState:
       typeof rawOptions.getProgressState === 'function'
         ? rawOptions.getProgressState
@@ -767,6 +777,10 @@ function RecentSiteCard({
     if (event.button !== 0) {
       return;
     }
+    if (options.isActivationSuppressed()) {
+      suppressClickRef.current = true;
+      return;
+    }
     isCardPointerActiveRef.current = true;
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -806,6 +820,9 @@ function RecentSiteCard({
     }
     event.preventDefault();
     event.stopPropagation();
+    if (options.isActivationSuppressed()) {
+      return;
+    }
     navigateFromCard(event);
   }
 

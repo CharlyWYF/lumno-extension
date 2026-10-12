@@ -1107,6 +1107,7 @@
     getRecentContextMenuOptions,
     closeRecentContextMenu,
     handleRecentCardContextMenu,
+    isRecentCardActivationSuppressed,
     getRecentStoreOptions,
     getRecentSiteUrlKey,
     normalizeHiddenRecentSites,
@@ -5263,6 +5264,7 @@
     openUrl: (url, options) => openUrlFromNewtabCard(url, { ...options, surface: 'recentSites' }),
     togglePinned: togglePinnedRecentSite,
     onItemContextMenu: handleRecentCardContextMenu,
+    isActivationSuppressed: isRecentCardActivationSuppressed,
     getProgressState: getRecentProgressState,
     toggleProgressTracking: toggleRecentProgressTracking
   });

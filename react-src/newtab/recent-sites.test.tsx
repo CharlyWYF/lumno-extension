@@ -287,6 +287,43 @@ describe('Recent Sites React island', () => {
     ]);
   });
 
+  it('does not open a card for presses meant for its context menu', () => {
+    const opened = vi.fn();
+    let suppressed = true;
+    const { view } = createView({
+      openUrl: opened,
+      isActivationSuppressed: () => suppressed
+    });
+    renderItems(view, [{
+      title: 'Example',
+      url: 'https://example.com/'
+    }]);
+    const card = view.getCards()[0];
+    const press = () => {
+      act(() => {
+        card.dispatchEvent(new MouseEvent('pointerdown', {
+          bubbles: true,
+          button: 0
+        }));
+        card.dispatchEvent(new MouseEvent('click', {
+          bubbles: true,
+          button: 0
+        }));
+        card.dispatchEvent(new MouseEvent('auxclick', {
+          bubbles: true,
+          button: 1
+        }));
+      });
+    };
+
+    press();
+    expect(opened).not.toHaveBeenCalled();
+
+    suppressed = false;
+    press();
+    expect(opened).toHaveBeenCalledTimes(1);
+  });
+
   it('offers a progress tracking switch on pinned cards', async () => {
     const states: Record<string, 'tracking' | 'available' | ''> = {
       'https://www.bilibili.com/video/BV11LEA6eEuj?p=2': 'tracking',
