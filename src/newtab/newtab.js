@@ -2259,6 +2259,13 @@
 
   function loadLocaleMessages(locale) {
     const normalized = normalizeLocale(locale);
+    SETTINGS.cacheNewtabLocale(normalized);
+    // newtab-storage-prefetch.js started the last New Tab's locale before this script loaded.
+    const prefetch = globalThis.LumnoNewtabLocalePrefetch;
+    globalThis.LumnoNewtabLocalePrefetch = null;
+    if (prefetch && prefetch.locale === normalized) {
+      return prefetch.messages.catch(() => ({}));
+    }
     const localePath = getExtensionResourceUrl(`_locales/${normalized}/messages.json`);
     return fetch(localePath, { cache: 'no-store' })
       .then((response) => response.json())

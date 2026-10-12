@@ -12,6 +12,7 @@ const overlaySource = readSource('src/overlay/search-panel.js');
 const overlayRuntimeSource = readSource('src/overlay/runtime.js');
 const backgroundSource = readSource('src/background/background.js');
 const optionsSource = readSource('src/options/options.js');
+const newtabStartupPrefetchSource = readSource('src/newtab/newtab-storage-prefetch.js');
 const toastSource = readSource('src/shared/toast.js');
 
 assert.ok(
@@ -82,6 +83,7 @@ for (const [surface, source] of [
 
 for (const [runtime, source] of [
   ['New Tab', newtabSource],
+  ['New Tab startup prefetch', newtabStartupPrefetchSource],
   ['overlay', overlayRuntimeSource],
   ['background', backgroundSource],
   ['options', optionsSource]

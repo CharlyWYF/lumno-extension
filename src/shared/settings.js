@@ -47,10 +47,11 @@
   const NEWTAB_SHORTCUT_GAP_MAX = 24;
   const NEWTAB_SHORTCUT_GAP_DEFAULT = 4;
   const NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY = '_x_extension_newtab_input_auto_focus_enabled_2026_unique_';
-  // localStorage keys: the New Tab's startup read and auto-focus choice from its last load, so the
-  // next load can act on them before its scripts finish loading.
+  // localStorage keys: the New Tab's startup read, auto-focus choice and locale from its last load,
+  // so the next load can act on them before its scripts finish loading.
   const NEWTAB_STARTUP_STORAGE_KEYS_CACHE_KEY = '_x_extension_newtab_startup_storage_keys_2026_unique_';
   const NEWTAB_INPUT_AUTO_FOCUS_CACHE_KEY = '_x_extension_newtab_input_auto_focus_cache_2026_unique_';
+  const NEWTAB_LOCALE_CACHE_KEY = '_x_extension_newtab_locale_cache_2026_unique_';
   const NEWTAB_QUOTE_PREFS_STORAGE_KEY = '_x_extension_newtab_quote_prefs_2026_unique_';
   // Online wallpaper picks live apart from the shared wallpaper key, which older versions sanitize.
   const NEWTAB_ONLINE_WALLPAPER_STORAGE_KEY = '_x_extension_newtab_online_wallpaper_2026_unique_';
@@ -427,6 +428,19 @@
       }
     } catch (_error) {
       // The copy is only a fast path; the focus entry falls back to reading storage.
+    }
+  }
+
+  // newtab-storage-prefetch.js fetches this locale's messages before newtab.js asks for them.
+  function cacheNewtabLocale(locale) {
+    try {
+      const localStorageObj = globalThis.localStorage;
+      const next = normalizeLocale(locale);
+      if (localStorageObj && localStorageObj.getItem(NEWTAB_LOCALE_CACHE_KEY) !== next) {
+        localStorageObj.setItem(NEWTAB_LOCALE_CACHE_KEY, next);
+      }
+    } catch (_error) {
+      // The copy is only a fast path; newtab.js fetches the messages itself without it.
     }
   }
 
@@ -1062,6 +1076,7 @@
     NEWTAB_OPEN_IN_NEW_TAB_SURFACES,
     NEWTAB_STARTUP_STORAGE_KEYS_CACHE_KEY,
     NEWTAB_INPUT_AUTO_FOCUS_CACHE_KEY,
+    NEWTAB_LOCALE_CACHE_KEY,
     NEWTAB_QUOTE_PREFS_STORAGE_KEY,
     NEWTAB_ONLINE_WALLPAPER_STORAGE_KEY,
     NEWTAB_LINK_WALLPAPERS_STORAGE_KEY,
@@ -1123,6 +1138,7 @@
     inferNewtabShortcutColumnsFromWidth,
     normalizeNewtabInputAutoFocusEnabled,
     cacheNewtabInputAutoFocusEnabled,
+    cacheNewtabLocale,
     normalizeNewtabOpenInNewTab,
     normalizeBookmarkCount,
     normalizeBookmarkColumns,
