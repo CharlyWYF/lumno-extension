@@ -43,9 +43,19 @@ importScripts(
   chrome.runtime.getURL('src/shared/progress-history.js'),
   chrome.runtime.getURL('src/background/progress-tracker.js'),
   chrome.runtime.getURL('src/background/overlay-loading-lifecycle.js'),
-  chrome.runtime.getURL('src/background/dev-extension-startup.js'),
-  chrome.runtime.getURL('assets/vendor/pinyin-pro.js')
+  chrome.runtime.getURL('src/background/dev-extension-startup.js')
 );
+// pinyin-pro (~320 KB) only matters when a Han-character title is matched
+// against a pinyin query, so the worker loads it on first use instead of on
+// every wake (see getPinyinPro). A service worker may only importScripts() a
+// file after installation if it imported that file while installing, hence
+// the install hook. Firefox's build lists this path in background.scripts.
+const PINYIN_PRO_SCRIPT_PATH = 'assets/vendor/pinyin-pro.js';
+if (typeof globalThis.addEventListener === 'function') {
+  globalThis.addEventListener('install', () => {
+    importScripts(chrome.runtime.getURL(PINYIN_PRO_SCRIPT_PATH));
+  });
+}
 // Development-only; the store package strips this import.
 importScripts(chrome.runtime.getURL('src/background/codex-debug-bridge.js'));
 
@@ -9822,6 +9832,21 @@ function getChineseCharacters(text) {
   return Array.isArray(matches) ? matches : [];
 }
 
+let pinyinProImportAttempted = false;
+
+function getPinyinPro() {
+  if (!globalThis.pinyinPro && !pinyinProImportAttempted && typeof importScripts === 'function') {
+    pinyinProImportAttempted = true;
+    try {
+      importScripts(chrome.runtime.getURL(PINYIN_PRO_SCRIPT_PATH));
+    } catch (error) {
+      // Without pinyin-pro, titles still match by their own text.
+    }
+  }
+  const api = globalThis.pinyinPro;
+  return api && typeof api.pinyin === 'function' ? api : null;
+}
+
 function buildTitlePinyinIndex(title) {
   const rawTitle = String(title || '').trim();
   if (!rawTitle) {
@@ -9838,8 +9863,10 @@ function buildTitlePinyinIndex(title) {
   let initials = '';
   const chineseChars = getChineseCharacters(rawTitle);
   try {
-    if (globalThis.pinyinPro && typeof globalThis.pinyinPro.pinyin === 'function') {
-      const converted = globalThis.pinyinPro.pinyin(rawTitle, {
+    // Pure-ASCII titles have no Han characters to convert, so they never load pinyin-pro.
+    const pinyinApi = /[^\x00-\x7f]/.test(rawTitle) ? getPinyinPro() : null;
+    if (pinyinApi) {
+      const converted = pinyinApi.pinyin(rawTitle, {
         toneType: 'none',
         type: 'array',
         nonZh: 'removed',

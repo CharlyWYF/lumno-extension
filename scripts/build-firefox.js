@@ -34,12 +34,17 @@ if (!importBlock) {
   throw new Error('Could not find the importScripts block in background.js.');
 }
 const backgroundDeps = [...importBlock[1].matchAll(/getURL\('([^']+)'\)/g)].map((match) => match[1]);
+// Scripts the service worker imports on first use (const *_SCRIPT_PATH) load up front here.
+const lazyBackgroundDeps = [...backgroundSource.matchAll(/^const \w+_SCRIPT_PATH = '([^']+)';$/gm)].map((match) => match[1]);
+if (!lazyBackgroundDeps.includes('assets/vendor/pinyin-pro.js')) {
+  throw new Error('Could not find the lazily imported pinyin-pro path in background.js.');
+}
 fs.writeFileSync(
   outPath(IMPORT_SHIM),
   '// Dependencies are listed in manifest background.scripts; Firefox event pages lack importScripts.\n' +
   'globalThis.importScripts = function importScripts() {};\n'
 );
-ffManifest.background = { scripts: [IMPORT_SHIM, ...backgroundDeps, backgroundEntry] };
+ffManifest.background = { scripts: [IMPORT_SHIM, ...backgroundDeps, ...lazyBackgroundDeps, backgroundEntry] };
 
 ffManifest.browser_specific_settings = {
   gecko: {
