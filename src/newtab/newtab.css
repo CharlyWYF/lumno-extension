@@ -775,13 +775,7 @@ body[data-theme="dark"] .x-nt-shortcut-icon--add {
 body[data-nt-bottom-dock-density="compact"] {
   --x-nt-shortcuts-reserved-height: 54px;
   --x-nt-shortcuts-section-margin-top: 8px;
-  --x-nt-shortcuts-grid-row-gap: min(var(--x-nt-shortcut-user-row-gap), 6px);
-  --x-nt-shortcuts-grid-column-gap: min(var(--x-nt-shortcut-user-column-gap), 0px);
-  --x-nt-shortcuts-grid-padding: 5px 6px 7px;
-  --x-nt-shortcut-tile-size: min(var(--x-nt-shortcut-user-tile-size), 48px);
-  --x-nt-shortcut-tile-padding: min(var(--x-nt-shortcut-user-tile-padding), 6px);
-  --x-nt-shortcut-icon-size: min(var(--x-nt-shortcut-user-icon-size), 36px);
-  --x-nt-shortcut-favicon-size: min(var(--x-nt-shortcut-user-favicon-size), 22px);
+  --x-nt-shortcuts-grid-padding: 5px 8px 7px;
   --x-nt-shortcut-hover-scale-near: 1.16;
   --x-nt-shortcut-hover-rise-near: -4px;
   --x-nt-shortcut-hover-scale-drag: 1.12;
@@ -796,13 +790,7 @@ body[data-nt-bottom-dock-density="compact"] {
 body[data-nt-bottom-dock-density="tiny"] {
   --x-nt-shortcuts-reserved-height: 42px;
   --x-nt-shortcuts-section-margin-top: 6px;
-  --x-nt-shortcuts-grid-row-gap: min(var(--x-nt-shortcut-user-row-gap), 4px);
-  --x-nt-shortcuts-grid-column-gap: min(var(--x-nt-shortcut-user-column-gap), 0px);
-  --x-nt-shortcuts-grid-padding: 3px 4px 5px;
-  --x-nt-shortcut-tile-size: min(var(--x-nt-shortcut-user-tile-size), 36px);
-  --x-nt-shortcut-tile-padding: min(var(--x-nt-shortcut-user-tile-padding), 4px);
-  --x-nt-shortcut-icon-size: min(var(--x-nt-shortcut-user-icon-size), 28px);
-  --x-nt-shortcut-favicon-size: min(var(--x-nt-shortcut-user-favicon-size), 18px);
+  --x-nt-shortcuts-grid-padding: 3px 8px 5px;
   --x-nt-shortcut-hover-scale-near: 1.08;
   --x-nt-shortcut-hover-rise-near: -2px;
   --x-nt-shortcut-hover-scale-drag: 1.06;
@@ -6473,9 +6461,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
     --x-nt-bottom-dock-top-padding: 16px;
     --x-nt-bottom-dock-bottom-padding: 36px;
     --x-nt-shortcuts-reserved-height: 72px;
-    --x-nt-shortcut-tile-size: min(var(--x-nt-shortcut-user-tile-size), 58px);
-    --x-nt-shortcut-icon-size: min(var(--x-nt-shortcut-user-icon-size), 44px);
-    --x-nt-shortcut-favicon-size: min(var(--x-nt-shortcut-user-favicon-size), 26px);
     --x-nt-shortcuts-section-margin-top: 12px;
   }
   .x-nt-wallpaper-control {
@@ -6696,7 +6681,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
 @media (min-width: 641px) and (max-width: 900px) and (max-height: 560px) {
   body[data-nt-bottom-dock-density="tiny"] {
     --x-nt-shortcuts-reserved-height: 50px;
-    --x-nt-shortcut-tile-size: min(var(--x-nt-shortcut-user-tile-size), 44px);
   }
   #_x_extension_newtab_bottom_dock_2024_unique_[data-density="tiny"] {
     --x-nt-dock-bookmark-card-height: 44px;

@@ -4569,14 +4569,24 @@
     const rootStyle = document.documentElement.style;
     const size = normalizeNewtabShortcutSize(newtabShortcutSize);
     const gap = normalizeNewtabShortcutGap(newtabShortcutGap);
+    // Whole pixels with matching parity leave an even margin on each side, so
+    // the icon sits centered in its tile and the favicon in its icon on 1x screens.
+    const iconSize = roundToParityOf(size * 0.75, size);
+    const faviconSize = roundToParityOf(size * 0.4375, iconSize);
     rootStyle.setProperty('--x-nt-shortcut-user-tile-size', `${size}px`);
-    rootStyle.setProperty('--x-nt-shortcut-user-icon-size', `${size * 0.75}px`);
+    rootStyle.setProperty('--x-nt-shortcut-user-icon-size', `${iconSize}px`);
     rootStyle.setProperty('--x-nt-shortcut-user-icon-radius', `${size * 0.25}px`);
-    rootStyle.setProperty('--x-nt-shortcut-user-favicon-size', `${size * 0.4375}px`);
+    rootStyle.setProperty('--x-nt-shortcut-user-favicon-size', `${faviconSize}px`);
     rootStyle.setProperty('--x-nt-shortcut-user-tile-padding', `${size * 0.125}px`);
     rootStyle.setProperty('--x-nt-shortcut-user-column-gap', `${gap}px`);
     rootStyle.setProperty('--x-nt-shortcut-user-row-gap', `${gap + 6}px`);
     applyNewtabShortcutColumns();
+  }
+
+  function roundToParityOf(value, reference) {
+    const floor = Math.floor(value);
+    const lower = (floor - reference) % 2 === 0 ? floor : floor - 1;
+    return value - lower <= 1 ? lower : lower + 2;
   }
 
   function applyNewtabShortcutColumns() {

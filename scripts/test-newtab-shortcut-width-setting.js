@@ -213,10 +213,26 @@ assert.match(
   /--x-nt-shortcut-tile-size:\s*var\(--x-nt-shortcut-user-tile-size\);[\s\S]*?--x-nt-shortcuts-grid-row-gap:\s*var\(--x-nt-shortcut-user-row-gap\);/,
   'Default shortcut geometry should flow through user-controlled variables'
 );
-assert.match(
+for (const density of ['compact', 'tiny']) {
+  const densityRule = newtabHtml.match(
+    new RegExp(`body\\[data-nt-bottom-dock-density="${density}"\\]\\s*\\{([^}]*)\\}`)
+  );
+  assert.ok(densityRule, `${density} dock density rule should exist`);
+  assert.doesNotMatch(
+    densityRule[1],
+    /--x-nt-shortcut-(tile|icon|favicon)-size|--x-nt-shortcut-tile-padding|--x-nt-shortcuts-grid-(row|column)-gap/,
+    `${density} dock density should keep the size and spacing chosen in Settings on short windows`
+  );
+  assert.match(
+    densityRule[1],
+    /--x-nt-shortcuts-grid-padding:\s*\d+px 8px \d+px;/,
+    `${density} dock density should keep the horizontal padding the per-row width is computed from`
+  );
+}
+assert.doesNotMatch(
   newtabHtml,
-  /data-nt-bottom-dock-density="compact"[\s\S]*?--x-nt-shortcut-tile-size:\s*min\(var\(--x-nt-shortcut-user-tile-size\),\s*48px\);/,
-  'Compact layout should retain its shortcut-size safety cap'
+  /@media \(max-height:[^{]*\)\s*\{[^@]*?--x-nt-shortcut-tile-size:\s*min\(/,
+  'Short viewports should not cap the shortcut size chosen in Settings'
 );
 assert.match(
   newtabSource,
@@ -247,5 +263,27 @@ locales.forEach((locale) => {
     );
   });
 });
+
+// Fractional or odd-margin icon sizes snap unevenly on 1x screens and push the
+// favicon off center inside its rounded square while the size slider moves.
+const roundToParityMatch = newtabSource.match(/function roundToParityOf\(value, reference\) \{[\s\S]*?\n  \}/);
+assert.ok(roundToParityMatch, 'New Tab should round shortcut icon sizes to a matching parity');
+const roundToParityOf = new Function(`${roundToParityMatch[0]}; return roundToParityOf;`)();
+for (let size = settings.NEWTAB_SHORTCUT_SIZE_MIN; size <= settings.NEWTAB_SHORTCUT_SIZE_MAX; size++) {
+  const iconSize = roundToParityOf(size * 0.75, size);
+  const faviconSize = roundToParityOf(size * 0.4375, iconSize);
+  assert.ok(Number.isInteger(iconSize) && Number.isInteger(faviconSize), `size ${size} should use whole pixels`);
+  assert.strictEqual((size - iconSize) % 2, 0, `size ${size} should leave an even margin around the icon`);
+  assert.strictEqual((iconSize - faviconSize) % 2, 0, `size ${size} should leave an even margin around the favicon`);
+  assert.ok(Math.abs(iconSize - size * 0.75) <= 1, `size ${size} icon should stay within 1px of its ratio`);
+  assert.ok(Math.abs(faviconSize - size * 0.4375) <= 1, `size ${size} favicon should stay within 1px of its ratio`);
+}
+assert.strictEqual(roundToParityOf(48, 64), 48, 'The default 64px tile should keep its 48px icon');
+assert.strictEqual(roundToParityOf(28, 48), 28, 'The default 48px icon should keep its 28px favicon');
+assert.match(
+  newtabSource,
+  /--x-nt-shortcut-user-icon-size', `\$\{iconSize\}px`[\s\S]*?--x-nt-shortcut-user-favicon-size', `\$\{faviconSize\}px`/,
+  'Size changes should apply the rounded icon and favicon sizes'
+);
 
 console.log('New Tab shortcut column setting tests passed.');
