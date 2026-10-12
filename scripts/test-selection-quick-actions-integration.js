@@ -22,12 +22,15 @@ const groupEnabledStorageKey = '_x_extension_selection_quick_actions_group_enabl
 const iconSetStorageKey = '_x_extension_selection_quick_actions_icon_set_2026_unique_';
 const triggerStyleStorageKey = '_x_extension_selection_quick_actions_trigger_style_2026_unique_';
 
-const selectionContentScript = manifest.content_scripts.find((entry) => (
-  Array.isArray(entry.js) && entry.js.includes('src/content/selection-quick-actions.js')
-));
-assert(selectionContentScript, 'manifest should inject the selection quick actions content script');
+const selectionScriptRegistration = require('../src/background/selection-script-registration.js');
+assert(
+  !manifest.content_scripts.some((entry) => (
+    Array.isArray(entry.js) && entry.js.includes('src/content/selection-quick-actions.js')
+  )),
+  'the default-off selection toolbar should not load into every page from the manifest'
+);
 assert.deepStrictEqual(
-  selectionContentScript.js,
+  Array.from(selectionScriptRegistration.SCRIPT_FILES),
   ['src/shared/settings.js', 'src/shared/selection-action-icons.js', 'src/shared/selection-intent.js', 'src/shared/toast.js', 'src/content/selection-quick-actions.js'],
   'provider-aware settings, the selection classifier, and the shared Toast should load before the content interaction runtime'
 );
@@ -36,7 +39,11 @@ assert.strictEqual(
   false,
   'the removed butterfly option should not leave a bundled runtime behind'
 );
-assert.strictEqual(selectionContentScript.run_at, 'document_idle');
+assert.strictEqual(selectionScriptRegistration.RUN_AT, 'document_idle');
+assert(
+  backgroundSource.includes("chrome.runtime.getURL('src/background/selection-script-registration.js')"),
+  'the background should load the selection script registration'
+);
 
 const optionsToggleTag = optionsHtml.match(
   /<input\b[^>]*id="_x_extension_selection_quick_actions_toggle_2026_unique_"[^>]*>/

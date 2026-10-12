@@ -32,6 +32,7 @@ importScripts(
   chrome.runtime.getURL('src/background/bookmark-tab-groups.js'),
   chrome.runtime.getURL('src/background/selection-target.js'),
   chrome.runtime.getURL('src/background/selection-quick-action-provider.js'),
+  chrome.runtime.getURL('src/background/selection-script-registration.js'),
   chrome.runtime.getURL('src/background/message-router.js'),
   chrome.runtime.getURL('src/background/newtab-fallback.js'),
   chrome.runtime.getURL('src/shared/browser-profile.js'),
@@ -5926,6 +5927,20 @@ function loadSelectionQuickActionsEnabled() {
     });
   });
 }
+
+const selectionScriptRegistration = globalThis.LumnoSelectionScriptRegistration
+  .createSelectionScriptRegistration({ chromeApi: chrome });
+loadSelectionQuickActionsEnabled().then((enabled) => selectionScriptRegistration.sync(enabled));
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  const storageModeChanged = areaName === 'local' && Boolean(changes[SETTINGS.LOCAL_PRIMARY_STORAGE_KEY]);
+  if (!storageModeChanged &&
+      !(isPrimaryStorageAreaName(areaName) && changes[SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY])) {
+    return;
+  }
+  loadSelectionQuickActionsEnabled().then((enabled) => {
+    selectionScriptRegistration.sync(enabled, { injectOpenTabs: enabled });
+  });
+});
 
 function loadSelectionQuickActionsProvider() {
   return new Promise((resolve) => {

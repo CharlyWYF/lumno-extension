@@ -40,6 +40,8 @@ const injectedScriptFiles = [
   'src/shared/search-input-history.js',
   'src/shared/search-input-mode.js',
   'src/shared/toast.js',
+  'src/shared/selection-action-icons.js',
+  'src/content/selection-quick-actions.js',
   'src/shared/shortcut-favicon.js',
   'src/shared/search-input.css',
   'src/shared/toast.css',
