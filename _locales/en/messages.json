@@ -1478,6 +1478,15 @@
   "bookmark_view_mode_top": {
     "message": "Top bookmarks bar"
   },
+  "bookmark_topbar_layout_title": {
+    "message": "Bar style"
+  },
+  "bookmark_topbar_layout_docked": {
+    "message": "Docked to top"
+  },
+  "bookmark_topbar_layout_floating": {
+    "message": "Floating"
+  },
   "bookmark_topbar_surface_title": {
     "message": "Bar background"
   },
@@ -1485,7 +1494,7 @@
     "message": "Adaptive mist"
   },
   "bookmark_topbar_surface_clear": {
-    "message": "Clear glass"
+    "message": "Liquid glass"
   },
   "bookmark_topbar_surface_transparent": {
     "message": "Transparent"

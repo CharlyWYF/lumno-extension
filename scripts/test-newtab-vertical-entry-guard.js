@@ -159,7 +159,9 @@ assert.match(
   '_x_nt_shortcut_entry_2026_unique_',
   '_x_nt_content_section_entry_2026_unique_',
   '_x_nt_corner_control_entry_2026_unique_',
-  '_x_nt_topbar_entry_2026_unique_'
+  '_x_nt_topbar_entry_2026_unique_',
+  '_x_nt_topbar_floating_entry_2026_unique_',
+  '_x_nt_topbar_content_entry_2026_unique_'
 ].forEach((keyframesName) => {
   assert.doesNotMatch(
     getBalancedCssBlock(newtabHtml, `@keyframes ${keyframesName}`),

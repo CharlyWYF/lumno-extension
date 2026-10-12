@@ -1034,8 +1034,18 @@ function testInitialEntryMotionIsStaggeredAndTransient() {
   );
   assert.match(
     newtabHtml,
-    /body\[data-nt-enter="run"\]\[data-nt-ready="1"\] \.x-nt-bookmarks-topbar\[data-visible="true"\]\s*\{\s*animation:\s*_x_nt_topbar_entry_2026_unique_ 200ms ease-out 20ms both;[\s\S]*?@keyframes _x_nt_topbar_entry_2026_unique_[\s\S]*?opacity:\s*0\.88;[\s\S]*?opacity:\s*1;/,
-    'the in-page bookmarks top bar should enter with a restrained opacity transition'
+    /body\[data-nt-enter="run"\]\[data-nt-ready="1"\] \.x-nt-bookmarks-topbar\[data-visible="true"\]\s*\{\s*animation:\s*_x_nt_topbar_entry_2026_unique_ 280ms cubic-bezier\(0\.16, 1, 0\.3, 1\) both;[\s\S]*?@keyframes _x_nt_topbar_entry_2026_unique_\s*\{\s*0%\s*\{\s*opacity:\s*0;\s*clip-path:\s*inset\(0 0 100% 0\);[\s\S]*?100%\s*\{\s*opacity:\s*1;[\s\S]*?clip-path:\s*inset\(0 0 -32px 0\);/,
+    'the docked bookmarks top bar should unroll from the top edge without moving off its final position'
+  );
+  assert.match(
+    newtabHtml,
+    /\.x-nt-bookmarks-topbar\[data-visible="true"\]\[data-layout="floating"\]\s*\{\s*animation-name:\s*_x_nt_topbar_floating_entry_2026_unique_;[\s\S]*?transform-origin:\s*50% 0;[\s\S]*?@keyframes _x_nt_topbar_floating_entry_2026_unique_\s*\{\s*0%\s*\{\s*opacity:\s*0;\s*scale:\s*0\.96;/,
+    'the floating bookmarks top bar should settle in from its top edge'
+  );
+  assert.match(
+    newtabHtml,
+    /body:not\(\[data-nt-ready="1"\]\) \.x-nt-bookmarks-topbar\s*\{\s*visibility:\s*hidden;\s*backdrop-filter:\s*none !important;\s*-webkit-backdrop-filter:\s*none !important;/,
+    'the hidden bookmarks top bar should not draw its filtered wallpaper as a bare strip before the reveal'
   );
   assert.match(
     newtabSource,

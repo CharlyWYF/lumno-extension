@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
+import { createLiquidGlass } from './liquid-glass';
 
 export const BOOKMARK_TOPBAR_IDS = Object.freeze({
   topbar: '_x_extension_newtab_bookmarks_topbar_2026_unique_',
@@ -28,6 +29,13 @@ export function normalizeSurfaceMode(
     value === 'adaptive'
     ? value
     : fallback;
+}
+
+export type BookmarkTopbarLayout = 'docked' | 'floating';
+
+// Docked spans the top edge; floating sits inset from it as a rounded panel.
+export function normalizeLayout(value: unknown): BookmarkTopbarLayout {
+  return value === 'floating' ? 'floating' : 'docked';
 }
 
 const SURFACE_STYLE_PROPERTIES = Object.freeze([
@@ -196,6 +204,7 @@ export interface BookmarksTopbarRuntime {
   isVisible(): boolean;
   itemsHost: HTMLDivElement;
   mount(parent?: HTMLElement | null): BookmarksTopbarRuntime;
+  setLayout(value: unknown): BookmarkTopbarLayout;
   setSurfaceColor(value: unknown): string;
   setSurfaceMode(value: unknown): BookmarkTopbarSurfaceMode;
   setVisible(visible: boolean): boolean;
@@ -215,6 +224,7 @@ export function createBookmarksTopbar(
   element.className = 'x-nt-bookmarks-topbar';
   element.dataset.reactIsland = 'newtab-bookmarks-topbar';
   element.dataset.surfaceMode = 'adaptive';
+  element.dataset.layout = 'docked';
   element.dataset.visible = 'false';
   element.setAttribute('aria-label', String(options.ariaLabel || 'Bookmarks'));
   const reactRoot: Root = createRoot(element);
@@ -248,6 +258,7 @@ export function createBookmarksTopbar(
   let wheelScrollFrameId = 0;
   let pendingWheelDelta = 0;
   let destroyed = false;
+  const liquidGlass = createLiquidGlass({ documentObj, element, windowObj });
 
   const setSurfaceColor = (value: unknown) => {
     const tokens = getSurfaceColorTokens(value);
@@ -286,7 +297,16 @@ export function createBookmarksTopbar(
   const setSurfaceMode = (value: unknown) => {
     const mode = normalizeSurfaceMode(value);
     element.dataset.surfaceMode = mode;
+    liquidGlass.sync();
     return mode;
+  };
+
+  const setLayout = (value: unknown) => {
+    const layout = normalizeLayout(value);
+    element.dataset.layout = layout;
+    scheduleOverflowFadeSync();
+    liquidGlass.sync();
+    return layout;
   };
 
   const setOverflowFadeVisible = (nextVisible: boolean) => {
@@ -328,6 +348,7 @@ export function createBookmarksTopbar(
     const previousVisible = visible;
     visible = nextVisible === true;
     element.dataset.visible = visible ? 'true' : 'false';
+    liquidGlass.sync();
     if (visible) {
       scheduleOverflowFadeSync();
     } else {
@@ -358,6 +379,7 @@ export function createBookmarksTopbar(
     active = true;
     element.dataset.active = 'true';
     scheduleOverflowFadeSync();
+    liquidGlass.sync();
     return true;
   };
 
@@ -371,6 +393,7 @@ export function createBookmarksTopbar(
     active = false;
     setVisible(false);
     element.dataset.active = 'false';
+    liquidGlass.sync();
     return true;
   };
 
@@ -414,7 +437,10 @@ export function createBookmarksTopbar(
   };
 
   const onScroll = () => scheduleOverflowFadeSync();
-  const onResize = () => scheduleOverflowFadeSync();
+  const onResize = () => {
+    scheduleOverflowFadeSync();
+    liquidGlass.sync();
+  };
   const flushWheelScroll = () => {
     wheelScrollFrameId = 0;
     const delta = pendingWheelDelta;
@@ -479,6 +505,7 @@ export function createBookmarksTopbar(
         wheelScrollFrameId = 0;
       }
       pendingWheelDelta = 0;
+      liquidGlass.destroy();
       viewport.removeEventListener('scroll', onScroll);
       viewport.removeEventListener('wheel', onWheel);
       windowObj.removeEventListener('resize', onResize);
@@ -499,6 +526,7 @@ export function createBookmarksTopbar(
       }
       return runtime;
     },
+    setLayout,
     setSurfaceColor,
     setSurfaceMode,
     setVisible,
@@ -519,6 +547,7 @@ export function createBookmarksTopbarApi() {
     implementation: 'react',
     createBookmarksTopbar,
     getSurfaceColorTokens,
+    normalizeLayout,
     normalizeSurfaceMode,
     normalizeSurfaceColor
   });

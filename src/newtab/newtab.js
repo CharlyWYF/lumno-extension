@@ -219,6 +219,7 @@
   const BOOKMARK_CASCADE_DEBUG_STORAGE_KEY = '_x_extension_bookmark_cascade_debug_2026_unique_';
   const BOOKMARK_TOPBAR_PICK_COLOR_ACTION = 'pick-bookmark-topbar-color';
   const BOOKMARK_TOPBAR_SURFACE_MODE_ACTION = 'set-bookmark-topbar-surface-mode';
+  const BOOKMARK_TOPBAR_LAYOUT_ACTION = 'set-bookmark-topbar-layout';
   // Flip this to true when inspecting bookmark cascade hover intent and safe-triangle timing.
   const BOOKMARK_CASCADE_DEBUG_UI_ENABLED = false;
   const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = '_x_extension_default_search_engine_2024_unique_';
@@ -532,6 +533,8 @@
     persistBookmarkViewMode,
     loadInitialBookmarkViewMode,
     getEffectiveBookmarkTopbarSurfaceMode,
+    getBookmarkTopbarLayout,
+    handleBookmarkTopbarLayoutStorageChanges,
     syncBookmarkTopbarSurfaceAppearance,
     loadInitialBookmarkTopbarSurfaceMode,
     syncBookmarkTopbarSurfaceColorForTheme,
@@ -547,12 +550,14 @@
     NEWTAB_BOOKMARKS_TOPBAR,
     bookmarkTopbarSurfaceStorageArea,
     updateBookmarkModeMenu: (...args) => updateBookmarkModeMenu(...args),
+    setNewtabTopLayout: (...args) => setNewtabTopLayout(...args),
     scheduleWallpaperAdaptiveToneUpdate,
     initialThemeReadyPromise,
     showToast,
     t,
     BOOKMARK_TOPBAR_PICK_COLOR_ACTION,
     BOOKMARK_TOPBAR_SURFACE_MODE_ACTION,
+    BOOKMARK_TOPBAR_LAYOUT_ACTION,
     pageState: {
       get resolveInitialBookmarkViewModeReady() {
         return resolveInitialBookmarkViewModeReady;
@@ -2744,6 +2749,7 @@
       scheduleShortcutStorageReload();
     }
     handleBookmarkTopbarSurfaceColorStorageChanges(changes, areaName);
+    handleBookmarkTopbarLayoutStorageChanges(changes, areaName);
     if (areaName === 'local' && changes[PROGRESS_HISTORY.STORAGE_KEY]) {
       progressHistoryMap = PROGRESS_HISTORY.normalizeHistoryMap(changes[PROGRESS_HISTORY.STORAGE_KEY].newValue);
     }
@@ -3930,6 +3936,7 @@
     getNewtabViewportTopPaddingPx,
     getBookmarkCascadeViewportTopPaddingPx,
     setNewtabTopOccupied,
+    setNewtabTopLayout,
     syncBookmarkSurfaceMode,
     setBookmarkSurfaceVisible,
     updateBookmarkModeMenu,
@@ -4482,6 +4489,26 @@
     if (!isBookmarkTopbarMode()) {
       return options;
     }
+    const layout = getBookmarkTopbarLayout();
+    options.push({
+      value: '__bookmark_topbar_layout_docked__',
+      action: `${BOOKMARK_TOPBAR_LAYOUT_ACTION}:docked`,
+      labelKey: 'bookmark_topbar_layout_docked',
+      fallback: 'Docked to top',
+      radio: true,
+      checked: layout === 'docked',
+      dividerBefore: true,
+      groupTitleKey: 'bookmark_topbar_layout_title',
+      groupTitleFallback: 'Bar style'
+    });
+    options.push({
+      value: '__bookmark_topbar_layout_floating__',
+      action: `${BOOKMARK_TOPBAR_LAYOUT_ACTION}:floating`,
+      labelKey: 'bookmark_topbar_layout_floating',
+      fallback: 'Floating',
+      radio: true,
+      checked: layout === 'floating'
+    });
     options.push({
       value: '__bookmark_topbar_surface_adaptive__',
       action: `${BOOKMARK_TOPBAR_SURFACE_MODE_ACTION}:adaptive`,
@@ -4497,7 +4524,7 @@
       value: '__bookmark_topbar_surface_clear__',
       action: `${BOOKMARK_TOPBAR_SURFACE_MODE_ACTION}:clear`,
       labelKey: 'bookmark_topbar_surface_clear',
-      fallback: 'Clear glass',
+      fallback: 'Liquid glass',
       radio: true,
       checked: effectiveSurfaceMode === 'clear'
     });

@@ -11,12 +11,14 @@
       NEWTAB_BOOKMARKS_TOPBAR,
       bookmarkTopbarSurfaceStorageArea,
       updateBookmarkModeMenu,
+      setNewtabTopLayout,
       scheduleWallpaperAdaptiveToneUpdate,
       initialThemeReadyPromise,
       showToast,
       t,
       BOOKMARK_TOPBAR_PICK_COLOR_ACTION,
-      BOOKMARK_TOPBAR_SURFACE_MODE_ACTION
+      BOOKMARK_TOPBAR_SURFACE_MODE_ACTION,
+      BOOKMARK_TOPBAR_LAYOUT_ACTION
     } = deps;
 
     // Page state still owned by newtab.js; read and written through accessors.
@@ -34,7 +36,11 @@
     const BOOKMARK_TOPBAR_SURFACE_MODE_STORAGE_KEY =
       '_x_extension_bookmark_topbar_surface_mode_2026_unique_';
 
+    // Docked or floating, kept on this device with the bar's background.
+    const BOOKMARK_TOPBAR_LAYOUT_STORAGE_KEY = '_x_extension_bookmark_topbar_layout_2026_unique_';
+
     const BOOKMARK_TOPBAR_RESET_COLOR_ACTION = 'reset-bookmark-topbar-color';
+    let bookmarkTopbarLayout = 'docked';
     let bookmarkTopbarSurfaceMode = 'adaptive';
     let bookmarkTopbarSurfaceModeRevision = 0;
     let currentBookmarkTopbarSurfaceColor = '';
@@ -65,12 +71,33 @@
       return true;
     }
 
+    // The page reveals after the view mode is ready; the bar's shape is read alongside it so the bar
+    // never changes shape after it first appears.
+    const initialBookmarkTopbarLayoutReady = new Promise((resolve) => {
+      if (!bookmarkTopbarSurfaceStorageArea ||
+          typeof bookmarkTopbarSurfaceStorageArea.get !== 'function') {
+        resolve();
+        return;
+      }
+      try {
+        bookmarkTopbarSurfaceStorageArea.get([BOOKMARK_TOPBAR_LAYOUT_STORAGE_KEY], (result) => {
+          applyBookmarkTopbarLayout(result ? result[BOOKMARK_TOPBAR_LAYOUT_STORAGE_KEY] : undefined, {
+            updateMenu: false
+          });
+          resolve();
+        });
+      } catch (_error) {
+        resolve();
+      }
+    });
+
     function settleInitialBookmarkViewModeReady() {
       if (typeof pageState.resolveInitialBookmarkViewModeReady !== 'function') {
         return;
       }
-      pageState.resolveInitialBookmarkViewModeReady();
+      const resolveReady = pageState.resolveInitialBookmarkViewModeReady;
       pageState.resolveInitialBookmarkViewModeReady = null;
+      initialBookmarkTopbarLayoutReady.then(resolveReady);
     }
 
     function applyInitialBookmarkViewModeValue(rawValue, source, expectedRevision) {
@@ -133,6 +160,36 @@
       }
     }
 
+    function getBookmarkTopbarLayout() {
+      return bookmarkTopbarLayout;
+    }
+
+    function applyBookmarkTopbarLayout(value, options) {
+      const config = options && typeof options === 'object' ? options : {};
+      bookmarkTopbarLayout = NEWTAB_BOOKMARKS_TOPBAR.normalizeLayout(value);
+      if (pageState.bookmarkTopbarRuntime &&
+          typeof pageState.bookmarkTopbarRuntime.setLayout === 'function') {
+        pageState.bookmarkTopbarRuntime.setLayout(bookmarkTopbarLayout);
+      }
+      setNewtabTopLayout(bookmarkTopbarLayout);
+      if (config.persist === true && bookmarkTopbarSurfaceStorageArea &&
+          typeof bookmarkTopbarSurfaceStorageArea.set === 'function') {
+        bookmarkTopbarSurfaceStorageArea.set({ [BOOKMARK_TOPBAR_LAYOUT_STORAGE_KEY]: bookmarkTopbarLayout });
+      }
+      if (config.updateMenu !== false) {
+        updateBookmarkModeMenu();
+      }
+      return bookmarkTopbarLayout;
+    }
+
+    function handleBookmarkTopbarLayoutStorageChanges(changes, areaName) {
+      if (areaName !== 'local' || !changes[BOOKMARK_TOPBAR_LAYOUT_STORAGE_KEY]) {
+        return false;
+      }
+      applyBookmarkTopbarLayout(changes[BOOKMARK_TOPBAR_LAYOUT_STORAGE_KEY].newValue);
+      return true;
+    }
+
     function normalizeBookmarkTopbarSurfaceColor(value) {
       return NEWTAB_BOOKMARKS_TOPBAR.normalizeSurfaceColor(value);
     }
@@ -169,6 +226,9 @@
       const config = options && typeof options === 'object' ? options : {};
       const effectiveMode = getEffectiveBookmarkTopbarSurfaceMode();
       if (pageState.bookmarkTopbarRuntime) {
+        if (typeof pageState.bookmarkTopbarRuntime.setLayout === 'function') {
+          pageState.bookmarkTopbarRuntime.setLayout(bookmarkTopbarLayout);
+        }
         if (typeof pageState.bookmarkTopbarRuntime.setSurfaceMode === 'function') {
           pageState.bookmarkTopbarRuntime.setSurfaceMode(effectiveMode);
         }
@@ -536,6 +596,11 @@
         resetBookmarkTopbarSurfaceColor();
         return;
       }
+      const layoutPrefix = `${BOOKMARK_TOPBAR_LAYOUT_ACTION}:`;
+      if (String(action || '').startsWith(layoutPrefix)) {
+        applyBookmarkTopbarLayout(String(action).slice(layoutPrefix.length), { persist: true });
+        return;
+      }
       const surfaceModePrefix = `${BOOKMARK_TOPBAR_SURFACE_MODE_ACTION}:`;
       if (String(action || '').startsWith(surfaceModePrefix)) {
         const nextMode = String(action).slice(surfaceModePrefix.length);
@@ -553,6 +618,9 @@
       persistBookmarkViewMode,
       loadInitialBookmarkViewMode,
       getEffectiveBookmarkTopbarSurfaceMode,
+      getBookmarkTopbarLayout,
+      applyBookmarkTopbarLayout,
+      handleBookmarkTopbarLayoutStorageChanges,
       syncBookmarkTopbarSurfaceAppearance,
       loadInitialBookmarkTopbarSurfaceMode,
       syncBookmarkTopbarSurfaceColorForTheme,

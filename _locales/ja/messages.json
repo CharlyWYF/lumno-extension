@@ -1478,6 +1478,15 @@
   "bookmark_view_mode_top": {
     "message": "上部ブックマークバー"
   },
+  "bookmark_topbar_layout_title": {
+    "message": "バーのスタイル"
+  },
+  "bookmark_topbar_layout_docked": {
+    "message": "上端に固定"
+  },
+  "bookmark_topbar_layout_floating": {
+    "message": "フローティング"
+  },
   "bookmark_topbar_surface_title": {
     "message": "バーの背景"
   },
@@ -1485,7 +1494,7 @@
     "message": "自動調整フロスト"
   },
   "bookmark_topbar_surface_clear": {
-    "message": "クリアガラス"
+    "message": "リキッドグラス"
   },
   "bookmark_topbar_surface_transparent": {
     "message": "透明"

@@ -141,11 +141,12 @@ const assertWithinBudget = (actualBytes, budgetKiB, label) => {
 // New Tab moved to 386 KiB at 0.9.61 for the shared search input clear button.
 // The total moved to 776 KiB at 1.0.0 for the Help Center ask demo in Options.
 // New Tab moved to 390 KiB / 116 KiB gzip (the total to 780 KiB / 226 KiB gzip) at 1.0.0 for the help result passage card.
+// New Tab moved to 394 KiB / 117 KiB gzip (the total to 784 KiB / 227 KiB gzip) at 1.0.1 for the bookmarks bar's floating layout and liquid glass.
 const bundleBudgets = {
-  newtab: { uncompressed: 390, gzip: 116 },
+  newtab: { uncompressed: 394, gzip: 117 },
   options: { uncompressed: 290, gzip: 85 },
   overlay: { uncompressed: 271, gzip: 82 },
-  total: { uncompressed: 780, gzip: 226 }
+  total: { uncompressed: 784, gzip: 227 }
 };
 
 const retiredNewtabRendererScripts = [

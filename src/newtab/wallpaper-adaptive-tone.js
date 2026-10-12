@@ -575,7 +575,8 @@
     );
     const protection = getToneProtection(luminance, textureContrast, effectType);
     const mistAlpha = mixNumber(ink === 'dark' ? 64 : 62, 74, protection);
-    const clearAlpha = mixNumber(ink === 'dark' ? 32 : 36, 50, protection);
+    // The clear surface is liquid glass: a light tint, raised only where texture threatens the ink.
+    const clearAlpha = mixNumber(ink === 'dark' ? 16 : 22, 38, protection);
     const borderColor = ink === 'dark'
       ? { red: 15, green: 23, blue: 42 }
       : { red: 248, green: 250, blue: 252 };

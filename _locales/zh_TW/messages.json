@@ -1478,6 +1478,15 @@
   "bookmark_view_mode_top": {
     "message": "頂端書籤列"
   },
+  "bookmark_topbar_layout_title": {
+    "message": "書籤列形態"
+  },
+  "bookmark_topbar_layout_docked": {
+    "message": "貼頂"
+  },
+  "bookmark_topbar_layout_floating": {
+    "message": "懸浮"
+  },
   "bookmark_topbar_surface_title": {
     "message": "書籤列背景"
   },
@@ -1485,7 +1494,7 @@
     "message": "自適應霧面"
   },
   "bookmark_topbar_surface_clear": {
-    "message": "通透玻璃"
+    "message": "液態玻璃"
   },
   "bookmark_topbar_surface_transparent": {
     "message": "透明"

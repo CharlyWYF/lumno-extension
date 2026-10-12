@@ -29,6 +29,8 @@
 
     const NEWTAB_FLOATING_TOP_GAP_PX = 12;
     const BOOKMARK_CASCADE_TOPBAR_GAP_PX = 4;
+    // Matches the floating bar's 8px top offset and 40px height in newtab.css.
+    const BOOKMARK_TOPBAR_FLOATING_OCCUPIED_PX = 48;
 
     function updateRecentHeading() {
       if (!pageState.recentHeading) {
@@ -78,9 +80,11 @@
 
     function getNewtabTopOccupiedInsetPx() {
       const visualViewportTopInset = getNewtabVisualViewportInsets().top;
-      const bookmarkTopbarInset = document.body &&
-        document.body.getAttribute('data-nt-top-occupied') === 'true'
-        ? BOOKMARK_TOPBAR_HEIGHT_PX
+      const body = document.body;
+      const bookmarkTopbarInset = body && body.getAttribute('data-nt-top-occupied') === 'true'
+        ? (body.getAttribute('data-nt-top-layout') === 'floating'
+          ? BOOKMARK_TOPBAR_FLOATING_OCCUPIED_PX
+          : BOOKMARK_TOPBAR_HEIGHT_PX)
         : 0;
       return visualViewportTopInset + bookmarkTopbarInset;
     }
@@ -105,6 +109,24 @@
         return;
       }
       document.body.setAttribute('data-nt-top-occupied', nextValue);
+      refreshTopOccupiedLayout();
+    }
+
+    function setNewtabTopLayout(layout) {
+      if (!document.body) {
+        return;
+      }
+      const nextValue = layout === 'floating' ? 'floating' : 'docked';
+      if (document.body.getAttribute('data-nt-top-layout') === nextValue) {
+        return;
+      }
+      document.body.setAttribute('data-nt-top-layout', nextValue);
+      if (document.body.getAttribute('data-nt-top-occupied') === 'true') {
+        refreshTopOccupiedLayout();
+      }
+    }
+
+    function refreshTopOccupiedLayout() {
       updateSearchEntryLayout();
       if (pageState.bookmarkCascadeRuntime &&
           typeof pageState.bookmarkCascadeRuntime.positionLevels === 'function' &&
@@ -329,6 +351,7 @@
       getNewtabViewportTopPaddingPx,
       getBookmarkCascadeViewportTopPaddingPx,
       setNewtabTopOccupied,
+      setNewtabTopLayout,
       syncBookmarkSurfaceMode,
       setBookmarkSurfaceVisible,
       updateBookmarkModeMenu,
