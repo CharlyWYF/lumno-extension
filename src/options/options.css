@@ -35,6 +35,52 @@ body {
   position: relative;
   opacity: 0;
 }
+/* Native scrollbars (macOS overlay bars) and form controls take their tone
+   from color-scheme, so the dark theme declares it; without it a dark thumb
+   would scroll over the dark page. */
+:root:has(> body[data-theme="dark"]) {
+  color-scheme: dark;
+}
+/* The page's own scrollbar matches the panels' thin bar where the system
+   draws classic bars (Windows, or macOS set to always show them). Chrome
+   takes a native gutter out of vw but not a styled one, so full-bleed 100vw
+   layers subtract this width themselves. */
+@supports selector(::-webkit-scrollbar) {
+  :root:not([data-lumno-scrollbars="overlay"]) {
+    --x-options-page-scrollbar-width: 12px;
+  }
+}
+:root:not([data-lumno-scrollbars="overlay"])::-webkit-scrollbar {
+  width: var(--x-options-page-scrollbar-width, 12px);
+}
+:root:not([data-lumno-scrollbars="overlay"])::-webkit-scrollbar-track {
+  background: transparent;
+}
+:root:not([data-lumno-scrollbars="overlay"])::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  border: 3px solid transparent;
+  border-radius: var(--lumno-radius-pill);
+  background-color: rgba(148, 163, 184, 0.68);
+  background-clip: padding-box;
+}
+:root:not([data-lumno-scrollbars="overlay"])::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.82);
+}
+:root:not([data-lumno-scrollbars="overlay"])::-webkit-scrollbar-corner {
+  background: transparent;
+}
+:root:not([data-lumno-scrollbars="overlay"]):has(> body[data-theme="dark"])::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.5);
+}
+:root:not([data-lumno-scrollbars="overlay"]):has(> body[data-theme="dark"])::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(203, 213, 225, 0.7);
+}
+@supports not selector(::-webkit-scrollbar) {
+  :root {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.68) transparent;
+  }
+}
 html[data-theme-ready="true"] body {
   background: var(--page-bg);
   opacity: 1;
@@ -284,7 +330,7 @@ body[data-theme="light"] {
   content: "";
   position: absolute;
   left: 50%;
-  width: 100vw;
+  width: calc(100vw - var(--x-options-page-scrollbar-width, 0px));
   transform: translateX(-50%);
   top: calc(-1 * var(--tabs-sticky-top));
   height: calc(100% + var(--tabs-sticky-top) + var(--tabs-panel-gap));
@@ -297,7 +343,7 @@ body[data-theme="light"] {
   content: "";
   position: absolute;
   left: 50%;
-  width: 100vw;
+  width: calc(100vw - var(--x-options-page-scrollbar-width, 0px));
   transform: translateX(-50%);
   top: calc(-1 * var(--tabs-sticky-top));
   height: calc(100% + var(--tabs-sticky-top) + var(--tabs-panel-gap));
@@ -310,7 +356,7 @@ body[data-theme="light"] {
 ._x_extension_settings_sticky_line_2026_unique_ {
   position: absolute;
   left: 50%;
-  width: 100vw;
+  width: calc(100vw - var(--x-options-page-scrollbar-width, 0px));
   height: 1px;
   bottom: calc(-1 * var(--tabs-panel-gap));
   transform: translateX(-50%) scaleX(0);
@@ -1157,6 +1203,50 @@ body[data-theme="dark"] ._x_extension_shortcut_ghost_2026_unique_ {
   border: 1px solid var(--tab-border);
   border-radius: var(--lumno-radius-xl);
   background: color-mix(in srgb, var(--control-bg) 78%, transparent);
+  /* A thin bar in a stable gutter the right padding gives up, so a long list
+     keeps even insets instead of Windows' wide bar crowding the rows. */
+  --x-aggregate-sources-scrollbar-gutter: 8px;
+  scrollbar-gutter: stable;
+  padding-inline-end: max(0px, calc(10px - var(--x-aggregate-sources-scrollbar-gutter)));
+}
+@supports not selector(::-webkit-scrollbar) {
+  ._x_extension_aggregate_search_sources_2026_unique_ {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.68) transparent;
+  }
+  body[data-theme="dark"] ._x_extension_aggregate_search_sources_2026_unique_ {
+    scrollbar-color: rgba(148, 163, 184, 0.58) transparent;
+  }
+}
+:root:not([data-lumno-scrollbars="overlay"]) ._x_extension_aggregate_search_sources_2026_unique_::-webkit-scrollbar {
+  width: var(--x-aggregate-sources-scrollbar-gutter, 8px);
+}
+:root:not([data-lumno-scrollbars="overlay"]) ._x_extension_aggregate_search_sources_2026_unique_::-webkit-scrollbar-track {
+  margin-block: 10px;
+  background: transparent;
+}
+:root:not([data-lumno-scrollbars="overlay"]) ._x_extension_aggregate_search_sources_2026_unique_::-webkit-scrollbar-thumb {
+  min-height: 34px;
+  border: 2px solid transparent;
+  border-radius: var(--lumno-radius-pill);
+  background-color: rgba(148, 163, 184, 0.68);
+  background-clip: padding-box;
+}
+:root:not([data-lumno-scrollbars="overlay"]) ._x_extension_aggregate_search_sources_2026_unique_::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.82);
+}
+:root:not([data-lumno-scrollbars="overlay"]) ._x_extension_aggregate_search_sources_2026_unique_::-webkit-scrollbar-corner {
+  background: transparent;
+}
+/* Overlay scrollbars take no gutter, so the right padding keeps its full width. */
+:root[data-lumno-scrollbars="overlay"] ._x_extension_aggregate_search_sources_2026_unique_ {
+  --x-aggregate-sources-scrollbar-gutter: 0px;
+}
+:root:not([data-lumno-scrollbars="overlay"]) body[data-theme="dark"] ._x_extension_aggregate_search_sources_2026_unique_::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.58);
+}
+:root:not([data-lumno-scrollbars="overlay"]) body[data-theme="dark"] ._x_extension_aggregate_search_sources_2026_unique_::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(203, 213, 225, 0.7);
 }
 ._x_extension_aggregate_search_source_group_2026_unique_ {
   display: flex;

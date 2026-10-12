@@ -170,6 +170,42 @@ button[aria-busy="true"]:disabled,
   overflow: auto;
 }
 
+/* The shell's scrollbar matches the extension's thin bar where the system
+   draws classic bars (Windows, or macOS set to always show them). */
+:root:not([data-lumno-scrollbars="overlay"]) .onboarding-shell::-webkit-scrollbar {
+  width: 12px;
+}
+:root:not([data-lumno-scrollbars="overlay"]) .onboarding-shell::-webkit-scrollbar-track {
+  background: transparent;
+}
+:root:not([data-lumno-scrollbars="overlay"]) .onboarding-shell::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  border: 3px solid transparent;
+  border-radius: var(--lumno-radius-pill);
+  background-color: rgba(148, 163, 184, 0.68);
+  background-clip: padding-box;
+}
+:root:not([data-lumno-scrollbars="overlay"]) .onboarding-shell::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.82);
+}
+:root:not([data-lumno-scrollbars="overlay"]) .onboarding-shell::-webkit-scrollbar-corner {
+  background: transparent;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-lumno-scrollbars="overlay"]) .onboarding-shell::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.5);
+  }
+  :root:not([data-lumno-scrollbars="overlay"]) .onboarding-shell::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(203, 213, 225, 0.7);
+  }
+}
+@supports not selector(::-webkit-scrollbar) {
+  .onboarding-shell {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.68) transparent;
+  }
+}
+
 .onboarding-frame {
   position: relative;
   width: min(1240px, 100%);

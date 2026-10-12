@@ -33,6 +33,39 @@ body {
   position: relative;
   isolation: isolate;
 }
+/* Native scrollbars (macOS overlay bars) and form controls take their tone
+   from color-scheme, so the resolved dark theme declares it; without it a dark
+   thumb would scroll over dark panels. */
+:root:has(> body[data-theme="dark"]) {
+  color-scheme: dark;
+}
+/* When the page itself scrolls (narrow windows), its bar matches the
+   panels' thin one where the system draws classic bars. */
+:root:not([data-lumno-scrollbars="overlay"])::-webkit-scrollbar {
+  width: 12px;
+}
+:root:not([data-lumno-scrollbars="overlay"])::-webkit-scrollbar-track {
+  background: transparent;
+}
+:root:not([data-lumno-scrollbars="overlay"])::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  border: 3px solid transparent;
+  border-radius: var(--lumno-radius-pill);
+  background-color: rgba(148, 163, 184, 0.68);
+  background-clip: padding-box;
+}
+:root:not([data-lumno-scrollbars="overlay"])::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.82);
+}
+:root:not([data-lumno-scrollbars="overlay"])::-webkit-scrollbar-corner {
+  background: transparent;
+}
+:root:not([data-lumno-scrollbars="overlay"]):has(> body[data-theme="dark"])::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.5);
+}
+:root:not([data-lumno-scrollbars="overlay"]):has(> body[data-theme="dark"])::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(203, 213, 225, 0.7);
+}
 body.x-nt-bottom-layout:not(.x-nt-mobile-flow) {
   overflow-y: hidden;
 }
@@ -1216,10 +1249,29 @@ body.x-nt-bottom-layout.x-nt-no-bookmarks #_x_extension_newtab_recent_sites_2024
 #_x_extension_newtab_bottom_dock_scroller_2024_unique_ {
   all: unset;
   --x-nt-bottom-dock-shadow-bleed: 44px;
-  width: calc(100% + (var(--x-nt-bottom-dock-shadow-bleed) * 2));
+  /* Hovered cards reach about 12px (bookmarks) to 23px (tilted recents) past
+     their edge, and past 14px only the faint end of a recent card's shadow is
+     left, so the right side stops there and the scrollbar sits beside the
+     cards rather than off at the edge of the bleed or the viewport. The layout
+     controller measures the stable gutter so the cards keep the dock's width
+     whether or not the scrollbar shows. */
+  --x-nt-bottom-dock-shadow-bleed-end: 14px;
+  width: calc(
+    100% + var(--x-nt-bottom-dock-shadow-bleed) + var(--x-nt-bottom-dock-shadow-bleed-end) +
+      var(--x-nt-bottom-dock-scrollbar-gutter, 0px)
+  );
   max-height: 100%;
-  margin: calc(var(--x-nt-bottom-dock-top-padding, 24px) * -1) calc(var(--x-nt-bottom-dock-shadow-bleed) * -1) 0;
-  padding: var(--x-nt-bottom-dock-top-padding, 24px) var(--x-nt-bottom-dock-shadow-bleed) var(--x-nt-bottom-dock-bottom-padding, 60px);
+  margin:
+    calc(var(--x-nt-bottom-dock-top-padding, 24px) * -1)
+    calc((var(--x-nt-bottom-dock-shadow-bleed-end) + var(--x-nt-bottom-dock-scrollbar-gutter, 0px)) * -1)
+    0
+    calc(var(--x-nt-bottom-dock-shadow-bleed) * -1);
+  padding:
+    var(--x-nt-bottom-dock-top-padding, 24px)
+    var(--x-nt-bottom-dock-shadow-bleed-end)
+    var(--x-nt-bottom-dock-bottom-padding, 60px)
+    var(--x-nt-bottom-dock-shadow-bleed);
+  scrollbar-gutter: stable;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -2534,34 +2586,51 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
   scrollbar-gutter: auto;
 }
 /* Chrome ignores ::-webkit-scrollbar rules once scrollbar-width/color are set,
-   which drops the track inset and lets the bar collide with the rounded corners. */
+   which drops the track inset and lets the bar collide with the rounded corners.
+   The bottom dock shares the thin bar so Windows and always-on macOS scrollbars
+   don't draw the system's wide one beside the bookmarks and recent cards. */
 @supports not selector(::-webkit-scrollbar) {
-  .x-nt-bookmark-cascade-content {
+  .x-nt-bookmark-cascade-content,
+  #_x_extension_newtab_bottom_dock_scroller_2024_unique_ {
     scrollbar-width: thin;
     scrollbar-color: rgba(148, 163, 184, 0.62) transparent;
   }
-  body[data-theme="dark"] .x-nt-bookmark-cascade-content {
+  body[data-theme="dark"] .x-nt-bookmark-cascade-content,
+  body[data-theme="dark"] #_x_extension_newtab_bottom_dock_scroller_2024_unique_ {
     scrollbar-color: rgba(148, 163, 184, 0.56) transparent;
   }
+  body #_x_extension_newtab_bottom_dock_scroller_2024_unique_[data-wallpaper-ink] {
+    scrollbar-color: var(--x-nt-wallpaper-adaptive-ink-muted) transparent;
+  }
 }
-.x-nt-bookmark-cascade-content::-webkit-scrollbar {
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-bookmark-cascade-content::-webkit-scrollbar,
+:root:not([data-lumno-scrollbars="overlay"]) #_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar {
   width: 10px;
 }
-.x-nt-bookmark-cascade-content::-webkit-scrollbar-track {
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-bookmark-cascade-content::-webkit-scrollbar-track,
+:root:not([data-lumno-scrollbars="overlay"]) #_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-track {
   margin-block: 10px;
   background: transparent;
 }
-.x-nt-bookmark-cascade-content::-webkit-scrollbar-thumb {
+/* The layout controller measures how far the corner controls rise over the
+   scrollbar and ends the track above them. */
+:root:not([data-lumno-scrollbars="overlay"]) #_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-track {
+  margin-bottom: max(10px, var(--x-nt-bottom-dock-scrollbar-end-inset, 0px));
+}
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-bookmark-cascade-content::-webkit-scrollbar-thumb,
+:root:not([data-lumno-scrollbars="overlay"]) #_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-thumb {
   min-height: 34px;
   border: 3px solid transparent;
   border-radius: var(--lumno-radius-pill);
   background-color: rgba(148, 163, 184, 0.68);
   background-clip: padding-box;
 }
-.x-nt-bookmark-cascade-content::-webkit-scrollbar-thumb:hover {
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-bookmark-cascade-content::-webkit-scrollbar-thumb:hover,
+:root:not([data-lumno-scrollbars="overlay"]) #_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-thumb:hover {
   background-color: rgba(100, 116, 139, 0.82);
 }
-.x-nt-bookmark-cascade-content::-webkit-scrollbar-corner {
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-bookmark-cascade-content::-webkit-scrollbar-corner,
+:root:not([data-lumno-scrollbars="overlay"]) #_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-corner {
   background: transparent;
 }
 .x-nt-bookmark-cascade-level[data-vertical="below"][data-horizontal="left"],
@@ -2804,11 +2873,37 @@ body[data-theme="dark"] .x-nt-bookmark-cascade-level {
     0 2px 4px rgba(0, 0, 0, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
-body[data-theme="dark"] .x-nt-bookmark-cascade-content::-webkit-scrollbar-thumb {
+:root:not([data-lumno-scrollbars="overlay"]) body[data-theme="dark"] .x-nt-bookmark-cascade-content::-webkit-scrollbar-thumb,
+:root:not([data-lumno-scrollbars="overlay"]) body[data-theme="dark"] #_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-thumb {
   background-color: rgba(148, 163, 184, 0.58);
 }
-body[data-theme="dark"] .x-nt-bookmark-cascade-content::-webkit-scrollbar-thumb:hover {
+:root:not([data-lumno-scrollbars="overlay"]) body[data-theme="dark"] .x-nt-bookmark-cascade-content::-webkit-scrollbar-thumb:hover,
+:root:not([data-lumno-scrollbars="overlay"]) body[data-theme="dark"] #_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-thumb:hover {
   background-color: rgba(203, 213, 225, 0.7);
+}
+/* macOS overlay bars can't be colored, but they follow color-scheme: light
+   ink means a dark wallpaper under the track, so ask for a light thumb. */
+:root[data-lumno-scrollbars="overlay"] #_x_extension_newtab_bottom_dock_scroller_2024_unique_[data-wallpaper-ink="light"] {
+  color-scheme: dark;
+}
+:root[data-lumno-scrollbars="overlay"] #_x_extension_newtab_bottom_dock_scroller_2024_unique_[data-wallpaper-ink="dark"] {
+  color-scheme: light;
+}
+/* Over a wallpaper the thumb takes the ink sampled under its track, as the
+   section headings and pager beside it do. A hairline in the opposite tone
+   disappears on even ground and only separates the thumb from busy texture. */
+#_x_extension_newtab_bottom_dock_scroller_2024_unique_[data-wallpaper-ink="dark"] {
+  --x-nt-bottom-dock-scrollbar-hairline: rgb(255 255 255 / 42%);
+}
+#_x_extension_newtab_bottom_dock_scroller_2024_unique_[data-wallpaper-ink="light"] {
+  --x-nt-bottom-dock-scrollbar-hairline: rgb(15 23 42 / 26%);
+}
+:root:not([data-lumno-scrollbars="overlay"]) body #_x_extension_newtab_bottom_dock_scroller_2024_unique_[data-wallpaper-ink]::-webkit-scrollbar-thumb {
+  background-color: var(--x-nt-wallpaper-adaptive-ink-muted);
+  box-shadow: inset 0 0 0 1px var(--x-nt-bottom-dock-scrollbar-hairline);
+}
+:root:not([data-lumno-scrollbars="overlay"]) body #_x_extension_newtab_bottom_dock_scroller_2024_unique_[data-wallpaper-ink]::-webkit-scrollbar-thumb:hover {
+  background-color: var(--x-nt-wallpaper-adaptive-ink);
 }
 body[data-theme="dark"] .x-nt-bookmark-cascade-debug-label {
   color: #bfdbfe;
@@ -3333,6 +3428,55 @@ body[data-theme="dark"] .x-nt-recent-track.x-nt-recent-track--active {
 }
 #_x_extension_newtab_suggestions_container_2024_unique_[data-number-shortcuts-scroll-locked="true"] {
   overflow-y: hidden;
+}
+/* As in the command bar's open tabs list: a thin bar in a stable gutter that
+   the right inset gives up, so rows keep their width and an even inset
+   whether or not a long result list scrolls, instead of Windows' wide bar. */
+#_x_extension_newtab_suggestions_container_2024_unique_ {
+  --x-nt-suggestions-scrollbar-gutter: 8px;
+  scrollbar-gutter: stable;
+  padding-inline-end: max(
+    0px,
+    calc(
+      var(--x-nt-search-results-padding-inline, 8px) -
+      var(--x-nt-suggestions-scrollbar-gutter, 8px)
+    )
+  );
+}
+@supports not selector(::-webkit-scrollbar) {
+  #_x_extension_newtab_suggestions_container_2024_unique_ {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.68) transparent;
+  }
+  body[data-theme="dark"] #_x_extension_newtab_suggestions_container_2024_unique_ {
+    scrollbar-color: rgba(148, 163, 184, 0.58) transparent;
+  }
+}
+:root:not([data-lumno-scrollbars="overlay"]) #_x_extension_newtab_suggestions_container_2024_unique_::-webkit-scrollbar {
+  width: var(--x-nt-suggestions-scrollbar-gutter, 8px);
+}
+:root:not([data-lumno-scrollbars="overlay"]) #_x_extension_newtab_suggestions_container_2024_unique_::-webkit-scrollbar-track {
+  margin-block: 12px var(--x-nt-search-content-radius, 21px);
+  background: transparent;
+}
+:root:not([data-lumno-scrollbars="overlay"]) #_x_extension_newtab_suggestions_container_2024_unique_::-webkit-scrollbar-thumb {
+  min-height: 40px;
+  border: 2px solid transparent;
+  border-radius: var(--lumno-radius-pill);
+  background-color: rgba(148, 163, 184, 0.68);
+  background-clip: padding-box;
+}
+:root:not([data-lumno-scrollbars="overlay"]) #_x_extension_newtab_suggestions_container_2024_unique_::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.82);
+}
+:root:not([data-lumno-scrollbars="overlay"]) #_x_extension_newtab_suggestions_container_2024_unique_::-webkit-scrollbar-corner {
+  background: transparent;
+}
+:root:not([data-lumno-scrollbars="overlay"]) body[data-theme="dark"] #_x_extension_newtab_suggestions_container_2024_unique_::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.58);
+}
+:root:not([data-lumno-scrollbars="overlay"]) body[data-theme="dark"] #_x_extension_newtab_suggestions_container_2024_unique_::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(203, 213, 225, 0.7);
 }
 .x-nt-slider-value-bubble {
   position: fixed;
@@ -4325,16 +4469,24 @@ body[data-theme="dark"] .x-nt-wallpaper-panel {
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
-.x-nt-wallpaper-panel-scroll::-webkit-scrollbar {
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-wallpaper-panel-scroll::-webkit-scrollbar {
   width: 8px;
 }
-.x-nt-wallpaper-panel-scroll::-webkit-scrollbar-thumb {
+/* Overlay scrollbars (macOS showing them only while scrolling) take no gutter,
+   so the insets that make room for our thin bar collapse with them. */
+:root[data-lumno-scrollbars="overlay"] .x-nt-appearance-help-footer {
+  --x-nt-panel-scrollbar-gutter: 0px;
+}
+:root[data-lumno-scrollbars="overlay"] #_x_extension_newtab_suggestions_container_2024_unique_ {
+  --x-nt-suggestions-scrollbar-gutter: 0px;
+}
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-wallpaper-panel-scroll::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   border-radius: var(--lumno-radius-pill);
   background: rgba(107, 114, 128, 0.34);
   background-clip: padding-box;
 }
-.x-nt-wallpaper-panel-scroll::-webkit-scrollbar-track {
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-wallpaper-panel-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 .x-nt-wallpaper-panel-title {
@@ -4386,8 +4538,8 @@ body[data-theme="dark"] .x-nt-appearance-header {
 .x-nt-appearance-help-footer {
   flex: 0 0 auto;
   min-width: 0;
-  /* Ends where the section dividers do, beside the scroll area's 8px scrollbar gutter. */
-  margin: 0 8px 0 0;
+  /* Ends where the section dividers do, beside the scroll area's scrollbar gutter. */
+  margin: 0 var(--x-nt-panel-scrollbar-gutter, 8px) 0 0;
   padding: 12px 2px 14px;
   border-top: 1px solid var(--x-nt-panel-border, rgba(0, 0, 0, 0.08));
   display: flex;

@@ -135,16 +135,16 @@ body[data-theme="dark"] .x-nt-recent-history-dialog {
 }
 
 /* Same thin scrollbar as the bookmark cascade menu (newtab.css). */
-.x-nt-recent-history-list::-webkit-scrollbar {
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-recent-history-list::-webkit-scrollbar {
   width: 10px;
 }
 
-.x-nt-recent-history-list::-webkit-scrollbar-track {
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-recent-history-list::-webkit-scrollbar-track {
   margin-block: 8px;
   background: transparent;
 }
 
-.x-nt-recent-history-list::-webkit-scrollbar-thumb {
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-recent-history-list::-webkit-scrollbar-thumb {
   min-height: 34px;
   border: 3px solid transparent;
   border-radius: 999px;
@@ -152,11 +152,11 @@ body[data-theme="dark"] .x-nt-recent-history-dialog {
   background-clip: padding-box;
 }
 
-.x-nt-recent-history-list::-webkit-scrollbar-thumb:hover {
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-recent-history-list::-webkit-scrollbar-thumb:hover {
   background-color: rgba(100, 116, 139, 0.82);
 }
 
-.x-nt-recent-history-list::-webkit-scrollbar-corner {
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-recent-history-list::-webkit-scrollbar-corner {
   background: transparent;
 }
 

@@ -255,7 +255,10 @@ function createFixture(options) {
   const documentElement = new FakeElement();
   const documentObj = {
     body,
-    documentElement
+    documentElement,
+    querySelectorAll() {
+      return config.cornerControls || [];
+    }
   };
   const windowObj = {
     innerHeight: Number(config.innerHeight) || 900,
@@ -322,6 +325,7 @@ function createFixture(options) {
   const bookmarkSection = new FakeElement();
   const recentSection = new FakeElement();
   const sectionSafeCorridor = new FakeElement();
+  sectionSafeCorridor.parentElement = config.scroller || null;
   shortcutSection.setAttribute('data-visible', config.shortcutVisible ? 'true' : 'false');
   bookmarkSection.setAttribute('data-visible', 'true');
   recentSection.setAttribute('data-visible', 'true');
@@ -403,6 +407,67 @@ function testPreservesSearchTopDuringRestoreLayoutPass() {
 }
 
 testPreservesSearchTopDuringRestoreLayoutPass();
+
+function testBottomDockScrollbarClearsCornerControls() {
+  const scroller = new FakeElement({
+    rect: { left: 36, right: 1094, top: 480, width: 1058, height: 420, bottom: 900 }
+  });
+  scroller.offsetWidth = 1058;
+  scroller.clientWidth = 1048;
+  const overBar = new FakeElement({
+    rect: { left: 1060, right: 1098, top: 806, width: 38, height: 38, bottom: 844 }
+  });
+  const besideBar = new FakeElement({
+    rect: { left: 1110, right: 1148, top: 760, width: 38, height: 38, bottom: 798 }
+  });
+  const { controller } = createFixture({ scroller, cornerControls: [overBar, besideBar] });
+
+  controller.updateBottomDockLayout();
+
+  assert.strictEqual(
+    scroller.style.getPropertyValue('--x-nt-bottom-dock-scrollbar-gutter'),
+    '10px',
+    'the dock should hand its scrollbar gutter back to CSS so the cards keep the dock width'
+  );
+  assert.strictEqual(
+    scroller.style.getPropertyValue('--x-nt-bottom-dock-scrollbar-end-inset'),
+    '102px',
+    'the scrollbar track should end 8px above a corner control that covers it and ignore controls beside it'
+  );
+
+  scroller.setRect({ top: 820, height: 80, bottom: 900 });
+  controller.updateBottomDockLayout();
+  assert.strictEqual(
+    scroller.style.getPropertyValue('--x-nt-bottom-dock-scrollbar-end-inset'),
+    '8px',
+    'a very short dock should keep a usable scrollbar track rather than clear the controls'
+  );
+}
+
+testBottomDockScrollbarClearsCornerControls();
+
+function testBottomDockScrollbarInsetsWithoutGutter() {
+  const scroller = new FakeElement({
+    rect: { left: 36, right: 1094, top: 480, width: 1058, height: 420, bottom: 900 }
+  });
+  scroller.offsetWidth = 1058;
+  scroller.clientWidth = 1058;
+  const overBar = new FakeElement({
+    rect: { left: 1060, right: 1098, top: 806, width: 38, height: 38, bottom: 844 }
+  });
+  const { controller } = createFixture({ scroller, cornerControls: [overBar] });
+
+  controller.updateBottomDockLayout();
+
+  assert.strictEqual(scroller.style.getPropertyValue('--x-nt-bottom-dock-scrollbar-gutter'), '0px');
+  assert.strictEqual(
+    scroller.style.getPropertyValue('--x-nt-bottom-dock-scrollbar-end-inset'),
+    '0px',
+    'overlay scrollbars take no gutter and need no track inset'
+  );
+}
+
+testBottomDockScrollbarInsetsWithoutGutter();
 
 function testOccupiedTopSurfaceShiftsMinimumSearchInset() {
   const { body, controller } = createFixture({
@@ -599,6 +664,27 @@ function testNewtabContainsRootOverscroll() {
     newtabHtml,
     /body\.x-nt-bottom-layout:not\(\.x-nt-mobile-flow\)\s*\{[\s\S]*?overflow-y:\s*hidden;/,
     'desktop bottom layout should prevent a competing page scrollbar while the dock owns vertical overflow'
+  );
+  [
+    /#_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar\s*\{[^}]*width:\s*10px;/,
+    /#_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-track\s*\{[^}]*background:\s*transparent;/,
+    /#_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-thumb\s*\{[^}]*border-radius:\s*999px;/,
+    /body\[data-theme="dark"\] #_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-thumb\s*\{/,
+    /@supports not selector\(::-webkit-scrollbar\)\s*\{[\s\S]*?#_x_extension_newtab_bottom_dock_scroller_2024_unique_\s*\{[\s\S]*?scrollbar-width:\s*thin;/,
+    /#_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-track\s*\{[^}]*margin-bottom:\s*max\(10px,\s*var\(--x-nt-bottom-dock-scrollbar-end-inset,\s*0px\)\);/
+  ].forEach((pattern) => {
+    assert.match(
+      newtabHtml,
+      pattern,
+      'the bottom dock should draw the thin translucent scrollbar instead of the system one when bookmarks and recents overflow'
+    );
+  });
+  const dockScrollerRule = newtabHtml.match(/#_x_extension_newtab_bottom_dock_scroller_2024_unique_\s*\{([^}]*)\}/);
+  assert.ok(dockScrollerRule, 'the bottom dock scroller rule should exist');
+  assert.match(
+    dockScrollerRule[1],
+    /--x-nt-bottom-dock-shadow-bleed-end:\s*14px;[\s\S]*?var\(--x-nt-bottom-dock-scrollbar-gutter,\s*0px\)[\s\S]*?scrollbar-gutter:\s*stable;/,
+    'the dock scrollbar should sit 14px beside the cards in a stable gutter the cards do not give up width to'
   );
   assert.match(
     newtabHtml,

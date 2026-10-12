@@ -41,6 +41,11 @@
   vertical-align: baseline;
 }
 
+/* Chrome before 121 ignores scrollbar-width and would draw Windows' wide bar. */
+:is(#_x_extension_overlay_2024_unique_, #_x_extension_onboarding_overlay_demo_2026_unique_) .x-ov-suggestions-container:not([data-open-tabs-visible-row-limit])::-webkit-scrollbar {
+  display: none;
+}
+
 :is(#_x_extension_overlay_2024_unique_, #_x_extension_onboarding_overlay_demo_2026_unique_) .x-ov-suggestions-container[data-number-shortcuts-scroll-locked="true"] {
   overflow-y: hidden;
 }

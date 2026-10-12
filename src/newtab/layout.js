@@ -88,6 +88,10 @@
     const mobileUpshiftRatio = getOptionNumber(constants, 'mobileUpshiftRatio', 0.04);
     const mobileMinTopGapPx = getOptionNumber(constants, 'mobileMinTopGapPx', 12);
     const suggestionsBottomInsetPx = getOptionNumber(constants, 'suggestionsBottomInsetPx', 14);
+    const scrollbarControlGapPx = getOptionNumber(constants, 'scrollbarControlGapPx', 8);
+    // Includes the track's 10px top margin.
+    const scrollbarMinTrackPx = getOptionNumber(constants, 'scrollbarMinTrackPx', 72);
+    const cornerControlSelector = '.x-nt-wallpaper-control, .x-nt-feedback-control';
     const suggestionsViewportFitMaxHeightProperty =
       '--x-nt-suggestions-viewport-fit-max-height';
     const visibleAttribute = 'data-visible';
@@ -619,6 +623,46 @@
       body.style.setProperty('padding-top', `${nextTop}px`, 'important');
     }
 
+    function setStylePixels(element, property, value) {
+      if (!element || !element.style || typeof element.style.setProperty !== 'function') {
+        return;
+      }
+      const next = `${Math.max(0, Math.ceil(Number(value) || 0))}px`;
+      if (element.style.getPropertyValue(property) !== next) {
+        element.style.setProperty(property, next);
+      }
+    }
+
+    // The dock reserves a stable scrollbar gutter beside the cards. Feed its
+    // width back to CSS so the cards keep the dock's width, and end the track
+    // above the corner controls when they sit over the scrollbar.
+    function updateBottomDockScrollbarInsets(scroller, mobileFlow) {
+      if (!scroller || typeof scroller.getBoundingClientRect !== 'function') {
+        return;
+      }
+      const gutter = mobileFlow
+        ? 0
+        : Math.max(0, (Number(scroller.offsetWidth) || 0) - (Number(scroller.clientWidth) || 0));
+      setStylePixels(scroller, '--x-nt-bottom-dock-scrollbar-gutter', gutter);
+      let endInset = 0;
+      if (gutter > 0 && typeof documentObj.querySelectorAll === 'function') {
+        const rect = scroller.getBoundingClientRect();
+        const barLeft = rect.right - gutter;
+        documentObj.querySelectorAll(cornerControlSelector).forEach((control) => {
+          const controlRect = control.getBoundingClientRect();
+          if (!controlRect.width || !controlRect.height ||
+              controlRect.left >= rect.right || controlRect.right <= barLeft ||
+              controlRect.top >= rect.bottom || controlRect.bottom <= rect.top) {
+            return;
+          }
+          endInset = Math.max(endInset, rect.bottom - controlRect.top + scrollbarControlGapPx);
+        });
+        // Keep a usable track on very short docks; the controls then cover its end.
+        endInset = Math.min(endInset, Math.max(0, rect.height - scrollbarMinTrackPx));
+      }
+      setStylePixels(scroller, '--x-nt-bottom-dock-scrollbar-end-inset', endInset);
+    }
+
     function updateBottomDockLayout(callbacks) {
       const body = documentObj && documentObj.body;
       const bookmarkSection = getBookmarkSection();
@@ -697,6 +741,7 @@
         bottomDock.style.setProperty('max-height', `${bottomDockMaxHeight}px`, 'important');
       }
       bottomDock.style.setProperty('display', (bookmarkVisible || recentVisible) ? 'flex' : 'none', 'important');
+      updateBottomDockScrollbarInsets(sectionSafeCorridor.parentElement, mobileFlow);
       updateSearchEntryLayout({
         preserveCurrentTop: Boolean(callbacks && callbacks.preserveSearchEntryLayout)
       });

@@ -618,6 +618,7 @@
   let toastElement = null;
   let toastController = null;
   let layoutController = null;
+  let bottomDockScroller = null;
   let faviconViewRuntime = null;
   let searchEntryRestoreLayoutLockUntil = 0;
   let newtabResizeLayoutLocked = false;
@@ -2383,9 +2384,53 @@
         minWidth: 42,
         minHeight: 42,
         iconButton: true
+      },
+      // The dock's scrollbar sits on the wallpaper beside the cards; sample
+      // only its track so a thin thumb follows the tone right under it.
+      {
+        element: bottomDockScroller,
+        sampleElement: bottomDockScrollbarTrackArea,
+        minWidth: 24,
+        minHeight: 64,
+        disabled: !isBottomDockScrollbarShown()
       }
     ].concat(shortcutToneTargets);
   }
+
+  function getBottomDockScrollbarGutter() {
+    return bottomDockScroller
+      ? Math.max(0, bottomDockScroller.offsetWidth - bottomDockScroller.clientWidth)
+      : 0;
+  }
+
+  // Overlay scrollbars (macOS) take no gutter but still show while scrolling.
+  function isBottomDockScrollbarShown() {
+    return Boolean(
+      bottomDockScroller &&
+      bottomDockScroller.scrollHeight > bottomDockScroller.clientHeight + 1
+    );
+  }
+
+  const bottomDockScrollbarTrackArea = {
+    getBoundingClientRect() {
+      const rect = bottomDockScroller.getBoundingClientRect();
+      // An overlay bar draws about 10px wide over the scroller's right edge.
+      const gutter = getBottomDockScrollbarGutter() || 10;
+      const endInset = Number.parseFloat(
+        bottomDockScroller.style.getPropertyValue('--x-nt-bottom-dock-scrollbar-end-inset')
+      ) || 0;
+      const top = rect.top + 10;
+      const bottom = Math.max(top, rect.bottom - Math.max(10, endInset));
+      return {
+        left: rect.right - gutter,
+        right: rect.right,
+        top,
+        bottom,
+        width: gutter,
+        height: bottom - top
+      };
+    }
+  };
 
   quoteRuntime = globalThis.LumnoNewtabQuotes.createRuntime({
     documentObj: document, windowObj: window, chromeObj: chrome,
@@ -5260,6 +5305,7 @@
     }
   });
   const bottomDock = bottomDockRuntime.element;
+  bottomDockScroller = bottomDockRuntime.scroller;
   layoutController = bottomDockRuntime.layoutController;
   applyNewtabWidthMode();
   markNewtabStartupMilestone('dock-runtime-created');
