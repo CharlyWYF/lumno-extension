@@ -116,11 +116,6 @@ assert.match(
 );
 assert.match(
   optionsSource,
-  /function getAggregateSearchStateCoordinator\(\)[\s\S]*?aggregateSearchesReady = true;[\s\S]*?loader\(rawStorageArea, AGGREGATE_SEARCH_STORAGE_KEY, chrome\)[\s\S]*?onLoadError\(\)[\s\S]*?aggregateSearchesReady = false/,
-  'options must distinguish a failed aggregate storage read from a genuinely empty list'
-);
-assert.match(
-  optionsSource,
   /function handleAggregateSearchSave[\s\S]*?if \(!aggregateSearchesReady\)[\s\S]*?aggregate_search_storage_unavailable_error/,
   'options must block aggregate writes until the stored list has loaded successfully'
 );

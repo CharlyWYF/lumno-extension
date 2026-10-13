@@ -823,7 +823,17 @@
   } = SETTINGS;
   const SYNC_KEYS = SETTINGS.CHROME_SYNC_STORAGE_KEYS;
   // Grouped shortcut state. Its three keys are one save and move together.
-  const BLACKLIST_UTILS = globalThis.LumnoBlacklistUtils;
+  const blacklistModel = globalThis.LumnoOptionsBlacklist.createBlacklistModel({
+    blacklistUtils: globalThis.LumnoBlacklistUtils
+  });
+  const {
+    buildItemKey: buildBlacklistItemKey,
+    formatPatternForDisplay: formatBlacklistPatternForDisplay,
+    getInputConfig: getBlacklistInputConfig,
+    getPatternInputValue: getBlacklistPatternInputValue,
+    normalizeItems: normalizeBlacklistItems,
+    normalizeMatchModes: normalizeBlacklistMatchModes
+  } = blacklistModel;
   const OPTIONS_PANEL_HEIGHT_ANIMATION_DURATION_MS = 280;
   const OPTIONS_PANEL_HEIGHT_ANIMATION_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
   let optionsPanelHeightAnimation = null;
@@ -839,9 +849,10 @@
     );
   }
   const DEBUG_DUPLICATE_CUSTOM_KEY = 'dup';
+  const SHORTCUT_KEYS = globalThis.LumnoOptionsShortcutKeys;
+  const { buildShortcutFromEvent, normalizeFallbackShortcut } = SHORTCUT_KEYS;
   const shortcutPlatform = shortcutDisplay.getNavigatorPlatform(typeof navigator !== 'undefined' ? navigator : null);
   const isMacPlatform = shortcutPlatform === 'mac';
-  const FORCE_TEXT_KEYCAPS_ON_MAC = false;
   const OPTIONS_TARGET_SITE_SEARCH_AI = 'site-search-ai';
   const OPTIONS_TARGET_DOCUMENT_PIP = 'document-pip';
   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -1360,48 +1371,6 @@
     'labs'
   ]);
 
-  function normalizeBlacklistMatchModes(value, fallbackMode) {
-    if (BLACKLIST_UTILS.normalizeMatchModes) {
-      return BLACKLIST_UTILS.normalizeMatchModes(
-        value,
-        fallbackMode === undefined ? 'prefix' : fallbackMode
-      );
-    }
-    return fallbackMode ? [fallbackMode] : [];
-  }
-
-  function normalizeBlacklistPattern(value, matchModes, fallbackMode) {
-    if (BLACKLIST_UTILS.normalizePattern) {
-      return BLACKLIST_UTILS.normalizePattern(
-        value,
-        matchModes,
-        fallbackMode === undefined ? 'prefix' : fallbackMode
-      );
-    }
-    return '';
-  }
-
-  function normalizeSearchBlacklistItems(items) {
-    if (BLACKLIST_UTILS.normalizeItems) {
-      return BLACKLIST_UTILS.normalizeItems(items, 'prefix');
-    }
-    return [];
-  }
-
-  function normalizeFaviconRequestBlacklistItems(items) {
-    if (BLACKLIST_UTILS.normalizeItems) {
-      return BLACKLIST_UTILS.normalizeItems(items, 'prefix');
-    }
-    return [];
-  }
-
-  function buildBlacklistItemKey(item) {
-    if (BLACKLIST_UTILS.buildRuleKey) {
-      return BLACKLIST_UTILS.buildRuleKey(item, 'prefix');
-    }
-    return '';
-  }
-
   function migrateStorageIfNeeded(keys) {
     if (!storageArea || !localStorageArea || getActivePrimaryAreaName() === 'local') {
       return;
@@ -1807,13 +1776,6 @@
     return 4;
   }
 
-  function getBlacklistPatternInputValue(item) {
-    if (BLACKLIST_UTILS.getPatternInputValue) {
-      return BLACKLIST_UTILS.getPatternInputValue(item);
-    }
-    return '';
-  }
-
   function resetBlacklistForm() {
     searchBlacklistFormController?.reset();
   }
@@ -1838,95 +1800,33 @@
   }
 
   function getBlacklistMatchBadgeConfig(modes) {
-    const normalized = normalizeBlacklistMatchModes(modes);
-    if (normalized.includes('exact')) {
-      return {
-        tone: 'exact',
-        text: getMessage('blacklist_match_exact', '当前页面')
-      };
+    const tone = blacklistModel.getMatchTone(modes);
+    if (tone === 'exact') {
+      return { tone, text: getMessage('blacklist_match_exact', '当前页面') };
     }
-    if (normalized.includes('suffix')) {
-      return {
-        tone: 'suffix',
-        text: getMessage('blacklist_match_suffix', '整个网站')
-      };
+    if (tone === 'suffix') {
+      return { tone, text: getMessage('blacklist_match_suffix', '整个网站') };
     }
-    return {
-      tone: 'prefix',
-      text: getMessage('blacklist_match_prefix', '当前站点路径')
-    };
-  }
-
-  function formatBlacklistPatternForDisplay(item) {
-    if (!item || !item.pattern) {
-      return '';
-    }
-    const modes = normalizeBlacklistMatchModes(item.matchModes);
-    if (modes.includes('suffix')) {
-      return item.pattern;
-    }
-    return `http(s)://${item.pattern}`;
-  }
-
-  function getBlacklistInputConfig(modes) {
-    const normalized = normalizeBlacklistMatchModes(modes);
-    if (normalized.includes('exact')) {
-      return {
-        labelKey: 'blacklist_label_url',
-        labelFallback: 'URL rule',
-        placeholderKey: 'blacklist_placeholder_exact',
-        placeholderFallback: 'example.com/path',
-        prefixText: 'http(s)://'
-      };
-    }
-    if (normalized.includes('suffix')) {
-      return {
-        labelKey: 'blacklist_label_url',
-        labelFallback: 'URL rule',
-        placeholderKey: 'blacklist_placeholder_domain',
-        placeholderFallback: 'baidu.com',
-        prefixText: ''
-      };
-    }
-    return {
-      labelKey: 'blacklist_label_url',
-      labelFallback: 'URL rule',
-      placeholderKey: 'blacklist_placeholder_prefix',
-      placeholderFallback: 'baidu.com or baidu.com/search',
-      prefixText: 'http(s)://'
-    };
+    return { tone, text: getMessage('blacklist_match_prefix', '当前站点路径') };
   }
 
   function buildBlacklistRuleDraft(inputValue, matchModes) {
-    if (!Array.isArray(matchModes) || matchModes.length === 0) {
-      return {
-        error: getMessage('blacklist_error_match_mode', '请选择至少一种匹配方式')
-      };
+    const draft = blacklistModel.buildRuleDraft(inputValue, matchModes);
+    if (draft.item) {
+      return draft;
     }
-    const pattern = normalizeBlacklistPattern(inputValue, matchModes, null);
-    if (!pattern) {
-      return {
-        error: matchModes.includes('suffix')
-          ? getMessage('blacklist_error_domain', '请输入网站域名。')
-          : getMessage('blacklist_error_url', '请输入站点域名或完整 URL。')
-      };
+    if (draft.error === 'blacklist_error_match_mode') {
+      return { error: getMessage('blacklist_error_match_mode', '请选择至少一种匹配方式') };
     }
     return {
-      item: {
-        pattern: pattern,
-        matchModes: matchModes
-      }
+      error: draft.error === 'blacklist_error_domain'
+        ? getMessage('blacklist_error_domain', '请输入网站域名。')
+        : getMessage('blacklist_error_url', '请输入站点域名或完整 URL。')
     };
   }
 
   function upsertBlacklistItems(nextItem, replacedRuleKey) {
-    const nextKey = buildBlacklistItemKey(nextItem);
-    return [{ pattern: nextItem.pattern, matchModes: nextItem.matchModes }].concat(
-      searchBlacklistItems.filter((entry) => {
-        const entryKey = buildBlacklistItemKey(entry);
-        return entryKey !== replacedRuleKey && entryKey !== nextKey;
-      })
-    );
+    return blacklistModel.upsertItems(searchBlacklistItems, nextItem, replacedRuleKey);
   }
 
   function persistBlacklistItems(nextItems, successMessage) {
@@ -3117,275 +3017,9 @@
     return isMacPlatform ? 'Command+Shift+K' : 'Ctrl+Shift+K';
   }
 
-  function isReservedBrowserShortcut(shortcut) {
-    return false;
-  }
-
-  function normalizeShortcutKeyToken(rawKey) {
-    const value = String(rawKey || '').trim();
-    if (!value) {
-      return '';
-    }
-    const lower = value.toLowerCase();
-    const aliasMap = {
-      tab: 'Tab',
-      enter: 'Enter',
-      return: 'Enter',
-      esc: 'Escape',
-      escape: 'Escape',
-      space: 'Space',
-      spacebar: 'Space',
-      up: 'ArrowUp',
-      down: 'ArrowDown',
-      left: 'ArrowLeft',
-      right: 'ArrowRight',
-      comma: 'Comma',
-      period: 'Period',
-      slash: 'Slash',
-      semicolon: 'Semicolon',
-      quote: 'Quote',
-      minus: 'Minus',
-      plus: 'Plus',
-      backslash: 'Backslash',
-      backquote: 'Backquote',
-      bracketleft: 'BracketLeft',
-      bracketright: 'BracketRight'
-    };
-    if (aliasMap[lower]) {
-      return aliasMap[lower];
-    }
-    if (/^f\d{1,2}$/.test(lower)) {
-      return lower.toUpperCase();
-    }
-    if (value.length === 1) {
-      const charMap = {
-        ' ': 'Space',
-        ',': 'Comma',
-        '<': 'Comma',
-        '.': 'Period',
-        '>': 'Period',
-        '/': 'Slash',
-        '?': 'Slash',
-        ';': 'Semicolon',
-        ':': 'Semicolon',
-        '\'': 'Quote',
-        '"': 'Quote',
-        '-': 'Minus',
-        '_': 'Minus',
-        '+': 'Plus',
-        '\\': 'Backslash',
-        '|': 'Backslash',
-        '`': 'Backquote',
-        '[': 'BracketLeft',
-        '{': 'BracketLeft',
-        ']': 'BracketRight',
-        '}': 'BracketRight'
-      };
-      if (charMap[value]) {
-        return charMap[value];
-      }
-      if (/^[a-z0-9]$/i.test(value)) {
-        return value.toUpperCase();
-      }
-    }
-    return '';
-  }
-
-  function getShortcutKeyTokenFromCode(rawCode) {
-    const code = String(rawCode || '').trim();
-    if (!code) {
-      return '';
-    }
-    if (/^Key[A-Z]$/.test(code)) {
-      return code.slice(3);
-    }
-    if (/^Digit[0-9]$/.test(code)) {
-      return code.slice(5);
-    }
-    const codeMap = {
-      Backquote: 'Backquote',
-      Minus: 'Minus',
-      Equal: 'Plus',
-      BracketLeft: 'BracketLeft',
-      BracketRight: 'BracketRight',
-      Backslash: 'Backslash',
-      Semicolon: 'Semicolon',
-      Quote: 'Quote',
-      Comma: 'Comma',
-      Period: 'Period',
-      Slash: 'Slash',
-      Space: 'Space',
-      Tab: 'Tab',
-      Enter: 'Enter',
-      Escape: 'Escape',
-      ArrowUp: 'ArrowUp',
-      ArrowDown: 'ArrowDown',
-      ArrowLeft: 'ArrowLeft',
-      ArrowRight: 'ArrowRight'
-    };
-    if (codeMap[code]) {
-      return codeMap[code];
-    }
-    if (/^F\d{1,2}$/.test(code)) {
-      return code;
-    }
-    return '';
-  }
-
-  function getShortcutKeyTokenFromEvent(event) {
-    if (!event) {
-      return '';
-    }
-    return getShortcutKeyTokenFromCode(event.code) || normalizeShortcutKeyToken(event.key);
-  }
-
-  function normalizeFallbackShortcut(value) {
-    const text = String(value || '').trim();
-    if (!text) {
-      return '';
-    }
-    const parts = text
-      .split('+')
-      .map((token) => String(token || '').trim())
-      .filter(Boolean);
-    if (parts.length < 2) {
-      return '';
-    }
-    const keyToken = normalizeShortcutKeyToken(parts.pop());
-    if (!keyToken) {
-      return '';
-    }
-    const modifierState = {
-      ctrl: false,
-      alt: false,
-      shift: false,
-      meta: false
-    };
-    for (const token of parts) {
-      const lower = token.toLowerCase();
-      if (lower === 'ctrl' || lower === 'control' || lower === 'macctrl') {
-        modifierState.ctrl = true;
-      } else if (lower === 'alt' || lower === 'option') {
-        modifierState.alt = true;
-      } else if (lower === 'shift') {
-        modifierState.shift = true;
-      } else if (lower === 'command' || lower === 'cmd' || lower === 'meta' || lower === 'super') {
-        modifierState.meta = true;
-      } else {
-        return '';
-      }
-    }
-    const hasModifier = modifierState.ctrl || modifierState.alt || modifierState.shift || modifierState.meta;
-    if (!hasModifier) {
-      return '';
-    }
-    const normalized = [];
-    if (modifierState.ctrl) normalized.push('Ctrl');
-    if (modifierState.alt) normalized.push('Alt');
-    if (modifierState.shift) normalized.push('Shift');
-    if (modifierState.meta) normalized.push('Command');
-    normalized.push(keyToken);
-    return normalized.join('+');
-  }
-
-  function buildShortcutFromEvent(event) {
-    if (!event) {
-      return '';
-    }
-    const key = String(event.key || '');
-    if (!key || key === 'Shift' || key === 'Control' || key === 'Alt' || key === 'Meta' || key === 'AltGraph') {
-      return '';
-    }
-    const keyToken = getShortcutKeyTokenFromEvent(event);
-    if (!keyToken) {
-      return '';
-    }
-    const modifiers = [];
-    if (event.ctrlKey) modifiers.push('Ctrl');
-    if (event.altKey) modifiers.push('Alt');
-    if (event.shiftKey) modifiers.push('Shift');
-    if (event.metaKey) modifiers.push('Command');
-    if (modifiers.length === 0) {
-      return '';
-    }
-    modifiers.push(keyToken);
-    return modifiers.join('+');
-  }
-
   function formatShortcutForDisplay(shortcut) {
     return shortcutDisplay.formatShortcutChord(shortcut, {
       platform: isMacPlatform ? 'mac' : 'windows'
-    });
-  }
-
-  function getShortcutDisplayTokens(shortcut) {
-    const normalized = normalizeFallbackShortcut(shortcut);
-    if (!normalized) {
-      return [];
-    }
-    const shouldUseMacSymbols = isMacPlatform && !FORCE_TEXT_KEYCAPS_ON_MAC;
-    const parts = normalized.split('+').filter(Boolean);
-    if (parts.length === 0) {
-      return [];
-    }
-    const keyToken = parts.pop();
-    const tokens = [];
-    parts.forEach((token) => {
-      if (!shouldUseMacSymbols) {
-        tokens.push(token === 'Command' ? 'Cmd' : token);
-        return;
-      }
-      if (token === 'Ctrl') tokens.push('⌃');
-      else if (token === 'Alt') tokens.push('⌥');
-      else if (token === 'Shift') tokens.push('⇧');
-      else if (token === 'Command') tokens.push('⌘');
-    });
-    const keyMapMac = {
-      ArrowUp: '↑',
-      ArrowDown: '↓',
-      ArrowLeft: '←',
-      ArrowRight: '→',
-      Enter: '↩',
-      Escape: '⎋',
-      Tab: '⇥',
-      Space: 'Space',
-      Comma: ',',
-      Period: '.',
-      Slash: '/',
-      Semicolon: ';',
-      Quote: '\'',
-      Minus: '-',
-      Plus: '+',
-      Backslash: '\\',
-      Backquote: '`',
-      BracketLeft: '[',
-      BracketRight: ']'
-    };
-    const keyMapDefault = {
-      ArrowUp: '↑',
-      ArrowDown: '↓',
-      ArrowLeft: '←',
-      ArrowRight: '→',
-      Escape: 'Esc',
-      Comma: ',',
-      Period: '.',
-      Slash: '/',
-      Semicolon: ';',
-      Quote: '\'',
-      Minus: '-',
-      Plus: '+',
-      Backslash: '\\',
-      Backquote: '`',
-      BracketLeft: '[',
-      BracketRight: ']'
-    };
-    const keyLabel = shouldUseMacSymbols
-      ? (keyMapMac[keyToken] || keyToken)
-      : (keyMapDefault[keyToken] || keyToken);
-    tokens.push(keyLabel);
-    return tokens.map((token) => {
-      const text = String(token || '');
-      return text.length > 1 ? text.toUpperCase() : text;
     });
   }
 
@@ -3393,7 +3027,7 @@
     if (!shortcutHotkeyController) {
       return;
     }
-    const tokens = getShortcutDisplayTokens(shortcut);
+    const tokens = SHORTCUT_KEYS.getShortcutDisplayTokens(shortcut, { macSymbols: isMacPlatform });
     const emptyPlaceholder = isCapturingFallbackShortcut
       ? (fallbackShortcutInput ? (fallbackShortcutInput.getAttribute('placeholder') || '') : '')
       : getMessage('settings_shortcuts_empty_state', '无');
@@ -4291,11 +3925,6 @@
         fallbackShortcutInput.value = '';
         const normalized = normalizeFallbackShortcut(nextShortcut);
         if (!normalized) {
-          return;
-        }
-        if (isReservedBrowserShortcut(normalized)) {
-          showToast(getMessage('settings_shortcuts_invalid', '快捷键无效，请按组合键（如 Ctrl+K）。'), true);
-          renderFallbackShortcutTokens(currentShortcutLabel || '');
           return;
         }
         if (normalized === currentShortcutLabel) {
@@ -5421,8 +5050,9 @@
           return loader(rawStorageArea, AGGREGATE_SEARCH_STORAGE_KEY, chrome);
         },
         normalize: normalizeAggregateSearches,
-        onLoadError() {
+        onLoadError(error) {
           aggregateSearchesReady = false;
+          console.warn('[Lumno] Could not load aggregate searches.', error);
           showToast(getMessage('toast_error', '操作失败，请重试。'), true);
         },
         save: saveAggregateSearches
@@ -5534,7 +5164,7 @@
         return;
       }
       storageArea.get([SEARCH_BLACKLIST_STORAGE_KEY], (result) => {
-        resolve(normalizeSearchBlacklistItems(result && result[SEARCH_BLACKLIST_STORAGE_KEY]));
+        resolve(normalizeBlacklistItems(result && result[SEARCH_BLACKLIST_STORAGE_KEY]));
       });
     });
   }
@@ -5545,7 +5175,7 @@
         resolve([]);
         return;
       }
-      const normalized = normalizeSearchBlacklistItems(items);
+      const normalized = normalizeBlacklistItems(items);
       storageArea.set({ [SEARCH_BLACKLIST_STORAGE_KEY]: normalized }, () => resolve(normalized));
     });
   }
@@ -5557,14 +5187,14 @@
         return;
       }
       storageArea.get([FAVICON_REQUEST_BLACKLIST_STORAGE_KEY], (result) => {
-        resolve(normalizeFaviconRequestBlacklistItems(result && result[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY]));
+        resolve(normalizeBlacklistItems(result && result[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY]));
       });
     });
   }
 
   function saveFaviconRequestBlacklistItems(items) {
     return new Promise((resolve) => {
-      const normalized = normalizeFaviconRequestBlacklistItems(items);
+      const normalized = normalizeBlacklistItems(items);
       if (!storageArea) {
         resolve(normalized);
         return;
@@ -5720,11 +5350,11 @@
   }
 
   storageChanges.on(SEARCH_BLACKLIST_STORAGE_KEY, (changes) => {
-    searchBlacklistItems = normalizeSearchBlacklistItems(changes[SEARCH_BLACKLIST_STORAGE_KEY].newValue);
+    searchBlacklistItems = normalizeBlacklistItems(changes[SEARCH_BLACKLIST_STORAGE_KEY].newValue);
     renderSearchBlacklistList();
   });
   storageChanges.on(FAVICON_REQUEST_BLACKLIST_STORAGE_KEY, (changes) => {
-    faviconRequestBlacklistItems = normalizeFaviconRequestBlacklistItems(
+    faviconRequestBlacklistItems = normalizeBlacklistItems(
       changes[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY].newValue
     );
     renderFaviconRequestBlacklistList();
@@ -5758,9 +5388,10 @@
           renderAggregateSearchList();
         },
         load: loadSiteSearchProviderSnapshot,
-        onError() {
+        onError(error) {
           customSiteSearchProviderIdsReady = false;
           renderAggregateSearchList();
+          console.warn('[Lumno] Could not load site search providers.', error);
           showToast(getMessage('toast_error', '操作失败，请重试。'), true);
         },
         persist: SITE_SEARCH.createSnapshotPersister({
@@ -5792,6 +5423,8 @@
     }
     customSiteSearchProviderIdsReady = false;
     renderAggregateSearchList();
+    // A failed refresh was already reported through onError; one overtaken by
+    // a newer refresh is dropped on purpose.
     return getSiteSearchProviderRefreshCoordinator().refresh().catch(() => {});
   }
 
@@ -5818,6 +5451,7 @@
     refreshSiteSearchProviders();
   }
   if (aggregateSearchList) {
+    // Load failures are reported through onLoadError.
     refreshAggregateSearches().catch(() => {});
   }
   if (blacklistList) {

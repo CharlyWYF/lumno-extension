@@ -7,6 +7,8 @@ import toggleSettingsSource from '../../src/options/options-toggle-settings.js?r
 import siteSearchSource from '../../src/options/options-site-search.js?raw';
 import aggregateSearchSource from '../../src/options/options-aggregate-search.js?raw';
 import syncTransferSource from '../../src/options/options-sync-transfer.js?raw';
+import shortcutKeysSource from '../../src/options/options-shortcut-keys.js?raw';
+import blacklistSource from '../../src/options/options-blacklist.js?raw';
 import webdavOptionsSource from '../../src/options/webdav-options.js?raw';
 import settingsSource from '../../src/shared/settings.js?raw';
 import blacklistUtilsSource from '../../src/shared/blacklist-utils.js?raw';
@@ -67,7 +69,9 @@ const PAGE_SCRIPTS = [
   toggleSettingsSource,
   siteSearchSource,
   aggregateSearchSource,
-  syncTransferSource
+  syncTransferSource,
+  shortcutKeysSource,
+  blacklistSource
 ];
 
 const addedListeners: Array<[EventTarget, string, EventListenerOrEventListenerObject, unknown]> = [];
@@ -189,12 +193,16 @@ async function settle(): Promise<void> {
   });
 }
 
-async function bootOptionsPage(sync: StorageValues = {}, local: StorageValues = {}) {
+async function bootOptionsPage(
+  sync: StorageValues = {},
+  local: StorageValues = {},
+  chromeStub?: ReturnType<typeof createChromeStub>
+) {
   const parsed = new DOMParser().parseFromString(optionsHtml, 'text/html');
   Array.from(parsed.body.children)
     .filter((node) => node.tagName !== 'SCRIPT')
     .forEach((node) => document.body.appendChild(document.importNode(node, true)));
-  const chrome = createChromeStub(sync, local);
+  const chrome = chromeStub || createChromeStub(sync, local);
   vi.stubGlobal('chrome', chrome);
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: false,
@@ -357,6 +365,37 @@ describe('Options page storage wiring', () => {
     });
     expect(toggle('_x_extension_aggregate_search_auto_group_toggle_2026_unique_').checked).toBe(false);
     expect(chrome.storage.sync.values[settings.AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY]).toBe(false);
+  });
+
+  it('tells a failed aggregate search read apart from an empty list', async () => {
+    const settings = SETTINGS;
+    const toastText = () => document.getElementById('_x_extension_toast_2024_unique_')?.textContent || '';
+    await bootOptionsPage();
+    expect(toastText()).not.toContain('Action failed');
+    addedListeners.splice(0).forEach(([target, type, listener, options]) => {
+      target.removeEventListener(type, listener, options as EventListenerOptions);
+    });
+    vi.unstubAllGlobals();
+    document.body.replaceChildren();
+
+    const failing = createChromeStub({}, {});
+    const get = failing.storage.sync.get.bind(failing.storage.sync);
+    failing.storage.sync.get = (keys: unknown, callback?: (result: StorageValues) => void) => {
+      const list = Array.isArray(keys) ? keys : [keys];
+      if (callback && list.length === 1 && list[0] === settings.AGGREGATE_SEARCH_STORAGE_KEY) {
+        queueMicrotask(() => {
+          failing.runtime.lastError = { message: 'read failed' } as unknown as null;
+          callback({});
+          failing.runtime.lastError = null;
+        });
+        return undefined;
+      }
+      return get(keys, callback);
+    };
+    await bootOptionsPage({}, {}, failing);
+    await vi.waitFor(() => {
+      expect(toastText()).toContain('Action failed');
+    });
   });
 
   it('repairs, persists and follows the overlay opening animation', async () => {

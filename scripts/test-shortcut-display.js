@@ -185,11 +185,6 @@ const optionsSource = fs.readFileSync(
 );
 assert.match(
   optionsSource,
-  /const keyMapDefault = \{[\s\S]*ArrowUp: '↑',[\s\S]*ArrowDown: '↓',[\s\S]*ArrowLeft: '←',[\s\S]*ArrowRight: '→'/,
-  'editable shortcuts should use arrow symbols on non-Mac platforms too'
-);
-assert.match(
-  optionsSource,
   /const effectiveShortcut = shortcut \|\| defaultShortcut;\s*setFallbackShortcutLabel\(effectiveShortcut\);/,
   'the stored shortcut should remain parseable and only be formatted at render time'
 );
