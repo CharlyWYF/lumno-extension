@@ -379,6 +379,34 @@ check('renaming a group in the dialog changes only its title', WIDE, async (page
   return problems;
 });
 
+// Many shortcuts used to grow under the bottom dock, whose transparent top
+// took the clicks meant for the last rows and the add tile. Whatever part of
+// the area shows, at either end of its scroll, must take its own clicks.
+check('many shortcuts stay clickable above the dock', { width: 1440, height: 900 }, async (page) => {
+  await page.seed([{ id: 'g0', title: '' }], Array.from({ length: 60 }, (_, index) => link(`m${index}`, 'g0')));
+  const problems = [];
+  for (const end of ['top', 'bottom']) {
+    const covered = await page.evaluate(`(() => {
+      const section = document.querySelector('.x-nt-shortcuts-section');
+      section.scrollTop = ${end === 'top' ? 0 : 'section.scrollHeight'};
+      const area = section.getBoundingClientRect();
+      return Array.from(document.querySelectorAll('.x-nt-shortcut-tile[data-shortcut-id], .x-nt-shortcut-tile--add:not([hidden])'))
+        .map((tile) => {
+          const r = tile.getBoundingClientRect();
+          const x = r.left + r.width / 2;
+          const y = r.top + r.height / 2;
+          if (y < area.top || y > area.bottom) return null;
+          const hit = document.elementFromPoint(x, y);
+          return tile.contains(hit) ? null
+            : (tile.getAttribute('data-shortcut-id') || 'add') + ' under ' + (hit ? hit.id || hit.className : 'nothing');
+        })
+        .filter(Boolean);
+    })()`);
+    problems.push(...covered.map((key) => ({ key: `${end}: ${key}`, dx: 0, dy: 0 })));
+  }
+  return problems;
+});
+
 // The add tile asks what to add on a click and has no right-click menu.
 check('the add tile offers a site, a group or hiding it', WIDE, async (page) => {
   await page.seed(BASE_GROUPS, BASE_ITEMS);
