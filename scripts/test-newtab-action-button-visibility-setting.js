@@ -5,6 +5,7 @@ const { readPageSource } = require('./helpers/page-source');
 const { readNewtabRuntimeSource } = require('./helpers/newtab-source');
 
 const optionsHtml = readPageSource('src/options/options.html');
+const toggleSettings = require('../src/options/options-toggle-settings.js').getToggleSettings(settings);
 const optionsSource = fs.readFileSync('src/options/options.js', 'utf8');
 const newtabSource = readNewtabRuntimeSource();
 const inputModeSource = fs.readFileSync('src/shared/search-input-mode.js', 'utf8');
@@ -16,16 +17,14 @@ const settingsContract = [
     htmlId: '_x_extension_newtab_feedback_button_visible_toggle_2026_unique_',
     i18nKey: 'settings_newtab_feedback_button_visible_title',
     storageKey: '_x_extension_newtab_feedback_button_visible_2026_unique_',
-    toggleKind: 'newtab-feedback-button-visible',
-    variable: 'newtabFeedbackButtonVisibleToggle'
+    toggleKind: 'newtab-feedback-button-visible'
   },
   {
     constant: 'NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY',
     htmlId: '_x_extension_newtab_appearance_button_visible_toggle_2026_unique_',
     i18nKey: 'settings_newtab_appearance_button_visible_title',
     storageKey: '_x_extension_newtab_appearance_button_visible_2026_unique_',
-    toggleKind: 'newtab-appearance-button-visible',
-    variable: 'newtabAppearanceButtonVisibleToggle'
+    toggleKind: 'newtab-appearance-button-visible'
   }
 ];
 
@@ -34,11 +33,10 @@ settingsContract.forEach((entry) => {
   assert(settings.CHROME_SYNC_STORAGE_KEYS.includes(entry.storageKey));
   assert.match(optionsHtml, new RegExp(`id="${entry.htmlId}"[^>]*checked`));
   assert.match(optionsHtml, new RegExp(`data-i18n="${entry.i18nKey}"`));
-  assert(optionsSource.includes(entry.constant));
   assert(newtabSource.includes(entry.constant));
-  assert.match(
-    optionsSource,
-    new RegExp(`\\[${entry.variable}, '${entry.toggleKind}'\\]`),
+  const toggleEntry = toggleSettings.find((item) => item.key === entry.storageKey);
+  assert(
+    toggleEntry && toggleEntry.inputId === entry.htmlId && toggleEntry.kind === entry.toggleKind,
     `${entry.constant} should use the shared Options toggle controller`
   );
   localeNames.forEach((locale) => {

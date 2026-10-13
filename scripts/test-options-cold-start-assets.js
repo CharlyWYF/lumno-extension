@@ -200,8 +200,7 @@ vm.runInContext(fs.readFileSync(preloadPath, 'utf8'), sandbox, {
     'chrome-extension://lumno/assets/images/settings-bg-dark.webp'
   );
   assert(
-    optionsSource.includes("const OPTIONS_THEME_PRELOAD_STORAGE_KEY = '_x_extension_options_theme_preload_2026_unique_';") &&
-      optionsSource.includes('cacheOptionsThemeMode(storedMode);') &&
+    optionsSource.includes('cacheOptionsThemeMode(storedMode);') &&
       optionsSource.includes('cacheOptionsThemeMode(nextMode);'),
     'Options should keep the synchronous theme cache current after reads and changes'
   );

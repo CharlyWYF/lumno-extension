@@ -7,7 +7,6 @@
   let optionsStartupRefreshDeferred = false;
   let optionsCustomSelectRefreshCount = 0;
   let optionsReadyMarked = false;
-  let optionsReadyFallbackTimer = 0;
 
   function markOptionsPerformance(name) {
     try {
@@ -58,27 +57,19 @@
   const bookmarkColumnsSettingRow = document.getElementById('_x_extension_bookmark_columns_setting_row_2026_unique_');
   const bookmarkColumnsControlHost = document.getElementById('_x_extension_bookmark_columns_control_2026_unique_');
   const searchResultDisplayLimitControlHost = document.getElementById('_x_extension_search_result_display_limit_control_2026_unique_');
-  const bookmarkFolderIconsVisibleToggle = document.getElementById('_x_extension_bookmark_folder_icons_visible_toggle_2026_unique_');
   const bookmarkFolderIconsVisibleRow = document.getElementById('_x_extension_bookmark_folder_icons_visible_row_2026_unique_');
-  const autoPipToggle = document.getElementById('_x_extension_auto_pip_toggle_2024_unique_');
-  const tabSwitcherToggle = document.getElementById('_x_extension_tab_switcher_toggle_2026_unique_');
   const aggregateSearchAutoGroupToggle = document.getElementById(
     '_x_extension_aggregate_search_auto_group_toggle_2026_unique_'
   );
-  const documentPipToggle = document.getElementById('_x_extension_document_pip_toggle_2026_unique_');
-  const pinnedTabRecoveryToggle = document.getElementById('_x_extension_pinned_tab_recovery_toggle_2026_unique_');
   const selectionQuickActionsToggle = document.getElementById('_x_extension_selection_quick_actions_toggle_2026_unique_');
   const selectionQuickActionsProviderRow = document.getElementById('_x_extension_selection_quick_actions_provider_row_2026_unique_');
   const selectionQuickActionsProviderSelect = document.getElementById('_x_extension_selection_quick_actions_provider_select_2026_unique_');
   const selectionQuickActionsGroupRow = document.getElementById('_x_extension_selection_quick_actions_group_row_2026_unique_');
   const selectionQuickActionsGroupToggle = document.getElementById('_x_extension_selection_quick_actions_group_toggle_2026_unique_');
-  const overlayTabQuickSwitchToggle = document.getElementById('_x_extension_overlay_tab_quick_switch_2024_unique_');
   const newtabTopContentTabsWrap = document.getElementById('_x_extension_newtab_top_content_tabs_wrap_2026_unique_');
   const newtabTimeFontWeightRow = document.getElementById('_x_extension_newtab_time_font_weight_row_2026_unique_');
   const newtabTimeFontWeightControlHost = document.getElementById('_x_extension_newtab_time_font_weight_control_2026_unique_');
   const newtabTimeSecondsRow = document.getElementById('_x_extension_newtab_time_seconds_row_2026_unique_');
-  const newtabTimeSecondsToggle = document.getElementById('_x_extension_newtab_time_seconds_toggle_2026_unique_');
-  const newtabInputAutoFocusToggle = document.getElementById('_x_extension_newtab_input_auto_focus_toggle_2026_unique_');
   const newtabShortcutsToggle = document.getElementById('_x_extension_newtab_shortcuts_toggle_2026_unique_');
   const newtabShortcutAddRow = document.getElementById('_x_extension_newtab_shortcut_add_row_2026_unique_');
   const newtabShortcutAddToggle = document.getElementById('_x_extension_newtab_shortcut_add_toggle_2026_unique_');
@@ -90,21 +81,16 @@
   const newtabShortcutSizeControlHost = document.getElementById('_x_extension_newtab_shortcut_size_control_2026_unique_');
   const newtabShortcutGapRow = document.getElementById('_x_extension_newtab_shortcut_gap_setting_row_2026_unique_');
   const newtabShortcutGapControlHost = document.getElementById('_x_extension_newtab_shortcut_gap_control_2026_unique_');
-  const newtabFeedbackButtonVisibleToggle = document.getElementById('_x_extension_newtab_feedback_button_visible_toggle_2026_unique_');
-  const newtabAppearanceButtonVisibleToggle = document.getElementById('_x_extension_newtab_appearance_button_visible_toggle_2026_unique_');
   const restrictedActionSelect = document.getElementById('_x_extension_restricted_action_select_2024_unique_');
   const searchResultPrioritySelect = document.getElementById('_x_extension_search_result_priority_select_2026_unique_');
   const searchResultTabPositionSelect = document.getElementById('_x_extension_search_result_tab_position_select_2026_unique_');
   const searchResultSourceTypeGroupHost = document.getElementById('_x_extension_search_result_source_types_2026_unique_');
   const searchResultSourceTypeInputs = Array.from(document.querySelectorAll('input[data-search-result-source-type]'));
-  const overlayOpenTabsDefaultVisibleToggle = document.getElementById('_x_extension_overlay_open_tabs_default_visible_toggle_2026_unique_');
   const overlayPageThemeAdaptationRow = document.getElementById('_x_extension_overlay_page_theme_adaptation_row_2026_unique_');
-  const overlayPageThemeAdaptationToggle = document.getElementById('_x_extension_overlay_page_theme_adaptation_toggle_2026_unique_');
   const overlayPageThemeAdaptationInfoHost = document.getElementById('_x_extension_overlay_page_theme_adaptation_info_2026_unique_');
   const restrictedActionInfoHost = document.getElementById('_x_extension_restricted_action_info_2026_unique_');
   const bookmarkRowsInfoHost = document.getElementById('_x_extension_bookmark_rows_info_2026_unique_');
   const bookmarkColumnsInfoHost = document.getElementById('_x_extension_bookmark_columns_info_2026_unique_');
-  const faviconEnhancedFetchToggle = document.getElementById('_x_extension_favicon_enhanced_fetch_toggle_2026_unique_');
   const faviconBlacklistEditor = document.getElementById('_x_extension_favicon_blacklist_editor_2026_unique_');
   const faviconBlacklistList = document.getElementById('_x_extension_favicon_blacklist_list_2026_unique_');
   const faviconBlacklistForm = document.getElementById('_x_extension_favicon_blacklist_form_2026_unique_');
@@ -116,13 +102,7 @@
   const syncExportButton = document.getElementById('_x_extension_sync_export_2024_unique_');
   const syncImportButton = document.getElementById('_x_extension_sync_import_2024_unique_');
   const syncImportInput = document.getElementById('_x_extension_sync_import_input_2024_unique_');
-  const updateNoticeToggle = document.getElementById('_x_extension_update_notice_toggle_2026_unique_');
-  const motionEffectsToggle = document.getElementById('_x_extension_motion_effects_toggle_2026_unique_');
-  const simpleModeToggle = document.getElementById('_x_extension_simple_mode_toggle_2026_unique_');
-  const numberShortcutInstantToggle = document.getElementById('_x_extension_number_shortcut_instant_toggle_2026_unique_');
-  const progressTrackingToggle = document.getElementById('_x_extension_progress_tracking_toggle_2026_unique_');
   const newtabOpenInNewTabToggles = Array.from(document.querySelectorAll('input[data-newtab-open-in-new-tab-surface]'));
-  const macosCtrlSuggestionNavigationToggle = document.getElementById('_x_extension_macos_ctrl_suggestion_navigation_toggle_2026_unique_');
   const fallbackShortcutInput = document.getElementById('_x_extension_shortcuts_input_2024_unique_');
   const fallbackShortcutTokens = document.getElementById('_x_extension_shortcuts_tokens_2024_unique_');
   const fallbackShortcutWrap = document.querySelector('._x_extension_shortcuts_hotkey_wrap_2024_unique_');
@@ -163,11 +143,6 @@
   const blacklistForm = document.getElementById('_x_extension_blacklist_form_2026_unique_');
   const blacklistClearButton = document.getElementById('_x_extension_blacklist_clear_2026_unique_');
   const toastElement = document.getElementById('_x_extension_toast_2024_unique_');
-  const confirmMask = document.getElementById('_x_extension_confirm_mask_2024_unique_');
-  const confirmMessage = document.getElementById('_x_extension_confirm_message_2024_unique_');
-  const confirmOk = document.getElementById('_x_extension_confirm_ok_2024_unique_');
-  const confirmCancel = document.getElementById('_x_extension_confirm_cancel_2024_unique_');
-  const confirmDialog = document.querySelector('._x_extension_confirm_dialog_2024_unique_');
   const optionsBlacklistListApi = globalThis.LumnoOptionsBlacklistList;
   const optionsAggregateSearchListApi = globalThis.LumnoOptionsAggregateSearchList;
   const optionsFeedbackSupportApi = globalThis.LumnoOptionsFeedbackSupport;
@@ -329,30 +304,13 @@
       selectionQuickActionsGroupRow.setAttribute('aria-disabled', disabled ? 'true' : 'false');
     }
   }
-  [
-    [updateNoticeToggle, 'update-notice'],
-    [motionEffectsToggle, 'motion-effects'],
-    [simpleModeToggle, 'simple-mode'],
-    [autoPipToggle, 'auto-pip'],
-    [overlayOpenTabsDefaultVisibleToggle, 'overlay-open-tabs-default-visible'],
-    [bookmarkFolderIconsVisibleToggle, 'bookmark-folder-icons-visible'],
-    [overlayTabQuickSwitchToggle, 'overlay-tab-quick-switch'],
-    [newtabTimeSecondsToggle, 'newtab-time-seconds'],
-    [newtabInputAutoFocusToggle, 'newtab-input-auto-focus'],
-    ...newtabOpenInNewTabToggles.map((input) => [input, 'newtab-open-in-new-tab']),
-    [newtabShortcutsToggle, 'newtab-shortcuts'],
-    [newtabShortcutAddToggle, 'newtab-shortcut-add'],
-    [newtabShortcutDockMagnificationToggle, 'newtab-shortcut-dock-magnification'],
-    [newtabFeedbackButtonVisibleToggle, 'newtab-feedback-button-visible'],
-    [newtabAppearanceButtonVisibleToggle, 'newtab-appearance-button-visible'],
-    [faviconEnhancedFetchToggle, 'favicon-enhanced-fetch'],
-    [tabSwitcherToggle, 'tab-switcher'],
-    [aggregateSearchAutoGroupToggle, 'aggregate-search-auto-group'],
-    [documentPipToggle, 'document-pip'],
-    [pinnedTabRecoveryToggle, 'pinned-tab-recovery'],
-    [selectionQuickActionsToggle, 'selection-quick-actions'],
-    [selectionQuickActionsGroupToggle, 'selection-quick-actions-group']
-  ].forEach(([input, kind]) => registerOptionsToggleControl(input, kind));
+  const TOGGLE_SETTINGS = globalThis.LumnoOptionsToggleSettings.getToggleSettings(SETTINGS);
+  TOGGLE_SETTINGS.forEach((entry) => {
+    if (entry.kind) {
+      registerOptionsToggleControl(document.getElementById(entry.inputId), entry.kind);
+    }
+  });
+  newtabOpenInNewTabToggles.forEach((input) => registerOptionsToggleControl(input, 'newtab-open-in-new-tab'));
 
   // Settings this browser cannot honor stay visible but disabled, with the
   // reason in a tooltip that follows the cursor: <div
@@ -497,20 +455,49 @@
   }
 
   const SEARCH_UTILS = globalThis.LumnoSearchUtils;
-  const providerStorageRuntime = SETTINGS.createProviderStorageRuntime(chrome);
-  const rawStorageArea = providerStorageRuntime
-    ? providerStorageRuntime.area
-    : ((chrome && chrome.storage && chrome.storage.sync)
-        ? chrome.storage.sync
-        : (chrome && chrome.storage ? chrome.storage.local : null));
-  const storageAreaName = providerStorageRuntime ? providerStorageRuntime.name : (rawStorageArea
-    ? (rawStorageArea === (chrome && chrome.storage ? chrome.storage.sync : null) ? 'sync' : 'local')
-    : null);
-  const startupStorageReadBatch = rawStorageArea
-    ? SETTINGS.createStorageReadBatch(rawStorageArea)
-    : null;
-  const storageArea = startupStorageReadBatch ? startupStorageReadBatch.area : rawStorageArea;
-  optionsStartupStorageBatchPending = Boolean(startupStorageReadBatch);
+  const SITE_SEARCH = globalThis.LumnoOptionsSiteSearch;
+  const siteSearchModel = SITE_SEARCH.createSiteSearchModel({
+    searchUtils: SEARCH_UTILS,
+    aggregateSearchStore: AGGREGATE_SEARCH_STORE
+  });
+  const {
+    getActiveBuiltinSiteSearchProviders,
+    getSiteSearchBuiltinKey,
+    normalizeAliases
+  } = SITE_SEARCH;
+  const enqueueSiteSearchProviderStorageOperation = SITE_SEARCH.createOperationQueue();
+  const AGGREGATE_SEARCH = globalThis.LumnoOptionsAggregateSearch;
+  const aggregateSearchModel = AGGREGATE_SEARCH.createAggregateSearchModel({
+    aggregateSearchStore: AGGREGATE_SEARCH_STORE
+  });
+  const syncTransfer = globalThis.LumnoOptionsSyncTransfer.createSyncTransfer({
+    deriveLegacyAutoGroupEnabled: aggregateSearchModel.deriveLegacyAutoGroupEnabled,
+    settings: SETTINGS
+  });
+  const {
+    runtime: providerStorageRuntime,
+    area: rawStorageArea
+  } = SETTINGS.getProviderStorage(chrome);
+  // Device-only values (the language copy, the shortcut overflow, WebDAV
+  // status) and the local-to-sync migration always use chrome.storage.local,
+  // whichever area holds the synced settings.
+  const localStorageArea = chrome && chrome.storage ? chrome.storage.local || null : null;
+  const startupStorageReadBatch = SETTINGS.createStorageReadBatch(rawStorageArea);
+  const storageArea = startupStorageReadBatch.area;
+  optionsStartupStorageBatchPending = true;
+  const SETTING_BINDINGS = globalThis.LumnoOptionsSettingBindings;
+  // Each section registers its storage change handlers here, next to the
+  // code that renders it; one chrome.storage listener dispatches to them.
+  const storageChanges = SETTING_BINDINGS.createStorageChangeRegistry({
+    isPrimaryAreaName: isPrimaryStorageAreaName
+  });
+  const settingBinder = SETTING_BINDINGS.createSettingBinder({
+    storageArea,
+    registry: storageChanges,
+    refreshCustomSelects,
+    setToggleState: setOptionsToggleState,
+    setSelectState: setOptionsSelectState
+  });
 
   function finishOptionsStartupStorageBatch(metrics) {
     optionsStartupStorageBatchPending = false;
@@ -534,19 +521,12 @@
       optionsStartupRefreshDeferred = false;
       refreshCustomSelects({ force: true });
     }
-    const scheduleFrame = typeof requestAnimationFrame === 'function'
-      ? requestAnimationFrame
-      : (callback) => setTimeout(callback, 0);
     const markOptionsReady = () => {
       if (optionsReadyMarked) {
         return;
       }
       optionsReadyMarked = true;
       optionsStartupRefreshCoalescing = false;
-      if (optionsReadyFallbackTimer) {
-        clearTimeout(optionsReadyFallbackTimer);
-        optionsReadyFallbackTimer = 0;
-      }
       if (optionsStartupRefreshDeferred) {
         optionsStartupRefreshDeferred = false;
         refreshCustomSelects({ force: true });
@@ -578,31 +558,26 @@
         // Performance measures are diagnostics only.
       }
     };
-    optionsReadyFallbackTimer = setTimeout(markOptionsReady, 250);
-    scheduleFrame(() => {
-      scheduleFrame(markOptionsReady);
+    // Ready means the startup values have been painted, so changes from here
+    // on may animate: wait for the frame that paints them. A hidden page gets
+    // no frames until it is shown and has nothing on screen to animate, so it
+    // is ready as soon as the values are in.
+    if (document.visibilityState === 'hidden' || typeof requestAnimationFrame !== 'function') {
+      markOptionsReady();
+      return;
+    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(markOptionsReady);
     });
   }
 
-  if (startupStorageReadBatch) {
-    startupStorageReadBatch.ready.then(finishOptionsStartupStorageBatch);
-  } else {
-    Promise.resolve().then(() => finishOptionsStartupStorageBatch({
-      keyCount: 0,
-      requestCount: 0,
-      underlyingReadCount: 0
-    }));
-  }
+  startupStorageReadBatch.ready.then(finishOptionsStartupStorageBatch);
 
   function getActivePrimaryAreaName() {
-    return providerStorageRuntime
-      ? providerStorageRuntime.getActiveAreaName()
-      : storageAreaName;
+    return providerStorageRuntime.getActiveAreaName();
   }
   function isPrimaryStorageAreaName(areaName) {
-    return providerStorageRuntime
-      ? providerStorageRuntime.isActiveAreaName(areaName)
-      : Boolean(storageAreaName) && areaName === storageAreaName;
+    return providerStorageRuntime.isActiveAreaName(areaName);
   }
   function addStorageChangeListener(listener) {
     return SETTINGS.addStorageChangeListener(chrome, listener);
@@ -796,152 +771,58 @@
   document.addEventListener('pointerdown', releaseOptionsPanelFocusAnchorReserve, true);
   document.addEventListener('focusin', releaseOptionsPanelFocusAnchorReserve, true);
 
-  function getRiSvg(id, sizeClass) {
-    const size = sizeClass || 'ri-size-12';
-    return `<i class="ri-icon ${size} ${id}" aria-hidden="true"></i>`;
-  }
-
-  const THEME_STORAGE_KEY = '_x_extension_theme_mode_2024_unique_';
-  const OPTIONS_THEME_PRELOAD_STORAGE_KEY = '_x_extension_options_theme_preload_2026_unique_';
-  const LANGUAGE_STORAGE_KEY = '_x_extension_language_2024_unique_';
-  const RECENT_MODE_STORAGE_KEY = '_x_extension_recent_mode_2024_unique_';
-  const RECENT_COUNT_STORAGE_KEY = '_x_extension_recent_count_2024_unique_';
-  const NEWTAB_WIDTH_MODE_STORAGE_KEY = '_x_extension_newtab_width_mode_2026_unique_';
-  const NEWTAB_SEARCH_WIDTH_STORAGE_KEY = '_x_extension_newtab_search_width_2026_unique_';
-  const NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY = SETTINGS.NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY ||
-    '_x_extension_newtab_input_auto_focus_enabled_2026_unique_';
-  const NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY = SETTINGS.NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY ||
-    '_x_extension_newtab_feedback_button_visible_2026_unique_';
-  const NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY = SETTINGS.NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY ||
-    '_x_extension_newtab_appearance_button_visible_2026_unique_';
-  const NEWTAB_THEME_MODE_STORAGE_KEY = '_x_extension_newtab_theme_mode_2026_unique_';
-  const NEWTAB_THEME_SCOPE_STORAGE_KEY = '_x_extension_newtab_theme_scope_2026_unique_';
-  const NEWTAB_ZEN_MODE_STORAGE_KEY = '_x_extension_newtab_zen_mode_2026_unique_';
-  const NEWTAB_WALLPAPER_STORAGE_KEY = '_x_extension_newtab_wallpaper_2026_unique_';
-  const NEWTAB_ONLINE_WALLPAPER_STORAGE_KEY = SETTINGS.NEWTAB_ONLINE_WALLPAPER_STORAGE_KEY ||
-    '_x_extension_newtab_online_wallpaper_2026_unique_';
-  const NEWTAB_LINK_WALLPAPERS_STORAGE_KEY = SETTINGS.NEWTAB_LINK_WALLPAPERS_STORAGE_KEY ||
-    '_x_extension_newtab_link_wallpapers_2026_unique_';
-  const NEWTAB_DAILY_WALLPAPER_PICKS_STORAGE_KEY = SETTINGS.NEWTAB_DAILY_WALLPAPER_PICKS_STORAGE_KEY ||
-    '_x_extension_newtab_daily_wallpaper_picks_2026_unique_';
-  const NEWTAB_WALLPAPER_OVERLAY_STORAGE_KEY = '_x_extension_newtab_wallpaper_overlay_2026_unique_';
-  const NEWTAB_WALLPAPER_EFFECT_STORAGE_KEY = '_x_extension_newtab_wallpaper_effect_2026_unique_';
-  const NEWTAB_FAVICON_STORAGE_KEY = '_x_extension_newtab_favicon_2026_unique_';
-  const OVERLAY_SIZE_MODE_STORAGE_KEY = '_x_extension_overlay_size_mode_2026_unique_';
-  const OVERLAY_ENTER_ANIMATION_STORAGE_KEY = SETTINGS.OVERLAY_ENTER_ANIMATION_STORAGE_KEY ||
-    '_x_extension_overlay_enter_animation_2026_unique_';
-  const OVERLAY_PAGE_THEME_ADAPTATION_ENABLED_STORAGE_KEY = SETTINGS.OVERLAY_PAGE_THEME_ADAPTATION_ENABLED_STORAGE_KEY ||
-    '_x_extension_overlay_page_theme_adaptation_enabled_2026_unique_';
-  const BOOKMARK_COUNT_STORAGE_KEY = '_x_extension_bookmark_count_2024_unique_';
-  const BOOKMARK_COLUMNS_STORAGE_KEY = '_x_extension_bookmark_columns_2024_unique_';
-  const BOOKMARK_VIEW_MODE_STORAGE_KEY = '_x_extension_bookmark_view_mode_2026_unique_';
-  const BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY = '_x_extension_bookmark_folder_icons_visible_2026_unique_';
-  const BOOKMARK_FOLDER_COLOR_REFS_STORAGE_KEY = SETTINGS.BOOKMARK_FOLDER_COLOR_REFS_STORAGE_KEY ||
-    '_x_extension_bookmark_folder_color_refs_2026_unique_';
-  const BOOKMARK_FOLDER_COLOR_PRESETS_STORAGE_KEY = SETTINGS.BOOKMARK_FOLDER_COLOR_PRESETS_STORAGE_KEY ||
-    '_x_extension_bookmark_folder_color_presets_2026_unique_';
-  const PINNED_RECENT_SITES_STORAGE_KEY = '_x_extension_newtab_pinned_recent_sites_2026_unique_';
-  const HIDDEN_RECENT_SITES_STORAGE_KEY = '_x_extension_newtab_hidden_recent_sites_2026_unique_';
-  const NEWTAB_SHORTCUTS_STORAGE_KEY = '_x_extension_newtab_shortcuts_2026_unique_';
-  const NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY = SETTINGS.NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY ||
-    '_x_extension_newtab_shortcuts_chunk_2_2026_unique_';
-  const NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY = SETTINGS.NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY ||
-    '_x_extension_newtab_shortcuts_chunk_3_2026_unique_';
-  const NEWTAB_LEGACY_SHORTCUTS_STORAGE_KEYS = [
-    NEWTAB_SHORTCUTS_STORAGE_KEY,
-    NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY,
-    NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY
-  ];
+  const {
+    THEME_STORAGE_KEY,
+    OPTIONS_THEME_PRELOAD_STORAGE_KEY,
+    LANGUAGE_STORAGE_KEY,
+    RECENT_MODE_STORAGE_KEY,
+    RECENT_COUNT_STORAGE_KEY,
+    NEWTAB_WIDTH_MODE_STORAGE_KEY,
+    OVERLAY_SIZE_MODE_STORAGE_KEY,
+    OVERLAY_ENTER_ANIMATION_STORAGE_KEY,
+    BOOKMARK_COUNT_STORAGE_KEY,
+    BOOKMARK_COLUMNS_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY,
+    NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY,
+    NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY,
+    NEWTAB_SHORTCUT_WIDTH_STORAGE_KEY,
+    NEWTAB_SHORTCUT_WIDTH_MIN,
+    NEWTAB_SHORTCUT_WIDTH_MAX,
+    NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY,
+    NEWTAB_SHORTCUT_COLUMNS_MIN,
+    NEWTAB_SHORTCUT_COLUMNS_MAX,
+    NEWTAB_SHORTCUT_COLUMNS_DEFAULT,
+    NEWTAB_SHORTCUT_SIZE_STORAGE_KEY,
+    NEWTAB_SHORTCUT_SIZE_MIN,
+    NEWTAB_SHORTCUT_SIZE_MAX,
+    NEWTAB_SHORTCUT_SIZE_DEFAULT,
+    NEWTAB_SHORTCUT_GAP_STORAGE_KEY,
+    NEWTAB_SHORTCUT_GAP_MIN,
+    NEWTAB_SHORTCUT_GAP_MAX,
+    NEWTAB_SHORTCUT_GAP_DEFAULT,
+    NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
+    NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
+    NEWTAB_TIME_FONT_WEIGHT_MIN,
+    NEWTAB_TIME_FONT_WEIGHT_MAX,
+    NEWTAB_TIME_FONT_WEIGHT_DEFAULT,
+    RESTRICTED_ACTION_STORAGE_KEY,
+    RESTRICTED_ACTION_AUTO_BROWSER_SETTING_DONE_STORAGE_KEY,
+    SEARCH_RESULT_PRIORITY_STORAGE_KEY,
+    SEARCH_RESULT_TAB_POSITION_STORAGE_KEY,
+    SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY,
+    SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY,
+    FALLBACK_SHORTCUT_STORAGE_KEY,
+    SITE_SEARCH_STORAGE_KEY,
+    SITE_SEARCH_DISABLED_STORAGE_KEY,
+    AGGREGATE_SEARCH_STORAGE_KEY,
+    AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY,
+    SEARCH_BLACKLIST_STORAGE_KEY,
+    FAVICON_REQUEST_BLACKLIST_STORAGE_KEY,
+    SYNC_META_STORAGE_KEY,
+    NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY
+  } = SETTINGS;
+  const SYNC_KEYS = SETTINGS.CHROME_SYNC_STORAGE_KEYS;
   // Grouped shortcut state. Its three keys are one save and move together.
-  const NEWTAB_SHORTCUTS_V2_STORAGE_KEY = '_x_extension_newtab_shortcuts_v2_2026_unique_';
-  const NEWTAB_SHORTCUTS_V2_CHUNK_2_STORAGE_KEY = '_x_extension_newtab_shortcuts_v2_chunk_2_2026_unique_';
-  const NEWTAB_SHORTCUTS_V2_CHUNK_3_STORAGE_KEY = '_x_extension_newtab_shortcuts_v2_chunk_3_2026_unique_';
-  const NEWTAB_SHORTCUTS_V2_STORAGE_KEYS = [
-    NEWTAB_SHORTCUTS_V2_STORAGE_KEY,
-    NEWTAB_SHORTCUTS_V2_CHUNK_2_STORAGE_KEY,
-    NEWTAB_SHORTCUTS_V2_CHUNK_3_STORAGE_KEY
-  ];
-  const NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY = '_x_extension_newtab_shortcuts_visible_2026_unique_';
-  const NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY = '_x_extension_newtab_shortcut_add_visible_2026_unique_';
-  const NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY = '_x_extension_newtab_shortcut_dock_magnification_enabled_2026_unique_';
-  const NEWTAB_SHORTCUT_WIDTH_STORAGE_KEY = SETTINGS.NEWTAB_SHORTCUT_WIDTH_STORAGE_KEY ||
-    '_x_extension_newtab_shortcut_width_2026_unique_';
-  const NEWTAB_SHORTCUT_WIDTH_MIN = Number(SETTINGS.NEWTAB_SHORTCUT_WIDTH_MIN) || 360;
-  const NEWTAB_SHORTCUT_WIDTH_MAX = Number(SETTINGS.NEWTAB_SHORTCUT_WIDTH_MAX) || 1440;
-  const NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY = SETTINGS.NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY ||
-    '_x_extension_newtab_shortcut_columns_2026_unique_';
-  const NEWTAB_SHORTCUT_COLUMNS_MIN = Number(SETTINGS.NEWTAB_SHORTCUT_COLUMNS_MIN) || 4;
-  const NEWTAB_SHORTCUT_COLUMNS_MAX = Number(SETTINGS.NEWTAB_SHORTCUT_COLUMNS_MAX) || 16;
-  const NEWTAB_SHORTCUT_COLUMNS_DEFAULT = Number(SETTINGS.NEWTAB_SHORTCUT_COLUMNS_DEFAULT) || 10;
-  const NEWTAB_SHORTCUT_SIZE_STORAGE_KEY = SETTINGS.NEWTAB_SHORTCUT_SIZE_STORAGE_KEY ||
-    '_x_extension_newtab_shortcut_size_2026_unique_';
-  const NEWTAB_SHORTCUT_SIZE_MIN = Number(SETTINGS.NEWTAB_SHORTCUT_SIZE_MIN) || 48;
-  const NEWTAB_SHORTCUT_SIZE_MAX = Number(SETTINGS.NEWTAB_SHORTCUT_SIZE_MAX) || 80;
-  const NEWTAB_SHORTCUT_SIZE_DEFAULT = Number(SETTINGS.NEWTAB_SHORTCUT_SIZE_DEFAULT) || 64;
-  const NEWTAB_SHORTCUT_GAP_STORAGE_KEY = SETTINGS.NEWTAB_SHORTCUT_GAP_STORAGE_KEY ||
-    '_x_extension_newtab_shortcut_gap_2026_unique_';
-  const NEWTAB_SHORTCUT_GAP_MIN = Number.isFinite(Number(SETTINGS.NEWTAB_SHORTCUT_GAP_MIN))
-    ? Number(SETTINGS.NEWTAB_SHORTCUT_GAP_MIN)
-    : 0;
-  const NEWTAB_SHORTCUT_GAP_MAX = Number(SETTINGS.NEWTAB_SHORTCUT_GAP_MAX) || 24;
-  const NEWTAB_SHORTCUT_GAP_DEFAULT = Number.isFinite(
-    Number(SETTINGS.NEWTAB_SHORTCUT_GAP_DEFAULT)
-  )
-    ? Number(SETTINGS.NEWTAB_SHORTCUT_GAP_DEFAULT)
-    : 4;
-  const UPDATE_NOTICE_ENABLED_STORAGE_KEY = '_x_extension_update_notice_enabled_2026_unique_';
-  const MOTION_EFFECTS_ENABLED_STORAGE_KEY = SETTINGS.MOTION_EFFECTS_ENABLED_STORAGE_KEY ||
-    '_x_extension_motion_effects_enabled_2026_unique_';
-  const SIMPLE_MODE_ENABLED_STORAGE_KEY = SETTINGS.SIMPLE_MODE_ENABLED_STORAGE_KEY ||
-    '_x_extension_simple_mode_enabled_2026_unique_';
-  const NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY = SETTINGS.NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY ||
-    '_x_extension_number_shortcut_instant_enabled_2026_unique_';
-  const MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY =
-    SETTINGS.MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY ||
-    '_x_extension_macos_ctrl_suggestion_navigation_enabled_2026_unique_';
-  const AUTO_PIP_ENABLED_STORAGE_KEY = '_x_extension_auto_pip_enabled_2026_unique_';
-  const TAB_SWITCHER_ENABLED_STORAGE_KEY = '_x_extension_tab_switcher_enabled_2026_unique_';
-  const DOCUMENT_PIP_ENABLED_STORAGE_KEY = '_x_extension_document_pip_enabled_2026_unique_';
-  const PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY = '_x_extension_pinned_tab_recovery_enabled_2026_unique_';
-  const SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY = SETTINGS.SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY ||
-    '_x_extension_selection_quick_actions_enabled_2026_unique_';
-  const SELECTION_QUICK_ACTIONS_PROVIDER_STORAGE_KEY = SETTINGS.SELECTION_QUICK_ACTIONS_PROVIDER_STORAGE_KEY ||
-    '_x_extension_selection_quick_actions_provider_2026_unique_';
-  const SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY = SETTINGS.SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY ||
-    '_x_extension_selection_quick_actions_group_enabled_2026_unique_';
-  const OVERLAY_TAB_PRIORITY_STORAGE_KEY = '_x_extension_overlay_tab_priority_2024_unique_';
-  const NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY = SETTINGS.NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY ||
-    '_x_extension_newtab_wordmark_visible_2026_unique_';
-  const NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY =
-    SETTINGS.NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY ||
-    '_x_extension_newtab_time_font_weight_2026_unique_';
-  const NEWTAB_TIME_FONT_WEIGHT_MIN = Number(SETTINGS.NEWTAB_TIME_FONT_WEIGHT_MIN) || 300;
-  const NEWTAB_TIME_FONT_WEIGHT_MAX = Number(SETTINGS.NEWTAB_TIME_FONT_WEIGHT_MAX) || 800;
-  const NEWTAB_TIME_FONT_WEIGHT_DEFAULT = Number(SETTINGS.NEWTAB_TIME_FONT_WEIGHT_DEFAULT) || 320;
-  const NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY =
-    SETTINGS.NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY ||
-    '_x_extension_newtab_time_seconds_visible_2026_unique_';
-  const RESTRICTED_ACTION_STORAGE_KEY = '_x_extension_restricted_action_2024_unique_';
-  const RESTRICTED_ACTION_AUTO_BROWSER_SETTING_DONE_STORAGE_KEY = '_x_extension_restricted_action_auto_browser_setting_done_2026_unique_';
-  const SEARCH_RESULT_PRIORITY_STORAGE_KEY = '_x_extension_search_result_priority_2026_unique_';
-  const SEARCH_RESULT_TAB_POSITION_STORAGE_KEY = SETTINGS.SEARCH_RESULT_TAB_POSITION_STORAGE_KEY ||
-    '_x_extension_search_result_tab_position_2026_unique_';
-  const SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY = '_x_extension_search_result_source_types_2026_unique_';
-  const SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY = SETTINGS.SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY ||
-    '_x_extension_search_result_display_limit_2026_unique_';
-  const OVERLAY_OPEN_TABS_DEFAULT_VISIBLE_STORAGE_KEY = '_x_extension_overlay_open_tabs_default_visible_2026_unique_';
-  const FALLBACK_SHORTCUT_STORAGE_KEY = '_x_extension_fallback_hotkey_2024_unique_';
-  const SITE_SEARCH_STORAGE_KEY = '_x_extension_site_search_custom_2024_unique_';
-  const SITE_SEARCH_DISABLED_STORAGE_KEY = '_x_extension_site_search_disabled_2024_unique_';
-  const AGGREGATE_SEARCH_STORAGE_KEY = SETTINGS.AGGREGATE_SEARCH_STORAGE_KEY ||
-    AGGREGATE_SEARCH_STORE.STORAGE_KEY ||
-    '_x_extension_aggregate_searches_2026_unique_';
-  const AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY =
-    SETTINGS.AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY ||
-    '_x_extension_aggregate_search_auto_group_enabled_2026_unique_';
-  const SEARCH_BLACKLIST_STORAGE_KEY = '_x_extension_search_blacklist_2026_unique_';
-  const FAVICON_REQUEST_BLACKLIST_STORAGE_KEY = '_x_extension_favicon_request_blacklist_2026_unique_';
-  const FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY = '_x_extension_favicon_enhanced_fetch_enabled_2026_unique_';
   const BLACKLIST_UTILS = globalThis.LumnoBlacklistUtils;
   const OPTIONS_PANEL_HEIGHT_ANIMATION_DURATION_MS = 280;
   const OPTIONS_PANEL_HEIGHT_ANIMATION_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
@@ -957,99 +838,10 @@
       searchResultSourceTypeItems.filter((item) => item.checked).map((item) => item.value)
     );
   }
-  const SECONDARY_BUTTON_CLASS_NAME = '_x_extension_shortcut_submit_2024_unique_ _x_extension_shortcut_secondary_2024_unique_';
-  const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = '_x_extension_default_search_engine_2024_unique_';
-  const SYNC_META_KEY = '_x_extension_sync_meta_2024_unique_';
-  const NEWTAB_QUOTE_PREFS_STORAGE_KEY = SETTINGS.NEWTAB_QUOTE_PREFS_STORAGE_KEY ||
-    '_x_extension_newtab_quote_prefs_2026_unique_';
-  const PROGRESS_TRACKING_ENABLED_STORAGE_KEY = SETTINGS.PROGRESS_TRACKING_ENABLED_STORAGE_KEY ||
-    '_x_extension_progress_tracking_enabled_2026_unique_';
-  const NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY = SETTINGS.NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY ||
-    '_x_extension_newtab_open_in_new_tab_2026_unique_';
-  const SYNC_KEYS = [
-    THEME_STORAGE_KEY,
-    LANGUAGE_STORAGE_KEY,
-    RECENT_MODE_STORAGE_KEY,
-    RECENT_COUNT_STORAGE_KEY,
-    NEWTAB_WIDTH_MODE_STORAGE_KEY,
-    NEWTAB_SEARCH_WIDTH_STORAGE_KEY,
-    NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY,
-    NEWTAB_QUOTE_PREFS_STORAGE_KEY,
-    NEWTAB_THEME_MODE_STORAGE_KEY,
-    NEWTAB_THEME_SCOPE_STORAGE_KEY,
-    NEWTAB_ZEN_MODE_STORAGE_KEY,
-    NEWTAB_WALLPAPER_STORAGE_KEY,
-    NEWTAB_ONLINE_WALLPAPER_STORAGE_KEY,
-    NEWTAB_LINK_WALLPAPERS_STORAGE_KEY,
-    NEWTAB_DAILY_WALLPAPER_PICKS_STORAGE_KEY,
-    NEWTAB_WALLPAPER_OVERLAY_STORAGE_KEY,
-    NEWTAB_WALLPAPER_EFFECT_STORAGE_KEY,
-    NEWTAB_FAVICON_STORAGE_KEY,
-    OVERLAY_SIZE_MODE_STORAGE_KEY,
-    OVERLAY_ENTER_ANIMATION_STORAGE_KEY,
-    OVERLAY_PAGE_THEME_ADAPTATION_ENABLED_STORAGE_KEY,
-    BOOKMARK_COUNT_STORAGE_KEY,
-    BOOKMARK_COLUMNS_STORAGE_KEY,
-    BOOKMARK_VIEW_MODE_STORAGE_KEY,
-    BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY,
-    BOOKMARK_FOLDER_COLOR_REFS_STORAGE_KEY,
-    BOOKMARK_FOLDER_COLOR_PRESETS_STORAGE_KEY,
-    PINNED_RECENT_SITES_STORAGE_KEY,
-    HIDDEN_RECENT_SITES_STORAGE_KEY,
-    NEWTAB_SHORTCUTS_STORAGE_KEY,
-    NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY,
-    NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY,
-    NEWTAB_SHORTCUTS_V2_STORAGE_KEY,
-    NEWTAB_SHORTCUTS_V2_CHUNK_2_STORAGE_KEY,
-    NEWTAB_SHORTCUTS_V2_CHUNK_3_STORAGE_KEY,
-    NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY,
-    NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY,
-    NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY,
-    NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY,
-    NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY,
-    NEWTAB_SHORTCUT_WIDTH_STORAGE_KEY,
-    NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY,
-    NEWTAB_SHORTCUT_SIZE_STORAGE_KEY,
-    NEWTAB_SHORTCUT_GAP_STORAGE_KEY,
-    UPDATE_NOTICE_ENABLED_STORAGE_KEY,
-    MOTION_EFFECTS_ENABLED_STORAGE_KEY,
-    SIMPLE_MODE_ENABLED_STORAGE_KEY,
-    NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY,
-    MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY,
-    AUTO_PIP_ENABLED_STORAGE_KEY,
-    TAB_SWITCHER_ENABLED_STORAGE_KEY,
-    DOCUMENT_PIP_ENABLED_STORAGE_KEY,
-    PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY,
-    SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY,
-    SELECTION_QUICK_ACTIONS_PROVIDER_STORAGE_KEY,
-    SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY,
-    OVERLAY_TAB_PRIORITY_STORAGE_KEY,
-    NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
-    NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
-    NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY,
-    RESTRICTED_ACTION_STORAGE_KEY,
-    SEARCH_RESULT_PRIORITY_STORAGE_KEY,
-    SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY,
-    SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY,
-    SEARCH_RESULT_TAB_POSITION_STORAGE_KEY,
-    OVERLAY_OPEN_TABS_DEFAULT_VISIBLE_STORAGE_KEY,
-    FALLBACK_SHORTCUT_STORAGE_KEY,
-    SITE_SEARCH_STORAGE_KEY,
-    SITE_SEARCH_DISABLED_STORAGE_KEY,
-    AGGREGATE_SEARCH_STORAGE_KEY,
-    AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY,
-    PROGRESS_TRACKING_ENABLED_STORAGE_KEY,
-    NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY,
-    SEARCH_BLACKLIST_STORAGE_KEY,
-    FAVICON_REQUEST_BLACKLIST_STORAGE_KEY,
-    FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY,
-    DEFAULT_SEARCH_ENGINE_STORAGE_KEY
-  ];
   const DEBUG_DUPLICATE_CUSTOM_KEY = 'dup';
   const shortcutPlatform = shortcutDisplay.getNavigatorPlatform(typeof navigator !== 'undefined' ? navigator : null);
   const isMacPlatform = shortcutPlatform === 'mac';
   const FORCE_TEXT_KEYCAPS_ON_MAC = false;
-  const FORCE_OVERLAY_TAB_QUICK_SWITCH_ENABLED = true;
   const OPTIONS_TARGET_SITE_SEARCH_AI = 'site-search-ai';
   const OPTIONS_TARGET_DOCUMENT_PIP = 'document-pip';
   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -1065,10 +857,6 @@
   let aggregateSearches = [];
   let aggregateSearchesReady = false;
   let aggregateSearchStateCoordinator = null;
-  let confirmResolver = null;
-  let confirmOffset = { x: 0, y: 0 };
-  let confirmClosingTimer = null;
-  let bodyFixedSnapshot = null;
   let languageApplyRequestId = 0;
   let editingSiteSearchKey = null;
   let siteSearchDraftCategory = 'site';
@@ -1080,7 +868,6 @@
   let siteSearchRefreshSuppressUntil = 0;
   let siteSearchRefreshTimer = null;
   let siteSearchProviderRefreshCoordinator = null;
-  let siteSearchProviderStorageOperationQueue = Promise.resolve();
   let pendingOptionsScrollTarget = '';
   let currentShortcutLabel = null;
   let isCapturingFallbackShortcut = false;
@@ -1138,17 +925,6 @@
       return `${safePrefix}-${globalThis.crypto.randomUUID()}`;
     }
     return `${safePrefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
-  }
-
-  function createDeterministicLegacyProviderId(item, index, attempt) {
-    return AGGREGATE_SEARCH_STORE.createDeterministicCustomProviderId(item, index, attempt);
-  }
-
-  function ensureCustomSiteSearchProviderIds(items) {
-    return AGGREGATE_SEARCH_STORE.ensureCustomProviderIds(
-      items,
-      createDeterministicLegacyProviderId
-    );
   }
 
   let feedbackSupportLinks = LUMNO_FEEDBACK_SUPPORT_LINKS_FALLBACK;
@@ -1627,13 +1403,10 @@
   }
 
   function migrateStorageIfNeeded(keys) {
-    if (!storageArea || !chrome || !chrome.storage || !chrome.storage.local) {
+    if (!storageArea || !localStorageArea || getActivePrimaryAreaName() === 'local') {
       return;
     }
-    if (getActivePrimaryAreaName() === 'local') {
-      return;
-    }
-    chrome.storage.local.get(keys, (localResult) => {
+    localStorageArea.get(keys, (localResult) => {
       const hasLocal = keys.some((key) => typeof localResult[key] !== 'undefined');
       if (!hasLocal) {
         return;
@@ -1943,68 +1716,46 @@
 
   async function handleReactSiteSearchFormSave(draft) {
     suspendSiteSearchRefresh(260);
-    const key = String(draft && draft.key ? draft.key : '').trim();
-    const name = String(draft && draft.name ? draft.name : '').trim();
-    const templateRaw = String(draft && draft.template ? draft.template : '').trim();
-    const aliases = normalizeAliases(draft && draft.aliases ? draft.aliases : '');
-    const category = draft && draft.category === 'searchEngine'
-      ? 'searchEngine'
-      : 'site';
-    if (!key) {
-      return { ok: false, error: getMessage('shortcuts_error_key', '请填写触发词。') };
-    }
-    if (/\s/.test(key)) {
-      return {
-        ok: false,
-        error: getMessage('shortcuts_error_key_space', '触发词不能包含空格。')
-      };
-    }
-    if (findSiteSearchKeyConflict(key, '')) {
-      return {
-        ok: false,
-        error: getMessage('shortcuts_error_key_duplicate', '该触发词已存在，请更换。')
-      };
-    }
-    const template = normalizeSiteSearchTemplate(templateRaw);
-    if (!template || !template.includes('{query}')) {
-      return {
-        ok: false,
-        error: getMessage('toast_error_template', '搜索模板必须包含 {query}。')
-      };
-    }
-    const normalizedKey = key.toLowerCase();
-    const nextItem = normalizeSiteSearchProvider({
-      id: createPersistentId('source'),
-      aliases,
-      key,
-      name: name || key,
-      template,
-      category
+    const result = siteSearchModel.addCustomSiteSearchProvider(draft, {
+      createId: () => createPersistentId('source'),
+      custom: customSiteSearchProviders,
+      disabledKeys: disabledSiteSearchKeys,
+      hasKeyConflict: (key, allowedKey) => Boolean(findSiteSearchKeyConflict(key, allowedKey))
     });
-    if (!nextItem) {
-      return { ok: false, error: getMessage('toast_error', '操作失败，请重试。') };
+    if (!result.ok) {
+      return { ok: false, error: getSiteSearchErrorMessage(result.error) };
     }
-    const next = [nextItem].concat(
-      customSiteSearchProviders.filter(
-        (item) => String(item.key || '').toLowerCase() !== normalizedKey
-      )
-    );
-    const nextDisabledKeys = new Set(disabledSiteSearchKeys);
-    nextDisabledKeys.delete(normalizedKey);
     try {
-      await saveSiteSearchProviderState(next, nextDisabledKeys);
-      customSiteSearchProviders = next;
-      customSiteSearchProviderIdsReady = true;
-      disabledSiteSearchKeys = nextDisabledKeys;
-      renderSiteSearchList();
+      await saveSiteSearchProviderState(result.custom, result.disabledKeys);
+      applySavedSiteSearchProviders(result.custom, result.disabledKeys);
       refreshSiteSearchProviders();
-      setTimeout(() => {
-        showToast(getMessage('toast_saved', '已保存'), false);
-      }, 220);
       return { ok: true };
     } catch (error) {
       return { ok: false, error: getMessage('toast_error', '操作失败，请重试。') };
     }
+  }
+
+  function getSiteSearchErrorMessage(errorKey) {
+    switch (errorKey) {
+      case 'shortcuts_error_key':
+        return getMessage('shortcuts_error_key', '请填写触发词。');
+      case 'shortcuts_error_key_space':
+        return getMessage('shortcuts_error_key_space', '触发词不能包含空格。');
+      case 'shortcuts_error_key_duplicate':
+        return getMessage('shortcuts_error_key_duplicate', '该触发词已存在，请更换。');
+      case 'toast_error_template':
+        return getMessage('toast_error_template', '搜索模板必须包含 {query}。');
+      default:
+        return getMessage('toast_error', '操作失败，请重试。');
+    }
+  }
+
+  function applySavedSiteSearchProviders(custom, disabledKeys) {
+    customSiteSearchProviders = custom;
+    customSiteSearchProviderIdsReady = true;
+    disabledSiteSearchKeys = disabledKeys;
+    renderSiteSearchList();
+    showToast(getMessage('toast_saved', '已保存'), false);
   }
 
   async function handleReactSearchBlacklistFormSave(value, modes) {
@@ -2084,22 +1835,6 @@
       faviconBlacklistEditor.setAttribute('inert', '');
       resetFaviconBlacklistForm();
     }
-  }
-
-  function getBlacklistMatchModesSummary(modes) {
-    const normalized = normalizeBlacklistMatchModes(modes);
-    if (normalized.length === 0) {
-      return getMessage('blacklist_match_unset', '未设置匹配方式');
-    }
-    return normalized.map((mode) => {
-      if (mode === 'exact') {
-        return getMessage('blacklist_match_exact', '当前页面');
-      }
-      if (mode === 'suffix') {
-        return getMessage('blacklist_match_suffix', '整个网站');
-      }
-      return getMessage('blacklist_match_prefix', '当前站点路径');
-    }).join(' / ');
   }
 
   function getBlacklistMatchBadgeConfig(modes) {
@@ -2222,10 +1957,6 @@
     return SETTINGS.normalizeOverlayEnterAnimation(value);
   }
 
-  function normalizeOverlayPageThemeAdaptationEnabled(value) {
-    return SETTINGS.normalizeOverlayPageThemeAdaptationEnabled(value);
-  }
-
   function updateBookmarkColumnsSettingVisibility(countValue) {
     if (!bookmarkColumnsSettingRow) {
       return;
@@ -2239,27 +1970,12 @@
     });
   }
 
-  function normalizeOverlayTabQuickSwitch(value) {
-    if (FORCE_OVERLAY_TAB_QUICK_SWITCH_ENABLED) {
-      return true;
-    }
-    return SETTINGS.normalizeOverlayTabPriorityMode(value);
-  }
-
   function normalizeNewtabTopContentMode(value) {
     return SETTINGS.normalizeNewtabTopContentMode(value);
   }
 
-  function normalizeNewtabTimeSecondsVisible(value) {
-    return SETTINGS.normalizeNewtabTimeSecondsVisible(value);
-  }
-
   function normalizeNewtabTimeFontWeight(value) {
     return SETTINGS.normalizeNewtabTimeFontWeight(value);
-  }
-
-  function normalizeNewtabInputAutoFocusEnabled(value) {
-    return SETTINGS.normalizeNewtabInputAutoFocusEnabled(value);
   }
 
   function normalizeNewtabShortcutsVisible(value) {
@@ -2307,70 +2023,6 @@
     });
   }
 
-  function normalizeNewtabFeedbackButtonVisible(value) {
-    return SETTINGS.normalizeNewtabFeedbackButtonVisible(value);
-  }
-
-  function normalizeNewtabAppearanceButtonVisible(value) {
-    return SETTINGS.normalizeNewtabAppearanceButtonVisible(value);
-  }
-
-  function normalizeBookmarkFolderIconsVisible(value) {
-    return SETTINGS.normalizeBookmarkFolderIconsVisible(value);
-  }
-
-  function normalizeUpdateNoticeEnabled(value) {
-    return SETTINGS.normalizeUpdateNoticeEnabled(value);
-  }
-
-  function normalizeMotionEffectsEnabled(value) {
-    return SETTINGS.normalizeMotionEffectsEnabled(value);
-  }
-
-  function normalizeSimpleModeEnabled(value) {
-    return SETTINGS.normalizeSimpleModeEnabled(value);
-  }
-
-  function normalizeNumberShortcutInstantEnabled(value) {
-    return SETTINGS.normalizeNumberShortcutInstantEnabled(value);
-  }
-
-  function normalizeMacosCtrlSuggestionNavigationEnabled(value) {
-    return SETTINGS.normalizeMacosCtrlSuggestionNavigationEnabled(value);
-  }
-
-  function normalizeFaviconEnhancedFetchEnabled(value) {
-    return SETTINGS.normalizeFaviconEnhancedFetchEnabled(value);
-  }
-
-  function normalizeAutoPipEnabled(value) {
-    return value !== false;
-  }
-
-  function normalizeTabSwitcherEnabled(value) {
-    return SETTINGS.normalizeTabSwitcherEnabled(value);
-  }
-
-  function normalizeDocumentPipEnabled(value) {
-    return value === true;
-  }
-
-  function normalizePinnedTabRecoveryEnabled(value) {
-    return value === true;
-  }
-
-  function normalizeSelectionQuickActionsEnabled(value) {
-    return SETTINGS.normalizeSelectionQuickActionsEnabled(value);
-  }
-
-  function normalizeSelectionQuickActionsProvider(value) {
-    return SETTINGS.normalizeSelectionQuickActionsProvider(value);
-  }
-
-  function normalizeSelectionQuickActionsGroupEnabled(value) {
-    return SETTINGS.normalizeSelectionQuickActionsGroupEnabled(value);
-  }
-
   function normalizeAggregateSearchAutoGroupEnabled(value) {
     return SETTINGS.normalizeAggregateSearchAutoGroupEnabled(value);
   }
@@ -2385,10 +2037,6 @@
 
   function normalizeSearchResultSourceTypes(value) {
     return SETTINGS.normalizeSearchResultSourceTypes(value);
-  }
-
-  function normalizeOverlayOpenTabsDefaultVisible(value) {
-    return SETTINGS.normalizeOverlayOpenTabsDefaultVisible(value);
   }
 
   function collectCheckedSearchResultSourceTypes() {
@@ -2752,80 +2400,6 @@
   setRestrictedActionTabState(currentRestrictedAction);
   setNewtabTopContentTabState(currentNewtabTopContentMode);
 
-  function storageGet(area, keys) {
-    return new Promise((resolve) => {
-      if (!area) {
-        resolve({});
-        return;
-      }
-      area.get(keys, (result) => resolve(result || {}));
-    });
-  }
-
-  function storageSet(area, payload) {
-    return new Promise((resolve, reject) => {
-      if (!area) {
-        resolve();
-        return;
-      }
-      let settled = false;
-      const finish = () => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        if (chrome.runtime && chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message || 'storage set failed'));
-          return;
-        }
-        resolve();
-      };
-      try {
-        const maybePromise = area.set(payload, finish);
-        if (maybePromise && typeof maybePromise.then === 'function') {
-          maybePromise.then(finish).catch((error) => {
-            if (settled) {
-              return;
-            }
-            settled = true;
-            reject(error);
-          });
-        }
-      } catch (error) {
-        settled = true;
-        reject(error);
-      }
-    });
-  }
-
-  function isInvalidatedExtensionContextError(error) {
-    return /extension context invalidated/i.test(String(error && error.message ? error.message : error));
-  }
-
-  function recoverInvalidatedOptionsContext(error) {
-    if (!isInvalidatedExtensionContextError(error)) {
-      return false;
-    }
-    window.location.reload();
-    return true;
-  }
-
-  function storageRemove(area, key) {
-    return new Promise((resolve, reject) => {
-      if (!area) {
-        resolve();
-        return;
-      }
-      area.remove([key], () => {
-        if (chrome.runtime && chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message || 'storage remove failed'));
-          return;
-        }
-        resolve();
-      });
-    });
-  }
-
   function notifyNewtabSectionsRefresh(section) {
     if (!chrome || !chrome.runtime || typeof chrome.runtime.sendMessage !== 'function') {
       return;
@@ -2916,10 +2490,6 @@
       maxWidth: 'min(360px, calc(100vw - 24px))',
       spacing: 8
     });
-  }
-
-  function hideTooltip() {
-    tooltipController.hide();
   }
 
   function initTooltips() {
@@ -3078,7 +2648,6 @@
     button.setAttribute('data-disabled', isEnabled ? 'false' : 'true');
   }
 
-
   function formatSyncTime(timestamp) {
     if (!timestamp) {
       return '';
@@ -3139,13 +2708,13 @@
   function refreshShortcutSyncSummary() {
     const store = globalThis.LumnoNewtabShortcutsStore;
     if (!shortcutSyncSummary || !store || !storageArea || getActivePrimaryAreaName() !== 'sync' ||
-        !chrome.storage || !chrome.storage.local) {
+        !localStorageArea) {
       if (shortcutSyncSummary) shortcutSyncSummary.hidden = true;
       return;
     }
     const revision = ++shortcutSyncSummaryRevision;
     storageArea.get(store.SHORTCUT_STORAGE_KEYS.slice(), (values) => {
-      chrome.storage.local.get([store.SHORTCUTS_LOCAL_OVERFLOW_KEY, SETTINGS.WEBDAV_STATUS_STORAGE_KEY], (local) => {
+      localStorageArea.get([store.SHORTCUTS_LOCAL_OVERFLOW_KEY, SETTINGS.WEBDAV_STATUS_STORAGE_KEY], (local) => {
         if (revision !== shortcutSyncSummaryRevision) return;
         const summary = store.summarizeShortcutSync(values || {}, local && local[store.SHORTCUTS_LOCAL_OVERFLOW_KEY]);
         const webdavStatus = local && local[SETTINGS.WEBDAV_STATUS_STORAGE_KEY];
@@ -3194,26 +2763,21 @@
     setSyncButtonEnabled(syncExportButton, true);
     setSyncButtonEnabled(syncImportButton, true);
     updateSyncStatusText('sync_status_ready', '同步已开启');
-    (chrome.storage.sync || storageArea).get([SYNC_META_KEY], (result) => {
-      const meta = result ? result[SYNC_META_KEY] : null;
+    // The last-sync time describes the browser's own sync service.
+    (chrome.storage.sync || storageArea).get([SYNC_META_STORAGE_KEY], (result) => {
+      const meta = result ? result[SYNC_META_STORAGE_KEY] : null;
       const lastSyncAt = meta && meta.lastSyncAt ? meta.lastSyncAt : '';
       updateSyncNowTooltip(lastSyncAt ? formatSyncTime(lastSyncAt) : '');
     });
   }
 
-  function buildSyncPayload(result) {
-    const data = {};
-    SYNC_KEYS.forEach((key) => {
-      if (typeof result[key] !== 'undefined') {
-        data[key] = result[key];
-      }
-    });
-    return {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      data
-    };
-  }
+  storageChanges.on(SETTINGS.WEBDAV_STATUS_STORAGE_KEY, refreshSyncStatus, { area: 'local' });
+  storageChanges.on(
+    globalThis.LumnoNewtabShortcutsStore && globalThis.LumnoNewtabShortcutsStore.SHORTCUTS_LOCAL_OVERFLOW_KEY,
+    refreshShortcutSyncSummary,
+    { area: 'local' }
+  );
+  storageChanges.on([SYNC_META_STORAGE_KEY, ...SYNC_KEYS], refreshSyncStatus);
 
   function downloadJson(filename, payload) {
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -3226,90 +2790,6 @@
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
-
-  /*
-  function showConfirm(message, trigger) {
-    if (!confirmMask || !confirmMessage || !confirmOk || !confirmCancel || !confirmDialog) {
-      return Promise.resolve(false);
-    }
-    if (confirmClosingTimer) {
-      clearTimeout(confirmClosingTimer);
-      confirmClosingTimer = null;
-    }
-    confirmMessage.textContent = message;
-    confirmMask.setAttribute('data-show', 'true');
-    if (confirmDialog) {
-      confirmDialog.style.removeProperty('transform');
-      confirmDialog.style.removeProperty('opacity');
-    }
-    if (!bodyFixedSnapshot) {
-      const scrollY = window.scrollY || window.pageYOffset || 0;
-      bodyFixedSnapshot = {
-        position: document.body.style.position,
-        top: document.body.style.top,
-        left: document.body.style.left,
-        right: document.body.style.right,
-        width: document.body.style.width
-      };
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.left = '0';
-      document.body.style.right = '0';
-      document.body.style.width = '100%';
-      document.body.dataset._xScrollY = String(scrollY);
-    }
-    const rect = trigger && trigger.getBoundingClientRect ? trigger.getBoundingClientRect() : null;
-    const centerX = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
-    const centerY = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
-    const offsetX = centerX - window.innerWidth / 2;
-    const offsetY = centerY - window.innerHeight / 2;
-    confirmOffset = { x: offsetX, y: offsetY };
-    confirmDialog.style.setProperty('transform', `translate(${offsetX}px, ${offsetY}px) scale(0.6)`);
-    confirmDialog.style.setProperty('opacity', '0');
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        confirmDialog.style.setProperty('transform', 'translate(0, 0) scale(1)');
-        confirmDialog.style.setProperty('opacity', '1');
-      });
-    });
-    return new Promise((resolve) => {
-      confirmResolver = resolve;
-    });
-  }
-
-  function closeConfirm(result) {
-    if (!confirmMask) {
-      return;
-    }
-    if (confirmDialog) {
-      confirmDialog.style.setProperty('transform', `translate(${confirmOffset.x}px, ${confirmOffset.y}px) scale(0.6)`);
-      confirmDialog.style.setProperty('opacity', '0');
-    }
-    confirmClosingTimer = setTimeout(() => {
-      confirmMask.setAttribute('data-show', 'false');
-      if (confirmDialog) {
-        confirmDialog.style.removeProperty('transform');
-        confirmDialog.style.removeProperty('opacity');
-      }
-      if (bodyFixedSnapshot) {
-        const restoreY = Number.parseFloat(document.body.dataset._xScrollY || '0') || 0;
-        document.body.style.position = bodyFixedSnapshot.position;
-        document.body.style.top = bodyFixedSnapshot.top;
-        document.body.style.left = bodyFixedSnapshot.left;
-        document.body.style.right = bodyFixedSnapshot.right;
-        document.body.style.width = bodyFixedSnapshot.width;
-        bodyFixedSnapshot = null;
-        delete document.body.dataset._xScrollY;
-        window.scrollTo(0, restoreY);
-      }
-      confirmClosingTimer = null;
-    }, 340);
-    if (confirmResolver) {
-      confirmResolver(result);
-      confirmResolver = null;
-    }
-  }
-  */
 
   function closeActivePopconfirm() {
     if (activePopconfirm) {
@@ -3568,9 +3048,8 @@
       const payload = {
         [LANGUAGE_STORAGE_KEY]: normalizedMode
       };
-      const localArea = chrome && chrome.storage ? chrome.storage.local : null;
-      if (localArea) {
-        localArea.set(payload);
+      if (localStorageArea) {
+        localStorageArea.set(payload);
       }
       if (storageArea) {
         storageArea.set(payload);
@@ -3617,13 +3096,15 @@
       renderBookmarkColumnsControl(currentBookmarkColumns);
       renderSearchResultDisplayLimitControl(currentSearchResultDisplayLimit);
       renderSettingsNavigation(currentActiveSettingsTab);
-      if (confirmCancel) confirmCancel.textContent = getMessage('confirm_cancel', '取消');
-      if (confirmOk) confirmOk.textContent = getMessage('confirm_ok', '确认');
       renderSiteSearchList();
       renderAggregateSearchList();
       renderSearchBlacklistList();
     });
   }
+
+  storageChanges.on(LANGUAGE_STORAGE_KEY, (changes) => {
+    applyLanguageMode(changes[LANGUAGE_STORAGE_KEY].newValue || 'system');
+  });
 
   function refreshShortcutsStatus() {
     if (!shortcutsStatus) return;
@@ -3992,7 +3473,6 @@
     });
   }
 
-
   function loadCurrentShortcut() {
     const defaultShortcut = getDefaultFallbackShortcut();
     if (!chrome || !chrome.commands || typeof chrome.commands.getAll !== 'function') {
@@ -4013,6 +3493,8 @@
       setFallbackShortcutLabel(effectiveShortcut);
     });
   }
+
+  storageChanges.on(FALLBACK_SHORTCUT_STORAGE_KEY, () => loadCurrentShortcut());
 
   function getShortcutReferencePartLabel(part) {
     const text = String(part || '').trim();
@@ -4439,36 +3921,27 @@
     }
   }
 
+  // theme-preload.js has already painted the cached (or system) theme and
+  // marked the page ready before this runs, so there is nothing to fall back
+  // to while the stored preference loads.
   async function initTheme() {
-    let ready = false;
-    const fallbackTimer = setTimeout(() => {
-      if (ready) {
-        return;
-      }
-      applyResolvedTheme(resolveTheme('system'));
-      document.documentElement.setAttribute('data-theme-ready', 'true');
-    }, 800);
-    try {
-      const storedMode = await getStoredThemeMode();
-      cacheOptionsThemeMode(storedMode);
-      updateThemeButtons(storedMode);
-      applyResolvedTheme(resolveTheme(storedMode));
-      if (storedMode === 'system' && !mediaListenerAttached) {
-        mediaQuery.addEventListener('change', onMediaChange);
-        mediaListenerAttached = true;
-      }
-      ready = true;
-      clearTimeout(fallbackTimer);
-      document.documentElement.setAttribute('data-theme-ready', 'true');
-    } catch (e) {
-      ready = true;
-      clearTimeout(fallbackTimer);
-      applyResolvedTheme(resolveTheme('system'));
-      document.documentElement.setAttribute('data-theme-ready', 'true');
+    const storedMode = await getStoredThemeMode();
+    cacheOptionsThemeMode(storedMode);
+    updateThemeButtons(storedMode);
+    applyResolvedTheme(resolveTheme(storedMode));
+    if (storedMode === 'system' && !mediaListenerAttached) {
+      mediaQuery.addEventListener('change', onMediaChange);
+      mediaListenerAttached = true;
     }
+    document.documentElement.setAttribute('data-theme-ready', 'true');
   }
 
   initTheme();
+  storageChanges.on(THEME_STORAGE_KEY, (changes) => {
+    const nextMode = changes[THEME_STORAGE_KEY].newValue || 'system';
+    updateThemeButtons(nextMode);
+    applyResolvedTheme(resolveTheme(nextMode));
+  });
 
   function playThemeOptionClickEffect(button) {
     if (!button) {
@@ -4527,15 +4000,10 @@
   window.addEventListener('scroll', scheduleOptionsScrollRefresh, { passive: true });
   updateTabsStickyVisualState();
   window.addEventListener('resize', scheduleOptionsViewportLayoutRefresh, { passive: true });
-  if (providerStorageRuntime) {
-    providerStorageRuntime.ready.then(() => {
-      migrateStorageIfNeeded(SYNC_KEYS);
-      refreshSyncStatus();
-    });
-  } else {
+  providerStorageRuntime.ready.then(() => {
     migrateStorageIfNeeded(SYNC_KEYS);
     refreshSyncStatus();
-  }
+  });
 
   function normalizeSiteSearchTemplate(template) {
     return SEARCH_UTILS.normalizeSiteSearchTemplate(template);
@@ -4554,63 +4022,10 @@
   }
 
   function findSiteSearchKeyConflict(key, allowedKey, allowedAggregateId) {
-    const normalizedKey = String(key || '').trim().toLowerCase();
-    const normalizedAllowedKey = String(allowedKey || '').trim().toLowerCase();
-    const normalizedAllowedAggregateId = String(allowedAggregateId || '').trim();
-    if (!normalizedKey) {
-      return null;
-    }
-    const providers = defaultSiteSearchProviders.concat(customSiteSearchProviders);
-    let providerConflict = null;
-    providerConflict = SEARCH_UTILS.findSiteSearchProviderKeyConflict(
-      normalizedKey,
-      providers,
-      normalizedAllowedKey
-    );
-    if (providerConflict) {
-      return providerConflict;
-    }
-    return aggregateSearches.find(
-      (item) => String(item && item.id || '').trim() !== normalizedAllowedAggregateId &&
-        String(item && item.key || '').trim().toLowerCase() === normalizedKey
-    ) || null;
-  }
-
-  function isDuplicateTemplate(template, defaults) {
-    const normalized = normalizeSiteSearchTemplate(String(template || '').trim());
-    if (!normalized) {
-      return false;
-    }
-    return (defaults || []).some((item) => normalizeSiteSearchTemplate(String(item.template || '').trim()) === normalized);
-  }
-
-  function getSiteSearchBuiltinKey(item) {
-    return String(item && item.builtinKey ? item.builtinKey : '').trim().toLowerCase();
-  }
-
-  function getActiveBuiltinSiteSearchProviders(defaults, custom, disabledKeys) {
-    const customKeys = new Set((custom || []).map((item) => (
-      String(item && item.key ? item.key : '').trim().toLowerCase()
-    )).filter(Boolean));
-    const disabled = disabledKeys instanceof Set
-      ? disabledKeys
-      : new Set(Array.from(disabledKeys || []).map((key) => String(key || '').toLowerCase()));
-    return (defaults || []).filter((item) => {
-      const key = String(item && item.key ? item.key : '').trim().toLowerCase();
-      return key && !customKeys.has(key) && !disabled.has(key);
+    return siteSearchModel.findSiteSearchKeyConflict(key, allowedKey, allowedAggregateId, {
+      aggregateSearches,
+      providers: defaultSiteSearchProviders.concat(customSiteSearchProviders)
     });
-  }
-
-  function normalizeAliases(input) {
-    if (!input) {
-      return [];
-    }
-    return Array.from(new Set(
-      input
-        .split(/[,，]/)
-        .map((alias) => alias.trim())
-        .filter(Boolean)
-    ));
   }
 
   function setSiteSearchError(message) {
@@ -4781,39 +4196,6 @@
       });
     });
   }
-  if (overlayOpenTabsDefaultVisibleToggle) {
-    overlayOpenTabsDefaultVisibleToggle.addEventListener('change', () => {
-      const next = normalizeOverlayOpenTabsDefaultVisible(overlayOpenTabsDefaultVisibleToggle.checked);
-      setOptionsToggleState(overlayOpenTabsDefaultVisibleToggle, next);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [OVERLAY_OPEN_TABS_DEFAULT_VISIBLE_STORAGE_KEY]: next });
-    });
-  }
-  if (overlayPageThemeAdaptationToggle) {
-    overlayPageThemeAdaptationToggle.addEventListener('change', () => {
-      const next = normalizeOverlayPageThemeAdaptationEnabled(
-        overlayPageThemeAdaptationToggle.checked
-      );
-      setOptionsToggleState(overlayPageThemeAdaptationToggle, next);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [OVERLAY_PAGE_THEME_ADAPTATION_ENABLED_STORAGE_KEY]: next });
-    });
-  }
-  if (faviconEnhancedFetchToggle) {
-    faviconEnhancedFetchToggle.addEventListener('change', () => {
-      const next = normalizeFaviconEnhancedFetchEnabled(faviconEnhancedFetchToggle.checked);
-      setOptionsToggleState(faviconEnhancedFetchToggle, next);
-      setFaviconBlacklistEditorEnabled(next);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY]: next });
-    });
-  }
   if (recentModeSelect) {
     recentModeSelect.addEventListener('change', () => {
       handleRecentModeSelection(recentModeSelect.value);
@@ -4824,139 +4206,6 @@
       button.addEventListener('click', () => {
         handleRecentModeSelection(button.getAttribute('data-recent-mode'));
       });
-    });
-  }
-  if (bookmarkFolderIconsVisibleToggle) {
-    bookmarkFolderIconsVisibleToggle.addEventListener('change', () => {
-      const next = normalizeBookmarkFolderIconsVisible(bookmarkFolderIconsVisibleToggle.checked);
-      setOptionsToggleState(bookmarkFolderIconsVisibleToggle, next);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY]: next });
-    });
-  }
-  if (overlayTabQuickSwitchToggle) {
-    overlayTabQuickSwitchToggle.addEventListener('change', () => {
-      const next = Boolean(overlayTabQuickSwitchToggle.checked);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [OVERLAY_TAB_PRIORITY_STORAGE_KEY]: next });
-    });
-  }
-  if (newtabTimeSecondsToggle) {
-    newtabTimeSecondsToggle.addEventListener('change', () => {
-      const next = normalizeNewtabTimeSecondsVisible(newtabTimeSecondsToggle.checked);
-      setOptionsToggleState(newtabTimeSecondsToggle, next);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY]: next });
-    });
-  }
-  if (newtabInputAutoFocusToggle) {
-    newtabInputAutoFocusToggle.addEventListener('change', () => {
-      const next = normalizeNewtabInputAutoFocusEnabled(newtabInputAutoFocusToggle.checked);
-      setOptionsToggleState(newtabInputAutoFocusToggle, next);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY]: next });
-    });
-  }
-  if (newtabShortcutsToggle) {
-    newtabShortcutsToggle.addEventListener('change', () => {
-      const next = normalizeNewtabShortcutsVisible(newtabShortcutsToggle.checked);
-      setOptionsToggleState(newtabShortcutsToggle, next);
-      syncNewtabShortcutSubcontrolAvailability();
-      if (storageArea) {
-        storageArea.set({ [NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY]: next });
-      }
-    });
-  }
-  if (newtabShortcutAddToggle) {
-    newtabShortcutAddToggle.addEventListener('change', () => {
-      const next = normalizeNewtabShortcutAddVisible(newtabShortcutAddToggle.checked);
-      setOptionsToggleState(newtabShortcutAddToggle, next);
-      if (storageArea) {
-        storageArea.set({ [NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY]: next });
-      }
-    });
-  }
-  if (newtabShortcutDockMagnificationToggle) {
-    newtabShortcutDockMagnificationToggle.addEventListener('change', () => {
-      const next = normalizeNewtabShortcutDockMagnificationEnabled(
-        newtabShortcutDockMagnificationToggle.checked
-      );
-      setOptionsToggleState(newtabShortcutDockMagnificationToggle, next);
-      if (storageArea) {
-        storageArea.set({
-          [NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY]: next
-        });
-      }
-    });
-  }
-  [
-    [
-      newtabFeedbackButtonVisibleToggle,
-      NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY,
-      normalizeNewtabFeedbackButtonVisible
-    ],
-    [
-      newtabAppearanceButtonVisibleToggle,
-      NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY,
-      normalizeNewtabAppearanceButtonVisible
-    ]
-  ].forEach(([toggle, storageKey, normalize]) => {
-    if (!toggle) {
-      return;
-    }
-    toggle.addEventListener('change', () => {
-      const next = normalize(toggle.checked);
-      setOptionsToggleState(toggle, next);
-      if (storageArea) {
-        storageArea.set({ [storageKey]: next });
-      }
-    });
-  });
-  if (updateNoticeToggle) {
-    updateNoticeToggle.addEventListener('change', () => {
-      const next = normalizeUpdateNoticeEnabled(updateNoticeToggle.checked);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [UPDATE_NOTICE_ENABLED_STORAGE_KEY]: next });
-    });
-  }
-  if (motionEffectsToggle) {
-    motionEffectsToggle.addEventListener('change', () => {
-      const next = normalizeMotionEffectsEnabled(motionEffectsToggle.checked);
-      setOptionsToggleState(motionEffectsToggle, next);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [MOTION_EFFECTS_ENABLED_STORAGE_KEY]: next });
-    });
-  }
-  if (simpleModeToggle) {
-    simpleModeToggle.addEventListener('change', () => {
-      const next = normalizeSimpleModeEnabled(simpleModeToggle.checked);
-      setOptionsToggleState(simpleModeToggle, next);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [SIMPLE_MODE_ENABLED_STORAGE_KEY]: next });
-    });
-  }
-  if (progressTrackingToggle) {
-    progressTrackingToggle.addEventListener('change', () => {
-      const next = SETTINGS.normalizeProgressTrackingEnabled(progressTrackingToggle.checked);
-      setOptionsToggleState(progressTrackingToggle, next);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [PROGRESS_TRACKING_ENABLED_STORAGE_KEY]: next });
     });
   }
   function setNewtabOpenInNewTabState(value) {
@@ -4979,107 +4228,6 @@
       storageArea.set({ [NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY]: normalized });
     });
   });
-  if (numberShortcutInstantToggle) {
-    numberShortcutInstantToggle.addEventListener('change', () => {
-      const next = normalizeNumberShortcutInstantEnabled(numberShortcutInstantToggle.checked);
-      setOptionsToggleState(numberShortcutInstantToggle, next);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY]: next });
-    });
-  }
-  if (macosCtrlSuggestionNavigationToggle) {
-    macosCtrlSuggestionNavigationToggle.addEventListener('change', () => {
-      const next = normalizeMacosCtrlSuggestionNavigationEnabled(
-        macosCtrlSuggestionNavigationToggle.checked
-      );
-      setOptionsToggleState(macosCtrlSuggestionNavigationToggle, next);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY]: next });
-    });
-  }
-  if (autoPipToggle) {
-    autoPipToggle.addEventListener('change', () => {
-      const next = Boolean(autoPipToggle.checked);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [AUTO_PIP_ENABLED_STORAGE_KEY]: next });
-    });
-  }
-  if (tabSwitcherToggle) {
-    tabSwitcherToggle.addEventListener('change', () => {
-      const next = normalizeTabSwitcherEnabled(tabSwitcherToggle.checked);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [TAB_SWITCHER_ENABLED_STORAGE_KEY]: next });
-    });
-  }
-  if (aggregateSearchAutoGroupToggle) {
-    aggregateSearchAutoGroupToggle.addEventListener('change', () => {
-      const next = normalizeAggregateSearchAutoGroupEnabled(
-        aggregateSearchAutoGroupToggle.checked
-      );
-      setOptionsToggleState(aggregateSearchAutoGroupToggle, next);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY]: next });
-    });
-  }
-  if (documentPipToggle) {
-    documentPipToggle.addEventListener('change', () => {
-      const next = Boolean(documentPipToggle.checked);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [DOCUMENT_PIP_ENABLED_STORAGE_KEY]: next });
-    });
-  }
-  if (pinnedTabRecoveryToggle) {
-    pinnedTabRecoveryToggle.addEventListener('change', () => {
-      const next = Boolean(pinnedTabRecoveryToggle.checked);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY]: next });
-    });
-  }
-  if (selectionQuickActionsToggle) {
-    selectionQuickActionsToggle.addEventListener('change', () => {
-      const next = normalizeSelectionQuickActionsEnabled(selectionQuickActionsToggle.checked);
-      setOptionsToggleState(selectionQuickActionsToggle, next);
-      syncSelectionQuickActionsProviderAvailability();
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY]: next });
-    });
-  }
-  if (selectionQuickActionsProviderSelect) {
-    selectionQuickActionsProviderSelect.addEventListener('change', () => {
-      const next = normalizeSelectionQuickActionsProvider(selectionQuickActionsProviderSelect.value);
-      setOptionsSelectState(selectionQuickActionsProviderSelect, next);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [SELECTION_QUICK_ACTIONS_PROVIDER_STORAGE_KEY]: next });
-    });
-  }
-  if (selectionQuickActionsGroupToggle) {
-    selectionQuickActionsGroupToggle.addEventListener('change', () => {
-      const next = normalizeSelectionQuickActionsGroupEnabled(selectionQuickActionsGroupToggle.checked);
-      setOptionsToggleState(selectionQuickActionsGroupToggle, next);
-      if (!storageArea) {
-        return;
-      }
-      storageArea.set({ [SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY]: next });
-    });
-  }
 
   if (restrictedActionSelect) {
     restrictedActionSelect.addEventListener('change', () => {
@@ -5252,8 +4400,18 @@
     }
   }, true);
 
+  function getSyncFailureMessage() {
+    const reason = chrome.runtime && chrome.runtime.lastError
+      ? chrome.runtime.lastError.message
+      : '';
+    return formatTemplate(getMessage('sync_status_failed_reason', '同步失败：{reason}'), {
+      reason: reason || getMessage('sync_status_failed', '同步失败')
+    });
+  }
+
   if (syncNowButton) {
     syncNowButton.addEventListener('click', () => {
+      // Pushes the values browser sync already holds, stamped as a manual sync.
       const browserSyncArea = chrome.storage.sync;
       if (!browserSyncArea) {
         updateSyncStatusText('sync_status_unavailable', '同步不可用');
@@ -5264,25 +4422,10 @@
       }
       syncNowButton.setAttribute('aria-busy', 'true');
       browserSyncArea.get(SYNC_KEYS, (result) => {
-        const payload = {};
-        SYNC_KEYS.forEach((key) => {
-          if (typeof result[key] !== 'undefined') {
-            payload[key] = result[key];
-          }
-        });
-        payload[SYNC_META_KEY] = {
-          lastSyncAt: Date.now(),
-          source: 'manual'
-        };
-        browserSyncArea.set(payload, () => {
+        browserSyncArea.set(syncTransfer.buildManualSyncPayload(result, Date.now()), () => {
           syncNowButton.removeAttribute('aria-busy');
           if (chrome.runtime && chrome.runtime.lastError) {
-            const reason = chrome.runtime && chrome.runtime.lastError
-              ? chrome.runtime.lastError.message
-              : '';
-            showToast(formatTemplate(getMessage('sync_status_failed_reason', '同步失败：{reason}'), {
-              reason: reason || getMessage('sync_status_failed', '同步失败')
-            }), true);
+            showToast(getSyncFailureMessage(), true);
             return;
           }
           showToast(getMessage('sync_status_done', '同步完成'), false);
@@ -5298,10 +4441,39 @@
         return;
       }
       storageArea.get(SYNC_KEYS, (result) => {
-        const payload = buildSyncPayload(result || {});
-        downloadJson(`lumno-settings-${Date.now()}.json`, payload);
+        downloadJson(
+          `lumno-settings-${Date.now()}.json`,
+          syncTransfer.buildExportFile(result, new Date().toISOString())
+        );
         showToast(getMessage('sync_export_done', '已导出配置'), false);
       });
+    });
+  }
+
+  function readTextFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error || new Error('file-read-failed'));
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.readAsText(file);
+    });
+  }
+
+  function applySyncImport(plan, toastTask) {
+    storageArea.set(plan.payload, () => {
+      if (chrome.runtime && chrome.runtime.lastError) {
+        toastTask.fail(getSyncFailureMessage());
+        return;
+      }
+      const finishImport = () => {
+        toastTask.done(getMessage('sync_import_done', '导入完成'));
+        refreshSyncStatus();
+      };
+      if (!plan.keysToClear.length) {
+        finishImport();
+        return;
+      }
+      storageArea.remove(plan.keysToClear, finishImport);
     });
   }
 
@@ -5315,351 +4487,68 @@
         return;
       }
       const toastTask = beginToast(getMessage('sync_importing', '正在导入配置…'));
-      const reader = new FileReader();
-      reader.onerror = () => {
-        toastTask.fail(getMessage('sync_import_invalid', '配置文件无效'));
-        syncImportInput.value = '';
-      };
-      reader.onload = () => {
-        let parsed = null;
-        try {
-          parsed = JSON.parse(String(reader.result || ''));
-        } catch (e) {
-          parsed = null;
-        }
-        const data = parsed && parsed.data ? parsed.data : parsed;
-        if (!data || typeof data !== 'object') {
-          toastTask.fail(getMessage('sync_import_invalid', '配置文件无效'));
-          syncImportInput.value = '';
-          return;
-        }
-        const payload = {};
-        SYNC_KEYS.forEach((key) => {
-          if (Object.prototype.hasOwnProperty.call(data, key)) {
-            payload[key] = data[key];
-          }
-        });
-        if (Object.prototype.hasOwnProperty.call(data, NEWTAB_SHORTCUTS_STORAGE_KEY)) {
-          [
-            NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY,
-            NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY
-          ].forEach((key) => {
-            if (!Object.prototype.hasOwnProperty.call(data, key)) {
-              payload[key] = [];
-            }
-          });
-        }
-        // A file from before shortcut groups holds only the flat list. Clearing
-        // the grouped copy makes New Tab read and migrate the imported list.
-        const importsGroupedShortcuts = Object.prototype.hasOwnProperty.call(data, NEWTAB_SHORTCUTS_V2_STORAGE_KEYS[0]);
-        const shortcutKeysToClear = !importsGroupedShortcuts &&
-          NEWTAB_LEGACY_SHORTCUTS_STORAGE_KEYS.some((key) => Object.prototype.hasOwnProperty.call(payload, key))
-          ? NEWTAB_SHORTCUTS_V2_STORAGE_KEYS.slice()
-          : [];
-        if (!importsGroupedShortcuts) {
-          NEWTAB_SHORTCUTS_V2_STORAGE_KEYS.forEach((key) => { delete payload[key]; });
-        }
-        if (
-          !Object.prototype.hasOwnProperty.call(
-            data,
-            AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY
-          ) &&
-          Object.prototype.hasOwnProperty.call(data, AGGREGATE_SEARCH_STORAGE_KEY)
-        ) {
-          payload[AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY] =
-            deriveLegacyAggregateSearchAutoGroupEnabled(data[AGGREGATE_SEARCH_STORAGE_KEY]);
-        }
-        if (Object.keys(payload).length === 0) {
-          toastTask.fail(getMessage('sync_import_invalid', '配置文件无效'));
-          syncImportInput.value = '';
-          return;
-        }
-        if (storageArea) {
-          payload[SYNC_META_KEY] = {
-            lastSyncAt: Date.now(),
-            source: 'import'
-          };
-          storageArea.set(payload, () => {
-            if (chrome.runtime && chrome.runtime.lastError) {
-              const reason = chrome.runtime && chrome.runtime.lastError
-                ? chrome.runtime.lastError.message
-                : '';
-              toastTask.fail(formatTemplate(getMessage('sync_status_failed_reason', '同步失败：{reason}'), {
-                reason: reason || getMessage('sync_status_failed', '同步失败')
-              }));
-              syncImportInput.value = '';
-              return;
-            }
-            const finishImport = () => {
-              toastTask.done(getMessage('sync_import_done', '导入完成'));
-              refreshSyncStatus();
-            };
-            if (!shortcutKeysToClear.length) {
-              finishImport();
-              return;
-            }
-            storageArea.remove(shortcutKeysToClear, finishImport);
-          });
+      const failInvalid = () => toastTask.fail(getMessage('sync_import_invalid', '配置文件无效'));
+      readTextFile(file).then((text) => {
+        const data = syncTransfer.parseImportFile(text);
+        const plan = data ? syncTransfer.buildImportPlan(data, Date.now()) : null;
+        if (!plan) {
+          failInvalid();
+        } else if (storageArea) {
+          applySyncImport(plan, toastTask);
         } else {
           toastTask.cancel();
         }
+      }, failInvalid).finally(() => {
         syncImportInput.value = '';
-      };
-      reader.readAsText(file);
+      });
     });
   }
 
-
-  function retryApplyLanguageFromStorage(delayMs) {
+  // Keeps a copy of the language in chrome.storage.local and moves a value
+  // found only there into the primary area. With nothing stored yet the page
+  // shows the system language without writing it, so a choice another page is
+  // still saving is not overwritten; the language change handler applies that
+  // choice once it lands.
+  function loadLanguageSetting() {
     if (!storageArea) {
       return;
     }
-    const wait = Number.isFinite(delayMs) ? delayMs : 180;
-    setTimeout(() => {
-      storageArea.get([LANGUAGE_STORAGE_KEY], (retryResult) => {
-        if (!retryResult || !Object.prototype.hasOwnProperty.call(retryResult, LANGUAGE_STORAGE_KEY)) {
-          return;
-        }
-        const retryMode = normalizeLanguageMode(retryResult[LANGUAGE_STORAGE_KEY]);
-        applyLanguageMode(retryMode);
-      });
-    }, wait);
-  }
-
-  if (storageArea) {
     storageArea.get([LANGUAGE_STORAGE_KEY], (result) => {
-      const hasStored = Object.prototype.hasOwnProperty.call(result, LANGUAGE_STORAGE_KEY);
-      const syncArea = chrome && chrome.storage ? chrome.storage.sync : null;
-      const localArea = chrome && chrome.storage ? chrome.storage.local : null;
-      if (hasStored) {
+      if (Object.prototype.hasOwnProperty.call(result, LANGUAGE_STORAGE_KEY)) {
         const storedRaw = result[LANGUAGE_STORAGE_KEY];
         const stored = normalizeLanguageMode(storedRaw);
         if (storedRaw !== stored) {
           storageArea.set({ [LANGUAGE_STORAGE_KEY]: stored });
         }
-        if (localArea) {
-          localArea.set({ [LANGUAGE_STORAGE_KEY]: stored });
+        if (localStorageArea) {
+          localStorageArea.set({ [LANGUAGE_STORAGE_KEY]: stored });
         }
         applyLanguageMode(stored);
         return;
       }
-      if (getActivePrimaryAreaName() === 'sync' && localArea) {
-        localArea.get([LANGUAGE_STORAGE_KEY], (localResult) => {
-          const localHasStored = Object.prototype.hasOwnProperty.call(localResult, LANGUAGE_STORAGE_KEY);
-          if (localHasStored) {
-            const localRaw = localResult[LANGUAGE_STORAGE_KEY];
-            const localMode = normalizeLanguageMode(localRaw);
-            localArea.set({ [LANGUAGE_STORAGE_KEY]: localMode });
-            storageArea.set({ [LANGUAGE_STORAGE_KEY]: localMode });
-            applyLanguageMode(localMode);
-            return;
-          }
-          // 避免刷新瞬间把尚未完成写入的语言偏好覆盖为 system。
-          applyLanguageMode('system');
-          retryApplyLanguageFromStorage(180);
-        });
+      if (getActivePrimaryAreaName() !== 'sync' || !localStorageArea) {
+        applyLanguageMode('system');
         return;
       }
-      // 读不到时只做 UI 回退，不落盘，防止竞态覆盖用户刚设置的值。
-      applyLanguageMode('system');
-      retryApplyLanguageFromStorage(180);
+      localStorageArea.get([LANGUAGE_STORAGE_KEY], (localResult) => {
+        if (!Object.prototype.hasOwnProperty.call(localResult, LANGUAGE_STORAGE_KEY)) {
+          applyLanguageMode('system');
+          return;
+        }
+        const localMode = normalizeLanguageMode(localResult[LANGUAGE_STORAGE_KEY]);
+        localStorageArea.set({ [LANGUAGE_STORAGE_KEY]: localMode });
+        storageArea.set({ [LANGUAGE_STORAGE_KEY]: localMode });
+        applyLanguageMode(localMode);
+      });
     });
+  }
 
-    storageArea.get([RECENT_COUNT_STORAGE_KEY], (result) => {
-      const stored = result[RECENT_COUNT_STORAGE_KEY];
-      const count = normalizeRecentCount(stored);
-      renderRecentCountControl(count);
-      updateRecentModeTabsVisibility(count);
-      if (stored !== count) {
-        storageArea.set({ [RECENT_COUNT_STORAGE_KEY]: count });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([NEWTAB_WIDTH_MODE_STORAGE_KEY], (result) => {
-      const stored = result[NEWTAB_WIDTH_MODE_STORAGE_KEY];
-      const mode = normalizeNewtabWidthMode(stored);
-      if (newtabWidthSelect) {
-        newtabWidthSelect.value = mode;
-      }
-      setNewtabWidthTabState(mode);
-      if (stored !== mode) {
-        storageArea.set({ [NEWTAB_WIDTH_MODE_STORAGE_KEY]: mode });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([OVERLAY_SIZE_MODE_STORAGE_KEY], (result) => {
-      const stored = result[OVERLAY_SIZE_MODE_STORAGE_KEY];
-      const mode = normalizeOverlaySizeMode(stored);
-      setOverlaySizeTabState(mode);
-      if (stored !== mode) {
-        storageArea.set({ [OVERLAY_SIZE_MODE_STORAGE_KEY]: mode });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([OVERLAY_ENTER_ANIMATION_STORAGE_KEY], (result) => {
-      const stored = result[OVERLAY_ENTER_ANIMATION_STORAGE_KEY];
-      const mode = normalizeOverlayEnterAnimation(stored);
-      setOverlayEnterAnimationTabState(mode);
-      if (stored !== mode) {
-        storageArea.set({ [OVERLAY_ENTER_ANIMATION_STORAGE_KEY]: mode });
-      }
-    });
-    storageArea.get([OVERLAY_PAGE_THEME_ADAPTATION_ENABLED_STORAGE_KEY], (result) => {
-      const rawValue = result[OVERLAY_PAGE_THEME_ADAPTATION_ENABLED_STORAGE_KEY];
-      const stored = normalizeOverlayPageThemeAdaptationEnabled(rawValue);
-      if (overlayPageThemeAdaptationToggle) {
-        setOptionsToggleState(overlayPageThemeAdaptationToggle, stored);
-      }
-      if (rawValue !== stored) {
-        storageArea.set({ [OVERLAY_PAGE_THEME_ADAPTATION_ENABLED_STORAGE_KEY]: stored });
-      }
-    });
-    storageArea.get([SEARCH_RESULT_PRIORITY_STORAGE_KEY], (result) => {
-      const stored = result[SEARCH_RESULT_PRIORITY_STORAGE_KEY];
-      const priority = normalizeSearchResultPriority(stored);
-      if (searchResultPrioritySelect) {
-        searchResultPrioritySelect.value = priority;
-      }
-      setSearchResultPriorityTabState(priority);
-      if (stored !== priority) {
-        storageArea.set({ [SEARCH_RESULT_PRIORITY_STORAGE_KEY]: priority });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([SEARCH_RESULT_TAB_POSITION_STORAGE_KEY], (result) => {
-      if (searchResultTabPositionSelect) {
-        searchResultTabPositionSelect.value = SETTINGS.normalizeSearchResultTabPosition(
-          result && result[SEARCH_RESULT_TAB_POSITION_STORAGE_KEY]
-        );
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY], (result) => {
-      const stored = result[SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY];
-      const sourceTypes = normalizeSearchResultSourceTypes(stored);
-      setSearchResultSourceTypeState(sourceTypes);
-      if (!Array.isArray(stored) || JSON.stringify(stored) !== JSON.stringify(sourceTypes)) {
-        storageArea.set({ [SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY]: sourceTypes });
-      }
-    });
-    storageArea.get([SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY], (result) => {
-      const rawValue = result[SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY];
-      const displayLimit = normalizeSearchResultDisplayLimit(rawValue);
-      renderSearchResultDisplayLimitControl(displayLimit);
-      if (rawValue !== displayLimit) {
-        storageArea.set({ [SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY]: displayLimit });
-      }
-    });
-    storageArea.get([OVERLAY_OPEN_TABS_DEFAULT_VISIBLE_STORAGE_KEY], (result) => {
-      const rawValue = result[OVERLAY_OPEN_TABS_DEFAULT_VISIBLE_STORAGE_KEY];
-      const stored = normalizeOverlayOpenTabsDefaultVisible(rawValue);
-      if (overlayOpenTabsDefaultVisibleToggle) {
-        setOptionsToggleState(overlayOpenTabsDefaultVisibleToggle, stored);
-      }
-      if (rawValue !== stored) {
-        storageArea.set({ [OVERLAY_OPEN_TABS_DEFAULT_VISIBLE_STORAGE_KEY]: stored });
-      }
-    });
-    storageArea.get([FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY], (result) => {
-      const rawValue = result[FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY];
-      const stored = normalizeFaviconEnhancedFetchEnabled(rawValue);
-      if (faviconEnhancedFetchToggle) {
-        setOptionsToggleState(faviconEnhancedFetchToggle, stored);
-      }
-      setFaviconBlacklistEditorEnabled(stored);
-      if (rawValue !== stored) {
-        storageArea.set({ [FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY]: stored });
-      }
-    });
-    storageArea.get([RECENT_MODE_STORAGE_KEY], (result) => {
-      const stored = result[RECENT_MODE_STORAGE_KEY];
-      const hasStored = stored === 'latest' || stored === 'most';
-      const mode = hasStored ? stored : 'most';
-      if (recentModeSelect) {
-        recentModeSelect.value = mode;
-      }
-      setRecentModeTabState(mode);
-      if (!hasStored) {
-        storageArea.set({ [RECENT_MODE_STORAGE_KEY]: mode });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([BOOKMARK_COUNT_STORAGE_KEY], (result) => {
-      const stored = result[BOOKMARK_COUNT_STORAGE_KEY];
-      const count = normalizeBookmarkCount(stored);
-      renderBookmarkRowsControl(count);
-      updateBookmarkColumnsSettingVisibility(count);
-      if (stored !== count) {
-        storageArea.set({ [BOOKMARK_COUNT_STORAGE_KEY]: count });
-      }
-    });
-    storageArea.get([BOOKMARK_COLUMNS_STORAGE_KEY], (result) => {
-      const stored = result[BOOKMARK_COLUMNS_STORAGE_KEY];
-      const columns = normalizeBookmarkColumns(stored);
-      renderBookmarkColumnsControl(columns);
-      if (stored !== columns) {
-        storageArea.set({ [BOOKMARK_COLUMNS_STORAGE_KEY]: columns });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY], (result) => {
-      const raw = result[BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY];
-      const next = normalizeBookmarkFolderIconsVisible(raw);
-      if (bookmarkFolderIconsVisibleToggle) {
-        setOptionsToggleState(bookmarkFolderIconsVisibleToggle, next);
-      }
-      if (raw !== next) {
-        storageArea.set({ [BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY]: next });
-      }
-    });
-    storageArea.get([OVERLAY_TAB_PRIORITY_STORAGE_KEY], (result) => {
-      const rawValue = result[OVERLAY_TAB_PRIORITY_STORAGE_KEY];
-      const stored = normalizeOverlayTabQuickSwitch(rawValue);
-      if (overlayTabQuickSwitchToggle) {
-        setOptionsToggleState(overlayTabQuickSwitchToggle, stored);
-      }
-      if (rawValue !== stored) {
-        storageArea.set({ [OVERLAY_TAB_PRIORITY_STORAGE_KEY]: stored });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY], (result) => {
-      const rawValue = result[NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY];
-      const stored = normalizeNewtabTopContentMode(rawValue);
-      setNewtabTopContentTabState(stored);
-      if (rawValue !== stored) {
-        storageArea.set({ [NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY]: stored });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY], (result) => {
-      const rawValue = result[NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY];
-      const stored = normalizeNewtabTimeFontWeight(rawValue);
-      renderNewtabTimeFontWeightControl(stored);
-      if (rawValue !== stored) {
-        storageArea.set({ [NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]: stored });
-      }
-    });
-    storageArea.get([NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY], (result) => {
-      const rawValue = result[NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY];
-      const stored = normalizeNewtabTimeSecondsVisible(rawValue);
-      if (newtabTimeSecondsToggle) {
-        setOptionsToggleState(newtabTimeSecondsToggle, stored);
-      }
-      if (rawValue !== stored) {
-        storageArea.set({ [NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY]: stored });
-      }
-    });
-    storageArea.get([NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY], (result) => {
-      const rawValue = result[NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY];
-      const stored = normalizeNewtabInputAutoFocusEnabled(rawValue);
-      if (newtabInputAutoFocusToggle) {
-        setOptionsToggleState(newtabInputAutoFocusToggle, stored);
-      }
-      if (rawValue !== stored) {
-        storageArea.set({ [NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY]: stored });
-      }
-    });
+  // The New Tab shortcut switches and sliders are read together because the
+  // column count falls back to one inferred from the older width setting.
+  function loadNewtabShortcutSettings() {
+    if (!storageArea) {
+      return;
+    }
     storageArea.get([
       NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY,
       NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY,
@@ -5669,168 +4558,52 @@
       NEWTAB_SHORTCUT_SIZE_STORAGE_KEY,
       NEWTAB_SHORTCUT_GAP_STORAGE_KEY
     ], (result) => {
-      const rawVisible = result[NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY];
-      const rawAddVisible = result[NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY];
-      const rawDockMagnification =
-        result[NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY];
-      const rawWidth = result[NEWTAB_SHORTCUT_WIDTH_STORAGE_KEY];
       const rawColumns = result[NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY];
-      const rawSize = result[NEWTAB_SHORTCUT_SIZE_STORAGE_KEY];
-      const rawGap = result[NEWTAB_SHORTCUT_GAP_STORAGE_KEY];
-      const visible = normalizeNewtabShortcutsVisible(rawVisible);
-      const addVisible = normalizeNewtabShortcutAddVisible(rawAddVisible);
-      const dockMagnification = normalizeNewtabShortcutDockMagnificationEnabled(
-        rawDockMagnification
+      const values = {
+        [NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY]:
+          normalizeNewtabShortcutsVisible(result[NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY]),
+        [NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY]:
+          normalizeNewtabShortcutAddVisible(result[NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY]),
+        [NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY]:
+          normalizeNewtabShortcutDockMagnificationEnabled(
+            result[NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY]
+          ),
+        [NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY]: rawColumns === undefined
+          ? inferNewtabShortcutColumnsFromWidth(result[NEWTAB_SHORTCUT_WIDTH_STORAGE_KEY])
+          : normalizeNewtabShortcutColumns(rawColumns),
+        [NEWTAB_SHORTCUT_SIZE_STORAGE_KEY]:
+          normalizeNewtabShortcutSize(result[NEWTAB_SHORTCUT_SIZE_STORAGE_KEY]),
+        [NEWTAB_SHORTCUT_GAP_STORAGE_KEY]:
+          normalizeNewtabShortcutGap(result[NEWTAB_SHORTCUT_GAP_STORAGE_KEY])
+      };
+      setOptionsToggleState(newtabShortcutsToggle, values[NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY]);
+      setOptionsToggleState(newtabShortcutAddToggle, values[NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY]);
+      setOptionsToggleState(
+        newtabShortcutDockMagnificationToggle,
+        values[NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY]
       );
-      const columns = rawColumns === undefined
-        ? inferNewtabShortcutColumnsFromWidth(rawWidth)
-        : normalizeNewtabShortcutColumns(rawColumns);
-      const size = normalizeNewtabShortcutSize(rawSize);
-      const gap = normalizeNewtabShortcutGap(rawGap);
-      setOptionsToggleState(newtabShortcutsToggle, visible);
-      setOptionsToggleState(newtabShortcutAddToggle, addVisible);
-      setOptionsToggleState(newtabShortcutDockMagnificationToggle, dockMagnification);
-      renderNewtabShortcutColumnsControl(columns);
-      renderNewtabShortcutSizeControl(size);
-      renderNewtabShortcutGapControl(gap);
+      renderNewtabShortcutColumnsControl(values[NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY]);
+      renderNewtabShortcutSizeControl(values[NEWTAB_SHORTCUT_SIZE_STORAGE_KEY]);
+      renderNewtabShortcutGapControl(values[NEWTAB_SHORTCUT_GAP_STORAGE_KEY]);
       syncNewtabShortcutSubcontrolAvailability();
       const repairs = {};
-      if (rawVisible !== visible) {
-        repairs[NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY] = visible;
-      }
-      if (rawAddVisible !== addVisible) {
-        repairs[NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY] = addVisible;
-      }
-      if (rawDockMagnification !== dockMagnification) {
-        repairs[NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY] = dockMagnification;
-      }
-      if (rawColumns !== columns) {
-        repairs[NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY] = columns;
-      }
-      if (rawSize !== size) {
-        repairs[NEWTAB_SHORTCUT_SIZE_STORAGE_KEY] = size;
-      }
-      if (rawGap !== gap) {
-        repairs[NEWTAB_SHORTCUT_GAP_STORAGE_KEY] = gap;
-      }
+      Object.keys(values).forEach((key) => {
+        if (result[key] !== values[key]) {
+          repairs[key] = values[key];
+        }
+      });
       if (Object.keys(repairs).length > 0) {
         storageArea.set(repairs);
       }
     });
-    storageArea.get([
-      NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY,
-      NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY
-    ], (result) => {
-      [
-        [
-          newtabFeedbackButtonVisibleToggle,
-          NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY,
-          normalizeNewtabFeedbackButtonVisible
-        ],
-        [
-          newtabAppearanceButtonVisibleToggle,
-          NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY,
-          normalizeNewtabAppearanceButtonVisible
-        ]
-      ].forEach(([toggle, storageKey, normalize]) => {
-        const rawValue = result[storageKey];
-        const stored = normalize(rawValue);
-        if (toggle) {
-          setOptionsToggleState(toggle, stored);
-        }
-        if (rawValue !== stored) {
-          storageArea.set({ [storageKey]: stored });
-        }
-      });
-    });
-    storageArea.get([UPDATE_NOTICE_ENABLED_STORAGE_KEY], (result) => {
-      const rawValue = result[UPDATE_NOTICE_ENABLED_STORAGE_KEY];
-      const stored = normalizeUpdateNoticeEnabled(rawValue);
-      if (updateNoticeToggle) {
-        setOptionsToggleState(updateNoticeToggle, stored);
-      }
-      if (rawValue !== stored) {
-        storageArea.set({ [UPDATE_NOTICE_ENABLED_STORAGE_KEY]: stored });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([MOTION_EFFECTS_ENABLED_STORAGE_KEY], (result) => {
-      const rawValue = result[MOTION_EFFECTS_ENABLED_STORAGE_KEY];
-      const stored = normalizeMotionEffectsEnabled(rawValue);
-      if (motionEffectsToggle) {
-        setOptionsToggleState(motionEffectsToggle, stored);
-      }
-      if (rawValue !== stored) {
-        storageArea.set({ [MOTION_EFFECTS_ENABLED_STORAGE_KEY]: stored });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([SIMPLE_MODE_ENABLED_STORAGE_KEY], (result) => {
-      const rawValue = result[SIMPLE_MODE_ENABLED_STORAGE_KEY];
-      const stored = normalizeSimpleModeEnabled(rawValue);
-      if (simpleModeToggle) {
-        setOptionsToggleState(simpleModeToggle, stored);
-      }
-      if (rawValue !== stored) {
-        storageArea.set({ [SIMPLE_MODE_ENABLED_STORAGE_KEY]: stored });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([PROGRESS_TRACKING_ENABLED_STORAGE_KEY], (result) => {
-      if (progressTrackingToggle) {
-        setOptionsToggleState(
-          progressTrackingToggle,
-          SETTINGS.normalizeProgressTrackingEnabled(result[PROGRESS_TRACKING_ENABLED_STORAGE_KEY])
-        );
-      }
-    });
-    storageArea.get([NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY], (result) => {
-      setNewtabOpenInNewTabState(result[NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY]);
-    });
-    storageArea.get([NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY], (result) => {
-      const rawValue = result[NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY];
-      const stored = normalizeNumberShortcutInstantEnabled(rawValue);
-      if (numberShortcutInstantToggle) {
-        setOptionsToggleState(numberShortcutInstantToggle, stored);
-      }
-      if (rawValue !== stored) {
-        storageArea.set({ [NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY]: stored });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY], (result) => {
-      const rawValue = result[MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY];
-      const stored = normalizeMacosCtrlSuggestionNavigationEnabled(rawValue);
-      if (macosCtrlSuggestionNavigationToggle) {
-        setOptionsToggleState(macosCtrlSuggestionNavigationToggle, stored);
-      }
-      if (rawValue !== stored) {
-        storageArea.set({ [MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY]: stored });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([AUTO_PIP_ENABLED_STORAGE_KEY], (result) => {
-      const rawValue = result[AUTO_PIP_ENABLED_STORAGE_KEY];
-      const stored = normalizeAutoPipEnabled(rawValue);
-      if (autoPipToggle) {
-        setOptionsToggleState(autoPipToggle, stored);
-      }
-      if (rawValue !== stored) {
-        storageArea.set({ [AUTO_PIP_ENABLED_STORAGE_KEY]: stored });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([TAB_SWITCHER_ENABLED_STORAGE_KEY], (result) => {
-      const rawValue = result[TAB_SWITCHER_ENABLED_STORAGE_KEY];
-      const stored = normalizeTabSwitcherEnabled(rawValue);
-      if (tabSwitcherToggle) {
-        setOptionsToggleState(tabSwitcherToggle, stored);
-      }
-      if (rawValue !== stored) {
-        storageArea.set({ [TAB_SWITCHER_ENABLED_STORAGE_KEY]: stored });
-      }
-      refreshCustomSelects();
-    });
+  }
+
+  // Older installs have aggregate searches but no auto-group choice; it is
+  // derived from those searches the first time.
+  function loadAggregateSearchAutoGroupSetting() {
+    if (!storageArea) {
+      return;
+    }
     storageArea.get([
       AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY,
       AGGREGATE_SEARCH_STORAGE_KEY
@@ -5839,84 +4612,190 @@
       const stored = typeof rawValue === 'undefined'
         ? deriveLegacyAggregateSearchAutoGroupEnabled(result[AGGREGATE_SEARCH_STORAGE_KEY])
         : normalizeAggregateSearchAutoGroupEnabled(rawValue);
-      if (aggregateSearchAutoGroupToggle) {
-        setOptionsToggleState(aggregateSearchAutoGroupToggle, stored);
-      }
+      setOptionsToggleState(aggregateSearchAutoGroupToggle, stored);
       if (rawValue !== stored) {
         storageArea.set({ [AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY]: stored });
       }
       refreshCustomSelects();
     });
-    storageArea.get([DOCUMENT_PIP_ENABLED_STORAGE_KEY], (result) => {
-      const rawValue = result[DOCUMENT_PIP_ENABLED_STORAGE_KEY];
-      const stored = normalizeDocumentPipEnabled(rawValue);
-      if (documentPipToggle) {
-        setOptionsToggleState(documentPipToggle, stored);
+  }
+
+  function loadSearchResultSourceTypes() {
+    if (!storageArea) {
+      return;
+    }
+    storageArea.get([SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY], (result) => {
+      const stored = result[SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY];
+      const sourceTypes = normalizeSearchResultSourceTypes(stored);
+      setSearchResultSourceTypeState(sourceTypes);
+      if (!Array.isArray(stored) || JSON.stringify(stored) !== JSON.stringify(sourceTypes)) {
+        storageArea.set({ [SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY]: sourceTypes });
       }
-      if (rawValue !== stored) {
-        storageArea.set({ [DOCUMENT_PIP_ENABLED_STORAGE_KEY]: stored });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY], (result) => {
-      const rawValue = result[PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY];
-      const stored = normalizePinnedTabRecoveryEnabled(rawValue);
-      if (pinnedTabRecoveryToggle) {
-        setOptionsToggleState(pinnedTabRecoveryToggle, stored);
-      }
-      if (rawValue !== stored) {
-        storageArea.set({ [PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY]: stored });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY], (result) => {
-      const rawValue = result[SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY];
-      const stored = normalizeSelectionQuickActionsEnabled(rawValue);
-      if (selectionQuickActionsToggle) {
-        setOptionsToggleState(selectionQuickActionsToggle, stored);
-      }
-      syncSelectionQuickActionsProviderAvailability();
-      if (rawValue !== stored) {
-        storageArea.set({ [SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY]: stored });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([SELECTION_QUICK_ACTIONS_PROVIDER_STORAGE_KEY], (result) => {
-      const rawValue = result[SELECTION_QUICK_ACTIONS_PROVIDER_STORAGE_KEY];
-      const stored = normalizeSelectionQuickActionsProvider(rawValue);
-      setOptionsSelectState(selectionQuickActionsProviderSelect, stored);
-      if (rawValue !== stored) {
-        storageArea.set({ [SELECTION_QUICK_ACTIONS_PROVIDER_STORAGE_KEY]: stored });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY], (result) => {
-      const rawValue = result[SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY];
-      const stored = normalizeSelectionQuickActionsGroupEnabled(rawValue);
-      if (selectionQuickActionsGroupToggle) {
-        setOptionsToggleState(selectionQuickActionsGroupToggle, stored);
-      }
-      syncSelectionQuickActionsProviderAvailability();
-      if (rawValue !== stored) {
-        storageArea.set({ [SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY]: stored });
-      }
-      refreshCustomSelects();
-    });
-    storageArea.get([RESTRICTED_ACTION_STORAGE_KEY], (result) => {
-      const stored = result[RESTRICTED_ACTION_STORAGE_KEY];
-      const normalizedStored = stored === 'lumno' ? 'default' : stored;
-      const hasStored = normalizedStored === 'default' || normalizedStored === 'none';
-      const nextAction = hasStored ? normalizedStored : 'default';
-      if (restrictedActionSelect) {
-        restrictedActionSelect.value = nextAction;
-      }
-      setRestrictedActionTabState(nextAction);
-      if (!hasStored || normalizedStored !== stored) {
-        storageArea.set({ [RESTRICTED_ACTION_STORAGE_KEY]: nextAction });
-      }
-      refreshCustomSelects();
     });
   }
+  storageChanges.on(SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY, (changes) => {
+    setSearchResultSourceTypeState(changes[SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY].newValue);
+  });
+
+  loadLanguageSetting();
+  settingBinder.bindSetting({
+    key: RECENT_COUNT_STORAGE_KEY,
+    normalize: normalizeRecentCount,
+    apply(count) {
+      renderRecentCountControl(count);
+      updateRecentModeTabsVisibility(count);
+    },
+    repairOnChange: false,
+    refreshSelects: true
+  });
+  settingBinder.bindSetting({
+    key: NEWTAB_WIDTH_MODE_STORAGE_KEY,
+    normalize: normalizeNewtabWidthMode,
+    apply(mode) {
+      if (newtabWidthSelect) {
+        newtabWidthSelect.value = mode;
+      }
+      setNewtabWidthTabState(mode);
+    },
+    repairOnChange: false,
+    refreshSelects: true
+  });
+  settingBinder.bindSetting({
+    key: OVERLAY_SIZE_MODE_STORAGE_KEY,
+    normalize: normalizeOverlaySizeMode,
+    apply: setOverlaySizeTabState,
+    repairOnChange: false,
+    refreshSelects: true
+  });
+  settingBinder.bindSetting({
+    key: OVERLAY_ENTER_ANIMATION_STORAGE_KEY,
+    normalize: normalizeOverlayEnterAnimation,
+    apply: setOverlayEnterAnimationTabState,
+    repairOnChange: false
+  });
+  settingBinder.bindSetting({
+    key: SEARCH_RESULT_PRIORITY_STORAGE_KEY,
+    normalize: normalizeSearchResultPriority,
+    apply(priority) {
+      if (searchResultPrioritySelect) {
+        searchResultPrioritySelect.value = priority;
+      }
+      setSearchResultPriorityTabState(priority);
+    },
+    repairOnChange: false,
+    refreshSelects: true
+  });
+  settingBinder.bindSetting({
+    key: SEARCH_RESULT_TAB_POSITION_STORAGE_KEY,
+    normalize: SETTINGS.normalizeSearchResultTabPosition,
+    apply(position) {
+      if (searchResultTabPositionSelect) {
+        searchResultTabPositionSelect.value = position;
+      }
+    },
+    repairOnLoad: false,
+    repairOnChange: false,
+    refreshSelects: true
+  });
+  loadSearchResultSourceTypes();
+  settingBinder.bindSetting({
+    key: SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY,
+    normalize: normalizeSearchResultDisplayLimit,
+    apply: renderSearchResultDisplayLimitControl
+  });
+  settingBinder.bindSetting({
+    key: RECENT_MODE_STORAGE_KEY,
+    // A missing or unknown mode starts as "most visited"; a later change to
+    // anything but "most" shows "latest", as the switch only offers the two.
+    normalize: (value) => (value === 'latest' || value === 'most' ? value : 'most'),
+    normalizeChange: (value) => (value === 'most' ? 'most' : 'latest'),
+    apply(mode) {
+      if (recentModeSelect) {
+        recentModeSelect.value = mode;
+      }
+      setRecentModeTabState(mode);
+    },
+    repairOnChange: false,
+    refreshSelects: true
+  });
+  settingBinder.bindSetting({
+    key: BOOKMARK_COUNT_STORAGE_KEY,
+    normalize: normalizeBookmarkCount,
+    apply(count) {
+      renderBookmarkRowsControl(count);
+      updateBookmarkColumnsSettingVisibility(count);
+    },
+    repairOnChange: false
+  });
+  settingBinder.bindSetting({
+    key: BOOKMARK_COLUMNS_STORAGE_KEY,
+    normalize: normalizeBookmarkColumns,
+    apply: renderBookmarkColumnsControl,
+    repairOnChange: false,
+    refreshSelects: true
+  });
+  settingBinder.bindSetting({
+    key: NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
+    normalize: normalizeNewtabTopContentMode,
+    apply: setNewtabTopContentTabState,
+    refreshSelects: true
+  });
+  settingBinder.bindSetting({
+    key: NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
+    normalize: normalizeNewtabTimeFontWeight,
+    apply: renderNewtabTimeFontWeightControl
+  });
+  [
+    [NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY, normalizeNewtabShortcutColumns, renderNewtabShortcutColumnsControl],
+    [NEWTAB_SHORTCUT_SIZE_STORAGE_KEY, normalizeNewtabShortcutSize, renderNewtabShortcutSizeControl],
+    [NEWTAB_SHORTCUT_GAP_STORAGE_KEY, normalizeNewtabShortcutGap, renderNewtabShortcutGapControl]
+  ].forEach(([key, normalize, render]) => {
+    settingBinder.bindSetting({
+      key,
+      normalize,
+      apply(value) {
+        render(value, Boolean(newtabShortcutsToggle && !newtabShortcutsToggle.checked));
+      },
+      load: false
+    });
+  });
+  loadNewtabShortcutSettings();
+  settingBinder.bindSetting({
+    key: NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY,
+    normalize: SETTINGS.normalizeNewtabOpenInNewTab,
+    apply: setNewtabOpenInNewTabState,
+    repairOnLoad: false,
+    repairOnChange: false
+  });
+  const toggleSettingHooks = {
+    faviconBlacklistEditor: setFaviconBlacklistEditorEnabled,
+    newtabShortcutSubcontrols: syncNewtabShortcutSubcontrolAvailability,
+    selectionQuickActionsAvailability: syncSelectionQuickActionsProviderAvailability
+  };
+  TOGGLE_SETTINGS.forEach((entry) => {
+    const spec = Object.assign({}, entry, {
+      afterApply: entry.after ? toggleSettingHooks[entry.after] : null,
+      input: document.getElementById(entry.inputId)
+    });
+    if (entry.control === 'select') {
+      settingBinder.bindSelect(spec);
+    } else {
+      settingBinder.bindToggle(spec);
+    }
+  });
+  loadAggregateSearchAutoGroupSetting();
+  settingBinder.bindSetting({
+    key: RESTRICTED_ACTION_STORAGE_KEY,
+    // "lumno" is the old name of the default action.
+    normalize: (value) => (value === 'none' ? 'none' : 'default'),
+    apply(action) {
+      if (restrictedActionSelect) {
+        restrictedActionSelect.value = action;
+      }
+      setRestrictedActionTabState(action);
+    },
+    refreshSelects: true
+  });
 
   refreshCustomSelects();
 
@@ -6114,103 +4993,23 @@
 
   function handleSiteSearchProviderSave(key, isBuiltin, draft) {
     suspendSiteSearchRefresh(260);
-    const item = isBuiltin
-      ? defaultSiteSearchProviders.find((entry) => String(entry.key || '') === key)
-      : customSiteSearchProviders.find((entry) => String(entry.key || '') === key);
-    if (!item) {
-      return Promise.resolve({
-        ok: false,
-        error: getMessage('toast_error', '操作失败，请重试。')
-      });
+    const item = (isBuiltin ? defaultSiteSearchProviders : customSiteSearchProviders)
+      .find((entry) => String(entry.key || '') === key);
+    const result = item
+      ? siteSearchModel.editSiteSearchProvider(item, isBuiltin, draft, {
+        createId: () => createPersistentId('source'),
+        custom: customSiteSearchProviders,
+        defaults: defaultSiteSearchProviders,
+        disabledKeys: disabledSiteSearchKeys,
+        hasKeyConflict: (value, allowedKey) => Boolean(findSiteSearchKeyConflict(value, allowedKey))
+      })
+      : { ok: false, error: 'toast_error' };
+    if (!result.ok) {
+      return Promise.resolve({ ok: false, error: getSiteSearchErrorMessage(result.error) });
     }
-    const nextKeyRaw = String(draft && draft.key ? draft.key : '').trim();
-    if (!nextKeyRaw) {
-      return Promise.resolve({
-        ok: false,
-        error: getMessage('shortcuts_error_key', '请填写触发词。')
-      });
-    }
-    if (/\s/.test(nextKeyRaw)) {
-      return Promise.resolve({
-        ok: false,
-        error: getMessage('shortcuts_error_key_space', '触发词不能包含空格。')
-      });
-    }
-    const previousKey = String(item.key || '').toLowerCase();
-    if (findSiteSearchKeyConflict(nextKeyRaw, previousKey)) {
-      return Promise.resolve({
-        ok: false,
-        error: getMessage('shortcuts_error_key_duplicate', '该触发词已存在，请更换。')
-      });
-    }
-    const template = normalizeSiteSearchTemplate(
-      String(draft && draft.template ? draft.template : '').trim()
-    );
-    const isBuiltinAiProvider = isBuiltin && isAiSiteSearchProvider(item);
-    if (!template || (!isBuiltinAiProvider && !template.includes('{query}'))) {
-      return Promise.resolve({
-        ok: false,
-        error: getMessage('toast_error_template', '搜索模板必须包含 {query}。')
-      });
-    }
-    const aliases = normalizeAliases(draft && draft.aliases ? draft.aliases : '');
-    const normalizedKey = nextKeyRaw.toLowerCase();
-    let next = customSiteSearchProviders.filter(
-      (entry) => String(entry.key || '').toLowerCase() !== normalizedKey
-    );
-    if (previousKey && previousKey !== normalizedKey) {
-      next = next.filter(
-        (entry) => String(entry.key || '').toLowerCase() !== previousKey
-      );
-    }
-    const builtinKey = isBuiltin ? previousKey : getSiteSearchBuiltinKey(item);
-    const nextDisabledKeys = new Set(disabledSiteSearchKeys);
-    if (builtinKey) {
-      nextDisabledKeys.add(builtinKey);
-    } else {
-      nextDisabledKeys.delete(normalizedKey);
-    }
-    const nextItemDraft = {
-      ...item,
-      id: String(item.id || '').trim() || createPersistentId('source'),
-      key: nextKeyRaw,
-      name: String(draft && draft.name ? draft.name : '').trim() || nextKeyRaw,
-      template,
-      aliases,
-      category: isBuiltinAiProvider
-        ? 'aiSearch'
-        : (draft && draft.category === 'searchEngine' ? 'searchEngine' : 'site')
-    };
-    if (builtinKey) {
-      nextItemDraft.builtinKey = builtinKey;
-    }
-    const activeBuiltins = getActiveBuiltinSiteSearchProviders(
-      defaultSiteSearchProviders,
-      [nextItemDraft].concat(next),
-      nextDisabledKeys
-    );
-    const shouldDisable = !builtinKey && isDuplicateTemplate(template, activeBuiltins);
-    const nextItem = normalizeSiteSearchProvider({
-      ...nextItemDraft,
-      disabled: shouldDisable,
-      disabledReason: shouldDisable ? 'duplicate' : ''
-    });
-    if (!nextItem) {
-      return Promise.resolve({
-        ok: false,
-        error: getMessage('toast_error', '操作失败，请重试。')
-      });
-    }
-    next.unshift(nextItem);
-    return saveSiteSearchProviderState(next, nextDisabledKeys).then(() => {
-      customSiteSearchProviders = next;
-      customSiteSearchProviderIdsReady = true;
-      disabledSiteSearchKeys = nextDisabledKeys;
-      renderSiteSearchList();
+    return saveSiteSearchProviderState(result.custom, result.disabledKeys).then(() => {
+      applySavedSiteSearchProviders(result.custom, result.disabledKeys);
       renderAggregateSearchList();
-      setTimeout(() => {
-        showToast(getMessage('toast_saved', '已保存'), false);
-      }, 220);
       return { ok: true };
     }).catch(() => {
       const error = getMessage('toast_error', '操作失败，请重试。');
@@ -6346,45 +5145,6 @@
       }));
   }
 
-  function normalizeAliasList(list) {
-    const items = Array.isArray(list) ? list : [];
-    const cleaned = items
-      .map((item) => String(item || '').trim().toLowerCase())
-      .filter(Boolean);
-    return Array.from(new Set(cleaned)).sort();
-  }
-
-  function isSameProviderContent(a, b) {
-    if (!a || !b) {
-      return false;
-    }
-    const nameA = String(a.name || a.key || '').trim();
-    const nameB = String(b.name || b.key || '').trim();
-    const templateA = normalizeSiteSearchTemplate(String(a.template || '').trim());
-    const templateB = normalizeSiteSearchTemplate(String(b.template || '').trim());
-    if (nameA !== nameB || templateA !== templateB) {
-      return false;
-    }
-    const aliasA = normalizeAliasList(a.aliases);
-    const aliasB = normalizeAliasList(b.aliases);
-    return JSON.stringify(aliasA) === JSON.stringify(aliasB);
-  }
-
-  function filterRedundantCustomProviders(defaults, custom) {
-    const map = new Map((defaults || []).map((item) => [String(item.key || '').toLowerCase(), item]));
-    return (custom || []).filter((item) => {
-      if (getSiteSearchBuiltinKey(item)) {
-        return true;
-      }
-      const key = String(item.key || '').toLowerCase();
-      const base = map.get(key);
-      if (!base) {
-        return true;
-      }
-      return !isSameProviderContent(item, base);
-    });
-  }
-
   function loadCustomSiteSearchProviders(baseItems) {
     return SETTINGS.readStorageValue(
       storageArea,
@@ -6427,16 +5187,6 @@
     );
   }
 
-  function writeCustomSiteSearchProviders(items) {
-    const payload = (items || []).map((item) => normalizeSiteSearchProvider(item)).filter(Boolean);
-    return SETTINGS.writeStorageValue(
-      storageArea,
-      chrome,
-      SITE_SEARCH_STORAGE_KEY,
-      payload
-    );
-  }
-
   function writeSiteSearchProviderState(items, keys) {
     const providersPayload = (items || [])
       .map((item) => normalizeSiteSearchProvider(item))
@@ -6451,22 +5201,9 @@
     return SETTINGS.writeStorageValues(rawStorageArea, chrome, payload);
   }
 
-  function enqueueSiteSearchProviderStorageOperation(operation) {
-    const run = typeof operation === 'function' ? operation : () => undefined;
-    const task = siteSearchProviderStorageOperationQueue.then(run, run);
-    siteSearchProviderStorageOperationQueue = task.catch(() => {});
-    return task;
-  }
-
   function saveDisabledSiteSearchKeys(keys) {
     return enqueueSiteSearchProviderStorageOperation(
       () => writeDisabledSiteSearchKeys(keys)
-    );
-  }
-
-  function saveCustomSiteSearchProviders(items) {
-    return enqueueSiteSearchProviderStorageOperation(
-      () => writeCustomSiteSearchProviders(items)
     );
   }
 
@@ -6476,206 +5213,12 @@
     );
   }
 
-  function createSiteSearchProviderRefreshCoordinator(config) {
-    const options = config && typeof config === 'object' ? config : {};
-    const load = typeof options.load === 'function'
-      ? options.load
-      : () => Promise.resolve({});
-    const prepare = typeof options.prepare === 'function'
-      ? options.prepare
-      : (snapshot) => snapshot;
-    const persist = typeof options.persist === 'function'
-      ? options.persist
-      : () => Promise.resolve();
-    const apply = typeof options.apply === 'function'
-      ? options.apply
-      : () => {};
-    const onError = typeof options.onError === 'function'
-      ? options.onError
-      : () => {};
-    let generation = 0;
-    let refreshQueue = Promise.resolve();
-
-    function isCurrent(token) {
-      return token === generation;
-    }
-
-    async function run(token) {
-      try {
-        let snapshot = await load();
-        if (!isCurrent(token)) {
-          return { stale: true };
-        }
-        let prepared = prepare(snapshot);
-        if (prepared && prepared.needsPersistence) {
-          // A refresh can spend time loading the bundled provider catalog. Re-read
-          // sync storage inside the serialized migration path so cleanup never uses
-          // the earlier snapshot merely because it happened to finish last.
-          snapshot = await load();
-          if (!isCurrent(token)) {
-            return { stale: true };
-          }
-          prepared = prepare(snapshot);
-          if (prepared && prepared.needsPersistence) {
-            if (!isCurrent(token)) {
-              return { stale: true };
-            }
-            await persist(prepared, {
-              isCurrent: () => isCurrent(token)
-            });
-            if (!isCurrent(token)) {
-              return { stale: true };
-            }
-            // Publish what storage now contains, rather than assuming the write
-            // result still represents the newest provider state.
-            snapshot = await load();
-            if (!isCurrent(token)) {
-              return { stale: true };
-            }
-            prepared = prepare(snapshot);
-          }
-        }
-        if (!isCurrent(token)) {
-          return { stale: true };
-        }
-        apply(prepared);
-        return { stale: false, value: prepared };
-      } catch (error) {
-        if (isCurrent(token)) {
-          onError(error);
-        }
-        throw error;
-      }
-    }
-
-    return {
-      invalidate() {
-        generation += 1;
-      },
-      refresh() {
-        const token = ++generation;
-        const task = refreshQueue.then(
-          () => run(token),
-          () => run(token)
-        );
-        refreshQueue = task.catch(() => {});
-        return task;
-      }
-    };
-  }
-
-  function createAggregateSearchStateCoordinator(config) {
-    const options = config && typeof config === 'object' ? config : {};
-    const normalize = typeof options.normalize === 'function'
-      ? options.normalize
-      : (items) => Array.isArray(items) ? items : [];
-    const getCurrent = typeof options.getCurrent === 'function'
-      ? options.getCurrent
-      : () => [];
-    let changeGeneration = 0;
-    let loadGeneration = 0;
-    let mutationQueue = Promise.resolve();
-
-    function startLoad() {
-      const token = {
-        changeGeneration,
-        loadGeneration: ++loadGeneration
-      };
-      let result;
-      try {
-        result = typeof options.load === 'function'
-          ? options.load()
-          : Promise.reject(new Error('aggregate-search-runtime-unavailable'));
-      } catch (error) {
-        result = Promise.reject(error);
-      }
-      return {
-        promise: Promise.resolve(result).then(normalize),
-        token
-      };
-    }
-
-    function isLoadCurrent(token) {
-      return Boolean(token) &&
-        token.changeGeneration === changeGeneration &&
-        token.loadGeneration === loadGeneration;
-    }
-
-    function refresh() {
-      const pending = startLoad();
-      return pending.promise.then((items) => {
-        if (!isLoadCurrent(pending.token)) {
-          return getCurrent();
-        }
-        if (typeof options.apply === 'function') {
-          options.apply(items);
-        }
-        return items;
-      }).catch((error) => {
-        if (isLoadCurrent(pending.token) && typeof options.onLoadError === 'function') {
-          options.onLoadError(error);
-        }
-        throw error;
-      });
-    }
-
-    function loadLatestForMutation() {
-      const pending = startLoad();
-      return pending.promise.then((items) => {
-        if (!isLoadCurrent(pending.token)) {
-          return loadLatestForMutation();
-        }
-        return items;
-      });
-    }
-
-    function enqueueMutation(mutate) {
-      const operation = mutationQueue.then(() => loadLatestForMutation()).then((items) => {
-        const result = typeof mutate === 'function' ? mutate(items) : null;
-        if (!result || !Object.prototype.hasOwnProperty.call(result, 'items')) {
-          return result;
-        }
-        const changeGenerationAtWrite = changeGeneration;
-        loadGeneration += 1;
-        return Promise.resolve().then(() => options.save(result.items)).then((savedItems) => {
-          const normalizedItems = normalize(savedItems);
-          loadGeneration += 1;
-          if (changeGenerationAtWrite === changeGeneration && typeof options.apply === 'function') {
-            options.apply(normalizedItems);
-          }
-          return { ...result, items: normalizedItems };
-        });
-      });
-      mutationQueue = operation.then(() => undefined, () => undefined);
-      return operation;
-    }
-
-    function applyStorageChange(value) {
-      changeGeneration += 1;
-      loadGeneration += 1;
-      const items = normalize(value);
-      if (typeof options.apply === 'function') {
-        options.apply(items);
-      }
-      return items;
-    }
-
-    return {
-      applyStorageChange,
-      enqueueMutation,
-      refresh
-    };
-  }
-
   function normalizeAggregateSearches(value) {
     return AGGREGATE_SEARCH_STORE.normalizeAggregateSearches(value);
   }
 
   function deriveLegacyAggregateSearchAutoGroupEnabled(value) {
-    const items = normalizeAggregateSearches(value);
-    return items.length === 0 || items.some(
-      (item) => item && item.autoCreateTabGroup === true
-    );
+    return aggregateSearchModel.deriveLegacyAutoGroupEnabled(value);
   }
 
   function getAggregateSearchProviderSourceRef(provider) {
@@ -6833,10 +5376,10 @@
     aggregateSearchListController.render({
       copy: getAggregateSearchListCopy(),
       items: aggregateSearches.map(getAggregateSearchItemModel),
-      maxKeyLength: Number(AGGREGATE_SEARCH_STORE.MAX_KEY_LENGTH) || 32,
-      maxNameLength: Number(AGGREGATE_SEARCH_STORE.MAX_NAME_LENGTH) || 80,
-      maxSourceCount: Number(AGGREGATE_SEARCH_STORE.MAX_SOURCE_COUNT) || 10,
-      minSourceCount: Number(AGGREGATE_SEARCH_STORE.MIN_SOURCE_COUNT) || 2,
+      maxKeyLength: aggregateSearchModel.limits.maxKeyLength,
+      maxNameLength: aggregateSearchModel.limits.maxNameLength,
+      maxSourceCount: aggregateSearchModel.limits.maxSources,
+      minSourceCount: aggregateSearchModel.limits.minSources,
       providers: getAggregateSearchProviderModels()
     });
   }
@@ -6861,7 +5404,7 @@
 
   function getAggregateSearchStateCoordinator() {
     if (!aggregateSearchStateCoordinator) {
-      aggregateSearchStateCoordinator = createAggregateSearchStateCoordinator({
+      aggregateSearchStateCoordinator = AGGREGATE_SEARCH.createAggregateSearchStateCoordinator({
         apply(items) {
           aggregateSearches = items;
           aggregateSearchesReady = true;
@@ -6892,127 +5435,28 @@
     return getAggregateSearchStateCoordinator().refresh();
   }
 
-  function handleAggregateSearchSave(id, draft) {
-    const maxItems = Number(AGGREGATE_SEARCH_STORE.MAX_AGGREGATE_COUNT) || 8;
-    const maxKeyLength = Number(AGGREGATE_SEARCH_STORE.MAX_KEY_LENGTH) || 32;
-    const maxNameLength = Number(AGGREGATE_SEARCH_STORE.MAX_NAME_LENGTH) || 80;
-    const minSources = Number(AGGREGATE_SEARCH_STORE.MIN_SOURCE_COUNT) || 2;
-    const maxSources = Number(AGGREGATE_SEARCH_STORE.MAX_SOURCE_COUNT) || 10;
-    const currentId = String(id || '').trim();
-    if (!aggregateSearchesReady) {
-      return Promise.resolve({
-        ok: false,
-        error: getMessage(
-          'aggregate_search_storage_unavailable_error',
-          'Aggregate searches could not be loaded. Reload Settings and try again.'
-        )
-      });
-    }
-    const keyRaw = String(draft && draft.key ? draft.key : '').trim().slice(0, maxKeyLength);
-    if (!keyRaw) {
-      return Promise.resolve({
-        ok: false,
-        error: getMessage('shortcuts_error_key', '请填写触发词。')
-      });
-    }
-    if (/\s/.test(keyRaw)) {
-      return Promise.resolve({
-        ok: false,
-        error: getMessage('shortcuts_error_key_space', '触发词不能包含空格。')
-      });
-    }
-    const key = AGGREGATE_SEARCH_STORE.normalizeAggregateSearchKey(keyRaw);
-    if (!key) {
-      return Promise.resolve({
-        ok: false,
-        error: getMessage('shortcuts_error_key', '请填写触发词。')
-      });
-    }
-    if (findSiteSearchKeyConflict(key, '', currentId)) {
-      return Promise.resolve({
-        ok: false,
-        error: getMessage('shortcuts_error_key_duplicate', '该触发词已存在，请更换。')
-      });
-    }
-    const name = String(draft && draft.name ? draft.name : '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, maxNameLength);
-    const sourceRefs = AGGREGATE_SEARCH_STORE.normalizeSourceRefs(draft && draft.sourceRefs);
-    if (!name) {
-      return Promise.resolve({
-        ok: false,
-        error: getMessage('aggregate_search_name_required_error', '请填写聚合搜索名称。')
-      });
-    }
-    if (sourceRefs.length < minSources) {
-      return Promise.resolve({
-        ok: false,
-        error: getMessage('aggregate_search_min_sources_error', '请至少选择 2 个搜索源。')
-      });
-    }
-    if (sourceRefs.length > maxSources) {
-      return Promise.resolve({
-        ok: false,
-        error: getMessage('aggregate_search_max_sources_error', '最多可选择 10 个搜索源。')
-      });
-    }
-    const previousItem = currentId
-      ? aggregateSearches.find((item) => String(item && item.id || '') === currentId)
-      : null;
-    const nextItem = {
-      id: currentId || createPersistentId('aggregate'),
-      key,
-      name,
-      sourceRefs,
-      ...(previousItem
-        ? { autoCreateTabGroup: previousItem.autoCreateTabGroup === true }
-        : {})
-    };
-    const availability = AGGREGATE_SEARCH_STORE.getAggregateSearchAvailability(
-      nextItem,
-      getAggregateSearchAvailableProviders()
+  storageChanges.on(AGGREGATE_SEARCH_STORAGE_KEY, (changes) => {
+    getAggregateSearchStateCoordinator().applyStorageChange(
+      changes[AGGREGATE_SEARCH_STORAGE_KEY].newValue
     );
-    if (!availability.available) {
-      return Promise.resolve({
-        ok: false,
-        error: getMessage(
-          'aggregate_search_source_selection_unavailable_error',
-          'Remove unavailable sources and select at least two available sources.'
-        )
-      });
+  });
+
+  function handleAggregateSearchSave(id, draft) {
+    if (!aggregateSearchesReady) {
+      return Promise.resolve({ ok: false, error: getAggregateSearchErrorMessage('storage_unavailable') });
+    }
+    const built = aggregateSearchModel.buildAggregateSearchItem(id, draft, {
+      availableProviders: getAggregateSearchAvailableProviders(),
+      createId: () => createPersistentId('aggregate'),
+      hasKeyConflict: (key, currentId) => Boolean(findSiteSearchKeyConflict(key, '', currentId)),
+      items: aggregateSearches
+    });
+    if (!built.ok) {
+      return Promise.resolve({ ok: false, error: getAggregateSearchErrorMessage(built.error) });
     }
     return getAggregateSearchStateCoordinator().enqueueMutation((items) => {
-      if (!currentId && items.length >= maxItems) {
-        return {
-          ok: false,
-          error: getMessage('aggregate_search_max_items_error', '最多可创建 8 个聚合搜索。')
-        };
-      }
-      const duplicate = items.some((item) => (
-        String(item.id || '') !== currentId &&
-        String(item.name || '').trim().toLocaleLowerCase() === name.toLocaleLowerCase()
-      ));
-      if (duplicate) {
-        return {
-          ok: false,
-          error: getMessage('aggregate_search_name_duplicate_error', '已存在同名的聚合搜索。')
-        };
-      }
-      const duplicateKey = items.some((item) => (
-        String(item.id || '') !== currentId &&
-        String(item.key || '').trim().toLowerCase() === key
-      ));
-      if (duplicateKey) {
-        return {
-          ok: false,
-          error: getMessage('shortcuts_error_key_duplicate', '该触发词已存在，请更换。')
-        };
-      }
-      const next = currentId
-        ? items.map((item) => String(item.id || '') === currentId ? nextItem : item)
-        : items.concat(nextItem);
-      return { items: next, ok: true };
+      const merged = aggregateSearchModel.mergeAggregateSearchItem(items, built.item, id);
+      return merged.ok ? merged : { ok: false, error: getAggregateSearchErrorMessage(merged.error) };
     }).then((result) => {
       if (!result || !result.ok) {
         return result;
@@ -7026,13 +5470,36 @@
     });
   }
 
+  function getAggregateSearchErrorMessage(errorKey) {
+    switch (errorKey) {
+      case 'storage_unavailable':
+        return getMessage(
+          'aggregate_search_storage_unavailable_error',
+          'Aggregate searches could not be loaded. Reload Settings and try again.'
+        );
+      case 'aggregate_search_name_required_error':
+        return getMessage('aggregate_search_name_required_error', '请填写聚合搜索名称。');
+      case 'aggregate_search_min_sources_error':
+        return getMessage('aggregate_search_min_sources_error', '请至少选择 2 个搜索源。');
+      case 'aggregate_search_max_sources_error':
+        return getMessage('aggregate_search_max_sources_error', '最多可选择 10 个搜索源。');
+      case 'aggregate_search_source_selection_unavailable_error':
+        return getMessage(
+          'aggregate_search_source_selection_unavailable_error',
+          'Remove unavailable sources and select at least two available sources.'
+        );
+      case 'aggregate_search_max_items_error':
+        return getMessage('aggregate_search_max_items_error', '最多可创建 8 个聚合搜索。');
+      case 'aggregate_search_name_duplicate_error':
+        return getMessage('aggregate_search_name_duplicate_error', '已存在同名的聚合搜索。');
+      default:
+        return getSiteSearchErrorMessage(errorKey);
+    }
+  }
+
   function handleAggregateSearchRemove(id) {
     if (!aggregateSearchesReady) {
-      const error = getMessage(
-        'aggregate_search_storage_unavailable_error',
-        'Aggregate searches could not be loaded. Reload Settings and try again.'
-      );
-      showToast(error, true);
+      showToast(getAggregateSearchErrorMessage('storage_unavailable'), true);
       return Promise.resolve();
     }
     return getAggregateSearchStateCoordinator().enqueueMutation((items) => ({
@@ -7047,11 +5514,7 @@
 
   function handleAggregateSearchClear() {
     if (!aggregateSearchesReady) {
-      const error = getMessage(
-        'aggregate_search_storage_unavailable_error',
-        'Aggregate searches could not be loaded. Reload Settings and try again.'
-      );
-      showToast(error, true);
+      showToast(getAggregateSearchErrorMessage('storage_unavailable'), true);
       return Promise.resolve();
     }
     return getAggregateSearchStateCoordinator().enqueueMutation(() => ({
@@ -7256,61 +5719,35 @@
     );
   }
 
+  storageChanges.on(SEARCH_BLACKLIST_STORAGE_KEY, (changes) => {
+    searchBlacklistItems = normalizeSearchBlacklistItems(changes[SEARCH_BLACKLIST_STORAGE_KEY].newValue);
+    renderSearchBlacklistList();
+  });
+  storageChanges.on(FAVICON_REQUEST_BLACKLIST_STORAGE_KEY, (changes) => {
+    faviconRequestBlacklistItems = normalizeFaviconRequestBlacklistItems(
+      changes[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY].newValue
+    );
+    renderFaviconRequestBlacklistList();
+  });
+
   function prepareSiteSearchProviderSnapshot(snapshot) {
-    const values = snapshot && typeof snapshot === 'object' ? snapshot : {};
-    const defaults = Array.isArray(values.defaults) ? values.defaults : [];
-    const custom = Array.isArray(values.custom) ? values.custom : [];
-    let disabledKeys = new Set(Array.isArray(values.disabled) ? values.disabled : []);
-    const filteredCustom = filterRedundantCustomProviders(defaults, custom);
-    const withoutDebug = filteredCustom.filter(
-      (item) => String(item.key || '').toLowerCase() !== DEBUG_DUPLICATE_CUSTOM_KEY
-    );
-    const stableCustom = ensureCustomSiteSearchProviderIds(withoutDebug);
-    const customWithStableIds = stableCustom.items;
-    const didFilter = filteredCustom.length !== custom.length;
-    const didRemoveDebug = withoutDebug.length !== filteredCustom.length;
-    const activeBuiltins = getActiveBuiltinSiteSearchProviders(
-      defaults,
-      customWithStableIds,
-      disabledKeys
-    );
-    const nextCustom = customWithStableIds.map((item) => {
-      const shouldDisable = !getSiteSearchBuiltinKey(item) &&
-        isDuplicateTemplate(item.template, activeBuiltins);
-      return {
-        ...item,
-        disabled: shouldDisable,
-        disabledReason: shouldDisable ? 'duplicate' : ''
-      };
+    return siteSearchModel.prepareSiteSearchProviderSnapshot(snapshot, {
+      debugDuplicateKey: DEBUG_DUPLICATE_CUSTOM_KEY
     });
-    const didUpdateDisabled = nextCustom.some((item, index) => {
-      const before = customWithStableIds[index] || {};
-      return Boolean(before.disabled) !== Boolean(item.disabled) ||
-        String(before.disabledReason || '') !== String(item.disabledReason || '');
-    });
-    const filteredBase = defaults.filter((item) => {
-      const key = String(item && item.key ? item.key : '').toLowerCase();
-      return key && !disabledKeys.has(key);
-    });
-    const didResetDisabled = filteredBase.length === 0 &&
-      nextCustom.length === 0 &&
-      defaults.length > 0 &&
-      disabledKeys.size > 0;
-    if (didResetDisabled) {
-      disabledKeys = new Set();
-    }
-    return {
-      custom: nextCustom,
-      defaults,
-      disabledKeys,
-      needsPersistence: didFilter || didUpdateDisabled || didRemoveDebug ||
-        stableCustom.changed || didResetDisabled
-    };
+  }
+
+  async function loadSiteSearchProviderSnapshot() {
+    const defaults = await loadDefaultSiteSearchProviders();
+    const [custom, disabled] = await Promise.all([
+      loadCustomSiteSearchProviders(defaults),
+      loadDisabledSiteSearchKeys()
+    ]);
+    return { custom, defaults, disabled };
   }
 
   function getSiteSearchProviderRefreshCoordinator() {
     if (!siteSearchProviderRefreshCoordinator) {
-      siteSearchProviderRefreshCoordinator = createSiteSearchProviderRefreshCoordinator({
+      siteSearchProviderRefreshCoordinator = SITE_SEARCH.createSiteSearchProviderRefreshCoordinator({
         apply(prepared) {
           defaultSiteSearchProviders = prepared.defaults;
           customSiteSearchProviders = prepared.custom;
@@ -7320,49 +5757,18 @@
           renderSiteSearchList();
           renderAggregateSearchList();
         },
-        async load() {
-          const defaults = await loadDefaultSiteSearchProviders();
-          const [custom, disabled] = await Promise.all([
-            loadCustomSiteSearchProviders(defaults),
-            loadDisabledSiteSearchKeys()
-          ]);
-          return { custom, defaults, disabled };
-        },
+        load: loadSiteSearchProviderSnapshot,
         onError() {
           customSiteSearchProviderIdsReady = false;
           renderAggregateSearchList();
           showToast(getMessage('toast_error', '操作失败，请重试。'), true);
         },
-        persist(_prepared, context) {
-          const isCurrent = context && typeof context.isCurrent === 'function'
-            ? context.isCurrent
-            : () => true;
-          return enqueueSiteSearchProviderStorageOperation(async () => {
-            if (!isCurrent()) {
-              return;
-            }
-            const defaults = await loadDefaultSiteSearchProviders();
-            const [custom, disabled] = await Promise.all([
-              loadCustomSiteSearchProviders(defaults),
-              loadDisabledSiteSearchKeys()
-            ]);
-            if (!isCurrent()) {
-              return;
-            }
-            const latestPrepared = prepareSiteSearchProviderSnapshot({
-              custom,
-              defaults,
-              disabled
-            });
-            if (!latestPrepared.needsPersistence || !isCurrent()) {
-              return;
-            }
-            return writeSiteSearchProviderState(
-              latestPrepared.custom,
-              latestPrepared.disabledKeys
-            );
-          });
-        },
+        persist: SITE_SEARCH.createSnapshotPersister({
+          enqueue: enqueueSiteSearchProviderStorageOperation,
+          load: loadSiteSearchProviderSnapshot,
+          prepare: prepareSiteSearchProviderSnapshot,
+          write: writeSiteSearchProviderState
+        }),
         prepare: prepareSiteSearchProviderSnapshot
       });
     }
@@ -7388,6 +5794,25 @@
     renderAggregateSearchList();
     return getSiteSearchProviderRefreshCoordinator().refresh().catch(() => {});
   }
+
+  // A save on this page suspends refreshes briefly so its own write does not
+  // re-render the list mid-edit; a change during that window refreshes after.
+  storageChanges.on([SITE_SEARCH_STORAGE_KEY, SITE_SEARCH_DISABLED_STORAGE_KEY], () => {
+    invalidateSiteSearchProviderRefresh();
+    const now = Date.now();
+    if (siteSearchRefreshSuppressUntil && now < siteSearchRefreshSuppressUntil) {
+      if (siteSearchRefreshTimer) {
+        clearTimeout(siteSearchRefreshTimer);
+      }
+      const delay = Math.max(siteSearchRefreshSuppressUntil - now, 0) + 40;
+      siteSearchRefreshTimer = setTimeout(() => {
+        siteSearchRefreshTimer = null;
+        refreshSiteSearchProviders();
+      }, delay);
+      return;
+    }
+    refreshSiteSearchProviders();
+  });
 
   if (siteSearchEngineBuiltinList && siteSearchCustomList && siteSearchBuiltinList) {
     refreshSiteSearchProviders();
@@ -7544,9 +5969,7 @@
         renderSiteSearchList();
         refreshSiteSearchProviders();
         resetSiteSearchForm();
-        setTimeout(() => {
-          showToast(getMessage('toast_saved', '已保存'), false);
-        }, 220);
+        showToast(getMessage('toast_saved', '已保存'), false);
       }).catch(() => {
         setSiteSearchError(getMessage('toast_error', '操作失败，请重试。'));
         showToast(getMessage('toast_error', '操作失败，请重试。'), true);
@@ -7655,438 +6078,5 @@
       }
     );
   }
-  /*
-  if (confirmOk) {
-    confirmOk.addEventListener('click', () => closeConfirm(true));
-  }
-  if (confirmCancel) {
-    confirmCancel.addEventListener('click', () => closeConfirm(false));
-  }
-  if (confirmMask) {
-    confirmMask.addEventListener('click', (event) => {
-      if (event.target === confirmMask) {
-        closeConfirm(false));
-      }
-    });
-  }
-  */
-
-  addStorageChangeListener((changes, areaName) => {
-    if (areaName === 'local' && changes[SETTINGS.WEBDAV_STATUS_STORAGE_KEY]) refreshSyncStatus();
-    const shortcutsStore = globalThis.LumnoNewtabShortcutsStore;
-    if (areaName === 'local' && shortcutsStore && changes[shortcutsStore.SHORTCUTS_LOCAL_OVERFLOW_KEY]) {
-      refreshShortcutSyncSummary();
-    }
-    const isPrimaryArea = isPrimaryStorageAreaName(areaName);
-    if (!isPrimaryArea) {
-      return;
-    }
-    if (changes[SYNC_META_KEY] || SYNC_KEYS.some((key) => changes[key])) {
-      refreshSyncStatus();
-    }
-    if (changes[THEME_STORAGE_KEY]) {
-      const nextMode = changes[THEME_STORAGE_KEY].newValue || 'system';
-      updateThemeButtons(nextMode);
-      applyResolvedTheme(resolveTheme(nextMode));
-    }
-    if (changes[LANGUAGE_STORAGE_KEY]) {
-      applyLanguageMode(changes[LANGUAGE_STORAGE_KEY].newValue || 'system');
-    }
-    if (changes[RECENT_COUNT_STORAGE_KEY]) {
-      const count = normalizeRecentCount(changes[RECENT_COUNT_STORAGE_KEY].newValue);
-      renderRecentCountControl(count);
-      updateRecentModeTabsVisibility(count);
-    }
-    if (changes[NEWTAB_WIDTH_MODE_STORAGE_KEY] && newtabWidthSelect) {
-      const mode = normalizeNewtabWidthMode(changes[NEWTAB_WIDTH_MODE_STORAGE_KEY].newValue);
-      newtabWidthSelect.value = mode;
-      setNewtabWidthTabState(mode);
-      refreshCustomSelects();
-    }
-    if (changes[OVERLAY_SIZE_MODE_STORAGE_KEY]) {
-      const mode = normalizeOverlaySizeMode(changes[OVERLAY_SIZE_MODE_STORAGE_KEY].newValue);
-      setOverlaySizeTabState(mode);
-      refreshCustomSelects();
-    }
-    if (changes[OVERLAY_ENTER_ANIMATION_STORAGE_KEY]) {
-      const mode = normalizeOverlayEnterAnimation(
-        changes[OVERLAY_ENTER_ANIMATION_STORAGE_KEY].newValue
-      );
-      setOverlayEnterAnimationTabState(mode);
-    }
-    if (changes[OVERLAY_PAGE_THEME_ADAPTATION_ENABLED_STORAGE_KEY] &&
-        overlayPageThemeAdaptationToggle) {
-      const raw = changes[OVERLAY_PAGE_THEME_ADAPTATION_ENABLED_STORAGE_KEY].newValue;
-      const next = normalizeOverlayPageThemeAdaptationEnabled(raw);
-      setOptionsToggleState(overlayPageThemeAdaptationToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [OVERLAY_PAGE_THEME_ADAPTATION_ENABLED_STORAGE_KEY]: next });
-      }
-    }
-    if (changes[SEARCH_RESULT_PRIORITY_STORAGE_KEY]) {
-      const nextValue = normalizeSearchResultPriority(changes[SEARCH_RESULT_PRIORITY_STORAGE_KEY].newValue);
-      if (searchResultPrioritySelect) {
-        searchResultPrioritySelect.value = nextValue;
-      }
-      setSearchResultPriorityTabState(nextValue);
-      refreshCustomSelects();
-    }
-    if (changes[SEARCH_RESULT_TAB_POSITION_STORAGE_KEY] && searchResultTabPositionSelect) {
-      searchResultTabPositionSelect.value = SETTINGS.normalizeSearchResultTabPosition(
-        changes[SEARCH_RESULT_TAB_POSITION_STORAGE_KEY].newValue
-      );
-      refreshCustomSelects();
-    }
-    if (changes[SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY]) {
-      setSearchResultSourceTypeState(changes[SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY].newValue);
-    }
-    if (changes[SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY]) {
-      const raw = changes[SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY].newValue;
-      const next = normalizeSearchResultDisplayLimit(raw);
-      renderSearchResultDisplayLimitControl(next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY]: next });
-      }
-    }
-    if (changes[OVERLAY_OPEN_TABS_DEFAULT_VISIBLE_STORAGE_KEY] && overlayOpenTabsDefaultVisibleToggle) {
-      const raw = changes[OVERLAY_OPEN_TABS_DEFAULT_VISIBLE_STORAGE_KEY].newValue;
-      const next = normalizeOverlayOpenTabsDefaultVisible(raw);
-      setOptionsToggleState(overlayOpenTabsDefaultVisibleToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [OVERLAY_OPEN_TABS_DEFAULT_VISIBLE_STORAGE_KEY]: next });
-      }
-    }
-    if (changes[FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY] && faviconEnhancedFetchToggle) {
-      const raw = changes[FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY].newValue;
-      const next = normalizeFaviconEnhancedFetchEnabled(raw);
-      setOptionsToggleState(faviconEnhancedFetchToggle, next);
-      setFaviconBlacklistEditorEnabled(next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY]: next });
-      }
-    }
-    if (changes[RECENT_MODE_STORAGE_KEY] && recentModeSelect) {
-      const nextValue = changes[RECENT_MODE_STORAGE_KEY].newValue;
-      const mode = nextValue === 'most' ? 'most' : 'latest';
-      recentModeSelect.value = mode;
-      setRecentModeTabState(mode);
-      refreshCustomSelects();
-    }
-    if (changes[BOOKMARK_COUNT_STORAGE_KEY]) {
-      const stored = normalizeBookmarkCount(changes[BOOKMARK_COUNT_STORAGE_KEY].newValue);
-      renderBookmarkRowsControl(stored);
-      updateBookmarkColumnsSettingVisibility(stored);
-    }
-    if (changes[BOOKMARK_COLUMNS_STORAGE_KEY]) {
-      const stored = normalizeBookmarkColumns(changes[BOOKMARK_COLUMNS_STORAGE_KEY].newValue);
-      renderBookmarkColumnsControl(stored);
-    }
-    if (changes[BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY] && bookmarkFolderIconsVisibleToggle) {
-      const raw = changes[BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY].newValue;
-      const next = normalizeBookmarkFolderIconsVisible(raw);
-      setOptionsToggleState(bookmarkFolderIconsVisibleToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY]: next });
-      }
-    }
-    if (changes[OVERLAY_TAB_PRIORITY_STORAGE_KEY] && overlayTabQuickSwitchToggle) {
-      const next = normalizeOverlayTabQuickSwitch(changes[OVERLAY_TAB_PRIORITY_STORAGE_KEY].newValue);
-      setOptionsToggleState(overlayTabQuickSwitchToggle, next);
-      if (changes[OVERLAY_TAB_PRIORITY_STORAGE_KEY].newValue !== next && storageArea) {
-        storageArea.set({ [OVERLAY_TAB_PRIORITY_STORAGE_KEY]: next });
-      }
-      refreshCustomSelects();
-    }
-    if (changes[NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY].newValue;
-      const next = normalizeNewtabTopContentMode(raw);
-      setNewtabTopContentTabState(next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY]: next });
-      }
-      refreshCustomSelects();
-    }
-    if (changes[NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY].newValue;
-      const next = normalizeNewtabTimeFontWeight(raw);
-      renderNewtabTimeFontWeightControl(next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]: next });
-      }
-    }
-    if (changes[NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY] && newtabTimeSecondsToggle) {
-      const raw = changes[NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY].newValue;
-      const next = normalizeNewtabTimeSecondsVisible(raw);
-      setOptionsToggleState(newtabTimeSecondsToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY]: next });
-      }
-    }
-    if (changes[NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY] && newtabInputAutoFocusToggle) {
-      const raw = changes[NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY].newValue;
-      const next = normalizeNewtabInputAutoFocusEnabled(raw);
-      setOptionsToggleState(newtabInputAutoFocusToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY]: next });
-      }
-    }
-    if (changes[NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY] && newtabShortcutsToggle) {
-      const raw = changes[NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY].newValue;
-      const next = normalizeNewtabShortcutsVisible(raw);
-      setOptionsToggleState(newtabShortcutsToggle, next);
-      syncNewtabShortcutSubcontrolAvailability();
-      if (raw !== next && storageArea) {
-        storageArea.set({ [NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY]: next });
-      }
-    }
-    if (changes[NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY] && newtabShortcutAddToggle) {
-      const raw = changes[NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY].newValue;
-      const next = normalizeNewtabShortcutAddVisible(raw);
-      setOptionsToggleState(newtabShortcutAddToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY]: next });
-      }
-    }
-    if (changes[NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY] &&
-        newtabShortcutDockMagnificationToggle) {
-      const raw = changes[NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY].newValue;
-      const next = normalizeNewtabShortcutDockMagnificationEnabled(raw);
-      setOptionsToggleState(newtabShortcutDockMagnificationToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({
-          [NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY]: next
-        });
-      }
-    }
-    if (changes[NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY].newValue;
-      const next = normalizeNewtabShortcutColumns(raw);
-      renderNewtabShortcutColumnsControl(
-        next,
-        Boolean(newtabShortcutsToggle && !newtabShortcutsToggle.checked)
-      );
-      if (raw !== next && storageArea) {
-        storageArea.set({ [NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY]: next });
-      }
-    }
-    if (changes[NEWTAB_SHORTCUT_SIZE_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_SHORTCUT_SIZE_STORAGE_KEY].newValue;
-      const next = normalizeNewtabShortcutSize(raw);
-      renderNewtabShortcutSizeControl(
-        next,
-        Boolean(newtabShortcutsToggle && !newtabShortcutsToggle.checked)
-      );
-      if (raw !== next && storageArea) {
-        storageArea.set({ [NEWTAB_SHORTCUT_SIZE_STORAGE_KEY]: next });
-      }
-    }
-    if (changes[NEWTAB_SHORTCUT_GAP_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_SHORTCUT_GAP_STORAGE_KEY].newValue;
-      const next = normalizeNewtabShortcutGap(raw);
-      renderNewtabShortcutGapControl(
-        next,
-        Boolean(newtabShortcutsToggle && !newtabShortcutsToggle.checked)
-      );
-      if (raw !== next && storageArea) {
-        storageArea.set({ [NEWTAB_SHORTCUT_GAP_STORAGE_KEY]: next });
-      }
-    }
-    [
-      [
-        newtabFeedbackButtonVisibleToggle,
-        NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY,
-        normalizeNewtabFeedbackButtonVisible
-      ],
-      [
-        newtabAppearanceButtonVisibleToggle,
-        NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY,
-        normalizeNewtabAppearanceButtonVisible
-      ]
-    ].forEach(([toggle, storageKey, normalize]) => {
-      if (!changes[storageKey] || !toggle) {
-        return;
-      }
-      const raw = changes[storageKey].newValue;
-      const next = normalize(raw);
-      setOptionsToggleState(toggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [storageKey]: next });
-      }
-    });
-    if (changes[UPDATE_NOTICE_ENABLED_STORAGE_KEY] && updateNoticeToggle) {
-      const raw = changes[UPDATE_NOTICE_ENABLED_STORAGE_KEY].newValue;
-      const next = normalizeUpdateNoticeEnabled(raw);
-      setOptionsToggleState(updateNoticeToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [UPDATE_NOTICE_ENABLED_STORAGE_KEY]: next });
-      }
-      refreshCustomSelects();
-    }
-    if (changes[MOTION_EFFECTS_ENABLED_STORAGE_KEY] && motionEffectsToggle) {
-      const raw = changes[MOTION_EFFECTS_ENABLED_STORAGE_KEY].newValue;
-      const next = normalizeMotionEffectsEnabled(raw);
-      setOptionsToggleState(motionEffectsToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [MOTION_EFFECTS_ENABLED_STORAGE_KEY]: next });
-      }
-      refreshCustomSelects();
-    }
-    if (changes[SIMPLE_MODE_ENABLED_STORAGE_KEY] && simpleModeToggle) {
-      const raw = changes[SIMPLE_MODE_ENABLED_STORAGE_KEY].newValue;
-      const next = normalizeSimpleModeEnabled(raw);
-      setOptionsToggleState(simpleModeToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [SIMPLE_MODE_ENABLED_STORAGE_KEY]: next });
-      }
-      refreshCustomSelects();
-    }
-    if (changes[PROGRESS_TRACKING_ENABLED_STORAGE_KEY] && progressTrackingToggle) {
-      setOptionsToggleState(
-        progressTrackingToggle,
-        SETTINGS.normalizeProgressTrackingEnabled(changes[PROGRESS_TRACKING_ENABLED_STORAGE_KEY].newValue)
-      );
-    }
-    if (changes[NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY]) {
-      setNewtabOpenInNewTabState(changes[NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY].newValue);
-    }
-    if (changes[NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY] && numberShortcutInstantToggle) {
-      const raw = changes[NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY].newValue;
-      const next = normalizeNumberShortcutInstantEnabled(raw);
-      setOptionsToggleState(numberShortcutInstantToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY]: next });
-      }
-      refreshCustomSelects();
-    }
-    if (changes[MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY] &&
-        macosCtrlSuggestionNavigationToggle) {
-      const raw = changes[MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY].newValue;
-      const next = normalizeMacosCtrlSuggestionNavigationEnabled(raw);
-      setOptionsToggleState(macosCtrlSuggestionNavigationToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY]: next });
-      }
-      refreshCustomSelects();
-    }
-    if (changes[AUTO_PIP_ENABLED_STORAGE_KEY] && autoPipToggle) {
-      const raw = changes[AUTO_PIP_ENABLED_STORAGE_KEY].newValue;
-      const next = normalizeAutoPipEnabled(raw);
-      setOptionsToggleState(autoPipToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [AUTO_PIP_ENABLED_STORAGE_KEY]: next });
-      }
-      refreshCustomSelects();
-    }
-    if (changes[TAB_SWITCHER_ENABLED_STORAGE_KEY] && tabSwitcherToggle) {
-      const raw = changes[TAB_SWITCHER_ENABLED_STORAGE_KEY].newValue;
-      const next = normalizeTabSwitcherEnabled(raw);
-      setOptionsToggleState(tabSwitcherToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [TAB_SWITCHER_ENABLED_STORAGE_KEY]: next });
-      }
-      refreshCustomSelects();
-    }
-    if (changes[AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY] &&
-        aggregateSearchAutoGroupToggle) {
-      const raw = changes[AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY].newValue;
-      const next = normalizeAggregateSearchAutoGroupEnabled(raw);
-      setOptionsToggleState(aggregateSearchAutoGroupToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY]: next });
-      }
-      refreshCustomSelects();
-    }
-    if (changes[DOCUMENT_PIP_ENABLED_STORAGE_KEY] && documentPipToggle) {
-      const raw = changes[DOCUMENT_PIP_ENABLED_STORAGE_KEY].newValue;
-      const next = normalizeDocumentPipEnabled(raw);
-      setOptionsToggleState(documentPipToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [DOCUMENT_PIP_ENABLED_STORAGE_KEY]: next });
-      }
-      refreshCustomSelects();
-    }
-    if (changes[PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY] && pinnedTabRecoveryToggle) {
-      const raw = changes[PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY].newValue;
-      const next = normalizePinnedTabRecoveryEnabled(raw);
-      setOptionsToggleState(pinnedTabRecoveryToggle, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY]: next });
-      }
-      refreshCustomSelects();
-    }
-    if (changes[SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY] && selectionQuickActionsToggle) {
-      const raw = changes[SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY].newValue;
-      const next = normalizeSelectionQuickActionsEnabled(raw);
-      setOptionsToggleState(selectionQuickActionsToggle, next);
-      syncSelectionQuickActionsProviderAvailability();
-      if (raw !== next && storageArea) {
-        storageArea.set({ [SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY]: next });
-      }
-      refreshCustomSelects();
-    }
-    if (changes[SELECTION_QUICK_ACTIONS_PROVIDER_STORAGE_KEY] && selectionQuickActionsProviderSelect) {
-      const raw = changes[SELECTION_QUICK_ACTIONS_PROVIDER_STORAGE_KEY].newValue;
-      const next = normalizeSelectionQuickActionsProvider(raw);
-      setOptionsSelectState(selectionQuickActionsProviderSelect, next);
-      if (raw !== next && storageArea) {
-        storageArea.set({ [SELECTION_QUICK_ACTIONS_PROVIDER_STORAGE_KEY]: next });
-      }
-      refreshCustomSelects();
-    }
-    if (changes[SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY] && selectionQuickActionsGroupToggle) {
-      const raw = changes[SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY].newValue;
-      const next = normalizeSelectionQuickActionsGroupEnabled(raw);
-      setOptionsToggleState(selectionQuickActionsGroupToggle, next);
-      syncSelectionQuickActionsProviderAvailability();
-      if (raw !== next && storageArea) {
-        storageArea.set({ [SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY]: next });
-      }
-      refreshCustomSelects();
-    }
-    if (changes[RESTRICTED_ACTION_STORAGE_KEY] && restrictedActionSelect) {
-      const raw = changes[RESTRICTED_ACTION_STORAGE_KEY].newValue;
-      const nextValue = raw === 'none' ? 'none' : 'default';
-      restrictedActionSelect.value = nextValue;
-      setRestrictedActionTabState(nextValue);
-      if (raw !== nextValue && storageArea) {
-        storageArea.set({ [RESTRICTED_ACTION_STORAGE_KEY]: nextValue });
-      }
-      refreshCustomSelects();
-    }
-    if (changes[FALLBACK_SHORTCUT_STORAGE_KEY]) {
-      loadCurrentShortcut();
-    }
-    if (changes[SEARCH_BLACKLIST_STORAGE_KEY]) {
-      searchBlacklistItems = normalizeSearchBlacklistItems(changes[SEARCH_BLACKLIST_STORAGE_KEY].newValue);
-      renderSearchBlacklistList();
-    }
-    if (changes[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY]) {
-      faviconRequestBlacklistItems = normalizeFaviconRequestBlacklistItems(
-        changes[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY].newValue
-      );
-      renderFaviconRequestBlacklistList();
-    }
-    if (changes[AGGREGATE_SEARCH_STORAGE_KEY]) {
-      getAggregateSearchStateCoordinator().applyStorageChange(
-        changes[AGGREGATE_SEARCH_STORAGE_KEY].newValue
-      );
-    }
-    if (!changes[SITE_SEARCH_STORAGE_KEY] && !changes[SITE_SEARCH_DISABLED_STORAGE_KEY]) {
-      return;
-    }
-    invalidateSiteSearchProviderRefresh();
-    const now = Date.now();
-    if (siteSearchRefreshSuppressUntil && now < siteSearchRefreshSuppressUntil) {
-      if (siteSearchRefreshTimer) {
-        clearTimeout(siteSearchRefreshTimer);
-      }
-      const delay = Math.max(siteSearchRefreshSuppressUntil - now, 0) + 40;
-      siteSearchRefreshTimer = setTimeout(() => {
-        siteSearchRefreshTimer = null;
-        refreshSiteSearchProviders();
-      }, delay);
-      return;
-    }
-    refreshSiteSearchProviders();
-  });
+  addStorageChangeListener(storageChanges.dispatch);
 })();

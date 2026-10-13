@@ -1034,31 +1034,17 @@ assert.match(
   /shortcut:\s*formatShortcutForDisplay\('Alt\+Q'\)/,
   'settings i18n should render the tab switcher shortcut for the current platform'
 );
-assert.match(
-  optionsSource,
-  /const tabSwitcherToggle = document\.getElementById\('_x_extension_tab_switcher_toggle_2026_unique_'\);/,
-  'settings page should wire the tab switcher General toggle'
-);
-assert.match(
-  optionsSource,
-  /const TAB_SWITCHER_ENABLED_STORAGE_KEY = '_x_extension_tab_switcher_enabled_2026_unique_';/,
-  'settings page should use a dedicated synced storage key for the tab switcher toggle'
-);
-assert.match(
-  optionsSource,
-  /function normalizeTabSwitcherEnabled\(value\)[\s\S]*normalizeTabSwitcherEnabled/,
-  'settings page should normalize the tab switcher toggle with default-on semantics'
-);
-assert.match(
-  optionsSource,
-  /storageArea\.set\(\{ \[TAB_SWITCHER_ENABLED_STORAGE_KEY\]: next \}\)/,
-  'settings page should persist tab switcher toggle changes'
-);
-assert.match(
-  optionsSource,
-  /storageArea\.get\(\[TAB_SWITCHER_ENABLED_STORAGE_KEY\][\s\S]*setOptionsToggleState\(tabSwitcherToggle, stored\)[\s\S]*storageArea\.set\(\{ \[TAB_SWITCHER_ENABLED_STORAGE_KEY\]: stored \}\)/,
-  'settings page should default missing tab switcher storage to enabled for all users'
-);
+{
+  const settings = require('../src/shared/settings.js');
+  const toggle = require('../src/options/options-toggle-settings.js').getToggleSettings(settings)
+    .find((entry) => entry.inputId === '_x_extension_tab_switcher_toggle_2026_unique_');
+  assert.strictEqual(settings.TAB_SWITCHER_ENABLED_STORAGE_KEY, '_x_extension_tab_switcher_enabled_2026_unique_');
+  assert(
+    toggle && toggle.key === settings.TAB_SWITCHER_ENABLED_STORAGE_KEY,
+    'settings page should bind the General toggle to the dedicated synced storage key'
+  );
+  assert.strictEqual(toggle.normalize(undefined), true, 'the tab switcher is on for everyone until turned off');
+}
 assert.strictEqual(
   /\.x-tab-switcher-thumb\[data-thumbnail-status="pending"\]::after/.test(switcherSource),
   false,

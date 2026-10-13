@@ -1,35 +1,9 @@
 const assert = require('assert');
-const fs = require('fs');
-const vm = require('vm');
-
-const optionsSource = fs.readFileSync('src/options/options.js', 'utf8');
-const factoryStart = optionsSource.indexOf(
-  'function createSiteSearchProviderRefreshCoordinator('
-);
-const factoryEnd = optionsSource.indexOf(
-  '\n  function createAggregateSearchStateCoordinator(',
-  factoryStart
-);
-
-assert.ok(
-  factoryStart >= 0 && factoryEnd > factoryStart,
-  'site-search provider refresh coordinator must exist'
-);
-assert.match(
-  optionsSource,
-  /function saveDisabledSiteSearchKeys\(keys\) \{[\s\S]*?enqueueSiteSearchProviderStorageOperation[\s\S]*?function saveCustomSiteSearchProviders\(items\) \{[\s\S]*?enqueueSiteSearchProviderStorageOperation[\s\S]*?function saveSiteSearchProviderState\(items, keys\) \{[\s\S]*?enqueueSiteSearchProviderStorageOperation/,
-  'all provider writes must share the same serialization queue'
-);
-assert.match(
-  optionsSource,
-  /persist\(_prepared, context\)[\s\S]*?enqueueSiteSearchProviderStorageOperation\(async \(\) =>[\s\S]*?loadCustomSiteSearchProviders\(defaults\)[\s\S]*?prepareSiteSearchProviderSnapshot\([\s\S]*?writeSiteSearchProviderState\(/,
-  'provider migration must re-read and prepare storage inside the serialized write'
-);
-
-const createSiteSearchProviderRefreshCoordinator = vm.runInNewContext(
-  `(${optionsSource.slice(factoryStart, factoryEnd)})`,
-  { Object, Promise }
-);
+const {
+  createOperationQueue,
+  createSiteSearchProviderRefreshCoordinator,
+  createSnapshotPersister
+} = require('../src/options/options-site-search');
 
 function createDeferred() {
   let resolve;
@@ -199,7 +173,57 @@ async function testRefreshDuringMigrationCannotPublishOldState() {
   );
 }
 
+async function testWritesShareOneQueue() {
+  const enqueue = createOperationQueue();
+  const order = [];
+  const first = createDeferred();
+  const a = enqueue(() => { order.push('a:start'); return first.promise.then(() => order.push('a:end')); });
+  const b = enqueue(() => { order.push('b:start'); return Promise.reject(new Error('b failed')); });
+  const c = enqueue(() => { order.push('c:start'); return 'c'; });
+  await flushTasks();
+  assert.deepStrictEqual(order, ['a:start'], 'a queued write waits for the one before it');
+  first.resolve();
+  await a;
+  await assert.rejects(b, /b failed/, 'each write reports its own failure');
+  assert.strictEqual(await c, 'c', 'a failed write does not block the next one');
+  assert.deepStrictEqual(order, ['a:start', 'a:end', 'b:start', 'c:start']);
+}
+
+async function testPersisterRereadsInsideTheQueue() {
+  const enqueue = createOperationQueue();
+  const events = [];
+  const blocker = createDeferred();
+  enqueue(() => blocker.promise.then(() => events.push('earlier save')));
+  let stored = { needsPersistence: true, custom: ['old'], disabledKeys: new Set() };
+  const persist = createSnapshotPersister({
+    enqueue,
+    load: () => { events.push('load'); return Promise.resolve(stored); },
+    prepare: (snapshot) => snapshot,
+    write: (custom, disabledKeys) => { events.push(['write', custom, Array.from(disabledKeys)]); }
+  });
+  const pending = persist({ custom: ['stale'] }, { isCurrent: () => true });
+  stored = { needsPersistence: true, custom: ['old', 'saved meanwhile'], disabledKeys: new Set(['x']) };
+  blocker.resolve();
+  await pending;
+  assert.deepStrictEqual(events, [
+    'earlier save',
+    'load',
+    ['write', ['old', 'saved meanwhile'], ['x']]
+  ], 'the migration reads storage again after earlier writes and writes the fresh snapshot');
+
+  events.length = 0;
+  stored = { needsPersistence: false, custom: [], disabledKeys: new Set() };
+  await persist({}, { isCurrent: () => true });
+  assert.deepStrictEqual(events, ['load'], 'nothing is written when the fresh snapshot is clean');
+
+  events.length = 0;
+  await persist({}, { isCurrent: () => false });
+  assert.deepStrictEqual(events, [], 'an invalidated migration does not even read');
+}
+
 (async () => {
+  await testWritesShareOneQueue();
+  await testPersisterRereadsInsideTheQueue();
   await testNewerRefreshInvalidatesOlderRead();
   await testMigrationReloadsLatestStorageAndConfirmsWrite();
   await testRefreshDuringMigrationCannotPublishOldState();

@@ -5,6 +5,10 @@ const { readPageSource } = require('./helpers/page-source');
 const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
 const optionsHtml = readPageSource('src/options/options.html');
 const optionsSource = fs.readFileSync('src/options/options.js', 'utf8');
+const settings = require('../src/shared/settings.js');
+const optionsToggleKeys = require('../src/options/options-toggle-settings.js')
+  .getToggleSettings(settings)
+  .map((entry) => entry.key);
 const backgroundSource = fs.readFileSync('src/background/background.js', 'utf8');
 const selectionTargetSource = fs.readFileSync('src/background/selection-target.js', 'utf8');
 const providerResolverSource = fs.readFileSync('src/background/selection-quick-action-provider.js', 'utf8');
@@ -54,9 +58,9 @@ assert.doesNotMatch(
   /\bchecked\b/,
   'Labs should show the selection quick actions toggle as disabled by default'
 );
-assert(optionsSource.includes(storageKey), 'options should persist the selection setting');
-assert(optionsSource.includes(providerStorageKey), 'options should persist the preferred selection provider');
-assert(optionsSource.includes(groupEnabledStorageKey), 'options should persist the optional selection group setting');
+assert(optionsToggleKeys.includes(storageKey), 'options should persist the selection setting');
+assert(optionsToggleKeys.includes(providerStorageKey), 'options should persist the preferred selection provider');
+assert(optionsToggleKeys.includes(groupEnabledStorageKey), 'options should persist the optional selection group setting');
 assert(!optionsSource.includes(iconSetStorageKey), 'options should not persist a fixed toolbar icon library');
 assert(!optionsSource.includes(triggerStyleStorageKey), 'options should not persist a removed trigger-style choice');
 assert(
@@ -87,15 +91,15 @@ assert.strictEqual(
   'the provider dropdown should pair each provider with a bundled icon'
 );
 assert(
-  /const SYNC_KEYS = \[[\s\S]*SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY[\s\S]*\];/.test(optionsSource),
+  settings.CHROME_SYNC_STORAGE_KEYS.includes(settings.SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY),
   'selection setting should participate in sync/export/import'
 );
 assert(
-  /const SYNC_KEYS = \[[\s\S]*SELECTION_QUICK_ACTIONS_PROVIDER_STORAGE_KEY[\s\S]*\];/.test(optionsSource),
+  settings.CHROME_SYNC_STORAGE_KEYS.includes(settings.SELECTION_QUICK_ACTIONS_PROVIDER_STORAGE_KEY),
   'selection provider should participate in sync/export/import'
 );
 assert(
-  /const SYNC_KEYS = \[[\s\S]*SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY[\s\S]*\];/.test(optionsSource),
+  settings.CHROME_SYNC_STORAGE_KEYS.includes(settings.SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY),
   'selection grouping should participate in sync/export/import'
 );
 assert(!settingsSource.includes(iconSetStorageKey),

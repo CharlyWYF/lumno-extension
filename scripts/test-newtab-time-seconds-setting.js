@@ -122,18 +122,6 @@ assert.match(
   getFunctionSource(optionsSource, 'renderNewtabTimeFontWeightControl'),
   /min: NEWTAB_TIME_FONT_WEIGHT_MIN[\s\S]*?max: NEWTAB_TIME_FONT_WEIGHT_MAX[\s\S]*?step: 1[\s\S]*?value: currentNewtabTimeFontWeight/
 );
-assert.match(
-  optionsSource,
-  /NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY[\s\S]*?_x_extension_newtab_time_font_weight_2026_unique_/
-);
-assert.match(
-  optionsSource,
-  /newtabTimeSecondsToggle\.addEventListener\('change',[\s\S]*?NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY/
-);
-assert.match(
-  optionsSource,
-  /changes\[NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY\][\s\S]*?setOptionsToggleState\(newtabTimeSecondsToggle, next\)/
-);
 
 assert.match(wallpaperViewSource, /ref\('topContentWeightControl'\)/);
 assert.match(wallpaperViewSource, /ref\('topContentWeightSlider'\)/);
