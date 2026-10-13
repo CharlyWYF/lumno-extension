@@ -594,6 +594,21 @@ describe('Shortcuts React island', () => {
       expect(grid.querySelectorAll('.x-nt-shortcut-group-empty')).toHaveLength(1);
     });
 
+    it('hugs the longest group row so short groups stay centered', () => {
+      const { view, options } = createView({ maxShortcuts: 50 });
+      const grid = options.grid as HTMLElement;
+      const columns = () => grid.style.getPropertyValue('--x-nt-shortcut-grouped-columns');
+
+      renderItems(view, items, { grouped: true, groups });
+      // The last group's two sites and its add tile.
+      expect(columns()).toBe('3');
+      // An empty last group holds its slot instead of the add tile.
+      renderItems(view, items, { grouped: true, groups: [...groups, { id: 'empty', title: 'Empty' }] });
+      expect(columns()).toBe('2');
+      renderItems(view, items, { grouped: false, groups });
+      expect(columns()).toBe('');
+    });
+
     it('keeps a tile node when it moves into another group', () => {
       const { view } = createView();
       renderItems(view, items, { grouped: true, groups });

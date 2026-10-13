@@ -756,6 +756,15 @@ body[data-drag-source="shortcut"] .x-nt-shortcuts-section {
   grid-template-columns: repeat(auto-fill, var(--x-nt-shortcut-tile-size, 64px));
   justify-content: center;
   align-items: end;
+  /* No wider than the longest group row (plus the 8px side paddings and a
+     pixel against rounding off a column), so groups that fill fewer columns
+     than the setting allows stay centered instead of hugging the left. */
+  max-width: calc(
+    var(--x-nt-shortcut-grouped-columns, 999) * var(--x-nt-shortcut-tile-size, 64px) +
+    (var(--x-nt-shortcut-grouped-columns, 999) - 1) * var(--x-nt-shortcuts-grid-column-gap, 4px) +
+    16px + 1px
+  );
+  margin-inline: auto;
 }
 .x-nt-shortcut-group-header {
   grid-column: 1 / -1;

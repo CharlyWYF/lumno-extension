@@ -764,14 +764,33 @@ export function createShortcutsView(
       .forEach((header) => options.groupHeaders.push(header));
   }
 
+  // The longest group row in slots: its tiles, plus the slot of an empty
+  // group or the add tile ending the last group. Grouped rows hug this many
+  // columns, so a short set of groups stays centered under the search box.
+  function getGroupedColumnCount(items: ShortcutItem[], groups: ShortcutGroup[]): number {
+    const addVisible = options.getAddVisible() && items.length < options.maxShortcuts;
+    return Math.max(1, ...groups.map((group, index) => {
+      const count = items.filter((shortcut) => shortcut.groupId === group.id).length;
+      if (!count) {
+        return items.length < options.maxShortcuts ? 1 : 0;
+      }
+      return count + (index === groups.length - 1 && addVisible ? 1 : 0);
+    }));
+  }
+
   function render(items: ShortcutItem[], layout: ShortcutsLayout = {}): { count: number } {
     const normalizedItems = Array.isArray(items) ? items : [];
     const grouped = Boolean(layout.grouped && Array.isArray(layout.groups) && layout.groups.length);
     options.hideTooltip();
     if (grouped) {
       options.grid.setAttribute('data-shortcut-grouped', 'true');
+      options.grid.style.setProperty(
+        '--x-nt-shortcut-grouped-columns',
+        String(getGroupedColumnCount(normalizedItems, layout.groups as ShortcutGroup[]))
+      );
     } else {
       options.grid.removeAttribute('data-shortcut-grouped');
+      options.grid.style.removeProperty('--x-nt-shortcut-grouped-columns');
     }
     flushSync(() => {
       reactRoot.render(
