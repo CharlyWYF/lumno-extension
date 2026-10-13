@@ -220,8 +220,6 @@
   const BOOKMARK_TOPBAR_PICK_COLOR_ACTION = 'pick-bookmark-topbar-color';
   const BOOKMARK_TOPBAR_SURFACE_MODE_ACTION = 'set-bookmark-topbar-surface-mode';
   const BOOKMARK_TOPBAR_LAYOUT_ACTION = 'set-bookmark-topbar-layout';
-  // Flip this to true when inspecting bookmark cascade hover intent and safe-triangle timing.
-  const BOOKMARK_CASCADE_DEBUG_UI_ENABLED = false;
   const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = '_x_extension_default_search_engine_2024_unique_';
   const SEARCH_RESULT_PRIORITY_STORAGE_KEY = '_x_extension_search_result_priority_2026_unique_';
   const OVERLAY_TAB_PRIORITY_STORAGE_KEY = '_x_extension_overlay_tab_priority_2024_unique_';
@@ -265,6 +263,10 @@
   const NEWTAB_BOOKMARK_MOVE_HISTORY = globalThis.LumnoNewtabBookmarkMoveHistory;
   const NEWTAB_BOOKMARK_DRAG = globalThis.LumnoNewtabBookmarkDrag;
   const NEWTAB_CROSS_SURFACE_DRAG = globalThis.LumnoNewtabCrossSurfaceDrag;
+  // Escape closes only the top open layer (menus, popovers, panels, drags).
+  // The folder color dialog handles its own Escape.
+  const dismissStack = globalThis.LumnoNewtabDismissStack.getDismissStack();
+  dismissStack.setShouldIgnore(() => Boolean(folderColorPicker && folderColorPicker.isOpen()));
   const NEWTAB_BOOKMARK_FOLDER_ICON = globalThis.LumnoNewtabBookmarkFolderIcon;
   const NEWTAB_PAGE_NOTICE = globalThis.LumnoNewtabPageNotice;
   const NEWTAB_TOAST = globalThis.LumnoNewtabToast;
@@ -1796,8 +1798,7 @@
     normalizeBookmarkCount,
     getBookmarkLimit,
     normalizeBookmarkColumns,
-    normalizeTabRankScoreDebugMode,
-    normalizeBookmarkCascadeDebugMode
+    normalizeTabRankScoreDebugMode
   } = NEWTAB_PAGE_PREFERENCES.createPagePreferences({
     SETTINGS,
     NEWTAB_SEARCH_WIDTH_CONFIG,
@@ -2451,13 +2452,6 @@
       {
         element: feedbackButton,
         sampleElement: feedbackButton,
-        minWidth: 42,
-        minHeight: 42,
-        iconButton: true
-      },
-      {
-        element: BOOKMARK_CASCADE_DEBUG_UI_ENABLED && bookmarkCascadeRuntime && bookmarkCascadeRuntime.getDebugButton(),
-        sampleElement: BOOKMARK_CASCADE_DEBUG_UI_ENABLED && bookmarkCascadeRuntime && bookmarkCascadeRuntime.getDebugButton(),
         minWidth: 42,
         minHeight: 42,
         iconButton: true
@@ -3185,11 +3179,6 @@
         requestTabsAndRender();
       }
     }
-    if (BOOKMARK_CASCADE_DEBUG_UI_ENABLED && changes[BOOKMARK_CASCADE_DEBUG_STORAGE_KEY]) {
-      setBookmarkCascadeDebugEnabled(changes[BOOKMARK_CASCADE_DEBUG_STORAGE_KEY].newValue, {
-        persist: false
-      });
-    }
     if (changes[PINNED_RECENT_SITES_STORAGE_KEY]) {
       pinnedRecentSites = normalizePinnedRecentSites(changes[PINNED_RECENT_SITES_STORAGE_KEY].newValue);
       recentRenderSignature = '';
@@ -3410,16 +3399,6 @@
         storageArea.set({ [TAB_RANK_SCORE_DEBUG_STORAGE_KEY]: next });
       }
     });
-    if (BOOKMARK_CASCADE_DEBUG_UI_ENABLED) {
-      storageArea.get([BOOKMARK_CASCADE_DEBUG_STORAGE_KEY], (result) => {
-        const raw = result[BOOKMARK_CASCADE_DEBUG_STORAGE_KEY];
-        const next = normalizeBookmarkCascadeDebugMode(raw);
-        setBookmarkCascadeDebugEnabled(next, { persist: false });
-        if (raw !== next) {
-          storageArea.set({ [BOOKMARK_CASCADE_DEBUG_STORAGE_KEY]: next });
-        }
-      });
-    }
   }
 
   let lastDeletionAt = 0;
@@ -5451,8 +5430,7 @@
   bookmarkCascadeRuntime = NEWTAB_BOOKMARK_CASCADE_MENU.createBookmarkCascadeMenuRuntime({
     documentObj: document,
     windowObj: window,
-    storageArea,
-    debugStorageKey: BOOKMARK_CASCADE_DEBUG_STORAGE_KEY,
+    dismissStack,
     positionUtils: NEWTAB_BOOKMARK_CASCADE_POSITION,
     crossSurfaceDrag: NEWTAB_CROSS_SURFACE_DRAG,
     menuSurface: globalThis.LumnoMenuSurface,
@@ -6429,12 +6407,6 @@
   function positionBookmarkCascadeLevels() {
     if (bookmarkCascadeRuntime) {
       bookmarkCascadeRuntime.positionLevels();
-    }
-  }
-
-  function setBookmarkCascadeDebugEnabled(enabled, options) {
-    if (bookmarkCascadeRuntime) {
-      bookmarkCascadeRuntime.setDebugEnabled(enabled, options);
     }
   }
 
@@ -8322,15 +8294,18 @@
     return false;
   };
 
-  document.addEventListener('keydown', function(event) {
-    if (folderColorPicker && folderColorPicker.isOpen()) return;
-    if (event && event.key === 'Escape' && (shortcutDragState || bookmarkDragState)) {
+  // Escape cancels a drag before it closes any open layer.
+  dismissStack.push('drag', {
+    priority: 1,
+    isOpen: () => Boolean(shortcutDragState || bookmarkDragState),
+    close: () => {
       finishShortcutDrag(null, { cancel: true });
       finishBookmarkDrag(null, { canceled: true });
-      event.preventDefault();
-      event.stopPropagation();
-      return;
     }
+  });
+
+  document.addEventListener('keydown', function(event) {
+    if (folderColorPicker && folderColorPicker.isOpen()) return;
     if (!event || event.defaultPrevented || event.altKey || isEditableElement(event.target)) {
       return;
     }
@@ -8510,9 +8485,6 @@
     requestSuggestions(query);
   });
 
-  if (BOOKMARK_CASCADE_DEBUG_UI_ENABLED && bookmarkCascadeRuntime) {
-    bookmarkCascadeRuntime.createDebugControls();
-  }
   createWallpaperControls();
   createFeedbackControls();
   markNewtabStartupMilestone('auxiliary-controls-created');
@@ -8526,13 +8498,6 @@
     }
     closeFeedbackPopover();
   }, true);
-  document.addEventListener('keydown', function(event) {
-    if (!event || event.key !== 'Escape' || !isFeedbackPopoverOpen()) {
-      return;
-    }
-    event.preventDefault();
-    closeFeedbackPopover({ restoreFocus: true });
-  }, true);
   document.addEventListener('pointerdown', function(event) {
     if (!isWallpaperPanelOpen()) {
       return;
@@ -8543,17 +8508,18 @@
     }
     closeWallpaperPanel();
   }, true);
-  document.addEventListener('keydown', function(event) {
-    if (!event || event.key !== 'Escape' || !isWallpaperPanelOpen()) {
-      return;
+  // The panel opens inside the wallpaper runtime, so it holds the bottom of
+  // the dismiss stack; whatever opens over it is pushed above it.
+  dismissStack.push('wallpaper-panel', {
+    isOpen: isWallpaperPanelOpen,
+    close: () => {
+      // Escape dismisses an open filter menu before it closes the whole panel.
+      if (wallpaperRuntime.closeOpenMenu()) {
+        return;
+      }
+      closeWallpaperPanel({ restoreFocus: true });
     }
-    event.preventDefault();
-    // Escape dismisses an open filter menu before it closes the whole panel.
-    if (wallpaperRuntime.closeOpenMenu()) {
-      return;
-    }
-    closeWallpaperPanel({ restoreFocus: true });
-  }, true);
+  });
 
   document.body.insertBefore(topContentContainer, root);
   searchLayer.appendChild(inputParts.container);
@@ -8609,9 +8575,6 @@
   }
   if (shortcutDialogController) {
     shortcutDialogController.mount(document.body);
-  }
-  if (BOOKMARK_CASCADE_DEBUG_UI_ENABLED && bookmarkCascadeRuntime && bookmarkCascadeRuntime.getDebugControl()) {
-    document.body.appendChild(bookmarkCascadeRuntime.getDebugControl());
   }
   markNewtabStartupMilestone('dom-mounted');
 
@@ -8694,9 +8657,19 @@
   });
   window.addEventListener('visibilitychange', handleRecentVisibilityChange);
   window.addEventListener('resize', scheduleWallpaperAdaptiveToneUpdate, { passive: true });
+  // An open folder menu follows its anchor once per frame while the page
+  // scrolls; scroll events run before that frame's animation callbacks, so
+  // the menu never trails the page.
+  let bookmarkCascadeScrollFrame = 0;
   window.addEventListener('scroll', () => {
     scheduleWallpaperAdaptiveToneUpdate();
-    positionBookmarkCascadeLevels();
+    if (bookmarkCascadeScrollFrame || !bookmarkCascadeRuntime || !bookmarkCascadeRuntime.isOpen()) {
+      return;
+    }
+    bookmarkCascadeScrollFrame = window.requestAnimationFrame(() => {
+      bookmarkCascadeScrollFrame = 0;
+      positionBookmarkCascadeLevels();
+    });
   }, { passive: true });
   bottomDockRuntime.onScroll(scheduleWallpaperAdaptiveToneUpdate, { passive: true });
   const actionButtonVisibilityReadyPromise = loadNewtabActionButtonVisibility();

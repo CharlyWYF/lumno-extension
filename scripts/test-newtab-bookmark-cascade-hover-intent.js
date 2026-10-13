@@ -471,39 +471,6 @@ assertContains(
   'safe-triangle protection should use its own max window instead of expiring at hover-delay completion'
 );
 assertContains(
-  newtabJs,
-  'BOOKMARK_CASCADE_DEBUG_STORAGE_KEY',
-  'newtab should keep the bookmark cascade debug storage key for future maintenance'
-);
-assertContains(
-  newtabJs,
-  'const BOOKMARK_CASCADE_DEBUG_UI_ENABLED = false;',
-  'bookmark cascade debug UI should be hidden behind a single disabled maintenance flag'
-);
-assertContains(
-  newtabJs,
-  'BOOKMARK_CASCADE_DEBUG_UI_ENABLED && bookmarkCascadeRuntime',
-  'newtab should only create or append the bookmark cascade debug control when the maintenance flag is enabled'
-);
-assertContains(
-  newtabJs,
-  'BOOKMARK_CASCADE_DEBUG_UI_ENABLED && changes[BOOKMARK_CASCADE_DEBUG_STORAGE_KEY]',
-  'stored bookmark cascade debug mode should only be restored when the maintenance flag is enabled'
-);
-assert.ok(
-  !newtabJs.includes('if (bookmarkCascadeRuntime) {\n    bookmarkCascadeRuntime.createDebugControls();\n  }'),
-  'newtab should not unconditionally create the bookmark cascade debug control'
-);
-assert.ok(
-  !newtabJs.includes('if (bookmarkCascadeRuntime && bookmarkCascadeRuntime.getDebugControl()) {\n    document.body.appendChild(bookmarkCascadeRuntime.getDebugControl());\n  }'),
-  'newtab should not unconditionally append the bookmark cascade debug control'
-);
-assertContains(
-  cascadeMenuJs,
-  'createBookmarkCascadeDebugControls',
-  'bookmark cascade runtime should keep the debug control implementation for future maintenance'
-);
-assertContains(
   cascadeMenuJs,
   'scheduleBookmarkCascadeHoverIntent',
   'pointer hover in bookmark cascade should be routed through delayed intent scheduling'
@@ -524,16 +491,6 @@ assertContains(
   'bookmark cascade switching should consult the safe triangle before replacing a submenu'
 );
 assertContains(
-  cascadeMenuJs,
-  'updateBookmarkCascadeDebugTriangle',
-  'bookmark cascade debug mode should update the generated triangle in real time'
-);
-assertContains(
-  cascadeMenuJs,
-  'updateBookmarkCascadeDelayDebugLabel',
-  'bookmark cascade debug mode should show live delay countdown labels'
-);
-assertContains(
   newtabJs,
   'NEWTAB_BOOKMARK_CASCADE_MENU.createBookmarkCascadeMenuRuntime',
   'newtab should delegate bookmark cascade behavior to the menu runtime'
@@ -547,21 +504,6 @@ assert.ok(
     newtabHtml.indexOf('bookmark-cascade-menu.js') > newtabHtml.indexOf('bookmark-cascade-position.js') &&
     newtabHtml.indexOf('bookmark-cascade-menu.js') < newtabHtml.indexOf('react-page-bootstrap.js'),
   'newtab should load the cascade menu runtime after positioning helpers and before the page bootstrap'
-);
-assertContains(
-  newtabHtml,
-  '.x-nt-bookmark-cascade-safe-triangle',
-  'newtab CSS should style the safe-triangle debug polygon'
-);
-assertContains(
-  newtabHtml,
-  '.x-nt-bookmark-cascade-debug-label',
-  'newtab CSS should style the delay countdown debug label'
-);
-assertContains(
-  newtabHtml,
-  '.x-nt-bookmark-cascade-debug-button',
-  'newtab CSS should style the bookmark cascade debug switch'
 );
 {
   const cascadeItemRule = getCssRuleBody(newtabHtml, '.x-nt-bookmark-cascade-item');
@@ -579,11 +521,6 @@ assertContains(
   newtabHtml,
   '.x-nt-bookmark-cascade-item[data-hover-suppressed="true"]:hover',
   'newtab CSS should suppress competing row hover visuals while safe-triangle protection is active'
-);
-assert.ok(
-  getCssZIndex(newtabHtml, '.x-nt-bookmark-cascade-debug-svg') >
-    getCssZIndex(newtabHtml, '.x-nt-bookmark-cascade-level'),
-  'safe-triangle debug SVG should render above menu panels so it is not hidden by cascade levels'
 );
 assertContains(
   newtabJs,

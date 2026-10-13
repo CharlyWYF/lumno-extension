@@ -219,13 +219,6 @@
       closeRecentContextMenu();
     }
 
-    function handleRecentContextMenuDocumentKeyDown(event) {
-      if (event && event.key === 'Escape' &&
-          (pageState.recentContextMenuTarget || isRecentContextMenuOpen())) {
-        closeRecentContextMenu();
-      }
-    }
-
     function createRecentContextMenu() {
       if (!pageState.recentContextMenuSelectController ||
           typeof pageState.recentContextMenuSelectController.createSelect !== 'function') {
@@ -273,7 +266,6 @@
       });
       menu.addEventListener('click', handleRecentContextMenuActionClick);
       document.addEventListener('pointerdown', handleRecentContextMenuDocumentPointerDown, true);
-      document.addEventListener('keydown', handleRecentContextMenuDocumentKeyDown, true);
       (document.body || document.documentElement).appendChild(control);
       return { control, select, trigger, menu };
     }
@@ -302,6 +294,11 @@
         );
       }
       pageState.recentContextMenuSelectController.setOpen(pageState.recentContextMenu.control, true);
+      // Escape closes the menu through the page's dismiss stack.
+      root.LumnoNewtabDismissStack.getDismissStack().push('recent-context-menu', {
+        isOpen: () => Boolean(pageState.recentContextMenuTarget || isRecentContextMenuOpen()),
+        close: () => closeRecentContextMenu()
+      });
     }
 
     function handleRecentCardContextMenu(payload) {

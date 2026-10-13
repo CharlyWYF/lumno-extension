@@ -202,6 +202,10 @@
               hideTopActionTooltip();
             },
             onOpen() {
+              root.LumnoNewtabDismissStack.getDismissStack().push('feedback-popover', {
+                isOpen: isFeedbackPopoverOpen,
+                close: () => closeFeedbackPopover({ restoreFocus: true })
+              });
               return loadFeedbackLinks({ force: true }).then(() => {
                 renderFeedbackControlWithReact();
               });

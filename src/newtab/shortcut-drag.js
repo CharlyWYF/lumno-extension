@@ -1019,11 +1019,16 @@
       document.addEventListener('pointermove', handleShortcutGroupDragPointerMove, true);
       document.addEventListener('pointerup', handleShortcutGroupDragPointerUp, true);
       document.addEventListener('pointercancel', handleShortcutGroupDragPointerCancel, true);
-      document.addEventListener('keydown', handleShortcutGroupDragKeyDown, true);
     }
 
     function startShortcutGroupDrag(state) {
       state.isDragging = true;
+      // Escape cancels the drag before it closes any open layer.
+      root.LumnoNewtabDismissStack.getDismissStack().push('shortcut-group-drag', {
+        priority: 1,
+        isOpen: () => state === shortcutGroupDragState,
+        close: () => finishShortcutGroupDrag(false, null)
+      });
       closeShortcutContextMenu();
       hideShortcutTooltip();
       resetShortcutDockHover();
@@ -1111,7 +1116,7 @@
       document.removeEventListener('pointermove', handleShortcutGroupDragPointerMove, true);
       document.removeEventListener('pointerup', handleShortcutGroupDragPointerUp, true);
       document.removeEventListener('pointercancel', handleShortcutGroupDragPointerCancel, true);
-      document.removeEventListener('keydown', handleShortcutGroupDragKeyDown, true);
+      root.LumnoNewtabDismissStack.getDismissStack().remove('shortcut-group-drag');
       if (state.frameId) window.cancelAnimationFrame(state.frameId);
       if (!state.isDragging) return;
       if (state.ghost) state.ghost.remove();
@@ -1134,14 +1139,6 @@
     function handleShortcutGroupDragPointerCancel(event) {
       if (shortcutGroupDragState && event.pointerId === shortcutGroupDragState.pointerId) {
         finishShortcutGroupDrag(false, event);
-      }
-    }
-
-    function handleShortcutGroupDragKeyDown(event) {
-      if (event.key === 'Escape' && shortcutGroupDragState && shortcutGroupDragState.isDragging) {
-        event.preventDefault();
-        event.stopPropagation();
-        finishShortcutGroupDrag(false, null);
       }
     }
 
