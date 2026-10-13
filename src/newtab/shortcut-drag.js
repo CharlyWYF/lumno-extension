@@ -521,6 +521,40 @@
         });
     }
 
+    // Alt+Arrow on a focused tile moves it one place, like a short drag:
+    // past a group's edge it joins the neighboring group. It saves and
+    // records undo the way a drop does, and keeps focus on the tile.
+    function moveShortcutByKeyboard(shortcutId, direction) {
+      if (!shortcutId || (direction !== 1 && direction !== -1) || pageState.shortcutDragState ||
+          pageState.bookmarkMoveHistoryBusy) {
+        return false;
+      }
+      const tiles = getShortcutReorderTiles();
+      const currentIndex = tiles.findIndex((tile) => getShortcutTileId(tile) === shortcutId);
+      const neighbor = currentIndex >= 0 ? tiles[currentIndex + direction] : null;
+      if (!neighbor) {
+        return false;
+      }
+      const ownGroupId = getShortcutTileGroupId(tiles[currentIndex]);
+      const neighborGroupId = getShortcutTileGroupId(neighbor);
+      const crossesGroup = neighborGroupId !== ownGroupId;
+      const state = { originalShortcuts: pageState.newtabShortcuts.slice() };
+      // Crossing into the next group keeps the index and changes the group.
+      const targetIndex = crossesGroup ? currentIndex : currentIndex + direction;
+      if (!moveShortcutItem(shortcutId, targetIndex, crossesGroup ? neighborGroupId : '')) {
+        return false;
+      }
+      persistShortcutOrder(state).then(() => {
+        animateShortcutLayoutChange(renderShortcuts);
+        scheduleWallpaperAdaptiveToneUpdate();
+        const tile = getShortcutTileById(shortcutId);
+        if (tile && typeof tile.focus === 'function' && document.activeElement !== tile) {
+          tile.focus({ preventScroll: true });
+        }
+      });
+      return true;
+    }
+
     function startShortcutDrag(event, tile) {
       if (!pageState.shortcutGrid || !tile || !pageState.shortcutDragState || pageState.shortcutDragState.tile !== tile) {
         return;
@@ -1237,6 +1271,7 @@
       animateShortcutLayoutChange,
       scheduleShortcutDragMove,
       finishShortcutDrag,
+      moveShortcutByKeyboard,
       isShortcutDragActive,
       isBookmarkSurfaceDragStateActive,
       handleShortcutDragPointerDown

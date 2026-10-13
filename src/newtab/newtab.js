@@ -4224,6 +4224,7 @@
     shortcutFolderRuntime,
     bookmarksRuntime,
     isShortcutDragActive: (...args) => isShortcutDragActive(...args),
+    moveShortcutByKeyboard: (...args) => moveShortcutByKeyboard(...args),
     MAX_NEWTAB_SHORTCUTS,
     normalizeHost,
     sanitizeDisplayText,
@@ -5733,6 +5734,7 @@
     animateShortcutLayoutChange,
     scheduleShortcutDragMove,
     finishShortcutDrag,
+    moveShortcutByKeyboard,
     isShortcutDragActive,
     isBookmarkSurfaceDragStateActive,
     handleShortcutDragPointerDown

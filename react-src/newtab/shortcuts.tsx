@@ -102,6 +102,9 @@ export interface ShortcutsViewOptions {
   // True right after a press on an open context menu, so it does not open
   // the tile underneath.
   isActivationSuppressed?: () => boolean;
+  // Alt+ArrowLeft/Right on a tile: move it one place (-1 or 1); true when
+  // it moved.
+  moveShortcut?: (shortcutId: string, direction: number) => boolean;
   onContextMenu?: (event: ReactMouseEvent<HTMLButtonElement>) => void;
   onNativeDragStart?: (event: ReactDragEvent<HTMLButtonElement>) => void;
   getAddLabel?: () => string;
@@ -182,6 +185,7 @@ interface NormalizedOptions {
     event: ReactMouseEvent<HTMLElement> | ReactKeyboardEvent<HTMLElement>
   ) => void;
   isActivationSuppressed: () => boolean;
+  moveShortcut: (shortcutId: string, direction: number) => boolean;
   onContextMenu: (event: ReactMouseEvent<HTMLButtonElement>) => void;
   onNativeDragStart: (event: ReactDragEvent<HTMLButtonElement>) => void;
   getAddLabel: () => string;
@@ -240,6 +244,7 @@ function normalizeOptions(
       ((event) => Number(event.button) === 1),
     openShortcut: options.openShortcut || (() => {}),
     isActivationSuppressed: options.isActivationSuppressed || (() => false),
+    moveShortcut: options.moveShortcut || (() => false),
     onContextMenu: options.onContextMenu || (() => {}),
     onNativeDragStart: options.onNativeDragStart || ((event) => {
       event.preventDefault();
@@ -433,6 +438,14 @@ function ShortcutTile({
   }
 
   function handleKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>): void {
+    if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') &&
+        event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+      // Alt+Arrow would also go back or forward in the browser.
+      event.preventDefault();
+      event.stopPropagation();
+      options.moveShortcut(shortcutId, event.key === 'ArrowRight' ? 1 : -1);
+      return;
+    }
     if (event.key !== 'Enter' && event.key !== ' ') {
       return;
     }
@@ -458,6 +471,7 @@ function ShortcutTile({
       aria-expanded={isFolder ? false : undefined}
       data-shortcut-custom-icon={localIconDataUrl ? 'true' : undefined}
       data-tooltip={title}
+      aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight"
       aria-label={options.formatOpenLabel(title)}
       onClick={activate}
       onAuxClick={handleAuxClick}
