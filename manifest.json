@@ -38,7 +38,7 @@
    "content_scripts": [
       {
          "matches": [ "\u003Call_urls>" ],
-         "js": [ "src/shared/settings.js", "src/shared/shortcut-key-matcher.js", "src/content/hotkey-listener.js" ],
+         "js": [ "src/shared/settings.js", "src/content/hotkey-listener.js" ],
          "run_at": "document_start"
       },
       {

@@ -4,14 +4,12 @@
   }
   window._x_extension_hotkey_listener_2024_unique_ = true;
 
-  const REFRESH_SHORTCUT_MS = 15000;
   const TAB_VISIBLE_REPORT_MIN_INTERVAL_MS = 800;
   const PAGE_TOAST_STYLE_ID = '_x_extension_page_toast_style_2026_unique_';
   const PAGE_TOAST_ID = '_x_extension_page_toast_2026_unique_';
   const PAGE_TOAST_SHOW_DURATION_MS = 2000;
   const LANGUAGE_STORAGE_KEY = '_x_extension_language_2024_unique_';
   const SETTINGS = globalThis.LumnoSettings;
-  const SHORTCUT_KEY_MATCHER = globalThis.LumnoShortcutKeyMatcher;
   const providerStorageRuntime = SETTINGS.createProviderStorageRuntime(chrome);
   const storageArea = providerStorageRuntime
     ? providerStorageRuntime.area
@@ -21,9 +19,6 @@
   const storageAreaName = providerStorageRuntime ? providerStorageRuntime.name : (storageArea
     ? (storageArea === (chrome && chrome.storage ? chrome.storage.sync : null) ? 'sync' : 'local')
     : null);
-  let shortcutRaw = '';
-  let shortcutSpec = null;
-  let lastRefreshAt = 0;
   let lastVisibleReportAt = 0;
   let pageToastTimer = null;
   let currentMessages = null;
@@ -119,21 +114,6 @@
       console.log(`[Lumno][hotkey-listener] ${stage}`, detail);
     } catch (e) {
       // Ignore logging errors.
-    }
-  }
-
-  function triggerOverlay() {
-    logHotkeyListenerDebug('trigger-overlay', {
-      shortcut: shortcutRaw || '',
-      href: location && location.href ? location.href : ''
-    });
-    try {
-      chrome.runtime.sendMessage({ action: 'triggerShowSearchFromPageHotkey' });
-    } catch (e) {
-      // Ignore runtime bridge failures.
-      logHotkeyListenerDebug('trigger-overlay-failed', {
-        error: e && e.message ? e.message : String(e || '')
-      });
     }
   }
 
@@ -398,49 +378,6 @@
     }
   }
 
-  function isEditableTarget(target) {
-    const element = target && target.nodeType === 1 ? target : (target && target.parentElement ? target.parentElement : null);
-    if (!element || !element.closest) {
-      return false;
-    }
-    return Boolean(element.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]'));
-  }
-
-  function refreshShortcut(force) {
-    const now = Date.now();
-    if (!force && (now - lastRefreshAt) < REFRESH_SHORTCUT_MS) {
-      return;
-    }
-    lastRefreshAt = now;
-    try {
-      chrome.runtime.sendMessage({ action: 'getShowSearchShortcut' }, (response) => {
-        if (chrome.runtime && chrome.runtime.lastError) {
-          logHotkeyListenerDebug('shortcut-refresh-error', {
-            error: chrome.runtime.lastError.message || 'unknown'
-          });
-          return;
-        }
-        const nextShortcut = response && typeof response.shortcut === 'string'
-          ? response.shortcut
-          : '';
-        if (nextShortcut === shortcutRaw) {
-          return;
-        }
-        shortcutRaw = nextShortcut;
-        shortcutSpec = SHORTCUT_KEY_MATCHER.parseShortcut(nextShortcut);
-        logHotkeyListenerDebug('shortcut-refresh', {
-          shortcut: shortcutRaw,
-          hasSpec: Boolean(shortcutSpec)
-        });
-      });
-    } catch (e) {
-      // Ignore runtime bridge failures on restricted frames.
-      logHotkeyListenerDebug('shortcut-refresh-failed', {
-        error: e && e.message ? e.message : String(e || '')
-      });
-    }
-  }
-
   hydrateLocaleMessages();
   if (chrome && chrome.storage && chrome.storage.onChanged) {
     chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -461,15 +398,21 @@
     });
   }
 
-  refreshShortcut(true);
   logHotkeyListenerDebug('listener-ready', {
     href: location && location.href ? location.href : ''
   });
-  window.addEventListener('focus', () => refreshShortcut(true), true);
-  window.addEventListener('focus', () => reportTabVisible('focus'), true);
+  // The configured search shortcut is matched by shortcut-key-observer.js,
+  // which runs in every frame including this one. A capturing focus listener
+  // on window also sees each element focus inside the page, which is not a
+  // tab becoming visible.
+  window.addEventListener('focus', (event) => {
+    if (event && event.target !== window) {
+      return;
+    }
+    reportTabVisible('focus');
+  }, true);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      refreshShortcut(false);
       reportTabVisible('visibility');
     }
   }, true);
@@ -492,47 +435,4 @@
       }
     });
   }
-
-  document.addEventListener('keydown', (event) => {
-    if (!event || event.isComposing || event.repeat) {
-      return;
-    }
-    if (window._x_extension_shortcut_key_observer_2026_unique_) {
-      return;
-    }
-    refreshShortcut(false);
-    const editableTarget = isEditableTarget(event.target);
-    const matchedConfiguredShortcut = Boolean(
-      shortcutSpec && SHORTCUT_KEY_MATCHER.eventMatchesShortcut(event, shortcutSpec)
-    );
-    if (matchedConfiguredShortcut) {
-      logHotkeyListenerDebug('shortcut-matched', {
-        key: String(event.key || ''),
-        shortcut: shortcutRaw || '',
-        defaultPrevented: Boolean(event.defaultPrevented),
-        editable: editableTarget
-      });
-      if (editableTarget) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      triggerOverlay();
-      return;
-    }
-    if (event.defaultPrevented) {
-      return;
-    }
-    if (isEditableTarget(event.target)) {
-      return;
-    }
-    if (event.metaKey && String(event.key || '').toLowerCase() === 't') {
-      logHotkeyListenerDebug('meta-t-seen', {
-        defaultPrevented: Boolean(event.defaultPrevented),
-        targetTag: event.target && event.target.tagName ? String(event.target.tagName).toLowerCase() : '',
-        shortcut: shortcutRaw || '',
-        href: location && location.href ? location.href : ''
-      });
-    }
-  }, true);
 })();
