@@ -60,7 +60,6 @@
       getAutocompleteCandidate,
       getUrlDisplay,
       getDirectNavigationUrl,
-      findProviderForSuggestionMatch,
       clearAutocomplete,
       applyAutocomplete,
       getLocalSearchScopeCandidate,
@@ -529,93 +528,43 @@
         const keywordSuggestionState = getKeywordSearchSuggestionState(allSuggestions);
         const onlyKeywordSuggestions = keywordSuggestionState.onlyKeywordSuggestions;
 
-        let autocompleteCandidate = null;
         let primaryHighlightIndex = -1;
         let primaryHighlightReason = 'none';
-        let strongNavigationMatch = null;
-        let topSiteMatch = null;
         let mergedProvider = null;
         let primarySuggestion = null;
-        const inlineEnabled = Boolean(inlineSuggestion);
-        let siteSearchTrigger = null;
-        const preferAutocompleteFirst = pageState.searchResultPriorityMode !== 'search';
         if (!localSearchQueryModeActive && !slashCommandModeActive && !toggleCommandActive && !hasCommand) {
-          if (!pageState.siteSearchState && !inlineEnabled && preferAutocompleteFirst) {
-            strongNavigationMatch = promoteStrongNavigationMatch(allSuggestions, pageState.latestRawQuery.trim());
-            if (strongNavigationMatch) {
-              primaryHighlightIndex = 0;
-              primaryHighlightReason = 'navigation';
+          const rankedSlate = SEARCH_UTILS.rankSearchSuggestionSlate(allSuggestions, {
+            query,
+            rawQuery: pageState.latestRawQuery,
+            triggerInput: rawTagInput,
+            providers: providersForTags,
+            inlineSuggestion,
+            siteSearchActive: Boolean(pageState.siteSearchState),
+            preferAutocompleteFirst: pageState.searchResultPriorityMode !== 'search',
+            onlyKeywordSuggestions,
+            autocompleteSuggestions: keywordSuggestionState.autocompleteSuggestions,
+            openTabMatch: pageState.openTabQuickSwitchEnabled
+              ? {
+                  currentTabId: pageState.currentNewtabTabId,
+                  openTabQuickSwitchEnabled: pageState.openTabQuickSwitchEnabled,
+                  getDirectNavigationUrl
+                }
+              : null,
+            matchers: {
+              promoteStrongNavigationMatch,
+              promoteTopSiteMatch,
+              getSiteSearchTriggerCandidate,
+              getAutocompleteCandidate,
+              getUrlDisplay,
+              filterSuggestions: (list) => filterBlacklistedSuggestions(list, query)
             }
-            topSiteMatch = promoteTopSiteMatch(allSuggestions, pageState.latestRawQuery.trim());
-          }
-          siteSearchTrigger = (!pageState.siteSearchState && !inlineEnabled)
-            ? getSiteSearchTriggerCandidate(rawTagInput, providersForTags, topSiteMatch)
-            : null;
-          if (!pageState.siteSearchState && !inlineEnabled && !strongNavigationMatch && preferAutocompleteFirst && !onlyKeywordSuggestions) {
-            autocompleteCandidate = getAutocompleteCandidate(keywordSuggestionState.autocompleteSuggestions, pageState.latestRawQuery);
-            if (autocompleteCandidate) {
-              const candidateIndex = allSuggestions.findIndex((suggestion) => {
-                if (!suggestion || suggestion.type === 'newtab') {
-                  return false;
-                }
-                if (autocompleteCandidate.url && suggestion.url === autocompleteCandidate.url) {
-                  return true;
-                }
-                const suggestionUrlText = getUrlDisplay(suggestion.url);
-                if (suggestionUrlText && suggestionUrlText.toLowerCase() === autocompleteCandidate.completion.toLowerCase()) {
-                  return true;
-                }
-                if (suggestion.title && suggestion.title.toLowerCase().startsWith(autocompleteCandidate.completion.toLowerCase())) {
-                  return true;
-                }
-                return false;
-              });
-              if (candidateIndex >= 0 && candidateIndex !== 0) {
-                const [candidateSuggestion] = allSuggestions.splice(candidateIndex, 1);
-                allSuggestions.unshift(candidateSuggestion);
-              }
-              primaryHighlightIndex = 0;
-              primaryHighlightReason = 'autocomplete';
-            }
-          }
-          if (inlineSuggestion) {
-            allSuggestions.unshift(inlineSuggestion);
-            allSuggestions = filterBlacklistedSuggestions(allSuggestions, query);
-            primaryHighlightIndex = 0;
-            primaryHighlightReason = 'inline';
-          } else if (!strongNavigationMatch && topSiteMatch && preferAutocompleteFirst) {
-            primaryHighlightIndex = 0;
-            primaryHighlightReason = 'topSite';
-          }
-          if (preferAutocompleteFirst &&
-              !pageState.siteSearchState && query && !onlyKeywordSuggestions && pageState.openTabQuickSwitchEnabled) {
-            const openTabMatch = SEARCH_UTILS.findSearchOpenTabMatchIndex(allSuggestions, {
-              rawQuery: pageState.latestRawQuery.trim(),
-              primaryHighlightIndex,
-              currentTabId: pageState.currentNewtabTabId,
-              openTabQuickSwitchEnabled: pageState.openTabQuickSwitchEnabled,
-              getDirectNavigationUrl
-            });
-            if (openTabMatch.index >= 0) {
-              if (openTabMatch.index > 0) {
-                const [openTabMatchSuggestion] = allSuggestions.splice(openTabMatch.index, 1);
-                allSuggestions.unshift(openTabMatchSuggestion);
-              }
-              primaryHighlightIndex = 0;
-              primaryHighlightReason = openTabMatch.reason || 'openTab';
-            }
-          }
-          if (preferAutocompleteFirst) {
-            allSuggestions = SEARCH_UTILS.pinExactSearchActionSecond(allSuggestions);
-          }
-          if (query && primaryHighlightIndex < 0 && allSuggestions.length > 0) {
-            primaryHighlightIndex = 0;
-            primaryHighlightReason = 'default';
-          }
-          if (primaryHighlightIndex >= 0) {
-            primarySuggestion = allSuggestions[primaryHighlightIndex] || null;
-            mergedProvider = findProviderForSuggestionMatch(primarySuggestion, providersForTags);
-          }
+          });
+          allSuggestions = rankedSlate.suggestions;
+          primaryHighlightIndex = rankedSlate.primaryHighlightIndex;
+          primaryHighlightReason = rankedSlate.primaryHighlightReason;
+          primarySuggestion = rankedSlate.primarySuggestion;
+          mergedProvider = rankedSlate.mergedProvider;
+          const siteSearchTrigger = rankedSlate.siteSearchTrigger;
           if (onlyKeywordSuggestions) {
             clearAutocomplete();
           } else {
