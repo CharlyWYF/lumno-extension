@@ -12,11 +12,8 @@
   if (!host || !/(^|\.)youtube\.com$/.test(host)) {
     return;
   }
-  const AUTO_PIP_ENABLED_STORAGE_KEY = "_x_extension_auto_pip_enabled_2026_unique_";
-  const providerStorageRuntime = globalThis.LumnoSettings.createProviderStorageRuntime(chrome);
-  let autoPipEnabled = false;
-
   const state = {
+    autoPipEnabled: false,
     activeVideo: null,
     enteringPiP: false,
     exitingPiP: false,
@@ -25,6 +22,7 @@
     lastManagedVideo: null,
     recoveryTimer: null,
     enterRetryTimer: null,
+    hiddenRetryBudget: 0,
     suppressEnterUntil: 0,
     uiRecoverySuppressUntil: 0,
     shouldResumeInlinePlayback: false,
@@ -33,135 +31,48 @@
     runtimeMessageHandlerBound: false
   };
   const RECOVERY_RELOAD_GUARD_KEY = "_x_lumno_yt_pip_recovery_reload_at_2026_";
+  const RECOVERY_RELOAD_GUARD_MS = 15000;
   const PAGE_BRIDGE_SCRIPT_ID = "__lumno_yt_auto_pip_page_bridge_script_2026__";
-  const PAGE_BRIDGE_REQUEST_EVENT = "__lumno_yt_force_exit_pip_req_2026__";
-  const PAGE_BRIDGE_RESPONSE_EVENT = "__lumno_yt_force_exit_pip_res_2026__";
-  const DOCUMENT_PIP_ACTIVE_FLAG = "__lumno_document_pip_active_2026__";
   const ENTER_SUPPRESS_AFTER_EXIT_MS = 1200;
   const ENTER_SUPPRESS_AFTER_VISIBLE_MS = 1400;
-  let pageBridgeRequestSeq = 0;
+  // After the tab is shown again, keep undoing PiP and mini-player leftovers:
+  // quickly at first, then more slowly; reload as a last resort.
+  const VISIBLE_RECOVERY_MAX_ATTEMPTS = 10;
+  const VISIBLE_RECOVERY_FAST_ATTEMPTS = 3;
+  const VISIBLE_RECOVERY_FAST_DELAY_MS = 120;
+  const VISIBLE_RECOVERY_SLOW_DELAY_MS = 320;
+  const VISIBLE_RECOVERY_UI_DEFER_MS = 160;
+  const HARD_RECOVERY_ATTEMPT = 8;
 
-  function normalizeAutoPipEnabled(value) {
-    return value !== false;
-  }
-
-  function setAutoPipEnabled(value) {
-    autoPipEnabled = normalizeAutoPipEnabled(value);
-  }
-  function isDocumentPiPActive() {
-    return window[DOCUMENT_PIP_ACTIVE_FLAG] === true;
-  }
-
-  function sendRuntimeMessage(message) {
-    return new Promise((resolve) => {
-      if (!chrome || !chrome.runtime || typeof chrome.runtime.sendMessage !== "function") {
-        resolve({ ok: false, reason: "no-runtime-sendMessage" });
-        return;
-      }
-      try {
-        chrome.runtime.sendMessage(message, (response) => {
-          if (chrome.runtime && chrome.runtime.lastError) {
-            resolve({
-              ok: false,
-              reason: chrome.runtime.lastError.message || "runtime-lastError"
-            });
-            return;
-          }
-          resolve(response && typeof response === "object"
-            ? response
-            : { ok: false, reason: "empty-response" });
-        });
-      } catch (error) {
-        resolve({ ok: false, reason: String(error) });
-      }
-    });
-  }
-
-  async function requestPiPOwnership(kind) {
-    const response = await sendRuntimeMessage({
-      action: "pipRequestOwnership",
-      kind: kind
-    });
-    if (response && response.ok && response.granted && response.token) {
-      state.ownerToken = String(response.token);
-      return { ok: true, granted: true };
+  const CORE = globalThis.LumnoAutoPipCore;
+  const isVideoPlaying = CORE.isVideoPlaying;
+  const core = CORE.createAutoPipCore({
+    state,
+    window,
+    document,
+    navigator,
+    chrome,
+    providerStorage: globalThis.LumnoSettings.getProviderStorage(chrome),
+    config: {
+      pageBridgeScriptId: PAGE_BRIDGE_SCRIPT_ID,
+      mainWorldExitAction: "ytForceExitPiPInMainWorld",
+      enterSuppressAfterExitMs: ENTER_SUPPRESS_AFTER_EXIT_MS,
+      enterSuppressAfterVisibleMs: ENTER_SUPPRESS_AFTER_VISIBLE_MS
+    },
+    hooks: {
+      maybeEnterPiP,
+      scheduleVisibleRecovery,
+      isVideoCandidate,
+      scoreVideo,
+      afterExitAttempt: forceUnminimizeViaPlayerApi
     }
-    return {
-      ok: false,
-      granted: false,
-      reason: response && response.reason ? String(response.reason) : "ownership-denied"
-    };
-  }
+  });
+  const syncActiveVideo = core.syncActiveVideo;
+  const clearEnterRetryTimer = core.clearEnterRetryTimer;
+  const clearRecoveryTimer = core.clearRecoveryTimer;
+  const maybeExitPiP = core.maybeExitPiP;
 
-  async function releasePiPOwnership() {
-    const token = typeof state.ownerToken === "string" ? state.ownerToken : "";
-    state.ownerToken = "";
-    if (!token) {
-      return { ok: true, released: false, reason: "no-owner-token" };
-    }
-    return sendRuntimeMessage({
-      action: "pipReleaseOwnership",
-      token: token
-    });
-  }
-
-  function clearPlaybackRecoveryState() {
-    state.shouldResumeInlinePlayback = false;
-    state.wasPlayingBeforeHide = false;
-    clearEnterRetryTimer();
-    clearRecoveryTimer();
-  }
-
-  function syncAutoPipEnabledSetting() {
-    if (!chrome || !chrome.storage) {
-      return;
-    }
-    const storageArea = providerStorageRuntime
-      ? providerStorageRuntime.area
-      : (chrome.storage.sync || chrome.storage.local);
-    if (!storageArea || typeof storageArea.get !== "function") {
-      return;
-    }
-    storageArea.get([AUTO_PIP_ENABLED_STORAGE_KEY], (result) => {
-      const rawValue = result ? result[AUTO_PIP_ENABLED_STORAGE_KEY] : undefined;
-      const normalized = normalizeAutoPipEnabled(rawValue);
-      setAutoPipEnabled(normalized);
-      if (rawValue !== normalized && typeof storageArea.set === "function") {
-        storageArea.set({ [AUTO_PIP_ENABLED_STORAGE_KEY]: normalized });
-      }
-    });
-    if (!chrome.storage.onChanged || typeof chrome.storage.onChanged.addListener !== "function") {
-      return;
-    }
-    chrome.storage.onChanged.addListener((changes, areaName) => {
-      if (providerStorageRuntime && !providerStorageRuntime.isActiveAreaName(areaName)) {
-        return;
-      }
-      if (!changes || !changes[AUTO_PIP_ENABLED_STORAGE_KEY]) {
-        return;
-      }
-      setAutoPipEnabled(changes[AUTO_PIP_ENABLED_STORAGE_KEY].newValue);
-      if (!autoPipEnabled) {
-        clearPlaybackRecoveryState();
-      }
-      if (!autoPipEnabled && (state.managedPiP || document.pictureInPictureElement)) {
-        maybeExitPiP("settings_disabled").catch(() => {});
-      }
-    });
-  }
-  syncAutoPipEnabledSetting();
-
-  const DEBUG = false;
-  function debugLog(stage, detail) {
-    if (!DEBUG) {
-      return;
-    }
-    try {
-      console.log("[Lumno][yt-auto-pip]", stage, detail || "");
-    } catch (error) {
-      // Ignore logging errors.
-    }
-  }
+  core.syncAutoPipEnabledSetting();
 
   function shouldAllowRecoveryReload() {
     try {
@@ -170,7 +81,7 @@
       if (!lastAt) {
         return true;
       }
-      return (Date.now() - lastAt) > 15000;
+      return (Date.now() - lastAt) > RECOVERY_RELOAD_GUARD_MS;
     } catch (error) {
       return true;
     }
@@ -184,135 +95,6 @@
     }
   }
 
-  function ensurePageBridgeInjected() {
-    if (document.getElementById(PAGE_BRIDGE_SCRIPT_ID)) {
-      return;
-    }
-    const script = document.createElement("script");
-    script.id = PAGE_BRIDGE_SCRIPT_ID;
-    script.src = chrome.runtime.getURL("src/content/youtube-auto-pip-page.js");
-    script.async = false;
-    const target = document.documentElement || document.head || document.body;
-    if (!target) {
-      return;
-    }
-    target.appendChild(script);
-  }
-
-  function requestPageBridgeExitPiP(timeoutMs) {
-    return new Promise((resolve) => {
-      if (typeof window.CustomEvent !== "function") {
-        resolve({ ok: false, reason: "no-custom-event" });
-        return;
-      }
-      ensurePageBridgeInjected();
-      const requestId = ++pageBridgeRequestSeq;
-      let done = false;
-
-      const finish = (result) => {
-        if (done) {
-          return;
-        }
-        done = true;
-        window.removeEventListener(PAGE_BRIDGE_RESPONSE_EVENT, onResponse, true);
-        if (timer) {
-          clearTimeout(timer);
-        }
-        resolve(result || { ok: false });
-      };
-
-      const onResponse = (event) => {
-        const detail = event && event.detail ? event.detail : {};
-        if (Number(detail.requestId || 0) !== requestId) {
-          return;
-        }
-        finish({
-          ok: true,
-          attempted: Boolean(detail.attempted),
-          before: Boolean(detail.before),
-          after: Boolean(detail.after),
-          error: String(detail.error || "")
-        });
-      };
-
-      window.addEventListener(PAGE_BRIDGE_RESPONSE_EVENT, onResponse, true);
-      const timer = setTimeout(() => {
-        finish({ ok: false, reason: "timeout" });
-      }, Math.max(120, Number(timeoutMs || 400)));
-
-      window.dispatchEvent(new CustomEvent(PAGE_BRIDGE_REQUEST_EVENT, {
-        detail: { requestId: requestId }
-      }));
-    });
-  }
-
-  function requestBackgroundMainWorldExitPiP(timeoutMs) {
-    return new Promise((resolve) => {
-      if (!chrome || !chrome.runtime || typeof chrome.runtime.sendMessage !== "function") {
-        resolve({ ok: false, reason: "no-runtime-sendMessage" });
-        return;
-      }
-      let done = false;
-      const finish = (result) => {
-        if (done) {
-          return;
-        }
-        done = true;
-        if (timer) {
-          clearTimeout(timer);
-        }
-        resolve(result || { ok: false });
-      };
-      const timer = setTimeout(() => {
-        finish({ ok: false, reason: "timeout" });
-      }, Math.max(160, Number(timeoutMs || 700)));
-      try {
-        chrome.runtime.sendMessage({ action: "ytForceExitPiPInMainWorld" }, (response) => {
-          if (chrome.runtime && chrome.runtime.lastError) {
-            finish({
-              ok: false,
-              reason: chrome.runtime.lastError.message || "runtime-lastError"
-            });
-            return;
-          }
-          finish(response && typeof response === "object"
-            ? response
-            : { ok: false, reason: "empty-response" });
-        });
-      } catch (error) {
-        finish({ ok: false, reason: String(error) });
-      }
-    });
-  }
-
-  function canEnterPiP() {
-    return typeof document !== "undefined" &&
-      typeof document.pictureInPictureEnabled === "boolean" &&
-      document.pictureInPictureEnabled;
-  }
-
-  function canExitPiP() {
-    return typeof document !== "undefined" &&
-      typeof document.exitPictureInPicture === "function";
-  }
-
-  function getVideoArea(video) {
-    if (!video || typeof video.getBoundingClientRect !== "function") {
-      return 0;
-    }
-    const rect = video.getBoundingClientRect();
-    const width = Math.max(0, Number(rect.width) || 0);
-    const height = Math.max(0, Number(rect.height) || 0);
-    return width * height;
-  }
-
-  function isVideoPlaying(video) {
-    if (!video) {
-      return false;
-    }
-    return !video.paused && !video.ended && Number(video.readyState || 0) >= 2;
-  }
-
   function isVideoCandidate(video) {
     return Boolean(video) &&
       !video.disablePictureInPicture &&
@@ -320,53 +102,10 @@
       Number(video.videoHeight || 0) > 0;
   }
 
-  function pickPrimaryVideo() {
-    const videos = Array.from(document.querySelectorAll("video"));
-    if (!videos.length) {
-      return null;
-    }
-
-    let best = null;
-    let bestScore = -1;
-    for (const video of videos) {
-      if (!isVideoCandidate(video)) {
-        continue;
-      }
-      const playingBoost = isVideoPlaying(video) ? 1000000000 : 0;
-      const areaScore = getVideoArea(video);
-      const score = playingBoost + areaScore;
-      if (score > bestScore) {
-        best = video;
-        bestScore = score;
-      }
-    }
-    return best || videos[0] || null;
-  }
-
-  function syncActiveVideo(preferred) {
-    if (preferred && isVideoCandidate(preferred)) {
-      state.activeVideo = preferred;
-      return state.activeVideo;
-    }
-    state.activeVideo = pickPrimaryVideo();
-    return state.activeVideo;
-  }
-
-  function bindMediaSessionAutoPiP() {
-    if (state.mediaSessionHandlerBound) {
-      return;
-    }
-    if (!navigator.mediaSession || typeof navigator.mediaSession.setActionHandler !== "function") {
-      return;
-    }
-    try {
-      navigator.mediaSession.setActionHandler("enterpictureinpicture", async () => {
-        await maybeEnterPiP("media_session_action");
-      });
-      state.mediaSessionHandlerBound = true;
-    } catch (error) {
-      // Older browser versions may not support this action type.
-    }
+  // A playing video always wins; otherwise the largest one does.
+  function scoreVideo(video) {
+    const playingBoost = isVideoPlaying(video) ? 1000000000 : 0;
+    return playingBoost + core.getRectArea(video);
   }
 
   function getFirstHTMLElement(selectors) {
@@ -431,25 +170,11 @@
     return null;
   }
 
-  function isProbablyHiddenByStyles(element) {
-    if (!element || !(element instanceof Element)) {
-      return true;
-    }
-    const style = window.getComputedStyle(element);
-    if (!style) {
-      return false;
-    }
-    if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || 1) === 0) {
-      return true;
-    }
-    return false;
-  }
-
   function isInlineVideoVisible(video) {
     if (!video || !video.isConnected) {
       return false;
     }
-    if (isProbablyHiddenByStyles(video)) {
+    if (core.isProbablyHiddenByStyles(video)) {
       return false;
     }
     const rect = video.getBoundingClientRect();
@@ -583,9 +308,6 @@
       const result = callPlayerMethod(player, "setMinimized", args);
       changed = result.called || changed;
     }
-    if (changed) {
-      debugLog("setMinimized-forced", { ok: true });
-    }
     return changed;
   }
 
@@ -620,7 +342,6 @@
       changed = paused.called || played.called || changed;
     }
 
-    debugLog("player-api-exit", { changed: changed });
     return changed;
   }
 
@@ -689,7 +410,7 @@
     location.replace(url.toString());
   }
 
-  function forceReloadToReturnInlinePlayback(source) {
+  function forceReloadToReturnInlinePlayback() {
     if (document.visibilityState !== "visible") {
       return false;
     }
@@ -717,125 +438,22 @@
     url.searchParams.set("autoplay", "1");
     url.searchParams.set("lumno_pip_recover", "1");
     markRecoveryReloadNow();
-    debugLog("force-reload-inline-recover", { source: source || "", seconds: seconds });
     location.replace(url.toString());
     return true;
   }
 
-  function clearRecoveryTimer() {
-    if (!state.recoveryTimer) {
-      return;
-    }
-    clearTimeout(state.recoveryTimer);
-    state.recoveryTimer = null;
-  }
-
-  function clearEnterRetryTimer() {
-    if (!state.enterRetryTimer) {
-      return;
-    }
-    clearTimeout(state.enterRetryTimer);
-    state.enterRetryTimer = null;
-  }
-
-  function pauseAllManagedMedia() {
-    const mediaNodes = Array.from(document.querySelectorAll("video, audio"));
-    mediaNodes.forEach((node) => {
-      if (!(node instanceof HTMLMediaElement)) {
-        return;
-      }
-      if (node.paused || node.ended) {
-        return;
-      }
-      try {
-        node.pause();
-      } catch (error) {
-        // Ignore site/player-specific pause failures.
-      }
-    });
-  }
-
-  async function forceSurrenderPiP(reason) {
-    const isHidden = document.visibilityState === "hidden";
-    if (isHidden) {
-      clearPlaybackRecoveryState();
-    }
-    state.suppressEnterUntil = Date.now() + ENTER_SUPPRESS_AFTER_VISIBLE_MS;
-    try {
-      await maybeExitPiP("ownership_surrender");
-    } catch (error) {
-      // Best effort only.
-    }
-    if (isHidden) {
-      pauseAllManagedMedia();
-    }
-    state.managedPiP = false;
-    await releasePiPOwnership();
-    return {
-      ok: true,
-      reason: reason || "surrendered"
-    };
-  }
-
-  function bindRuntimeMessageListener() {
-    if (state.runtimeMessageHandlerBound) {
-      return;
-    }
-    if (!chrome || !chrome.runtime || !chrome.runtime.onMessage ||
-        typeof chrome.runtime.onMessage.addListener !== "function") {
-      return;
-    }
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      if (!message || message.action !== "lumno:pip-force-surrender") {
-        return;
-      }
-      forceSurrenderPiP(message && message.reason ? String(message.reason) : "")
-        .then((result) => {
-          sendResponse(result);
-        })
-        .catch((error) => {
-          sendResponse({
-            ok: false,
-            reason: error && error.message ? error.message : String(error || "surrender-failed")
-          });
-        });
-      return true;
-    });
-    state.runtimeMessageHandlerBound = true;
-  }
-
-  function scheduleDeferredEnterPiP(reason) {
-    if (!autoPipEnabled) {
-      return;
-    }
-    clearEnterRetryTimer();
-    if (document.visibilityState !== "hidden") {
-      return;
-    }
-    const now = Date.now();
-    const suppressUntil = Number(state.suppressEnterUntil || 0);
-    const delay = suppressUntil > now ? (suppressUntil - now + 40) : 40;
-    state.enterRetryTimer = setTimeout(() => {
-      state.enterRetryTimer = null;
-      if (document.visibilityState !== "hidden") {
-        return;
-      }
-      maybeEnterPiP(reason || "deferred_hidden_retry");
-    }, Math.max(40, delay));
-  }
-
   async function maybeEnterPiP(reason) {
-    if (!autoPipEnabled) {
+    if (!state.autoPipEnabled) {
       return false;
     }
-    if (isDocumentPiPActive()) {
+    if (core.isDocumentPiPActive()) {
       return false;
     }
-    if (!canEnterPiP() || !canExitPiP() || state.enteringPiP || state.exitingPiP) {
+    if (!core.canEnterPiP() || !core.canExitPiP() || state.enteringPiP || state.exitingPiP) {
       return false;
     }
     if (Date.now() < Number(state.suppressEnterUntil || 0)) {
-      scheduleDeferredEnterPiP(`${reason || "enter"}_suppressed_retry`);
+      core.scheduleDeferredEnterPiP(`${reason || "enter"}_suppressed_retry`);
       return false;
     }
     if (document.visibilityState !== "hidden") {
@@ -850,9 +468,9 @@
       return false;
     }
 
-    const ownershipResult = await requestPiPOwnership("video");
+    const ownershipResult = await core.requestPiPOwnership("video");
     if (!ownershipResult.granted) {
-      clearPlaybackRecoveryState();
+      core.clearPlaybackRecoveryState();
       return false;
     }
 
@@ -864,53 +482,17 @@
       clearEnterRetryTimer();
       return true;
     } catch (error) {
-      if (reason !== "media_session_action") {
-        // Fallback is best-effort: hidden-tab requests can fail without activation.
-      }
+      // Best effort: hidden-tab requests can fail without user activation.
       return false;
     } finally {
       state.enteringPiP = false;
       if (!state.managedPiP) {
-        await releasePiPOwnership();
+        await core.releasePiPOwnership();
       }
     }
   }
 
-  async function maybeExitPiP(reason) {
-    if (!canExitPiP() || state.enteringPiP || state.exitingPiP) {
-      return false;
-    }
-    if (!state.managedPiP && !document.pictureInPictureElement) {
-      await releasePiPOwnership();
-      return true;
-    }
-    state.exitingPiP = true;
-    state.suppressEnterUntil = Date.now() + ENTER_SUPPRESS_AFTER_EXIT_MS;
-    try {
-      const backgroundResult = await requestBackgroundMainWorldExitPiP(760);
-      debugLog("background-main-exit-result", backgroundResult);
-      if (document.pictureInPictureElement) {
-        const bridgeResult = await requestPageBridgeExitPiP(520);
-        debugLog("bridge-exit-result", bridgeResult);
-      }
-      forceUnminimizeViaPlayerApi();
-      if (!document.pictureInPictureElement) {
-        state.managedPiP = false;
-        return true;
-      }
-      await document.exitPictureInPicture();
-      return !document.pictureInPictureElement;
-    } catch (error) {
-      return false;
-    } finally {
-      state.exitingPiP = false;
-      state.managedPiP = false;
-      forceUnminimizeViaPlayerApi();
-      await releasePiPOwnership();
-    }
-  }
-
-  function recoverInlinePlaybackIfNeeded(reason, attemptIndex) {
+  function recoverInlinePlaybackIfNeeded(attemptIndex) {
     if (document.visibilityState !== "visible") {
       return;
     }
@@ -944,7 +526,7 @@
       });
     }
 
-    if (attemptIndex >= 8) {
+    if (attemptIndex >= HARD_RECOVERY_ATTEMPT) {
       maybeHardRecoverByReload(video);
     }
   }
@@ -962,12 +544,12 @@
       if (shouldDeferVisibleRecoveryForUi()) {
         state.recoveryTimer = setTimeout(() => {
           run();
-        }, 160);
+        }, VISIBLE_RECOVERY_UI_DEFER_MS);
         return;
       }
       attempts += 1;
-      await maybeExitPiP("page_visible");
-      recoverInlinePlaybackIfNeeded("visible_recovery", attempts);
+      await maybeExitPiP();
+      recoverInlinePlaybackIfNeeded(attempts);
 
       if (document.visibilityState !== "visible") {
         clearRecoveryTimer();
@@ -977,21 +559,17 @@
       const stillInPiP = Boolean(document.pictureInPictureElement);
       const video = syncActiveVideo(state.lastManagedVideo || state.activeVideo);
       const stillGhost = looksLikeYouTubeGhostPiP(video);
-      debugLog("visible-recover", {
-        attempts: attempts,
-        stillInPiP: stillInPiP,
-        stillGhost: stillGhost,
-        inlineVisible: isInlineVideoVisible(video)
-      });
-      if ((stillInPiP || stillGhost) && attempts < 10) {
-        const delay = attempts < 3 ? 120 : 320;
+      if ((stillInPiP || stillGhost) && attempts < VISIBLE_RECOVERY_MAX_ATTEMPTS) {
+        const delay = attempts < VISIBLE_RECOVERY_FAST_ATTEMPTS
+          ? VISIBLE_RECOVERY_FAST_DELAY_MS
+          : VISIBLE_RECOVERY_SLOW_DELAY_MS;
         state.recoveryTimer = setTimeout(() => {
           run();
         }, delay);
         return;
       }
       if (stillInPiP || stillGhost) {
-        forceReloadToReturnInlinePlayback("visible-recovery-stuck");
+        forceReloadToReturnInlinePlayback();
       }
       clearRecoveryTimer();
     };
@@ -1001,23 +579,9 @@
 
   function handleVisibilityChange() {
     if (document.visibilityState === "hidden") {
-      const videoForHiddenSnapshot = syncActiveVideo(state.lastManagedVideo || state.activeVideo);
-      const shouldTrackRecovery = autoPipEnabled || state.managedPiP || Boolean(document.pictureInPictureElement);
-      state.wasPlayingBeforeHide = Boolean(
-        videoForHiddenSnapshot &&
-        isVideoPlaying(videoForHiddenSnapshot) &&
-        !videoForHiddenSnapshot.ended
-      );
-      state.shouldResumeInlinePlayback = Boolean(
-        shouldTrackRecovery &&
-        (
-          state.wasPlayingBeforeHide ||
-          state.managedPiP ||
-          document.pictureInPictureElement
-        )
-      );
+      core.capturePlaybackStateOnHide();
       clearRecoveryTimer();
-      scheduleDeferredEnterPiP("visibility_hidden_retry");
+      core.scheduleDeferredEnterPiP("visibility_hidden_retry");
       maybeEnterPiP("visibility_hidden");
       return;
     }
@@ -1054,7 +618,7 @@
     if (event.type === "ended" &&
         target === document.pictureInPictureElement &&
         state.managedPiP) {
-      maybeExitPiP("video_stopped");
+      maybeExitPiP();
     }
   }
 
@@ -1067,15 +631,8 @@
     state.managedPiP = Boolean(target && target === state.activeVideo);
   }
 
-  function onLeavePictureInPicture() {
-    state.managedPiP = false;
-    if (document.visibilityState === "visible") {
-      scheduleVisibleRecovery();
-    }
-  }
-
   function init() {
-    if (!canExitPiP()) {
+    if (!core.canExitPiP()) {
       return;
     }
     try {
@@ -1087,10 +644,10 @@
     } catch (error) {
       // Ignore URL cleanup errors.
     }
-    ensurePageBridgeInjected();
+    core.ensurePageBridgeInjected();
     syncActiveVideo();
-    bindMediaSessionAutoPiP();
-    bindRuntimeMessageListener();
+    core.bindMediaSessionAutoPiP();
+    core.bindRuntimeMessageListener();
 
     document.addEventListener("visibilitychange", handleVisibilityChange, true);
     document.addEventListener("play", onVideoEvent, true);
@@ -1098,7 +655,7 @@
     document.addEventListener("pause", onVideoEvent, true);
     document.addEventListener("ended", onVideoEvent, true);
     document.addEventListener("enterpictureinpicture", onEnterPictureInPicture, true);
-    document.addEventListener("leavepictureinpicture", onLeavePictureInPicture, true);
+    document.addEventListener("leavepictureinpicture", core.onLeavePictureInPicture, true);
     document.addEventListener("pointerdown", (event) => {
       const target = event && event.target instanceof Element ? event.target : null;
       if (!target || !target.closest) {
@@ -1108,16 +665,7 @@
         markUiRecoverySuppressed(1200);
       }
     }, true);
-    window.addEventListener("focus", () => {
-      state.suppressEnterUntil = Date.now() + ENTER_SUPPRESS_AFTER_VISIBLE_MS;
-      clearEnterRetryTimer();
-      scheduleVisibleRecovery();
-    }, true);
-    window.addEventListener("pageshow", () => {
-      state.suppressEnterUntil = Date.now() + ENTER_SUPPRESS_AFTER_VISIBLE_MS;
-      clearEnterRetryTimer();
-      scheduleVisibleRecovery();
-    }, true);
+    core.bindPageReturnListeners();
   }
 
   if (document.readyState === "loading") {
