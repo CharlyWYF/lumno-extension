@@ -2497,8 +2497,8 @@ body[data-theme="dark"] ._x_extension_confirm_dialog_2024_unique_ {
   align-self: center;
 }
 ._x_extension_shortcut_submit_2024_unique_:focus-visible {
-  outline: var(--settings-button-focus-outline, 2px solid rgba(59, 130, 246, 0.45));
-  outline-offset: var(--settings-button-focus-outline-offset, 2px);
+  outline: 2px solid var(--lumno-color-focus-ring);
+  outline-offset: 2px;
 }
 ._x_extension_shortcut_secondary_2024_unique_ {
   --settings-button-border-color: rgba(15, 23, 42, 0.06);
@@ -2549,8 +2549,6 @@ body[data-theme="dark"] ._x_extension_shortcut_secondary_2024_unique_ {
   --settings-button-font-weight: 600;
   --settings-button-shadow: var(--lumno-shadow-primary);
   --settings-button-before-shadow: var(--lumno-shadow-primary-sheen);
-  --settings-button-focus-outline: none;
-  --settings-button-focus-outline-offset: 0;
   --settings-button-hover-bg: var(--lumno-color-primary-hover);
   --settings-button-hover-shadow: var(--lumno-shadow-primary-hover);
 }

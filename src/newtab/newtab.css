@@ -175,7 +175,6 @@ body.x-nt-bottom-layout:not(.x-nt-mobile-flow) {
     0 2px 5px 0 rgba(199, 199, 199, 0.1);
   --x-nt-recent-title: #000000;
   --x-nt-recent-url: rgba(0, 0, 0, 0.51);
-  --x-nt-recent-focus: rgba(0, 0, 0, 0.2);
   --x-nt-bookmark-heading-color: #000000;
   --x-nt-bookmark-card-bg: rgba(255, 255, 255, 0.82);
   --x-nt-bookmark-card-border: rgba(0, 0, 0, 0.08);
@@ -190,7 +189,6 @@ body.x-nt-bottom-layout:not(.x-nt-mobile-flow) {
     0 1px 1px 0 rgba(199, 199, 199, 0.1);
   --x-nt-bookmark-title: #111827;
   --x-nt-bookmark-icon-bg: rgba(241, 245, 249, 0.92);
-  --x-nt-bookmark-focus: rgba(0, 0, 0, 0.22);
   --x-nt-bookmark-folder-hover-bg: rgba(83, 147, 255, 0.05);
   --x-nt-bookmark-shadow-rgb: 199, 199, 199;
   --x-nt-bookmark-pager-hover-bg: rgba(17, 24, 39, 0.08);
@@ -363,7 +361,6 @@ body[data-theme="dark"] {
   --x-nt-recent-title: #e5e7eb;
   --x-nt-recent-url: rgba(226, 232, 240, 0.75);
   --x-nt-recent-action-text: rgba(226, 232, 240, 0.78);
-  --x-nt-recent-focus: rgba(255, 255, 255, 0.28);
   --x-nt-bookmark-heading-color: rgba(226, 232, 240, 0.72);
   --x-nt-bookmark-card-bg: rgba(25, 25, 25, 0.78);
   --x-nt-bookmark-card-border: rgba(255, 255, 255, 0.1);
@@ -378,7 +375,6 @@ body[data-theme="dark"] {
     0 1px 1px 0 rgba(0, 0, 0, 0.32);
   --x-nt-bookmark-title: #e2e8f0;
   --x-nt-bookmark-icon-bg: rgba(255, 255, 255, 0.08);
-  --x-nt-bookmark-focus: rgba(255, 255, 255, 0.3);
   --x-nt-bookmark-folder-hover-bg: rgba(83, 147, 255, 0.08);
   --x-nt-bookmark-shadow-rgb: 60, 74, 97;
   --x-nt-bookmark-pager-hover-bg: rgba(226, 232, 240, 0.18);
@@ -729,7 +725,7 @@ body[data-drag-source="shortcut"] .x-nt-shortcuts-section {
   pointer-events: none;
 }
 .x-nt-shortcut-tile:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-shortcut-icon--folder svg {
@@ -830,9 +826,15 @@ body[data-drag-source="shortcut"] .x-nt-shortcuts-section {
   transition: opacity 120ms ease;
 }
 .x-nt-shortcut-group-header:hover .x-nt-shortcut-group-more,
-.x-nt-shortcut-group-more:focus-visible,
+.x-nt-shortcut-group-header:focus-within .x-nt-shortcut-group-more,
 .x-nt-shortcut-group-more[data-shortcut-context-menu-open="true"] {
   opacity: 1;
+}
+/* Without a pointer that hovers, the menu button would never appear. */
+@media (hover: none) {
+  .x-nt-shortcut-group-more {
+    opacity: 1;
+  }
 }
 .x-nt-shortcut-group-more:hover,
 .x-nt-shortcut-group-more[data-shortcut-context-menu-open="true"],
@@ -841,7 +843,7 @@ body[data-drag-source="shortcut"] .x-nt-shortcuts-section {
 }
 .x-nt-shortcut-group-title--placeholder:focus-visible,
 .x-nt-shortcut-group-more:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 1px;
 }
 body[data-drag-source="shortcut"] .x-nt-shortcut-group-more,
@@ -871,7 +873,7 @@ body[data-theme="dark"] .x-nt-shortcut-group-empty:hover .x-nt-shortcut-icon {
   filter: brightness(1.06);
 }
 .x-nt-shortcut-group-empty:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
   border-radius: var(--lumno-radius-lg);
 }
@@ -1239,6 +1241,11 @@ body[data-theme="dark"] .x-nt-shortcut-context-menu-portal {
 }
 #_x_extension_newtab_wordmark_2026_unique_ > .x-nt-wordmark-brand {
   cursor: pointer;
+}
+#_x_extension_newtab_wordmark_2026_unique_ > .x-nt-wordmark-brand:focus-visible {
+  outline: 2px solid var(--lumno-color-focus-ring);
+  outline-offset: 4px;
+  border-radius: var(--lumno-radius-md);
 }
 #_x_extension_newtab_wordmark_2026_unique_ > .x-nt-time-mark {
   color: var(--x-nt-wordmark-solid-fill, rgb(31 41 55));
@@ -1764,7 +1771,7 @@ body[data-theme="dark"] .x-nt-section-mode-select[data-open="true"] ._x_extensio
   color: inherit;
 }
 .x-nt-section-mode-select ._x_extension_select_trigger_2024_unique_:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-bookmarks-breadcrumb {
@@ -1849,7 +1856,7 @@ body[data-theme="dark"] .x-nt-section-mode-select[data-open="true"] ._x_extensio
   background: var(--x-nt-bookmark-pager-hover-bg, rgba(17, 24, 39, 0.08));
 }
 .x-nt-bookmarks-pager-btn:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-bookmarks-pager-btn:disabled,
@@ -2115,7 +2122,7 @@ body[data-theme="dark"] .x-nt-bookmark-card--folder.x-nt-bookmark-card--hover {
     0 2px 5px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.15);
 }
 .x-nt-bookmark-card:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-bookmark-icon {
@@ -2606,11 +2613,14 @@ body:not([data-nt-ready="1"]) .x-nt-bookmarks-topbar {
 .x-nt-bookmarks-topbar .x-nt-bookmark-card:focus-visible {
   transform: translate3d(0, 0, 0);
   border-color: transparent;
-  outline: none;
   background: var(--x-nt-bookmarks-topbar-item-hover);
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+/* The bar clips anything outside its row, so the focus ring sits inside the item. */
+.x-nt-bookmarks-topbar .x-nt-bookmark-card:focus-visible {
+  outline-offset: -2px;
 }
 .x-nt-bookmarks-topbar .x-nt-bookmark-card--folder.x-nt-bookmark-card--hover {
   border-color: transparent;
@@ -3445,7 +3455,7 @@ body[data-theme="dark"] .x-nt-bookmark-cascade-empty {
   --x-nt-recent-card-color: var(--x-nt-recent-card-bg-alt);
 }
 .x-nt-recent-card:focus-visible {
-  outline: 2px solid var(--x-nt-recent-focus);
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-recent-inner {
@@ -3616,6 +3626,19 @@ body[data-theme="dark"] .x-nt-recent-inner::before {
   opacity: 1;
   pointer-events: auto;
 }
+/* Touch screens cannot hover a card, so its actions stay visible there. */
+@media (hover: none) {
+  .x-nt-recent-pin,
+  .x-nt-recent-track {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .x-nt-recent-action {
+    max-width: 64px;
+    padding-left: 6px;
+    opacity: 1;
+  }
+}
 .x-nt-recent-pin:hover,
 .x-nt-recent-pin:focus-visible,
 .x-nt-recent-track:hover,
@@ -3624,7 +3647,7 @@ body[data-theme="dark"] .x-nt-recent-inner::before {
 }
 .x-nt-recent-pin:focus-visible,
 .x-nt-recent-track:focus-visible {
-  outline: 2px solid var(--x-nt-recent-focus);
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-recent-pin.x-nt-recent-pin--active,
@@ -4129,15 +4152,15 @@ body[data-theme="dark"] .x-nt-recent-track.x-nt-recent-track--active {
     inset 0 0 0 1px rgba(15, 23, 42, 0.05);
 }
 .x-nt-wallpaper-button:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-feedback-button:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-bookmark-cascade-debug-button:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-wallpaper-button[data-active="true"] {
@@ -4348,7 +4371,7 @@ body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:active {
   line-height: 1;
 }
 .x-nt-feedback-action:focus-visible {
-  outline: 2px solid rgba(75, 84, 95, 0.35);
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-feedback-action:hover {
@@ -4479,7 +4502,7 @@ body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:active {
   transform: scale(0.94);
 }
 .x-nt-feedback-detail-action:focus-visible {
-  outline: 2px solid rgba(75, 84, 95, 0.35);
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 1px;
 }
 .x-nt-feedback-detail-action:disabled {
@@ -4976,7 +4999,6 @@ body[data-theme="dark"] .x-nt-wallpaper-panel {
   --switch-height: 20px;
   --switch-knob-size: 16px;
   --switch-knob-stretch: 3px;
-  --switch-focus-ring: var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
 }
 .x-nt-appearance-header {
   min-width: 0;
@@ -5049,7 +5071,7 @@ body[data-theme="dark"] .x-nt-appearance-header {
   color: var(--x-nt-text, #111827);
 }
 .x-nt-appearance-info-button:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 /* Square icon actions such as refresh and restore; info buttons only explain and keep their help cursor. */
@@ -5079,7 +5101,7 @@ body[data-theme="dark"] .x-nt-appearance-header {
   color: var(--x-nt-text, #111827);
 }
 .x-nt-panel-icon-button:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-appearance-section,
@@ -5208,7 +5230,7 @@ body[data-theme="dark"] .x-nt-appearance-header {
   transform: scale(0.97);
 }
 .x-nt-wallpaper-tab:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-wallpaper-tab[data-active="true"] {
@@ -5390,7 +5412,7 @@ body[data-theme="dark"] .x-nt-appearance-header {
   opacity: 0.58;
 }
 .x-nt-section-trigger:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 3px;
   border-radius: var(--lumno-radius-sm);
 }
@@ -5641,7 +5663,7 @@ body[data-theme="dark"] .x-nt-row-select {
   transform: scale(0.97);
 }
 .x-nt-effect-option:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-effect-option[data-active="true"] {
@@ -5746,7 +5768,7 @@ body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
   box-sizing: border-box;
 }
 .x-nt-appearance-option:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-appearance-option[data-selected="true"] {
@@ -5885,7 +5907,7 @@ body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
   transform: scale(0.97);
 }
 .x-nt-wallpaper-tile:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-wallpaper-tile[data-selected="true"] {
@@ -6087,7 +6109,7 @@ body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
   background: rgba(17, 24, 39, 0.9);
 }
 .x-nt-wallpaper-delete-button:focus-visible {
-  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-wallpaper-custom-tile:hover .x-nt-wallpaper-delete-button,
@@ -6808,6 +6830,8 @@ body[data-theme="dark"] .x-nt-suggestion-icon-slot[data-emphasis="true"][data-fa
 .x-nt-suggestion-utility-button[data-hover="true"] .ri-icon {
   transform: scale(1.06);
 }
+/* Matches the command bar's result rows: full-strength text color, since their passive
+   borders are soft. */
 .x-nt-suggestion-action-button:focus-visible,
 .x-nt-suggestion-utility-button:focus-visible {
   outline: 2px solid currentColor;
@@ -6860,11 +6884,8 @@ body[data-theme="dark"] .x-nt-suggestion-icon-slot[data-emphasis="true"][data-fa
   vertical-align: baseline;
   flex-shrink: 0;
 }
-.x-nt-recent-card:hover .x-nt-recent-action {
-  max-width: 64px;
-  padding-left: 6px;
-  opacity: 1;
-}
+.x-nt-recent-card:hover .x-nt-recent-action,
+.x-nt-recent-card:focus-within .x-nt-recent-action,
 .x-nt-recent-card[data-recent-context-menu-open="true"] .x-nt-recent-action {
   max-width: 64px;
   padding-left: 6px;

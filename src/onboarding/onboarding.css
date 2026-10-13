@@ -323,7 +323,6 @@ button[aria-busy="true"]:disabled,
   --page-strip-active: rgba(17, 24, 39, 0.14);
   --page-strip-hover: rgba(17, 24, 39, 0.085);
   --page-strip-active-hover: rgba(17, 24, 39, 0.18);
-  --page-strip-focus: rgba(17, 24, 39, 0.16);
   width: min(280px, 100%);
   display: grid;
   grid-template-columns: repeat(var(--page-strip-count, 4), minmax(0, 1fr));
@@ -362,7 +361,7 @@ button[aria-busy="true"]:disabled,
 }
 
 .page-strip-segment:focus-visible {
-  outline: 2px solid var(--page-strip-focus);
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 3px;
 }
 
@@ -417,7 +416,6 @@ button[aria-busy="true"]:disabled,
     --page-strip-active: rgba(255, 255, 255, 0.22);
     --page-strip-hover: rgba(255, 255, 255, 0.14);
     --page-strip-active-hover: rgba(255, 255, 255, 0.3);
-    --page-strip-focus: rgba(255, 255, 255, 0.22);
   }
 }
 
@@ -850,8 +848,8 @@ html[lang="en"] .onboarding-shell[data-active-slide="intro"] .title-logo-mark {
 .interaction-slot:focus-visible,
 .interaction-accordion-trigger:focus-visible,
 .onboarding-action-button:focus-visible {
-  outline: var(--onboarding-action-focus-outline, 2px solid rgba(37, 99, 235, 0.46));
-  outline-offset: var(--onboarding-action-focus-outline-offset, 3px);
+  outline: 2px solid var(--lumno-color-focus-ring);
+  outline-offset: 3px;
 }
 
 .interaction-icon {
@@ -1005,7 +1003,7 @@ html[lang="en"] .onboarding-shell[data-active-slide="intro"] .title-logo-mark {
 }
 
 .interaction-info-button:focus-visible {
-  outline: 2px solid rgba(37, 99, 235, 0.46);
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 3px;
 }
 
@@ -1125,8 +1123,6 @@ html[lang="en"] .onboarding-shell[data-active-slide="intro"] .title-logo-mark {
   --onboarding-action-color: var(--lumno-color-on-primary);
   --onboarding-action-shadow: var(--lumno-shadow-primary);
   --onboarding-action-before-shadow: var(--lumno-shadow-primary-sheen);
-  --onboarding-action-focus-outline: none;
-  --onboarding-action-focus-outline-offset: 0;
   --onboarding-action-hover-bg: var(--lumno-color-primary-hover);
   --onboarding-action-hover-shadow: var(--lumno-shadow-primary-hover);
 }
