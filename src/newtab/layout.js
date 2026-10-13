@@ -1,6 +1,19 @@
 (function() {
   const SUGGESTIONS_HEIGHT_LAYOUT = globalThis.LumnoSuggestionsHeightLayout;
 
+  // New Tab widths, defined once. The standard search box and the content
+  // column; the search width slider runs from 640 (since 508a5c0 widened
+  // its range) to the content width and snaps to these points.
+  const STANDARD_SEARCH_MAX_WIDTH_PX = 720;
+  const CONTENT_MAX_WIDTH_PX = 1040;
+  const SEARCH_WIDTH_CONFIG = Object.freeze({
+    min: 640,
+    max: CONTENT_MAX_WIDTH_PX,
+    fallback: 920,
+    snapPoints: Object.freeze([640, STANDARD_SEARCH_MAX_WIDTH_PX, 920, CONTENT_MAX_WIDTH_PX]),
+    snapThreshold: 14
+  });
+
   function resolveElement(value) {
     if (typeof value === 'function') {
       return value();
@@ -289,8 +302,8 @@
 
     function applyWidthMode(config) {
       const rawSearchMax = Number(config && config.searchMaxWidth);
-      const searchMax = Number.isFinite(rawSearchMax) ? Math.max(1, rawSearchMax) : 720;
-      const contentMax = Math.max(1040, Number((config && config.contentMaxWidth) || 1040));
+      const searchMax = Number.isFinite(rawSearchMax) ? Math.max(1, rawSearchMax) : STANDARD_SEARCH_MAX_WIDTH_PX;
+      const contentMax = Math.max(CONTENT_MAX_WIDTH_PX, Number((config && config.contentMaxWidth) || CONTENT_MAX_WIDTH_PX));
       if (documentObj && documentObj.documentElement) {
         documentObj.documentElement.style.setProperty('--x-nt-search-max-width', `${searchMax}px`);
         documentObj.documentElement.style.setProperty('--x-nt-content-max-width', `${contentMax}px`);
@@ -920,6 +933,9 @@
   }
 
   globalThis.LumnoNewtabLayout = {
+    STANDARD_SEARCH_MAX_WIDTH_PX,
+    CONTENT_MAX_WIDTH_PX,
+    SEARCH_WIDTH_CONFIG,
     createLayoutController,
     nextDockDensity,
     getAdaptiveGridColumnCount,

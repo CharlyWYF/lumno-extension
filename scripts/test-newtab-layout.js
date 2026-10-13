@@ -1445,6 +1445,20 @@ testMobileSearchEntryHoldsStillWhileSuggestionsAreOpen();
 testResizeOutOfMobileRestoresFixedDockLayout();
 testBottomDockCssDefinesAdaptiveDensityVariables();
 
+// The search width slider's range and snap points are defined once and run
+// from the narrowest setting to the content column.
+function testSearchWidthConfigSpansStandardToContentWidth() {
+  const config = layoutRuntime.SEARCH_WIDTH_CONFIG;
+  assert.strictEqual(config.min, 640);
+  assert.strictEqual(config.max, layoutRuntime.CONTENT_MAX_WIDTH_PX);
+  assert.deepStrictEqual(Array.from(config.snapPoints), [640, 720, 920, 1040]);
+  assert.ok(config.snapPoints.includes(layoutRuntime.STANDARD_SEARCH_MAX_WIDTH_PX),
+    'the standard search width is one of the snap points');
+  assert.ok(config.snapPoints.includes(config.fallback), 'the default width is a snap point');
+  assert.ok(Object.isFrozen(config) && Object.isFrozen(config.snapPoints));
+}
+testSearchWidthConfigSpansStandardToContentWidth();
+
 function testAdaptiveGridUsesMobileTierBeforeCompactTier() {
   const config = {
     mobileBreakpointPx: 640,

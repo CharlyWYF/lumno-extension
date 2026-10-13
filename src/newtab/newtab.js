@@ -1726,8 +1726,8 @@
   );
   const NEWTAB_WIDTH_MODE_CONFIGS = {
     standard: {
-      searchMaxWidth: 720,
-      contentMaxWidth: 1040,
+      searchMaxWidth: NEWTAB_LAYOUT.STANDARD_SEARCH_MAX_WIDTH_PX,
+      contentMaxWidth: NEWTAB_LAYOUT.CONTENT_MAX_WIDTH_PX,
       recentMaxColumns: 4
     },
     wide: {
@@ -1736,13 +1736,7 @@
       recentMaxColumns: RECENT_WIDE_MAX_COLUMNS
     }
   };
-  const NEWTAB_SEARCH_WIDTH_CONFIG = {
-    min: 640,
-    max: 1040,
-    fallback: 920,
-    snapPoints: [640, 720, 920, 1040],
-    snapThreshold: 14
-  };
+  const NEWTAB_SEARCH_WIDTH_CONFIG = NEWTAB_LAYOUT.SEARCH_WIDTH_CONFIG;
   let currentNewtabWidthMode = 'wide';
   let currentNewtabSearchWidth = null;
   let currentRecentGridColumns = 4;
@@ -1929,7 +1923,7 @@
       mobileColumns: 2,
       compactBreakpointPx: 860,
       compactColumns: 2,
-      contentMaxWidth: Number(config.contentMaxWidth || 1040),
+      contentMaxWidth: Number(config.contentMaxWidth || NEWTAB_LAYOUT.CONTENT_MAX_WIDTH_PX),
       targetColumnWidth: BOOKMARK_CARD_TARGET_WIDTH_PX,
       gap: BOOKMARK_GRID_GAP_PX,
       minColumns: 2,
@@ -1961,7 +1955,7 @@
       mobileColumns: 2,
       compactBreakpointPx: 860,
       compactColumns: 2,
-      contentMaxWidth: Number(config.contentMaxWidth || 1040),
+      contentMaxWidth: Number(config.contentMaxWidth || NEWTAB_LAYOUT.CONTENT_MAX_WIDTH_PX),
       targetColumnWidth: RECENT_CARD_TARGET_WIDTH_PX,
       gap: RECENT_GRID_GAP_PX,
       minColumns: 4,
