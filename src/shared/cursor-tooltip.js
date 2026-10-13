@@ -348,6 +348,7 @@
     let lastPoint = null;
     let activeBinding = null;
     let modifierListenersAttached = false;
+    let detachModifierListeners = null;
     let token = 0;
 
     function ensureElement() {
@@ -677,6 +678,13 @@
       listenerTarget.addEventListener('keydown', handleModifierRefreshEvent, true);
       listenerTarget.addEventListener('keyup', handleModifierRefreshEvent, true);
       listenerTarget.addEventListener('blur', handleModifierBlur, true);
+      detachModifierListeners = () => {
+        listenerTarget.removeEventListener('keydown', handleModifierRefreshEvent, true);
+        listenerTarget.removeEventListener('keyup', handleModifierRefreshEvent, true);
+        listenerTarget.removeEventListener('blur', handleModifierBlur, true);
+        modifierListenersAttached = false;
+        detachModifierListeners = null;
+      };
     }
 
     function show(target, text, pointInput, showOptions) {
@@ -865,6 +873,9 @@
         token += 1;
         currentTarget = null;
         activeBinding = null;
+        if (detachModifierListeners) {
+          detachModifierListeners();
+        }
         if (hideTimer) {
           clearTimer(hideTimer);
           hideTimer = null;

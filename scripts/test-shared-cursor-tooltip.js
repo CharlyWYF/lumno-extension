@@ -725,11 +725,6 @@ assert.match(
   'overlay search-scope labels should use the dedicated fixed cursor bubble controller'
 );
 assert.match(
-  overlayPanel,
-  /storedModeMenuCursorTooltipController[\s\S]*?storedModeMenuCursorTooltipController\.destroy\(\)/,
-  'overlay teardown should destroy the dedicated search-scope cursor bubble controller'
-);
-assert.match(
   newtabPanel,
   /modeMenuCursorTooltipController: bookmarkCursorTooltipController/,
   'new-tab search-scope labels should use the shared cursor tooltip controller'

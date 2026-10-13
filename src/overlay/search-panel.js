@@ -39,6 +39,26 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
   let openInCurrentTabModifierActive = false;
   let openSwitchInNewTabModifierActive = false;
   let openInBackgroundTabModifierActive = false;
+  // Teardown steps owned by this invocation's overlay session. Controllers
+  // created deep inside the mount block register here so removeOverlay can
+  // release them without stashing them on DOM expandos.
+  const overlaySessionCleanups = [];
+  function addOverlaySessionCleanup(cleanup) {
+    if (typeof cleanup === 'function') {
+      overlaySessionCleanups.push(cleanup);
+    }
+    return cleanup;
+  }
+  function runOverlaySessionCleanups() {
+    while (overlaySessionCleanups.length > 0) {
+      const cleanup = overlaySessionCleanups.pop();
+      try {
+        cleanup();
+      } catch (error) {
+        // One failed teardown step must not keep the rest of the session alive.
+      }
+    }
+  }
   function cancelPendingOverlaySuggestionRequests() {
     overlaySuggestionRequestSeq += 1;
     if (overlayRemoteSuggestionDebounceTimer) {
@@ -1408,7 +1428,8 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     }
   }
 
-  // Helper function to remove overlay and clean up styles
+  // Tears down this invocation's overlay session: DOM, page listeners,
+  // storage listeners and every controller registered for the session.
   function removeOverlay(overlayElement, options) {
     const removalOptions = options && typeof options === 'object' ? options : {};
     window._x_extension_search_overlay_open_2026_unique_ = false;
@@ -1418,12 +1439,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     clearOverlayEnterAnimationFrames();
     clearOverlayPanelEnterCleanup();
     cancelPendingOverlaySuggestionRequests();
-    const suggestionsHeightSettleTimer = overlayElement &&
-      overlayElement._lumnoSuggestionsHeightSettleTimer;
-    if (suggestionsHeightSettleTimer) {
-      clearTimeout(suggestionsHeightSettleTimer);
-      overlayElement._lumnoSuggestionsHeightSettleTimer = 0;
-    }
     if (overlayRevealGate && typeof overlayRevealGate.cancel === 'function') {
       overlayRevealGate.cancel();
       overlayRevealGate = null;
@@ -1432,46 +1447,24 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     stopOverlayUpdateNoticeFrameSync();
     clearOverlayUpdateNoticeMountTimer();
     stopOverlayAntiTranslateObserver();
+    // Session cleanups stop the mount connection guard, so they must run
+    // before the host leaves the document or the guard would re-attach it.
+    runOverlaySessionCleanups();
     if (overlayElement) {
       if (overlayWheelIsolationHandler) {
         overlayElement.removeEventListener('wheel', overlayWheelIsolationHandler, true);
-        overlayWheelIsolationHandler = null;
+      }
+      if (overlaySuggestionsView && typeof overlaySuggestionsView.destroy === 'function') {
+        overlaySuggestionsView.destroy();
       }
       const mountHost = getOverlayMountHost(overlayElement);
-      const mountConnectionGuard = mountHost && mountHost._lumnoMountConnectionGuard;
-      if (mountConnectionGuard && typeof mountConnectionGuard.stop === 'function') {
-        mountConnectionGuard.stop();
-      }
-      if (mountHost) {
-        mountHost._lumnoMountConnectionGuard = null;
-      }
-      const mountedSuggestionsView = overlayElement._lumnoSuggestionsView ||
-        overlaySuggestionsView;
-      if (mountedSuggestionsView &&
-          typeof mountedSuggestionsView.destroy === 'function') {
-        mountedSuggestionsView.destroy();
-      }
-      overlayElement._lumnoSuggestionsView = null;
-      if (overlaySuggestionsView === mountedSuggestionsView) {
-        overlaySuggestionsView = null;
-      }
-      const mountedToastController = overlayElement._lumnoToastController;
-      if (mountedToastController &&
-          typeof mountedToastController.destroy === 'function') {
-        mountedToastController.destroy();
-      }
-      overlayElement._lumnoToastController = null;
-      const mountedToastStyleGate = overlayElement._lumnoToastStyleGate;
-      if (mountedToastStyleGate &&
-          typeof mountedToastStyleGate.destroy === 'function') {
-        mountedToastStyleGate.destroy();
-      }
-      overlayElement._lumnoToastStyleGate = null;
       overlayShell.destroyOverlayMount(mountHost);
-      mountHost.remove();
-    } else if (overlayWheelIsolationHandler) {
-      overlayWheelIsolationHandler = null;
+      if (mountHost) {
+        mountHost.remove();
+      }
     }
+    overlayWheelIsolationHandler = null;
+    overlaySuggestionsView = null;
     // Also remove the scrollbar style
     const scrollbarStyle = document.getElementById('_x_extension_scrollbar_style_2024_unique_');
     if (scrollbarStyle) {
@@ -1512,6 +1505,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       overlayMediaQuery.removeEventListener('change', overlayThemeMediaListener);
       overlayThemeMediaListener = null;
     }
+    overlayThemeListenerAttached = false;
     if (overlayScrollPauseHandler) {
       window.removeEventListener('scroll', overlayScrollPauseHandler, true);
       window.removeEventListener('wheel', overlayScrollPauseHandler, true);
@@ -1523,84 +1517,70 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       inputModeController.destroy();
       inputModeController = null;
     }
-    const storedModeMenuCursorTooltipController = overlayElement &&
-      overlayElement._lumnoModeMenuCursorTooltipController;
-    if (storedModeMenuCursorTooltipController &&
-        typeof storedModeMenuCursorTooltipController.destroy === 'function') {
-      storedModeMenuCursorTooltipController.destroy();
+    if (inputHistoryController && typeof inputHistoryController.destroy === 'function') {
+      inputHistoryController.destroy();
     }
-    if (overlayElement) {
-      overlayElement._lumnoModeMenuCursorTooltipController = null;
-    }
-    const storedModeMenuResultResizeObserver = overlayElement &&
-      overlayElement._lumnoModeMenuResultResizeObserver;
-    if (storedModeMenuResultResizeObserver &&
-        typeof storedModeMenuResultResizeObserver.disconnect === 'function') {
-      storedModeMenuResultResizeObserver.disconnect();
-    }
-    if (overlayElement) {
-      overlayElement._lumnoModeMenuResultResizeObserver = null;
-    }
-    const storedInputHistoryController =
-      overlayElement && overlayElement._lumnoInputHistoryController;
-    if (storedInputHistoryController &&
-        typeof storedInputHistoryController.destroy === 'function') {
-      storedInputHistoryController.destroy();
-    }
-    if (inputHistoryController === storedInputHistoryController) {
-      inputHistoryController = null;
-    }
-    if (overlayElement) {
-      overlayElement._lumnoInputHistoryController = null;
-    }
-    const storedUpdateNoticeController = overlayElement && overlayElement._lumnoUpdateNoticeController;
-    if (storedUpdateNoticeController && typeof storedUpdateNoticeController.destroy === 'function') {
-      if (storedUpdateNoticeController.element && storedUpdateNoticeController.element.parentNode) {
-        storedUpdateNoticeController.element.parentNode.removeChild(storedUpdateNoticeController.element);
+    inputHistoryController = null;
+    [overlayUpdateNoticeController, overlayEngagementNoticeController].forEach((controller) => {
+      if (!controller || typeof controller.destroy !== 'function') {
+        return;
       }
-      storedUpdateNoticeController.destroy();
-      if (storedUpdateNoticeController === overlayUpdateNoticeController) {
-        overlayUpdateNoticeController = null;
+      if (controller.element && controller.element.parentNode) {
+        controller.element.parentNode.removeChild(controller.element);
       }
-      if (overlayElement) {
-        overlayElement._lumnoUpdateNoticeController = null;
-      }
+      controller.destroy();
+    });
+    overlayUpdateNoticeController = null;
+    overlayEngagementNoticeController = null;
+  }
+
+  // Each invocation of this helper has its own closure, so a later invocation
+  // (the next hotkey press, or a re-injected runtime) cannot reach the
+  // listeners an earlier one registered. Every session therefore listens on
+  // its mount host for this event and tears itself down when asked. DOM events
+  // also cross isolated worlds, which lets a fresh extension context retire an
+  // overlay left behind by a reloaded one.
+  const OVERLAY_SESSION_DESTROY_EVENT = '_x_extension_overlay_session_destroy_2026_unique_';
+  const OVERLAY_SESSION_PRESERVE_LOADING_INTENT = 'preserve-loading-intent';
+
+  function bindOverlaySessionDestroy(overlayHost, overlayElement) {
+    if (!overlayHost || typeof overlayHost.addEventListener !== 'function') {
+      return;
     }
-    if (overlayUpdateNoticeController && typeof overlayUpdateNoticeController.destroy === 'function') {
-      if (overlayUpdateNoticeController.element && overlayUpdateNoticeController.element.parentNode) {
-        overlayUpdateNoticeController.element.parentNode.removeChild(overlayUpdateNoticeController.element);
-      }
-      overlayUpdateNoticeController.destroy();
-      overlayUpdateNoticeController = null;
+    const handleDestroyRequest = (event) => {
+      overlayHost.removeEventListener(OVERLAY_SESSION_DESTROY_EVENT, handleDestroyRequest);
+      removeOverlay(overlayElement, {
+        preserveLoadingIntent: Boolean(event) &&
+          event.detail === OVERLAY_SESSION_PRESERVE_LOADING_INTENT
+      });
+    };
+    overlayHost.addEventListener(OVERLAY_SESSION_DESTROY_EVENT, handleDestroyRequest);
+    addOverlaySessionCleanup(() => {
+      overlayHost.removeEventListener(OVERLAY_SESSION_DESTROY_EVENT, handleDestroyRequest);
+    });
+  }
+
+  function destroyExistingOverlaySession(overlayElement, options) {
+    const removalOptions = options && typeof options === 'object' ? options : {};
+    const mountHost = getOverlayMountHost(overlayElement);
+    if (mountHost && typeof mountHost.dispatchEvent === 'function' &&
+        typeof CustomEvent === 'function') {
+      // The detail stays a string so it survives the isolated-world boundary.
+      mountHost.dispatchEvent(new CustomEvent(OVERLAY_SESSION_DESTROY_EVENT, {
+        detail: removalOptions.preserveLoadingIntent === true
+          ? OVERLAY_SESSION_PRESERVE_LOADING_INTENT
+          : ''
+      }));
     }
-    const storedEngagementNoticeController =
-      overlayElement && overlayElement._lumnoEngagementNoticeController;
-    if (storedEngagementNoticeController &&
-        typeof storedEngagementNoticeController.destroy === 'function') {
-      if (storedEngagementNoticeController.element &&
-          storedEngagementNoticeController.element.parentNode) {
-        storedEngagementNoticeController.element.parentNode.removeChild(
-          storedEngagementNoticeController.element
-        );
-      }
-      storedEngagementNoticeController.destroy();
-      if (storedEngagementNoticeController === overlayEngagementNoticeController) {
-        overlayEngagementNoticeController = null;
-      }
-      if (overlayElement) {
-        overlayElement._lumnoEngagementNoticeController = null;
-      }
-    }
-    if (overlayEngagementNoticeController &&
-        typeof overlayEngagementNoticeController.destroy === 'function') {
-      if (overlayEngagementNoticeController.element &&
-          overlayEngagementNoticeController.element.parentNode) {
-        overlayEngagementNoticeController.element.parentNode.removeChild(
-          overlayEngagementNoticeController.element
-        );
-      }
-      overlayEngagementNoticeController.destroy();
-      overlayEngagementNoticeController = null;
+    const stillMounted = mountHost
+      ? mountHost.isConnected
+      : Boolean(overlayElement && overlayElement.isConnected);
+    if (stillMounted) {
+      // An overlay from a runtime that predates session teardown: remove its
+      // DOM at least, as before.
+      removeOverlay(overlayElement, removalOptions);
+    } else {
+      window._x_extension_search_overlay_open_2026_unique_ = false;
     }
   }
 
@@ -1620,7 +1600,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       window._x_extension_search_overlay_open_2026_unique_ = true;
       return;
     }
-    removeOverlay(overlay, {
+    destroyExistingOverlaySession(overlay, {
       preserveLoadingIntent: shouldReplaceStaleOverlay
     });
     if (!shouldReplaceStaleOverlay) {
@@ -1653,6 +1633,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       return;
     }
     setOverlayStoredContextToken(overlay);
+    bindOverlaySessionDestroy(overlayHost, overlay);
     overlay.classList.add('x-lumno-search-entry');
     setOverlayMountVisibility(overlayHost, true);
     applyNoTranslate(overlay);
@@ -1770,8 +1751,10 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       overlayToastElement,
       { windowObj: window }
     );
-    overlay._lumnoToastController = overlayToastController;
-    overlay._lumnoToastStyleGate = overlayToastStyleGate;
+    addOverlaySessionCleanup(() => {
+      overlayToastStyleGate.destroy();
+      overlayToastController.destroy();
+    });
 
     function hideOverlayToast() {
       overlayToastController.hide();
@@ -1951,7 +1934,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
           ? 'local'
           : storageAreaName
       });
-    overlay._lumnoInputHistoryController = inputHistoryController;
     const handledSearchInputEvents = new WeakSet();
     // The WeChat group QR opens in a dialog over the page, never in a new tab.
     // The overlay closes first, as it does for any result it opens.
@@ -1998,9 +1980,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         });
       }
     });
-    if (overlayUpdateNoticeController) {
-      overlay._lumnoUpdateNoticeController = overlayUpdateNoticeController;
-    }
     overlayEngagementNoticeController =
       ENGAGEMENT_NOTICE.createEngagementNotice({
         documentObj: document,
@@ -2063,9 +2042,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
           });
         }
       });
-    if (overlayEngagementNoticeController) {
-      overlay._lumnoEngagementNoticeController = overlayEngagementNoticeController;
-    }
     function shouldAnimateOverlayUpdateNoticeMount(noticeElement) {
       if (!noticeElement || noticeElement.getAttribute('data-visible') !== 'true') {
         return false;
@@ -2175,8 +2151,11 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         element.style.setProperty('--x-extension-tooltip-z-index', '2147483647');
       }
     });
-    overlay._lumnoModeMenuCursorTooltipController =
-      overlayModeMenuCursorTooltipController;
+    addOverlaySessionCleanup(() => {
+      topActionTooltipController.destroy();
+      overlayCursorTooltipController.destroy();
+      overlayModeMenuCursorTooltipController.destroy();
+    });
     const showTopActionTooltip = (button, text) => {
       if (!button || !text) {
         return;
@@ -2879,15 +2858,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         hideInputActionCursorTooltip();
         chrome.runtime.sendMessage({ action: 'openOptionsPage' });
         removeOverlay(overlay);
-        if (clickOutsideHandler) {
-          document.removeEventListener('click', clickOutsideHandler);
-        }
-        if (keydownHandler) {
-          document.removeEventListener('keydown', keydownHandler);
-        }
-        if (captureTabHandler) {
-          document.removeEventListener('keydown', captureTabHandler, true);
-        }
       });
     }
     if (searchClearButton) {
@@ -4729,8 +4699,9 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         syncSearchModeMenuResultOffset
       );
       modeMenuResultResizeObserver.observe(suggestionsContainer);
-      overlay._lumnoModeMenuResultResizeObserver =
-        modeMenuResultResizeObserver;
+      addOverlaySessionCleanup(() => {
+        modeMenuResultResizeObserver.disconnect();
+      });
     }
     loadSiteSearchIconCache().then(() => {
       if (!siteSearchState || !inputModeController) {
@@ -6381,7 +6352,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         eventPath.includes(overlay._lumnoOverlayHost);
       if (!clickedInsideOverlay) {
         removeOverlay(overlay);
-        document.removeEventListener('click', clickOutsideHandler);
       }
     };
     document.addEventListener('click', clickOutsideHandler);
@@ -6705,7 +6675,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       dismissAutocompletePreviewOnNonTabKey(e);
       if (e.key === 'Escape' && overlay) {
         removeOverlay(overlay);
-        document.removeEventListener('keydown', keydownHandler);
       } else if (suggestionNavigationKey === 'ArrowDown') {
         e.preventDefault();
         if (suggestionItems.length === 0) {
@@ -6786,9 +6755,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
             openDocumentPipPickerFromOverlay();
           }
           removeOverlay(overlay);
-          document.removeEventListener('click', clickOutsideHandler);
-          document.removeEventListener('keydown', keydownHandler);
-          document.removeEventListener('keydown', captureTabHandler, true);
           return;
         }
         if (!localSearchScopeState && isModeCommand(query) && selectedIndex === -1) {
@@ -6815,17 +6781,11 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
             if (selectedSuggestion.type === 'commandNewTab') {
               chrome.runtime.sendMessage({ action: 'openNewTab' });
               removeOverlay(overlay);
-              document.removeEventListener('click', clickOutsideHandler);
-              document.removeEventListener('keydown', keydownHandler);
-              document.removeEventListener('keydown', captureTabHandler, true);
               return;
             }
             if (selectedSuggestion.type === 'commandSettings') {
               chrome.runtime.sendMessage({ action: 'openOptionsPage' });
               removeOverlay(overlay);
-              document.removeEventListener('click', clickOutsideHandler);
-              document.removeEventListener('keydown', keydownHandler);
-              document.removeEventListener('keydown', captureTabHandler, true);
               return;
             }
             if (selectedSuggestion.type === 'commandOpenTabs') {
@@ -6839,17 +6799,11 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
             if (selectedSuggestion.type === 'commandCopyUrl') {
               chrome.runtime.sendMessage({ action: 'copyCurrentPageUrl' });
               removeOverlay(overlay);
-              document.removeEventListener('click', clickOutsideHandler);
-              document.removeEventListener('keydown', keydownHandler);
-              document.removeEventListener('keydown', captureTabHandler, true);
               return;
             }
             if (selectedSuggestion.type === 'commandDocumentPip') {
               openDocumentPipPickerFromOverlay();
               removeOverlay(overlay);
-              document.removeEventListener('click', clickOutsideHandler);
-              document.removeEventListener('keydown', keydownHandler);
-              document.removeEventListener('keydown', captureTabHandler, true);
               return;
             }
             if (selectedSuggestion.type === 'siteSearchPrompt' && selectedSuggestion.provider) {
@@ -7153,25 +7107,18 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       syncSearchModeMenuResultOffset();
     }
 
-    function closeOverlayAfterCommand() {
-      removeOverlay(overlay);
-      document.removeEventListener('click', clickOutsideHandler);
-      document.removeEventListener('keydown', keydownHandler);
-      document.removeEventListener('keydown', captureTabHandler, true);
-    }
-
     function activateRenderedOverlaySuggestion(suggestion, query, event, index, item) {
       if (!suggestion) {
         return;
       }
       if (suggestion.type === 'commandNewTab') {
         chrome.runtime.sendMessage({ action: 'openNewTab' });
-        closeOverlayAfterCommand();
+        removeOverlay(overlay);
         return;
       }
       if (suggestion.type === 'commandSettings') {
         chrome.runtime.sendMessage({ action: 'openOptionsPage' });
-        closeOverlayAfterCommand();
+        removeOverlay(overlay);
         return;
       }
       if (suggestion.type === 'commandOpenTabs') {
@@ -7184,12 +7131,12 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       }
       if (suggestion.type === 'commandCopyUrl') {
         chrome.runtime.sendMessage({ action: 'copyCurrentPageUrl' });
-        closeOverlayAfterCommand();
+        removeOverlay(overlay);
         return;
       }
       if (suggestion.type === 'commandDocumentPip') {
         openDocumentPipPickerFromOverlay();
-        closeOverlayAfterCommand();
+        removeOverlay(overlay);
         return;
       }
       if (suggestion.type === 'siteSearchPrompt' && suggestion.provider) {
@@ -7391,7 +7338,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         enterAction: 'openNewTab',
         autoHighlightFirstTab: true
       });
-      overlay._lumnoSuggestionsView = overlaySuggestionsView;
       return overlaySuggestionsView;
     }
 
@@ -8238,7 +8184,9 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         }
       }
     });
-    overlayHost._lumnoMountConnectionGuard = mountConnectionGuard;
+    addOverlaySessionCleanup(() => {
+      mountConnectionGuard.stop();
+    });
     mountConnectionGuard.start(overlayHost);
     startOverlayViewportSizeSync(overlay);
     startOverlayUpdateNoticeFrameSync(overlay);
