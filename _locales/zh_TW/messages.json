@@ -1,4 +1,37 @@
 {
+  "shortcut_bookmarks_choose": {
+    "message": "從書籤選擇"
+  },
+  "shortcut_bookmarks_search": {
+    "message": "搜尋書籤"
+  },
+  "shortcut_bookmarks_search_hint": {
+    "message": "搜尋名稱、網址或資料夾"
+  },
+  "shortcut_bookmarks_loading": {
+    "message": "正在讀取書籤…"
+  },
+  "shortcut_bookmarks_error": {
+    "message": "無法讀取書籤，請重試。"
+  },
+  "shortcut_bookmarks_empty": {
+    "message": "目前沒有可選的書籤，也可以手動輸入網址。"
+  },
+  "shortcut_bookmarks_no_results": {
+    "message": "沒有符合的書籤，請換個關鍵字。"
+  },
+  "shortcut_bookmarks_results": {
+    "message": "符合結果"
+  },
+  "shortcut_bookmarks_retry": {
+    "message": "重試"
+  },
+  "shortcut_bookmarks_added": {
+    "message": "已新增"
+  },
+  "shortcut_bookmarks_more": {
+    "message": "顯示更多"
+  },
   "custom_recent_changed_elsewhere": {
     "message": "清單已在其他分頁更新，請檢查後重試。"
   },

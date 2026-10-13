@@ -1,4 +1,37 @@
 {
+  "shortcut_bookmarks_choose": {
+    "message": "从收藏夹选择"
+  },
+  "shortcut_bookmarks_search": {
+    "message": "搜索收藏夹"
+  },
+  "shortcut_bookmarks_search_hint": {
+    "message": "搜索名称、网址或文件夹"
+  },
+  "shortcut_bookmarks_loading": {
+    "message": "正在读取收藏夹…"
+  },
+  "shortcut_bookmarks_error": {
+    "message": "无法读取收藏夹，请重试。"
+  },
+  "shortcut_bookmarks_empty": {
+    "message": "暂无可选的收藏，你也可以手动输入网址。"
+  },
+  "shortcut_bookmarks_no_results": {
+    "message": "没有匹配的收藏，请换个关键词。"
+  },
+  "shortcut_bookmarks_results": {
+    "message": "匹配结果"
+  },
+  "shortcut_bookmarks_retry": {
+    "message": "重试"
+  },
+  "shortcut_bookmarks_added": {
+    "message": "已添加"
+  },
+  "shortcut_bookmarks_more": {
+    "message": "显示更多"
+  },
   "custom_recent_changed_elsewhere": {
     "message": "列表已在其他标签页更新，请检查后重试。"
   },

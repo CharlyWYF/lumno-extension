@@ -1,4 +1,37 @@
 {
+  "shortcut_bookmarks_choose": {
+    "message": "ブックマークから選択"
+  },
+  "shortcut_bookmarks_search": {
+    "message": "ブックマークを検索"
+  },
+  "shortcut_bookmarks_search_hint": {
+    "message": "名前、URL、フォルダーで検索"
+  },
+  "shortcut_bookmarks_loading": {
+    "message": "ブックマークを読み込み中…"
+  },
+  "shortcut_bookmarks_error": {
+    "message": "ブックマークを読み込めません。再試行してください。"
+  },
+  "shortcut_bookmarks_empty": {
+    "message": "選択できるブックマークがありません。URLを直接入力できます。"
+  },
+  "shortcut_bookmarks_no_results": {
+    "message": "一致するブックマークがありません。別のキーワードをお試しください。"
+  },
+  "shortcut_bookmarks_results": {
+    "message": "検索結果"
+  },
+  "shortcut_bookmarks_retry": {
+    "message": "再試行"
+  },
+  "shortcut_bookmarks_added": {
+    "message": "追加済み"
+  },
+  "shortcut_bookmarks_more": {
+    "message": "さらに表示"
+  },
   "custom_recent_changed_elsewhere": {
     "message": "リストが別のタブで更新されました。内容を確認して再試行してください。"
   },

@@ -1554,6 +1554,14 @@
         getBuiltinIconUrl: getShortcutDialogBuiltinIconUrl,
         isIconSourceAvailable: isShortcutDialogIconSourceAvailable,
         refreshOnlineIcon: refreshShortcutDialogOnlineIcon,
+        async loadBookmarkChoices() {
+          if (!await bookmarksRuntime.ensureReady(false)) throw new Error('Bookmarks unavailable');
+          return globalThis.LumnoShortcutBookmarkChoices.collectChoices(
+            bookmarksRuntime.getNodeMap(),
+            NEWTAB_SHORTCUTS_STORE.normalizeShortcutUrl,
+            pageState.newtabShortcuts
+          );
+        },
         onSubmit(payload) {
           if (payload.itemType === 'group') {
             return saveShortcutGroupFromDialog(payload.title);

@@ -41,9 +41,11 @@
   </a>
 </p>
 
-<p align="center">Current version: <code>1.0.2</code> (custom fork)</p>
+<p align="center">Current version: <code>1.0.3</code> (custom fork)</p>
 
 This fork adds a **Custom** display mode beside Recent visits and Most visited. Choose Custom, then Manage sites to add, edit, remove and reorder up to 24 websites. Extra sites use paging with the existing row settings. The list stays on this device. See [custom sites](docs/custom-recent-sites.md).
+
+The existing Add shortcut → Add site dialog now offers **Choose from bookmarks**. Search by title, URL or folder, select an entry and save through the existing shortcut group and icon controls. Original browser bookmarks are unchanged, and Custom mode remains available. See [bookmark picker](docs/shortcut-bookmark-picker.md).
 
 <img width="1200" height="480" alt="Lumno command bar for Chrome: search tabs, bookmarks and history from any page" src="./assets/images/readme/banner.webp" decoding="async" />
 
