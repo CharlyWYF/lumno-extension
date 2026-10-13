@@ -865,7 +865,7 @@ function testWrappedShortcutsDoNotOscillateDockDensity() {
   );
 
   const settledDensities = [];
-  controller.updateBottomDockLayout({ releaseDockDensityLock: true });
+  controller.updateBottomDockLayout();
   settledDensities.push(bottomDock.getAttribute('data-density'));
   flushAnimationFrames();
   settledDensities.push(bottomDock.getAttribute('data-density'));
@@ -951,7 +951,7 @@ function testContinuousResizeKeepsDockDensityStableUntilSettle() {
     'live resize should keep the last compact density even after the viewport grows'
   );
 
-  controller.updateBottomDockLayout({ releaseDockDensityLock: true });
+  controller.updateBottomDockLayout();
   flushAnimationFrames();
   assert.strictEqual(
     bottomDock.getAttribute('data-density'),
@@ -971,12 +971,7 @@ function testContinuousResizeKeepsDockDensityStableUntilSettle() {
   );
   assert.match(
     newtabSource,
-    /newtabResizeLayoutLocked\s*=\s*true;[\s\S]*?newtabResizeSettleTimer\s*=\s*window\.setTimeout\([\s\S]*?newtabResizeLayoutLocked\s*=\s*false;[\s\S]*?releaseDockDensityLock:\s*true[\s\S]*?NEWTAB_RESIZE_DENSITY_SETTLE_MS/,
-    'new-tab resize should release the search anchor and density stabilization only after resize events settle'
-  );
-  assert.match(
-    newtabSource,
-    /const NEWTAB_INITIAL_VIEWPORT_SETTLE_MS = 32;[\s\S]*?const startupViewport = getSearchEntryViewportSnapshot\(\);[\s\S]*?function scheduleNewtabReadyAfterViewportSettle\(\)[\s\S]*?const revealAfterViewportSettles = \(\) => \{[\s\S]*?updateBookmarkSectionPosition\(\{ releaseDockDensityLock: true \}\);[\s\S]*?requestAnimationFrame\(\(\) => \{[\s\S]*?setAttribute\('data-nt-ready', '1'\)[\s\S]*?\};[\s\S]*?if \(viewportRevision === 0 &&\s*!(?:pageState\.)?newtabResizeLayoutLocked &&\s*!hasSearchEntryViewportChanged\(startupViewport\)\) \{\s*revealAfterViewportSettles\(\);\s*return;\s*\}\s*newtabReadySettleTimer = window\.setTimeout\(revealAfterViewportSettles, NEWTAB_INITIAL_VIEWPORT_SETTLE_MS\);/,
+    /const NEWTAB_INITIAL_VIEWPORT_SETTLE_MS = 32;[\s\S]*?const startupViewport = getSearchEntryViewportSnapshot\(\);[\s\S]*?function scheduleNewtabReadyAfterViewportSettle\(\)[\s\S]*?const revealAfterViewportSettles = \(\) => \{[\s\S]*?updateBookmarkSectionPosition\(\);[\s\S]*?requestAnimationFrame\(\(\) => \{[\s\S]*?setAttribute\('data-nt-ready', '1'\)[\s\S]*?\};[\s\S]*?if \(viewportRevision === 0 &&\s*!(?:pageState\.)?newtabResizeLayoutLocked &&\s*!hasSearchEntryViewportChanged\(startupViewport\)\) \{\s*revealAfterViewportSettles\(\);\s*return;\s*\}\s*newtabReadySettleTimer = window\.setTimeout\(revealAfterViewportSettles, NEWTAB_INITIAL_VIEWPORT_SETTLE_MS\);/,
     'new-tab content should skip the settle window when the viewport never changed while loading, and still wait one paint frame'
   );
   assert.match(
@@ -1641,7 +1636,7 @@ function testResizeSettleAnimatesSearchPositionChange() {
   );
   assert.match(
     resizeListenerSource,
-    /captureTopContentLayout\(\)[\s\S]*?cancelTopContentLayoutAnimations\(\)[\s\S]*?newtabResizeLayoutLocked\s*=\s*false;[\s\S]*?updateBookmarkSectionPosition\(\{ releaseDockDensityLock: true \}\);[\s\S]*?animateTopContentLayout\(fromLayout\)/,
+    /captureTopContentLayout\(\)[\s\S]*?cancelTopContentLayoutAnimations\(\)[\s\S]*?newtabResizeLayoutLocked\s*=\s*false;[\s\S]*?updateBookmarkSectionPosition\(\);[\s\S]*?animateTopContentLayout\(fromLayout\)/,
     'resize settle should animate the search and content from the locked position to the final layout'
   );
   assert.match(

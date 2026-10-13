@@ -6045,8 +6045,8 @@
         preserveSearchEntryLayout: Boolean(layoutOptions.preserveSearchEntryLayout) ||
           newtabResizeLayoutLocked ||
           shouldPreserveSearchEntryLayout(),
-        stabilizeDockDensity: Boolean(layoutOptions.stabilizeDockDensity),
-        releaseDockDensityLock: Boolean(layoutOptions.releaseDockDensityLock),
+        // A live resize holds the dock's density until the resize settles.
+        stabilizeDockDensity: Boolean(layoutOptions.stabilizeDockDensity) || newtabResizeLayoutLocked,
         onRecentHidden: () => {
           recentMouseInsideSection = false;
           recentMouseLeftAt = 0;
@@ -8169,7 +8169,7 @@
         : null;
       cancelTopContentLayoutAnimations();
       newtabResizeLayoutLocked = false;
-      updateBookmarkSectionPosition({ releaseDockDensityLock: true });
+      updateBookmarkSectionPosition();
       animateTopContentLayout(fromLayout);
     }, NEWTAB_RESIZE_DENSITY_SETTLE_MS);
     if (newtabReadyRequested &&
