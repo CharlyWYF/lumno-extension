@@ -215,12 +215,13 @@ async function openPage(cdp, viewport) {
         await delay(35);
       }
       await delay(options.hold || 200);
-      if (options.before) await options.before();
+      // `before` may move on and return where the pointer is let go.
+      const releasePoint = (options.before && await options.before()) || toPoint;
       if (options.cancel) {
         await page.key('Escape');
-        await page.mouse('mouseReleased', toPoint.x, toPoint.y, { buttons: 0 });
+        await page.mouse('mouseReleased', releasePoint.x, releasePoint.y, { buttons: 0 });
       } else {
-        await page.mouse('mouseReleased', toPoint.x, toPoint.y, { buttons: 0 });
+        await page.mouse('mouseReleased', releasePoint.x, releasePoint.y, { buttons: 0 });
       }
     },
     // Where every part of the page that should hold still sits. Group titles
@@ -590,13 +591,63 @@ check('a tile dragged into the longest row keeps it on one line', WIDE, async (p
   return [...problems, ...movedBetween(during, await page.snapshot(), ['tile:w1'])];
 });
 
-check('emptying the longest row re-centers the grid as a whole', WIDE, async (page) => {
+// The grid re-centers as soon as the tile leaves, so the drop moves nothing.
+// The pointer follows the gap past the last tile as it slides, as an eye would.
+check('emptying the longest row re-centers the grid as a whole during the drag', WIDE, async (page) => {
   await page.seed(BASE_GROUPS, BASE_ITEMS);
   const before = await page.snapshot();
-  const target = await page.rect('[data-shortcut-id="r2"]');
-  await page.drag('[data-shortcut-id="a5"]', { x: target.right + 8, y: target.y });
+  const pastRead = async () => {
+    const r2 = await page.rect('[data-shortcut-id="r2"]');
+    return { x: r2.right + 8, y: r2.y };
+  };
+  let during = null;
+  await page.drag('[data-shortcut-id="a5"]', await pastRead(), {
+    before: async () => {
+      const gap = await pastRead();
+      await page.mouse('mouseMoved', gap.x, gap.y, { buttons: 1 });
+      await page.settle(250);
+      during = await page.snapshot();
+      return gap;
+    }
+  });
   await page.settle(900);
-  return unevenShift(page, before, await page.snapshot(), ['tile:a5', 'add']);
+  const after = await page.snapshot();
+  return [
+    ...(after['tile:a5'] && after['tile:r2'] ? [] : [{ key: 'the drop made a folder', dx: 0, dy: 0 }]),
+    ...await unevenShift(page, before, after, ['tile:a5', 'add']),
+    ...movedBetween(during, after, ['tile:a5']).map((entry) => ({ ...entry, key: `on drop ${entry.key}` }))
+  ];
+});
+
+// Re-centering slides tiles under a pointer that holds still. Letting go
+// there drops into the gap the drag showed, not onto the tile as a folder.
+check('a tile that slides under the held pointer makes no folder', WIDE, async (page) => {
+  await page.seed(BASE_GROUPS, BASE_ITEMS);
+  const from = await page.rect('[data-shortcut-id="a5"]');
+  const w4 = await page.rect('[data-shortcut-id="w4"]');
+  const w3 = await page.rect('[data-shortcut-id="w3"]');
+  const r2 = await page.rect('[data-shortcut-id="r2"]');
+  // First to the end of the second row, which leaves the width alone.
+  await page.mouse('mouseMoved', from.x, from.y, { button: 'none' });
+  await page.mouse('mousePressed', from.x, from.y, { buttons: 1 });
+  for (let step = 1; step <= 8; step += 1) {
+    await page.mouse('mouseMoved', from.x + (w4.right + 8 - from.x) * step / 8, from.y + (w4.y - from.y) * step / 8, { buttons: 1 });
+    await page.settle(35);
+  }
+  await page.settle(300);
+  // Then past the last row's end, by the half column the grid re-centers by.
+  const held = { x: r2.x + (w4.x - w3.x) / 2, y: r2.y };
+  await page.mouse('mouseMoved', held.x, held.y, { buttons: 1 });
+  await page.settle(400);
+  const problems = [];
+  if (await page.evaluate(`document.querySelector('[data-shortcut-id="r2"]').hasAttribute('data-bookmark-drop-target')`)) {
+    problems.push({ key: 'the tile under the pointer became a folder target', dx: 0, dy: 0 });
+  }
+  await page.mouse('mouseReleased', held.x, held.y, { buttons: 0 });
+  await page.settle(900);
+  const after = await page.snapshot();
+  if (!after['tile:a5'] || !after['tile:r2']) problems.push({ key: 'the drop made a folder', dx: 0, dy: 0 });
+  return problems;
 });
 
 check('a drag shows the empty bookmarks bar without moving the page', { width: 1440, height: 1300 }, async (page) => {
@@ -627,8 +678,9 @@ check('a drag leaves the empty bookmarks bar hidden where it would cover shortcu
       before: async () => {
         const shown = await page.evaluate(`document.getElementById('_x_extension_newtab_bookmarks_grid_2024_unique_').getAttribute('data-bookmark-empty-drop-surface')`);
         if (shown === 'true') moves.push({ key: 'empty bookmarks bar covered the shortcuts', dx: 0, dy: 0 });
-        // The dragged tile opens a slot among the tiles it passes.
-        moves.push(...movedBetween(before, await page.snapshot(), ['tile:', 'add']).map((e) => ({ ...e, key: `during drag ${e.key}` })));
+        // The dragged tile opens a slot among the tiles it passes, and the
+        // grid re-centers as the longest row loses it.
+        moves.push(...movedBetween(before, await page.snapshot(), ['tile:', 'title:', 'add']).map((e) => ({ ...e, key: `during drag ${e.key}` })));
       }
     });
     await page.settle(800);

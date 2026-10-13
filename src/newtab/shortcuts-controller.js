@@ -661,11 +661,11 @@
       });
     }
 
-    // A drag moves tiles between groups without rendering; the grid widens
-    // when the group a tile joins outgrows its longest row.
-    function widenShortcutGroupColumns() {
+    // A drag moves tiles between groups without rendering; the grid follows
+    // its longest row as the tile joins or leaves one.
+    function fitShortcutGroupColumns() {
       return Boolean(shortcutsView && isShortcutGroupLayoutActive() &&
-        shortcutsView.widenGroupedColumns(getVisibleShortcuts(), shortcutGroups));
+        shortcutsView.fitGroupedColumns(getVisibleShortcuts(), shortcutGroups));
     }
 
     function applyShortcutState(state) {
@@ -1618,7 +1618,7 @@
       createShortcutDialogComponent,
       getShortcutGroups,
       isShortcutGroupLayoutActive,
-      widenShortcutGroupColumns,
+      fitShortcutGroupColumns,
       getShortcutGroupDisplayTitle,
       openShortcutAddDialog,
       openShortcutGroupDialog,

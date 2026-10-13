@@ -640,7 +640,7 @@ describe('Shortcuts React island', () => {
       expect(columns()).toBe('');
     });
 
-    it('widens, never narrows, the grouped grid for a tile dragged into another group', () => {
+    it('fits the grouped grid to the longest row as a dragged tile joins or leaves it', () => {
       const { view, options } = createView({ maxShortcuts: 50 });
       const grid = options.grid as HTMLElement;
       const columns = () => grid.style.getPropertyValue('--x-nt-shortcut-grouped-columns');
@@ -653,14 +653,17 @@ describe('Shortcuts React island', () => {
       expect(columns()).toBe('4');
 
       // The first group grows to five while the drag has not rendered.
-      expect(view.widenGroupedColumns([items[0], ...others, { ...items[1], groupId: 'g0' }, items[2]], groups)).toBe(true);
+      expect(view.fitGroupedColumns([items[0], ...others, { ...items[1], groupId: 'g0' }, items[2]], groups)).toBe(true);
       expect(columns()).toBe('5');
-      // Leaving it again keeps the width until the render after the drop.
-      expect(view.widenGroupedColumns([items[0], ...others, items[1], items[2]], groups)).toBe(false);
-      expect(columns()).toBe('5');
+      // Leaving it again narrows the grid without waiting for the drop.
+      expect(view.fitGroupedColumns([items[0], ...others, items[1], items[2]], groups)).toBe(true);
+      expect(columns()).toBe('4');
+      // A move that keeps the longest row's length changes nothing.
+      expect(view.fitGroupedColumns([...others, items[1], { ...items[0], groupId: 'work' }, items[2]], groups)).toBe(false);
+      expect(columns()).toBe('4');
 
       renderItems(view, items, { grouped: false, groups });
-      expect(view.widenGroupedColumns(items, groups)).toBe(false);
+      expect(view.fitGroupedColumns(items, groups)).toBe(false);
       expect(columns()).toBe('');
     });
 

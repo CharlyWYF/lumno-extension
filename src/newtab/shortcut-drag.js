@@ -50,7 +50,7 @@
       getShortcutTileFromNode,
       closeShortcutContextMenu,
       moveShortcutGroupToIndex,
-      widenShortcutGroupColumns
+      fitShortcutGroupColumns
     } = deps;
 
     // Page state still owned by newtab.js; read and written through accessors.
@@ -587,8 +587,11 @@
       if (moveShortcutItem(state.shortcutId, targetIndex, targetGroupId)) {
         state.hasReordered = true;
         if (moveShortcutTileElement(state.tile, targetIndex, slot)) {
-          // Before measuring, so a row that would have wrapped slides wider.
-          widenShortcutGroupColumns();
+          // Before measuring, so a grid that hugs a longer or shorter row
+          // slides to its new width with the tiles.
+          if (fitShortcutGroupColumns()) {
+            holdShortcutStackTargetUnderPointer(state, pointerX, pointerY);
+          }
           animateShortcutLayoutShift(beforeRects, state.tile);
           setShortcutDragTileTransform(state, pointerX, pointerY);
         }
@@ -852,10 +855,26 @@
         return rect && pointerX >= rect.left + rect.width * 0.25 &&
           pointerX <= rect.right - rect.width * 0.25 && pointerY >= rect.top && pointerY <= rect.bottom;
       });
+      if (state.stackHeldTile) {
+        if (tile === state.stackHeldTile) {
+          return null;
+        }
+        state.stackHeldTile = null;
+      }
       const target = tile ? getShortcutById(getShortcutTileId(tile)) : null;
       return target && target.type !== 'folder' && target.id !== source.id
         ? { kind: 'shortcut-stack', surface: 'shortcuts', element: tile, shortcutId: target.id }
         : null;
+    }
+
+    // A grid that re-centers slides every tile half a column under a pointer
+    // that held still. A tile that lands under it is no stack target until
+    // the pointer leaves it, or releasing where the drag showed a gap would
+    // make a folder.
+    function holdShortcutStackTargetUnderPointer(state, pointerX, pointerY) {
+      state.stackHeldTile = null;
+      const target = getShortcutStackTargetAt(state, pointerX, pointerY);
+      state.stackHeldTile = target ? target.element : null;
     }
 
     function stackShortcuts(state, target) {

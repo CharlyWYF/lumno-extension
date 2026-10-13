@@ -122,7 +122,7 @@ export interface ShortcutsViewOptions {
 
 export interface ShortcutsViewController {
   render(items: ShortcutItem[], layout?: ShortcutsLayout): { count: number };
-  widenGroupedColumns(items: ShortcutItem[], groups: ShortcutGroup[]): boolean;
+  fitGroupedColumns(items: ShortcutItem[], groups: ShortcutGroup[]): boolean;
   clear(): void;
   refreshElements(): void;
   getTiles(): ShortcutTileElement[];
@@ -656,7 +656,7 @@ function createNoopController(
       tiles.length = 0;
       return { count: 0 };
     },
-    widenGroupedColumns() {
+    fitGroupedColumns() {
       return false;
     },
     clear() {
@@ -724,10 +724,7 @@ export function createShortcutsView(
     options.hideTooltip();
     if (grouped) {
       options.grid.setAttribute('data-shortcut-grouped', 'true');
-      options.grid.style.setProperty(
-        '--x-nt-shortcut-grouped-columns',
-        String(getGroupedColumnCount(normalizedItems, layout.groups as ShortcutGroup[]))
-      );
+      fitGroupedColumns(normalizedItems, layout.groups as ShortcutGroup[]);
     } else {
       options.grid.removeAttribute('data-shortcut-grouped');
       options.grid.style.removeProperty('--x-nt-shortcut-grouped-columns');
@@ -763,27 +760,27 @@ export function createShortcutsView(
     return { count: normalizedItems.length };
   }
 
-  // A drag moves tiles between groups without a render. A group the tile
-  // joins can outgrow the row the grid hugs and would wrap, so the grid
-  // widens to fit it; it never narrows under the pointer, and the render
-  // after the drop settles it. Returns whether the grid widened.
-  function widenGroupedColumns(items: ShortcutItem[], groups: ShortcutGroup[]): boolean {
+  // Sizes a grouped grid to its longest row. A drag moves tiles between
+  // groups without a render and calls this as the tile joins or leaves a
+  // row, so a longer row does not wrap, a shorter one re-centers at once,
+  // and the drop leaves everything where the drag showed it. Returns
+  // whether the column count changed.
+  function fitGroupedColumns(items: ShortcutItem[], groups: ShortcutGroup[]): boolean {
     if (options.grid.getAttribute('data-shortcut-grouped') !== 'true' ||
         !Array.isArray(items) || !Array.isArray(groups) || !groups.length) {
       return false;
     }
-    const current = Number(options.grid.style.getPropertyValue('--x-nt-shortcut-grouped-columns')) || 0;
-    const next = getGroupedColumnCount(items, groups);
-    if (next <= current) {
+    const next = String(getGroupedColumnCount(items, groups));
+    if (options.grid.style.getPropertyValue('--x-nt-shortcut-grouped-columns') === next) {
       return false;
     }
-    options.grid.style.setProperty('--x-nt-shortcut-grouped-columns', String(next));
+    options.grid.style.setProperty('--x-nt-shortcut-grouped-columns', next);
     return true;
   }
 
   return {
     render,
-    widenGroupedColumns,
+    fitGroupedColumns,
     clear() {
       options.hideTooltip();
       flushSync(() => {
