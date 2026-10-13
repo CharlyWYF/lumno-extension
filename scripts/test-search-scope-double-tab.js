@@ -131,7 +131,7 @@ for (const [surface, source] of [
 
 const overlayTabHandlerStart = overlaySource.indexOf('function handleTabKey(e) {');
 const overlayTabHandlerEnd = overlaySource.indexOf(
-  'captureTabHandler = function(e) {',
+  'function shouldRemoveSearchModeTagOnBackspace(event) {',
   overlayTabHandlerStart
 );
 const overlayTabHandlerSource = overlaySource.slice(

@@ -6,13 +6,8 @@ window._x_extension_search_overlay_open_2026_unique_ = false;
 
 window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayContext) {
   const BROWSER_PROFILE = globalThis.LumnoBrowserProfile;
-  let captureTabHandler = null;
   let overlayThemeMediaListener = null;
   let overlayPageThemeObserver = null;
-  let keydownHandler = null;
-  let keyupHandler = null;
-  let overlayKeyCaptureHandler = null;
-  let overlayModifierBlurHandler = null;
   let clickOutsideHandler = null;
   let overlayScrollPauseHandler = null;
   let overlayWheelIsolationHandler = null;
@@ -72,6 +67,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
   const UPDATE_NOTICE = globalThis.LumnoUpdateNotice;
   const ENGAGEMENT_NOTICE = globalThis.LumnoEngagementNotice;
   const OVERLAY_NOTICES = globalThis.LumnoOverlayNotices;
+  const OVERLAY_KEYBOARD = globalThis.LumnoOverlayKeyboard;
   const FAVICON_UTILS = globalThis.LumnoFaviconUtils;
   const FAVICON_THEME = globalThis.LumnoNewtabFaviconTheme;
   const overlayRuntime = globalThis.LumnoOverlayRuntime;
@@ -1354,31 +1350,9 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     if (overlayThemeStyle) {
       overlayThemeStyle.remove();
     }
-    if (captureTabHandler) {
-      document.removeEventListener('keydown', captureTabHandler, true);
-      captureTabHandler = null;
-    }
-    if (keydownHandler) {
-      document.removeEventListener('keydown', keydownHandler);
-      keydownHandler = null;
-    }
-    if (keyupHandler) {
-      document.removeEventListener('keyup', keyupHandler);
-      keyupHandler = null;
-    }
     if (clickOutsideHandler) {
       document.removeEventListener('click', clickOutsideHandler);
       clickOutsideHandler = null;
-    }
-    if (overlayKeyCaptureHandler) {
-      window.removeEventListener('keydown', overlayKeyCaptureHandler, true);
-      window.removeEventListener('keypress', overlayKeyCaptureHandler, true);
-      window.removeEventListener('keyup', overlayKeyCaptureHandler, true);
-      overlayKeyCaptureHandler = null;
-    }
-    if (overlayModifierBlurHandler) {
-      window.removeEventListener('blur', overlayModifierBlurHandler);
-      overlayModifierBlurHandler = null;
     }
     storageChangeListeners.clear();
     if (overlayThemeMediaListener) {
@@ -5863,23 +5837,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       return false;
     }
 
-    captureTabHandler = function(e) {
-      if (!e || e.isTrusted !== true) {
-        return;
-      }
-      if (e.key !== 'Tab') {
-        return;
-      }
-      const searchRoot = searchInput && typeof searchInput.getRootNode === 'function'
-        ? searchInput.getRootNode()
-        : null;
-      const activeInRoot = searchRoot && searchRoot.activeElement ? searchRoot.activeElement : null;
-      if (document.activeElement !== searchInput && activeInRoot !== searchInput) {
-        return;
-      }
-      handleTabKey(e);
-    };
-    document.addEventListener('keydown', captureTabHandler, true);
 
     function shouldRemoveSearchModeTagOnBackspace(event) {
       if (!inputModeController ||
@@ -5979,7 +5936,9 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         if (suggestionNavigationKey) {
           e.stopPropagation();
         }
-        keydownHandler(e);
+        if (e.isTrusted === true) {
+          handleOverlayKeydown(e);
+        }
         return;
       }
       dismissAutocompletePreviewOnNonTabKey(e);
@@ -6029,27 +5988,9 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       });
     }
 
-    function isKeyEventForOverlay(event) {
-      return overlayLifecycle.isOverlayKeyEvent(event, {
-        document,
-        host: getOverlayMountHost(overlay),
-        panel: overlay
-      });
-    }
-
-    keydownHandler = function(e) {
-      if (!e || e.isTrusted !== true) {
-        return;
-      }
-      if (!isKeyEventForOverlay(e)) {
-        // A focused host-page control keeps its arrows, Enter and digits.
-        // Escape still dismisses the overlay from anywhere, like a click
-        // outside it does.
-        if (e.key === 'Escape' && overlay) {
-          removeOverlay(overlay);
-        }
-        return;
-      }
+    // Keys that belong to the overlay (see LumnoOverlayKeyboard), plus the
+    // navigation, Enter and Escape keys forwarded by the input handler.
+    function handleOverlayKeydown(e) {
       syncSuggestionActionModifiersFromEvent(e);
       if (SUGGESTION_NAVIGATION.handleNumberShortcutKeyEvent(
         e,
@@ -6334,12 +6275,9 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
           });
         }
       }
-    };
+    }
 
-    keyupHandler = function(e) {
-      if (!e || e.isTrusted !== true || !isKeyEventForOverlay(e)) {
-        return;
-      }
+    function handleOverlayKeyup(e) {
       syncSuggestionActionModifiersFromEvent(e);
       SUGGESTION_NAVIGATION.handleNumberShortcutKeyEvent(
         e,
@@ -6347,81 +6285,63 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         suggestionsContainer,
         numberShortcutOptions
       );
-    };
+    }
 
-    overlayKeyCaptureHandler = function(e) {
-      if (!e || e.isTrusted !== true) {
-        if (e && typeof e.stopImmediatePropagation === 'function') {
-          e.stopImmediatePropagation();
-        }
-        return;
-      }
-      if (!overlay || !overlay.isConnected) {
-        return;
-      }
-      if (e.type === 'keyup') {
-        imeKeyGuard.markKeyUp();
-      }
+    function isSearchInputActive() {
       const searchRoot = searchInput && typeof searchInput.getRootNode === 'function'
         ? searchInput.getRootNode()
         : null;
       const activeInRoot = searchRoot && searchRoot.activeElement ? searchRoot.activeElement : null;
-      const searchInputActive = document.activeElement === searchInput ||
-        activeInRoot === searchInput;
-      const modeMenuActive = Boolean(
+      return document.activeElement === searchInput || activeInRoot === searchInput;
+    }
+
+    const overlayKeyRouter = OVERLAY_KEYBOARD.createOverlayKeyRouter(window, {
+      getMount: () => ({
+        document,
+        host: getOverlayMountHost(overlay),
+        panel: overlay
+      }),
+      isOverlayConnected: () => Boolean(overlay && overlay.isConnected),
+      isSearchInputActive,
+      shouldHandleModeMenuKey: (e) => Boolean(
         inputModeController &&
         typeof inputModeController.shouldHandleModeMenuKeyEvent === 'function' &&
         inputModeController.shouldHandleModeMenuKeyEvent(e)
-      );
-      if (!searchInputActive && !modeMenuActive) {
-        return;
-      }
-      if (isImeCompositionEvent(e)) {
-        e.stopImmediatePropagation();
-        return;
-      }
-      syncSuggestionActionModifiersFromEvent(e);
-      if ((e.type === 'keydown' || e.type === 'keyup') &&
-          SUGGESTION_NAVIGATION.handleNumberShortcutKeyEvent(
-            e,
-            suggestionItems,
-            suggestionsContainer,
-            numberShortcutOptions
-          )) {
-        e.stopImmediatePropagation();
-        return;
-      }
-      if (e.type === 'keydown' && searchInputActive && getSuggestionNavigationKey(e)) {
-        handleSearchInputKeydown(e);
-        e.stopImmediatePropagation();
-        return;
-      }
-      if (e.metaKey || e.ctrlKey || e.altKey) {
-        return;
-      }
-      if (e.type === 'keydown') {
-        if (modeMenuActive &&
-            typeof inputModeController.handleModeMenuKeyEvent === 'function') {
-          inputModeController.handleModeMenuKeyEvent(e);
-        } else {
-          handleSearchInputKeydown(e);
+      ),
+      handleModeMenuKey(e) {
+        if (!inputModeController ||
+            typeof inputModeController.handleModeMenuKeyEvent !== 'function') {
+          return false;
         }
-      } else if (e.type === 'keyup') {
-        syncSuggestionActionModifiersFromEvent(e);
+        inputModeController.handleModeMenuKeyEvent(e);
+        return true;
+      },
+      isImeComposition: isImeCompositionEvent,
+      onKeyUp: () => imeKeyGuard.markKeyUp(),
+      syncModifiers: syncSuggestionActionModifiersFromEvent,
+      handleNumberShortcut: (e) => SUGGESTION_NAVIGATION.handleNumberShortcutKeyEvent(
+        e,
+        suggestionItems,
+        suggestionsContainer,
+        numberShortcutOptions
+      ),
+      getSuggestionNavigationKey,
+      handleInputKeydown: handleSearchInputKeydown,
+      handleTab: handleTabKey,
+      handleOverlayKeydown,
+      handleOverlayKeyup,
+      onEscapeOutside: () => {
+        if (overlay) {
+          removeOverlay(overlay);
+        }
+      },
+      onBlur: () => {
+        setSuggestionActionModifiersActive(false, false, false);
+        SUGGESTION_NAVIGATION.cancelNumberShortcuts(suggestionsContainer);
       }
-      e.stopImmediatePropagation();
-    };
-
-    window.addEventListener('keydown', overlayKeyCaptureHandler, true);
-    window.addEventListener('keypress', overlayKeyCaptureHandler, true);
-    window.addEventListener('keyup', overlayKeyCaptureHandler, true);
-    document.addEventListener('keydown', keydownHandler);
-    document.addEventListener('keyup', keyupHandler);
-    overlayModifierBlurHandler = function() {
-      setSuggestionActionModifiersActive(false, false, false);
-      SUGGESTION_NAVIGATION.cancelNumberShortcuts(suggestionsContainer);
-    };
-    window.addEventListener('blur', overlayModifierBlurHandler);
+    });
+    overlayKeyRouter.start();
+    addOverlaySessionCleanup(() => overlayKeyRouter.stop());
 
     function getOverlaySuggestionRefreshQuery() {
       return latestOverlayQuery || (searchInput ? String(searchInput.value || '').trim() : '');

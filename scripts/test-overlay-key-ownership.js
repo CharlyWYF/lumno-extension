@@ -1,10 +1,7 @@
 const assert = require('assert');
 const { JSDOM } = require('jsdom');
 
-delete globalThis.LumnoOverlayLifecycle;
-require('../src/overlay/lifecycle.js');
-
-const { isOverlayKeyEvent } = globalThis.LumnoOverlayLifecycle;
+const { isOverlayKeyEvent } = require('../src/overlay/keyboard.js');
 
 // The overlay listens for keys on the host document. It may only claim keys
 // that come from its own (closed) shadow tree or that reach the page while

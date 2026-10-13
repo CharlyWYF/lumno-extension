@@ -50,6 +50,7 @@ const injectedScriptFiles = [
   'src/overlay/site-fixes.js',
   'src/overlay/page-theme.js',
   'src/overlay/notices.js',
+  'src/overlay/keyboard.js',
   'src/overlay/search-panel.js',
   'src/overlay/tab-switcher.js',
   'src/content/document-pip-picker.js'
