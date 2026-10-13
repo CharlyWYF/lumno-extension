@@ -531,11 +531,6 @@ function testOverlayRendererUsesExtensionFaviconProxyForBrowserPages() {
   );
   assert.match(
     overlayJs,
-    /function isBrowserInternalPageUrl\(url\)[\s\S]*?resolver\.isBrowserInternalPageUrl\(url\)/,
-    'overlay renderer should share browser-internal page URL detection'
-  );
-  assert.match(
-    overlayJs,
     /function isBlockedOverlayFaviconUrl\(url\)[\s\S]*?resolver\.isBlockedFaviconUrl\(url\)/,
     'overlay renderer should share nested favicon URL blocking rules'
   );

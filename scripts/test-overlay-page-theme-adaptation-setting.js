@@ -106,11 +106,6 @@ assert.match(
 );
 assert.match(
   overlaySource,
-  /return overlayPageTheme\.getCssColorThemeSignal\(color, weight\);/,
-  'page background signals should preserve CSS alpha instead of treating transparent black as opaque black'
-);
-assert.match(
-  overlaySource,
   /!changes\[THEME_STORAGE_KEY\][\s\S]*?!changes\[OVERLAY_PAGE_THEME_ADAPTATION_ENABLED_STORAGE_KEY\][\s\S]*?applyOverlayTheme\(nextMode\)/,
   'an open overlay should update immediately when either theme preference changes'
 );
