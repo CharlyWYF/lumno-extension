@@ -254,10 +254,6 @@ function canHostSwitcherSurface(tab) {
     canOpenOverlayOnUrl(url);
 }
 
-function isTabSwitcherEligibleTab(tab) {
-  return canHostSwitcherSurface(tab);
-}
-
 function getPortSenderTabId(port) {
   const senderTab = port && port.sender && port.sender.tab ? port.sender.tab : null;
   return senderTab && typeof senderTab.id === 'number' ? senderTab.id : null;
@@ -940,18 +936,6 @@ const pipOwnership = globalThis.LumnoPipOwnership.create({
 const pipMainWorld = globalThis.LumnoPipMainWorld.create({
   chromeApi: chrome
 });
-
-async function requestGlobalPipOwnership(sender, kind) {
-  return pipOwnership.requestGlobalPipOwnership(sender, kind);
-}
-
-async function releaseGlobalPipOwnership(sender, token) {
-  return pipOwnership.releaseGlobalPipOwnership(sender, token);
-}
-
-function clearGlobalPipOwnerForTabId(tabId) {
-  pipOwnership.clearGlobalPipOwnerForTabId(tabId);
-}
 
 function isLumnoNewtabUrl(url) {
   const value = String(url || '');
@@ -1945,10 +1929,6 @@ function normalizePinnedTabRecoveryEnabled(value) {
   return value === true;
 }
 
-function normalizeTabSwitcherEnabled(value) {
-  return SETTINGS.normalizeTabSwitcherEnabled(value);
-}
-
 function applyPinnedTabRecoverySetting(rawValue) {
   const normalized = normalizePinnedTabRecoveryEnabled(rawValue);
   pinnedTabRecoveryEnabledCache = normalized;
@@ -2705,7 +2685,7 @@ if (storageArea) {
     documentPipEnabledCache = normalizedDocumentPip;
     resolveDocumentPipEnabledReady();
     const tabSwitcherStored = result[TAB_SWITCHER_ENABLED_STORAGE_KEY];
-    const normalizedTabSwitcher = normalizeTabSwitcherEnabled(tabSwitcherStored);
+    const normalizedTabSwitcher = SETTINGS.normalizeTabSwitcherEnabled(tabSwitcherStored);
     if (tabSwitcherStored !== normalizedTabSwitcher) {
       storageArea.set({ [TAB_SWITCHER_ENABLED_STORAGE_KEY]: normalizedTabSwitcher });
     }
@@ -2853,15 +2833,11 @@ function clearRecentPageHotkeyContext() {
   lastPageHotkeyContext = null;
 }
 
-function buildPrefillQueryForCurrentPage(tab) {
-  return getResolvedTabUrl(tab);
-}
-
 function getOverlayPrefillQueryForSource(tab, source) {
   if (source !== 'page-hotkey-prefill' && source !== 'commands-prefill') {
     return '';
   }
-  return buildPrefillQueryForCurrentPage(tab);
+  return getResolvedTabUrl(tab);
 }
 
 function recoverFromPageHotkeyNewtab(newTabId, windowId) {
@@ -2933,10 +2909,6 @@ function removeRecentSwitcherTab(tabId) {
   }
 }
 
-function getSwitcherThumbnailStateForTab(tabId, url) {
-  return recentTabTracker.getThumbnailState(tabId, url);
-}
-
 function getSwitcherThumbnailStateForPayload(tab, url) {
   // Also drops blurred captures saved before such pages were skipped.
   if (isFirefoxPrivilegedPageUrl(url)) {
@@ -2952,7 +2924,7 @@ function getSwitcherThumbnailStateForPayload(tab, url) {
       updatedAt: 0
     };
   }
-  return getSwitcherThumbnailStateForTab(tab.id, url);
+  return recentTabTracker.getThumbnailState(tab.id, url);
 }
 
 function isSwitcherThumbnailRefreshNeeded(state) {
@@ -3035,7 +3007,7 @@ function consumeSwitcherThumbnailPriority(tab, reason) {
     clearSwitcherThumbnailPriority(tabId);
     return false;
   }
-  const state = getSwitcherThumbnailStateForTab(tabId, url);
+  const state = recentTabTracker.getThumbnailState(tabId, url);
   if (!isSwitcherThumbnailRefreshNeeded(state)) {
     clearSwitcherThumbnailPriority(tabId);
     return false;
@@ -3202,7 +3174,7 @@ function getPersistedSiteThemeColorForSwitcher(host) {
         accentRgb,
         source: entry.source || 'cache',
         neutral: entry.neutral === true,
-        confidence: entry.confidence || getThemeColorConfidence(accentRgb)
+        confidence: entry.confidence || FAVICON_UTILS.getThemeColorConfidence(accentRgb)
       };
     }
   }
@@ -3222,7 +3194,7 @@ function persistSiteThemeColorForSwitcher(host, result) {
     accentRgb,
     source: result.source || 'meta',
     neutral: result.neutral === true,
-    confidence: result.confidence || getThemeColorConfidence(accentRgb)
+    confidence: result.confidence || FAVICON_UTILS.getThemeColorConfidence(accentRgb)
   });
 }
 
@@ -3243,7 +3215,7 @@ function normalizeSwitcherAccentRgbForPayload(accentRgb) {
   if (!rgb) {
     return null;
   }
-  if (getThemeColorConfidence(rgb) === 'neutral') {
+  if (FAVICON_UTILS.getThemeColorConfidence(rgb) === 'neutral') {
     return normalizeThemeAccentRgb(NEWTAB_FAVICON_THEME.defaultAccentColor) || [59, 130, 246];
   }
   return rgb;
@@ -5872,7 +5844,7 @@ if (chrome && chrome.tabs && chrome.tabs.onRemoved) {
     clearOverlayLoadingRecord(tabId);
     clearTabSwitchStat(tabId);
     removeRecentSwitcherTab(tabId);
-    clearGlobalPipOwnerForTabId(tabId);
+    pipOwnership.clearGlobalPipOwnerForTabId(tabId);
     Array.from(tabSwitcherHostTabIdByWindowId.entries()).forEach(([windowId, hostTabId]) => {
       if (hostTabId === tabId) {
         tabSwitcherHostTabIdByWindowId.delete(windowId);
@@ -5926,7 +5898,7 @@ if (chrome && chrome.tabs && chrome.tabs.onUpdated) {
     if (typeof changeInfo.url === 'string') {
       // URL changed means the tab semantic target changed; reset historical switch stats.
       clearTabSwitchStat(tabId);
-      clearGlobalPipOwnerForTabId(tabId);
+      pipOwnership.clearGlobalPipOwnerForTabId(tabId);
       clearSwitcherThumbnailPriority(tabId);
       updateRecentSwitcherTab(tab);
     }
@@ -6099,7 +6071,7 @@ let selectionQuickActionFallbackProvidersPromise = null;
 const selectionQuickActionGroupTitlePromises = new Map();
 
 function loadSelectionQuickActionGroupTitle(locale) {
-  const normalizedLocale = normalizeLocaleForMessages(locale);
+  const normalizedLocale = SETTINGS.normalizeLocale(locale);
   if (selectionQuickActionGroupTitlePromises.has(normalizedLocale)) {
     return selectionQuickActionGroupTitlePromises.get(normalizedLocale);
   }
@@ -6642,7 +6614,7 @@ function getSearchEngineSuggestionRequestKey(request, sender) {
 // Picture-in-picture ownership and main-world helpers.
 const PIP_MESSAGE_HANDLERS = Object.freeze({
   pipRequestOwnership(request, sender, sendResponse) {
-    requestGlobalPipOwnership(sender, request && request.kind ? String(request.kind) : '')
+    pipOwnership.requestGlobalPipOwnership(sender, request && request.kind ? String(request.kind) : '')
       .then((result) => {
         sendResponse(result);
       })
@@ -6656,7 +6628,7 @@ const PIP_MESSAGE_HANDLERS = Object.freeze({
     return true;
   },
   pipReleaseOwnership(request, sender, sendResponse) {
-    releaseGlobalPipOwnership(sender, request && request.token ? String(request.token) : '')
+    pipOwnership.releaseGlobalPipOwnership(sender, request && request.token ? String(request.token) : '')
       .then((result) => {
         sendResponse(result);
       })
@@ -6991,7 +6963,7 @@ const SELECTION_QUICK_ACTION_MESSAGE_HANDLERS = Object.freeze({
 // Locale messages and permission probes.
 const LOCALE_AND_PERMISSION_MESSAGE_HANDLERS = Object.freeze({
   getLocaleMessages(request, sender, sendResponse) {
-    const locale = normalizeLocaleForMessages(request.locale);
+    const locale = SETTINGS.normalizeLocale(request.locale);
     const localePath = chrome.runtime.getURL(`_locales/${locale}/messages.json`);
     fetch(localePath, { cache: 'no-store' })
       .then((response) => response.json())
@@ -7290,7 +7262,6 @@ let bookmarkItemsCache = {
   expiresAt: 0,
   items: []
 };
-let bookmarkTreeIndexPromise = null;
 let bookmarkItemsPromise = null;
 let bookmarkTreeCacheListenersBound = false;
 const searchEngineSuggestionRequests = new Map();
@@ -7391,7 +7362,7 @@ function getBackgroundFaviconCacheRuntime() {
       windowObj: globalThis,
       normalizeFaviconHost,
       isBlockedLocalFaviconUrl,
-      isChromeMonogramFaviconUrl
+      isChromeMonogramFaviconUrl: FAVICON_UTILS.isChromeMonogramFaviconUrl
     });
     if (backgroundFaviconCacheRuntime &&
         typeof backgroundFaviconCacheRuntime.ensureCachesReady === 'function') {
@@ -7556,10 +7527,6 @@ function isFaviconProxyUrl(url) {
   return FAVICON_UTILS.isFaviconProxyUrl(url);
 }
 
-function isChromeMonogramFaviconUrl(url) {
-  return FAVICON_UTILS.isChromeMonogramFaviconUrl(url);
-}
-
 function normalizeHost(hostname) {
   if (!hostname) {
     return '';
@@ -7570,10 +7537,6 @@ function normalizeHost(hostname) {
     return 'feishu.cn';
   }
   return stripped;
-}
-
-function isLocalNetworkHost(hostname) {
-  return FAVICON_UTILS.isLocalNetworkHost(hostname);
 }
 
 function getSearchEngineByHostname(hostname) {
@@ -7954,10 +7917,6 @@ if (chrome && chrome.tabs) {
   });
 }
 
-function normalizeLocaleForMessages(locale) {
-  return SETTINGS.normalizeLocale(locale);
-}
-
 function shouldBlockFaviconForHost(hostname) {
   return FAVICON_UTILS.shouldBlockFaviconForHost(hostname);
 }
@@ -8025,16 +7984,8 @@ function normalizeThemePreference(theme) {
   return SETTINGS.normalizeThemePreference(theme);
 }
 
-function parseCssThemeColor(color) {
-  return FAVICON_UTILS.parseCssThemeColor(color);
-}
-
 function parseHtmlThemeColorCandidates(html, pageUrl, preferredTheme) {
   return FAVICON_UTILS.parseHtmlThemeColorCandidates(html, pageUrl, normalizeThemePreference(preferredTheme));
-}
-
-function pickBestThemeColorCandidate(candidates) {
-  return FAVICON_UTILS.pickBestThemeColorCandidate(candidates);
 }
 
 function normalizeThemeAccentRgb(value) {
@@ -8047,10 +7998,6 @@ function normalizeThemeAccentRgb(value) {
     : null;
 }
 
-function getThemeColorConfidence(accentRgb) {
-  return FAVICON_UTILS.getThemeColorConfidence(accentRgb);
-}
-
 function buildSiteThemeColorResult(accentRgb, source, options) {
   const rgb = normalizeThemeAccentRgb(accentRgb);
   if (!rgb) {
@@ -8058,7 +8005,7 @@ function buildSiteThemeColorResult(accentRgb, source, options) {
   }
   const confidence = options && options.confidence
     ? String(options.confidence)
-    : getThemeColorConfidence(rgb);
+    : FAVICON_UTILS.getThemeColorConfidence(rgb);
   const neutral = options && typeof options.neutral === 'boolean'
     ? options.neutral
     : confidence === 'neutral';
@@ -8530,10 +8477,6 @@ function loadSiteSearchIconCache() {
   return siteSearchIconCacheLoadPromise;
 }
 
-function getSiteSearchProviderIconPageUrl(provider) {
-  return SHORTCUT_FAVICON.getSiteSearchProviderPageUrl(provider);
-}
-
 function hasUsableCachedSiteSearchProviderIcon(provider) {
   const icon = SHORTCUT_FAVICON.getSiteSearchProviderIcon(
     siteSearchIconCache || {},
@@ -8575,7 +8518,7 @@ function pruneSiteSearchProviderIconCache(providers) {
     if (SITE_SEARCH_PINNED_ICON_KEYS.has(providerKey)) {
       return [];
     }
-    const pageUrl = getSiteSearchProviderIconPageUrl(provider);
+    const pageUrl = SHORTCUT_FAVICON.getSiteSearchProviderPageUrl(provider);
     return pageUrl ? [pageUrl] : [];
   });
   const nextCache = SHORTCUT_FAVICON.retainCachedIcons(
@@ -8650,7 +8593,7 @@ function scheduleSiteSearchProviderIconWarmup(providers, preferredTheme) {
     pruneSiteSearchProviderIconCache(items);
     items.forEach((provider) => {
       const explicitIcon = SHORTCUT_FAVICON.getSiteSearchProviderExplicitIcon(provider);
-      const pageUrl = getSiteSearchProviderIconPageUrl(provider);
+      const pageUrl = SHORTCUT_FAVICON.getSiteSearchProviderPageUrl(provider);
       const providerKey = String(provider && provider.key || '').trim().toLowerCase();
       if (SITE_SEARCH_PINNED_ICON_KEYS.has(providerKey)) {
         return;
@@ -8668,52 +8611,6 @@ function scheduleSiteSearchProviderIconWarmup(providers, preferredTheme) {
     });
     drainSiteSearchIconWarmQueue();
   }).catch(warnBackgroundFailure('Failed to warm site search icons.'));
-}
-
-function escapeRegExp(text) {
-  return String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function sanitizeDisplayText(text) {
-  const raw = String(text || '');
-  const withoutSpecial = raw.replace(/[\u0000-\u001F\u007F-\u009F\uFEFF\uFFF9-\uFFFD]|\p{Co}/gu, '');
-  return withoutSpecial.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '');
-}
-
-function renderHighlightedText(target, text, query, styles) {
-  const safeText = sanitizeDisplayText(text);
-  const needle = String(query || '').trim();
-  if (!needle) {
-    target.textContent = safeText;
-    return;
-  }
-  const parts = safeText.split(new RegExp(`(${escapeRegExp(needle)})`, 'gi'));
-  if (parts.length === 1) {
-    target.textContent = safeText;
-    return;
-  }
-  parts.forEach((part) => {
-    if (!part) {
-      return;
-    }
-    if (part.toLowerCase() === needle.toLowerCase()) {
-      const mark = document.createElement('mark');
-      mark.style.background = styles && styles.background
-        ? styles.background
-        : 'var(--x-ext-mark-bg, #CFE8FF)';
-      mark.style.color = styles && styles.color
-        ? styles.color
-        : 'var(--x-ext-mark-text, #1E3A8A)';
-      mark.style.padding = '0 1px';
-      mark.style.borderRadius = '2px';
-      mark.style.lineHeight = 'inherit';
-      mark.style.fontFamily = "'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
-      mark.textContent = part;
-      target.appendChild(mark);
-    } else {
-      target.appendChild(document.createTextNode(part));
-    }
-  });
 }
 
 function fetchFaviconData(url, pageUrl) {
@@ -8811,10 +8708,6 @@ function fetchFaviconData(url, pageUrl) {
   });
 }
 
-function normalizeSiteSearchTemplate(template) {
-  return SEARCH_UTILS.normalizeSiteSearchTemplate(template);
-}
-
 function isInteractiveSiteSearchProvider(provider) {
   return SEARCH_UTILS.isInteractiveSiteSearchProvider(provider);
 }
@@ -8867,10 +8760,6 @@ function normalizeFaviconEnhancedFetchEnabled(value) {
   return SETTINGS.normalizeFaviconEnhancedFetchEnabled(value);
 }
 
-function normalizeSearchResultSourceTypes(value) {
-  return SETTINGS.normalizeSearchResultSourceTypes(value);
-}
-
 function areStringArraysEqual(a, b) {
   const left = Array.isArray(a) ? a : [];
   const right = Array.isArray(b) ? b : [];
@@ -8894,14 +8783,14 @@ function loadSearchResultSourceTypes() {
   }
   searchResultSourceTypesPromise = new Promise((resolve) => {
     if (!storageArea) {
-      const defaults = normalizeSearchResultSourceTypes(null);
+      const defaults = SETTINGS.normalizeSearchResultSourceTypes(null);
       searchResultSourceTypesCache = defaults;
       resolve(defaults);
       return;
     }
     storageArea.get([SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY], (result) => {
       const raw = result && result[SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY];
-      const normalized = normalizeSearchResultSourceTypes(raw);
+      const normalized = SETTINGS.normalizeSearchResultSourceTypes(raw);
       searchResultSourceTypesCache = normalized;
       if (!areStringArraysEqual(raw, normalized)) {
         storageArea.set({ [SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY]: normalized });
@@ -9144,64 +9033,6 @@ function getSiteSearchProviderEntryUrl(provider, query) {
   return SEARCH_UTILS.buildSearchUrlFromTemplate(provider.template, query || '');
 }
 
-function getTemplateDomain(template) {
-  if (!template) {
-    return '';
-  }
-  try {
-    const url = template.replace(/\{query\}/g, 'test');
-    return normalizeHost(new URL(url).hostname);
-  } catch (e) {
-    return '';
-  }
-}
-
-function mergeSiteSearchProviders(localItems, bangList) {
-  if (!Array.isArray(localItems) || localItems.length === 0) {
-    return [];
-  }
-  if (!Array.isArray(bangList) || bangList.length === 0) {
-    return localItems;
-  }
-  return localItems.map((item) => {
-    const aliases = Array.isArray(item.aliases) ? item.aliases : [];
-    const keys = [item.key, ...aliases].filter(Boolean).map((key) => String(key).toLowerCase());
-    const domain = getTemplateDomain(item.template);
-    let match = bangList.find((bang) => bang && keys.includes(String(bang.t || '').toLowerCase()));
-    if (!match && domain) {
-      match = bangList.find((bang) => bang && String(bang.d || '').toLowerCase().includes(domain));
-    }
-    if (!match || !match.u) {
-      return item;
-    }
-    return {
-      key: item.key,
-      aliases: item.aliases || [],
-      name: item.name || match.s || item.key,
-      template: normalizeSiteSearchTemplate(match.u)
-    };
-  });
-}
-
-function parseBangList(text) {
-  if (!text) {
-    return [];
-  }
-  let jsonText = text.trim();
-  if (jsonText.startsWith('/*')) {
-    jsonText = jsonText.replace(/^\/\*.*?\*\/\s*/s, '');
-  }
-  if (!jsonText.startsWith('[')) {
-    return [];
-  }
-  try {
-    const parsed = JSON.parse(jsonText);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (e) {
-    return [];
-  }
-}
-
 function invalidateSiteSearchProviderCache() {
   siteSearchLoadGeneration += 1;
   siteSearchCache = null;
@@ -9302,7 +9133,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
   if (changes[TAB_SWITCHER_ENABLED_STORAGE_KEY]) {
     const next = changes[TAB_SWITCHER_ENABLED_STORAGE_KEY].newValue;
-    const normalized = normalizeTabSwitcherEnabled(next);
+    const normalized = SETTINGS.normalizeTabSwitcherEnabled(next);
     tabSwitcherEnabledCache = normalized;
     if (typeof next !== 'undefined' && next !== normalized && storageArea) {
       storageArea.set({ [TAB_SWITCHER_ENABLED_STORAGE_KEY]: normalized });
@@ -9560,7 +9391,6 @@ function invalidateBookmarkTreeCache() {
     expiresAt: 0,
     items: []
   };
-  bookmarkTreeIndexPromise = null;
   bookmarkItemsPromise = null;
 }
 
@@ -9653,38 +9483,6 @@ function buildBookmarkItems(tree) {
     tree.forEach((node) => collectBookmarkNodes(node));
   }
   return items;
-}
-
-function getBookmarkNodeMapCached() {
-  const now = Date.now();
-  if (bookmarkTreeIndexCache.map && bookmarkTreeIndexCache.expiresAt > now) {
-    return Promise.resolve(bookmarkTreeIndexCache.map);
-  }
-  if (bookmarkItemsPromise) {
-    return bookmarkItemsPromise.then(() => bookmarkTreeIndexCache.map || new Map());
-  }
-  if (bookmarkTreeIndexPromise) {
-    return bookmarkTreeIndexPromise;
-  }
-  if (!chrome || !chrome.bookmarks || typeof chrome.bookmarks.getTree !== 'function') {
-    return Promise.resolve(new Map());
-  }
-  ensureBookmarkTreeCacheListeners();
-  bookmarkTreeIndexPromise = callChromeApiWithTimeout((done) => {
-    chrome.bookmarks.getTree((tree) => {
-      const map = buildBookmarkNodeMap(tree);
-      bookmarkTreeIndexCache = {
-        map: map,
-        expiresAt: Date.now() + BOOKMARK_TREE_CACHE_TTL_MS
-      };
-      bookmarkTreeIndexPromise = null;
-      done(map);
-    });
-  }, new Map(), LOCAL_SUGGEST_SOURCE_TIMEOUT_MS).catch(() => {
-    bookmarkTreeIndexPromise = null;
-    return new Map();
-  });
-  return bookmarkTreeIndexPromise;
 }
 
 function getAllBookmarksCached() {
@@ -10011,7 +9809,7 @@ async function getSearchSuggestions(query, options) {
   const lookupMaxResults = searchPolicy.lookupMaxResults || 120;
   const searchScoreOptions = {
     getTitlePinyinMatchScore,
-    isLocalNetworkHost,
+    isLocalNetworkHost: FAVICON_UTILS.isLocalNetworkHost,
     isOwnExtensionUrl
   };
   const configuredSourceTypes = await loadSearchResultSourceTypes();
