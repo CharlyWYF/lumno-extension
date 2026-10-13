@@ -1,20 +1,12 @@
 const assert = require('assert');
 const fs = require('fs');
 const faviconUtils = require('../src/shared/favicon-utils.js');
+const { extractFunction: extractFunctionFrom } = require('./helpers/extract-function');
 
 const source = fs.readFileSync('src/background/background.js', 'utf8');
 
 function extractFunction(name) {
-  const start = source.indexOf(`function ${name}(`);
-  assert.notStrictEqual(start, -1, `missing ${name}`);
-  const brace = source.indexOf('{', start);
-  let depth = 0;
-  for (let index = brace; index < source.length; index += 1) {
-    if (source[index] === '{') depth += 1;
-    if (source[index] === '}') depth -= 1;
-    if (depth === 0) return source.slice(start, index + 1);
-  }
-  throw new Error(`unterminated ${name}`);
+  return extractFunctionFrom(source, name);
 }
 
 const fetchShortcutFaviconResourceSource = extractFunction('fetchShortcutFaviconResource');

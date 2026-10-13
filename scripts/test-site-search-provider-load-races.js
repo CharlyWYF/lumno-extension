@@ -1,25 +1,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const { readNewtabRuntimeSource } = require('./helpers/newtab-source');
-
-function extractFunction(source, name) {
-  const start = source.indexOf(`function ${name}(`);
-  assert.ok(start >= 0, `${name} should exist`);
-  const openBrace = source.indexOf('{', start);
-  assert.ok(openBrace >= 0, `${name} should have a body`);
-  let depth = 0;
-  for (let index = openBrace; index < source.length; index += 1) {
-    if (source[index] === '{') {
-      depth += 1;
-    } else if (source[index] === '}') {
-      depth -= 1;
-      if (depth === 0) {
-        return source.slice(start, index + 1);
-      }
-    }
-  }
-  throw new Error(`${name} should have a closing brace`);
-}
+const { extractFunction } = require('./helpers/extract-function');
 
 function createDeferred() {
   let resolve;
