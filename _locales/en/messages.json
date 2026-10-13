@@ -2697,7 +2697,7 @@
     "message": "The remote settings use a structure or version this Lumno doesn’t recognize, possibly from a newer release. Update Lumno on every device. Local data was not replaced."
   },
   "webdav_error_state_too_large": {
-    "message": "The remote settings exceed the sync limit (60 shortcuts, 256 wallpapers, 2 MB of settings). Local data was not replaced."
+    "message": "The remote settings exceed the sync limit (200 shortcuts, 256 wallpapers, 2 MB of settings). Local data was not replaced."
   },
   "webdav_error_response_too_large": {
     "message": "A file returned by the server exceeds the 2 MB limit. Local data was not replaced."

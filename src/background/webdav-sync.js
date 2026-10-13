@@ -217,19 +217,27 @@
       const capturedGeneration = generation;
       const local = await storage(localPrefsArea, 'get', watchedKeys);
       const values = runtime.isActiveAreaName('local') ? local : await storage(chromeFallbackArea, 'get', settings.CHROME_SYNC_STORAGE_KEYS);
-      const list = contract.readShortcuts(values, runtime.isActiveAreaName('sync') ? local[contract.OVERFLOW_KEY] : null);
+      const shortcutState = contract.readShortcutState(values, runtime.isActiveAreaName('sync') ? local[contract.OVERFLOW_KEY] : null);
+      // Another device's browser sync save has only partly arrived.
+      if (shortcutState.torn) fail('local-changed');
+      const list = shortcutState.items;
       const regular = list.filter((item) => item.type !== 'folder' || item.folderRef);
       const ids = new Set(regular.map((item) => item.id));
-      const state = { version: regular.some((item) => item.type === 'folder') || (await session()).base?.version === 2 ? 2 : 1,
-        data: contract.selectPreferences({ ...values, ...pickLocalPreferences(local) }),
-        shortcuts: regular, icons: {}, wallpapers: [], assets: {} };
+      // The oldest format that holds this state, so older devices keep reading it.
+      const baseVersion = (await session()).base?.version || 1;
+      const version = baseVersion >= contract.GROUPED_STATE_VERSION || contract.needsGroupedState(shortcutState.groups, regular)
+        ? contract.GROUPED_STATE_VERSION
+        : regular.some((item) => item.type === 'folder') || baseVersion === 2 ? 2 : 1;
+      const state = { version, data: contract.selectPreferences({ ...values, ...pickLocalPreferences(local) }),
+        groups: shortcutState.groups, shortcuts: regular, icons: {}, wallpapers: [], assets: {} };
       // This device's own data failing the contract must not read as a bad
       // remote copy, so its codes carry a local- prefix.
       try {
         const { validated, records } = await collectMedia(state, local, ids);
         if (capturedGeneration !== generation) fail('local-changed');
         return { state: validated, values, local, records, folders: list.filter((item) => item.type === 'folder' && !item.folderRef),
-          shortcutOrder: list.map((item) => item.id), generation: capturedGeneration };
+          shortcutOrder: list.map((item) => item.id), shortcutMigratedAt: shortcutState.migratedAt || 0,
+          generation: capturedGeneration };
       } catch (cause) {
         if (LOCAL_DATA_CODES.includes(cause.code)) fail(`local-${cause.code}`);
         throw cause;
@@ -292,23 +300,30 @@
         }
       }
     }
-    function preferencePayload(state, captured) {
+    // This device's local-only folder shortcuts go back where they were; the
+    // rest of the list beyond the browser sync budget goes to the overflow record.
+    function preferencePayload(state, captured, maxTotalBytes) {
       const list = [...state.shortcuts];
       for (const folder of captured.folders) {
         const index = (captured.shortcutOrder || []).indexOf(folder.id);
         list.splice(index < 0 ? list.length : Math.min(index, list.length), 0, folder);
       }
-      if (list.length > 60) fail('shortcut-capacity');
+      if (list.length > contract.MAX_SHORTCUTS) fail('shortcut-capacity');
       if (new Set(list.map((item) => item.id)).size !== list.length) fail('shortcut-id-conflict');
-      const plan = shortcuts.createShortcutStoragePlan(list);
-      return { ...state.data, ...plan.payload, [contract.OVERFLOW_KEY]: { authoritative: false, items: plan.overflowItems } };
+      const plan = shortcuts.createShortcutStoragePlan({ groups: state.groups, items: list,
+        migratedAt: captured.shortcutMigratedAt }, { maxTotalBytes });
+      return { ...state.data, ...plan.payload, [contract.OVERFLOW_KEY]: plan.overflowRecord };
     }
     async function prepareChrome(state, captured) {
-      const payload = preferencePayload(state, captured);
       const existing = await storage(chromeFallbackArea || localPrefsArea, 'get', null);
+      const maxTotalBytes = chromeFallbackArea ? shortcuts.getShortcutSyncBudget({
+        ...shortcuts.measureShortcutSyncUsage(existing), quotaBytes: chromeFallbackArea.QUOTA_BYTES
+      }) : Number.MAX_SAFE_INTEGER;
+      const payload = preferencePayload(state, captured, maxTotalBytes);
       const synced = Object.fromEntries(settings.CHROME_SYNC_STORAGE_KEYS.filter((key) =>
         Object.prototype.hasOwnProperty.call(payload, key)).map((key) => [key, payload[key]]));
-      const remove = settings.CHROME_SYNC_STORAGE_KEYS.filter((key) =>
+      // The legacy shortcut keys stay for devices that still read them.
+      const remove = settings.CHROME_SYNC_STORAGE_KEYS.filter((key) => !shortcuts.LEGACY_SHORTCUTS_CHUNK_KEYS.includes(key) &&
         Object.prototype.hasOwnProperty.call(existing, key) && !Object.prototype.hasOwnProperty.call(synced, key));
       const projected = { ...existing, ...synced };
       remove.forEach((key) => delete projected[key]);
@@ -357,11 +372,15 @@
         await privateStore.put('recoveryBlocked', false);
       });
     }
+    // A pending apply staged by an older version holds fields this one drops.
+    function samePendingState(state, pendingState) {
+      try { return contract.equal(state, contract.validateState(pendingState)); } catch (_cause) { return false; }
+    }
     async function recoverPendingApply() {
       const pending = await privateStore.get('pendingApply');
       if (!pending) return;
       const captured = await capture(true);
-      if (contract.equal(captured.state, pending.state) && (!chromeFallbackArea || runtime.isActiveAreaName('sync'))) {
+      if (samePendingState(captured.state, pending.state) && (!chromeFallbackArea || runtime.isActiveAreaName('sync'))) {
         await privateStore.put('session', pending.nextSession);
         await privateStore.put('recoveryBlocked', false);
         await setStatus({ state: pending.nextSession.config && pending.nextSession.config.enabled ? 'ready' : 'paused', error: null });

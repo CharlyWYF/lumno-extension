@@ -23,6 +23,12 @@
   const NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY = '_x_extension_newtab_shortcuts_visible_2026_unique_';
   const NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY = '_x_extension_newtab_shortcuts_chunk_2_2026_unique_';
   const NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY = '_x_extension_newtab_shortcuts_chunk_3_2026_unique_';
+  // Grouped shortcut state; the three keys above hold the older flat list.
+  const NEWTAB_SHORTCUTS_V2_STORAGE_KEYS = Object.freeze([
+    '_x_extension_newtab_shortcuts_v2_2026_unique_',
+    '_x_extension_newtab_shortcuts_v2_chunk_2_2026_unique_',
+    '_x_extension_newtab_shortcuts_v2_chunk_3_2026_unique_'
+  ]);
   const NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY = '_x_extension_newtab_shortcut_add_visible_2026_unique_';
   const NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY = '_x_extension_newtab_shortcut_dock_magnification_enabled_2026_unique_';
   const NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY = '_x_extension_newtab_feedback_button_visible_2026_unique_';
@@ -134,6 +140,7 @@
     '_x_extension_newtab_shortcuts_2026_unique_',
     NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY,
     NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY,
+    ...NEWTAB_SHORTCUTS_V2_STORAGE_KEYS,
     '_x_extension_newtab_shortcuts_visible_2026_unique_',
     '_x_extension_newtab_shortcut_add_visible_2026_unique_',
     '_x_extension_newtab_shortcut_dock_magnification_enabled_2026_unique_',
@@ -1051,6 +1058,7 @@
     NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY,
     NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY,
     NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_V2_STORAGE_KEYS,
     NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY,
     NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY,
     NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY,

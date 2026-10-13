@@ -529,7 +529,7 @@ async function run() {
   const overflowShortcut = shortcuts.createShortcutRecord({ id: 'overflow', title: 'Overflow', url: 'https://other.example/' }, { now: 100 });
   const [topbarMode, topbarLight, topbarDark, topbarLegacy] = settings.BOOKMARK_TOPBAR_LOCAL_STORAGE_KEYS;
   const first = createDevice(server, {
-    sync: { [theme]: 'light', [language]: 'en', [contract.SHORTCUT_KEYS[0]]: [firstShortcut] },
+    sync: { [theme]: 'light', [language]: 'en', [shortcuts.LEGACY_SHORTCUTS_KEY]: [firstShortcut] },
     local: { [contract.OVERFLOW_KEY]: { authoritative: false, items: [overflowShortcut] },
       [contract.ICONS_KEY]: { first: `data:image/png;base64,${icon.toString('base64')}` },
       [contract.LOCAL_WALLPAPER_KEY]: { version: 1, light: 'custom-wallpaper-test', dark: 'custom-wallpaper-test' },
@@ -808,18 +808,28 @@ async function run() {
   const longList = Array.from({ length: 60 }, (_, index) => shortcuts.createShortcutRecord({
     id: `long-${index}`, title: 'Long shortcut', url: `https://example.com/${'x'.repeat(1000)}?id=${index}`
   }, { now: 100 }));
-  const localPlan = shortcuts.createShortcutStoragePlan(longList, { maxItemBytes: Number.MAX_SAFE_INTEGER, maxTotalBytes: Number.MAX_SAFE_INTEGER });
-  const chromePlan = contract.planChromeBackup(localPlan.payload, { [contract.SHORTCUT_KEYS[2]]: [firstShortcut] });
+  const localPlan = shortcuts.createShortcutStoragePlan({ items: longList }, { maxItemBytes: Number.MAX_SAFE_INTEGER, maxTotalBytes: Number.MAX_SAFE_INTEGER });
+  const staleTail = { [contract.SHORTCUT_SYNC_KEYS[2]]: { r: 'stale', s: [['first', 0, 'First', 'example.com/']] } };
+  const chromePlan = contract.planChromeBackup(localPlan.payload, staleTail);
   assert.strictEqual(chromePlan.complete, false);
   assert.strictEqual(Object.keys(chromePlan.payload).length, 3, 'bounded backup updates every shortcut chunk together');
-  assert(contract.byteLength(JSON.stringify(chromePlan.payload[contract.SHORTCUT_KEYS[0]])) < 8192);
+  assert(contract.byteLength(JSON.stringify(chromePlan.payload[contract.SHORTCUT_SYNC_KEYS[0]])) < 8192);
   assert(!JSON.stringify(chromePlan.payload).includes('"first"'), 'backup clears stale tails');
+  const legacyChrome = { [shortcuts.LEGACY_SHORTCUTS_KEY]: [firstShortcut] };
+  const legacyBackup = contract.planChromeBackup(shortcuts.createShortcutStoragePlan({ items: [firstShortcut] }).payload, legacyChrome);
+  assert(!legacyBackup.remove.includes(shortcuts.LEGACY_SHORTCUTS_KEY) &&
+    !Object.hasOwn(legacyBackup.payload, shortcuts.LEGACY_SHORTCUTS_KEY), 'backup leaves the legacy list for older devices');
+  const smallPayload = shortcuts.createShortcutStoragePlan({ items: [firstShortcut] }).payload;
+  const unchangedBackup = contract.planChromeBackup(smallPayload, smallPayload);
+  assert(unchangedBackup.complete);
+  assert(!contract.SHORTCUT_SYNC_KEYS.some((key) => Object.hasOwn(unchangedBackup.payload, key)),
+    'an unchanged grouped copy is not rewritten for a new revision alone');
   const folderServer = createServer();
   const folderRefs = require('../src/shared/bookmark-folder-reference.js');
   const portableFolder = shortcuts.createShortcutRecord({ id: 'folder-sync-entry', type: 'folder', title: 'Design',
     folderRef: { version: 1, root: 'bookmarks-bar', scope: 'account', path: ['Design'], fingerprint: '0123456789abcdef' }
   }, { now: 100 });
-  const folderA = createDevice(folderServer, { sync: shortcuts.createShortcutStoragePayload([firstShortcut, portableFolder]),
+  const folderA = createDevice(folderServer, { sync: shortcuts.createShortcutStoragePlan({ items: [firstShortcut, portableFolder] }).payload,
     local: { [folderRefs.BINDINGS_KEY]: { [portableFolder.id]: { folderId: '42' } } } });
   await folderA.controller.handle({ operation: 'connect', config });
   assert.strictEqual(folderServer.state().version, 2, 'portable folders opt into the new protocol');
@@ -828,30 +838,38 @@ async function run() {
   assert(!JSON.stringify(folderServer.state()).includes(folderRefs.BINDINGS_KEY));
   const folderB = createDevice(folderServer, { local: { [folderRefs.BINDINGS_KEY]: { [portableFolder.id]: { folderId: '117' } } } });
   await folderB.controller.handle({ operation: 'connect', config, decision: 'remote' });
-  const bFolders = contract.readShortcuts(folderB.chrome.storage.sync.values, folderB.chrome.storage.local.values[contract.OVERFLOW_KEY]);
+  const bFolders = contract.readShortcutState(folderB.chrome.storage.sync.values, folderB.chrome.storage.local.values[contract.OVERFLOW_KEY]).items;
   assert.deepStrictEqual(bFolders.map((item) => item.id), [firstShortcut.id, portableFolder.id]);
   assert.strictEqual(folderB.chrome.storage.local.values[folderRefs.BINDINGS_KEY][portableFolder.id].folderId, '117');
-  assert.deepStrictEqual(folderB.chrome.storage.sync.values[contract.SHORTCUT_KEYS[0]][1].folderRef, portableFolder.folderRef,
+  assert.deepStrictEqual(contract.readShortcutState(folderB.chrome.storage.sync.values, null).items[1].folderRef, portableFolder.folderRef,
     'bounded Chrome backup carries the portable locator');
   await folderB.controller.handle({ operation: 'sync' });
   assert.strictEqual(folderServer.state().version, 2, 'protocol version remains stable after round-trip');
-  await set(folderB.chrome.storage.sync, shortcuts.createShortcutStoragePayload([firstShortcut]));
+  await set(folderB.chrome.storage.sync, shortcuts.createShortcutStoragePlan({ items: [firstShortcut] }).payload);
   await folderB.controller.handle({ operation: 'sync' });
   await folderA.controller.handle({ operation: 'sync' });
-  assert.deepStrictEqual(contract.readShortcuts(folderA.chrome.storage.sync.values, folderA.chrome.storage.local.values[contract.OVERFLOW_KEY]).map((item) => item.id), [firstShortcut.id],
+  assert.deepStrictEqual(contract.readShortcutState(folderA.chrome.storage.sync.values, folderA.chrome.storage.local.values[contract.OVERFLOW_KEY]).items.map((item) => item.id), [firstShortcut.id],
     'a removed portable folder is not resurrected by local-folder retention');
   assert.strictEqual(folderServer.state().version, 2, 'deletion does not downgrade the protocol for older clients');
   assert.throws(() => contract.validateState({ ...empty(), shortcuts: [portableFolder] }), /invalid-shortcuts/);
   assert.throws(() => contract.validateState({ ...empty(), version: 2, shortcuts: [{ ...portableFolder, folderId: '42' }] }), /invalid-shortcuts/);
-  assert.throws(() => contract.validateState({ ...empty(), version: 3 }), /invalid-state/);
+  assert.throws(() => contract.validateState({ ...empty(), version: 4 }), /invalid-state/);
+  assert.throws(() => contract.validateState({ ...empty(), version: 3 }), /invalid-shortcuts/,
+    'a grouped state must name its groups');
+  assert.throws(() => contract.validateState({ ...empty(), version: 3, groups: [{ id: 'g0', title: '' }],
+    shortcuts: [{ ...firstShortcut, groupId: 'missing' }] }), /invalid-shortcuts/, 'every shortcut in a grouped state names a known group');
+  assert.throws(() => contract.validateState({ ...empty(), version: 3, groups: [{ id: 'g0', title: '' }, { id: 'g0', title: 'Twice' }] }),
+    /invalid-shortcuts/);
+  assert.throws(() => contract.validateState({ ...empty(), shortcuts: longList.concat(firstShortcut) }), /state-too-large/,
+    'an ungrouped state keeps the limit older versions accept');
   const overflowServer = createServer();
   overflowServer.replaceState({ ...empty({ [theme]: 'dark' }), shortcuts: longList });
   const overflowDevice = createDevice(overflowServer, { sync: { [theme]: 'light' } });
   await overflowDevice.controller.handle({ operation: 'save', config });
   await overflowDevice.controller.handle({ operation: 'enable', decision: 'remote' });
   assert(overflowDevice.chrome.storage.local.values[contract.OVERFLOW_KEY].items.length > 0);
-  assert.strictEqual(contract.readShortcuts(overflowDevice.chrome.storage.sync.values,
-    overflowDevice.chrome.storage.local.values[contract.OVERFLOW_KEY]).length, 60,
+  assert.strictEqual(contract.readShortcutState(overflowDevice.chrome.storage.sync.values,
+    overflowDevice.chrome.storage.local.values[contract.OVERFLOW_KEY]).items.length, 60,
     'large shortcut lists keep every item through the existing Chrome chunk and local overflow stores');
   assert.strictEqual((await overflowDevice.controller.status()).localPrimary, false);
   await overflowDevice.controller.handle({ operation: 'pause' });
@@ -1023,11 +1041,75 @@ async function run() {
   assert.strictEqual(deviceA.chrome.storage.sync.values[links].length, 2);
   assert.strictEqual(deviceA.chrome.storage.sync.values[theme], 'light');
 
+  await testShortcutGroups();
+
   const bigLinks = Array.from({ length: 40 }, (_, index) => ({ id: `link-big${index}xx`, url: `https://big.example/${'x'.repeat(200)}/${index}.jpg`, addedAt: index }));
   assert.throws(() => contract.mergeInitialWallpapers(empty({ [links]: bigLinks.slice(20) }), empty({ [links]: bigLinks.slice(0, 20) })),
     /merge-too-large/, 'a merge past the browser sync item limit fails instead of dropping links');
 
   console.log('WebDAV sync tests passed: parallel Chrome sync, media, merge, conflict, offline, quota, concurrent edits, restart recovery and integrity');
+}
+async function testShortcutGroups() {
+  const groups = [{ id: 'g0', title: '' }, { id: 'work', title: '工作' }];
+  const link = (id, groupId) => shortcuts.createShortcutRecord({ id, title: id, url: `https://${id}.example/`, groupId });
+  const groupedPlan = shortcuts.createShortcutStoragePlan({ groups, items: [link('home', 'g0'), link('docs', 'work')] });
+  const legacyList = [link('stale', 'g0')];
+  const groupServer = createServer();
+  const a = createDevice(groupServer, { sync: { ...groupedPlan.payload, [shortcuts.LEGACY_SHORTCUTS_KEY]: legacyList } });
+  await a.controller.handle({ operation: 'connect', config });
+  const published = groupServer.state();
+  assert.strictEqual(published.version, contract.GROUPED_STATE_VERSION, 'real groups need the grouped protocol');
+  assert.deepStrictEqual(published.groups, groups);
+  assert.deepStrictEqual(published.shortcuts.map((item) => [item.id, item.groupId]), [['home', 'g0'], ['docs', 'work']]);
+  assert(!JSON.stringify(published).includes('stale'), 'the legacy list is not mistaken for current shortcuts');
+
+  const b = createDevice(groupServer, { sync: { [shortcuts.LEGACY_SHORTCUTS_KEY]: legacyList } });
+  await b.controller.handle({ operation: 'connect', config, decision: 'remote' });
+  const received = contract.readShortcutState(b.chrome.storage.sync.values, b.chrome.storage.local.values[contract.OVERFLOW_KEY]);
+  assert.deepStrictEqual(received.groups, groups, 'a joining device receives the groups');
+  assert.deepStrictEqual(received.items.map((item) => item.id), ['home', 'docs']);
+  assert.deepStrictEqual(b.chrome.storage.sync.values[shortcuts.LEGACY_SHORTCUTS_KEY], legacyList,
+    'applying a remote state keeps the legacy list an older device still reads');
+
+  const renamed = shortcuts.createShortcutStoragePlan({ groups: [groups[0], { id: 'work', title: '工作台' }],
+    items: received.items });
+  await set(b.chrome.storage.sync, renamed.payload);
+  await b.controller.handle({ operation: 'sync' });
+  await a.controller.handle({ operation: 'sync' });
+  assert.deepStrictEqual(contract.readShortcutState(a.chrome.storage.sync.values, null).groups[1].title, '工作台',
+    'a renamed group reaches the other device');
+
+  const flat = createServer();
+  const plain = createDevice(flat, { sync: shortcuts.createShortcutStoragePlan({ items: [link('one')] }).payload });
+  await plain.controller.handle({ operation: 'connect', config });
+  assert.strictEqual(flat.state().version, 1, 'a state without real groups stays readable by older versions');
+
+  const many = Array.from({ length: 120 }, (_, index) => link(`site${index}`));
+  const largeServer = createServer();
+  const large = createDevice(largeServer, { sync: shortcuts.createShortcutStoragePlan({ items: many }).payload });
+  await large.controller.handle({ operation: 'connect', config });
+  assert.strictEqual(largeServer.state().version, contract.GROUPED_STATE_VERSION,
+    'more shortcuts than older versions accept need the grouped protocol');
+  assert.strictEqual(largeServer.state().shortcuts.length, 120);
+
+  // A baseline from before groups still has timestamps on every shortcut.
+  const oldBase = { ...empty(), shortcuts: [{ ...link('home'), createdAt: 1, updatedAt: 2 }] };
+  const sameAsBase = { ...empty(), shortcuts: [link('home')] };
+  const remoteEdit = { ...empty(), shortcuts: [link('home'), link('new')] };
+  const merged = contract.mergeStates(oldBase, contract.validateState(sameAsBase), contract.validateState(remoteEdit));
+  assert.deepStrictEqual(merged.conflicts, [], 'dropped timestamps do not read as a local edit');
+  assert.deepStrictEqual(merged.state.shortcuts.map((item) => item.id), ['home', 'new']);
+
+  const base = contract.validateState({ ...empty(), version: 3, groups, shortcuts: [link('home', 'g0')] });
+  const localGroups = contract.validateState({ ...base, groups: [groups[0], { id: 'work', title: 'Local' }] });
+  const remoteGroups = contract.validateState({ ...base, groups: [groups[0], { id: 'work', title: 'Remote' }] });
+  assert.deepStrictEqual(contract.mergeStates(base, localGroups, remoteGroups).conflicts, ['shortcuts'],
+    'groups changed on both devices are a shortcut conflict, not a silent pick');
+  assert.strictEqual(contract.mergeStates(base, localGroups, remoteGroups, 'remote').state.groups[1].title, 'Remote');
+  const remoteItems = contract.validateState({ ...base, shortcuts: [link('home', 'g0'), link('docs', 'work')] });
+  const mergedItems = contract.mergeStates(base, base, remoteItems);
+  assert.deepStrictEqual(mergedItems.conflicts, []);
+  assert.deepStrictEqual(mergedItems.state.shortcuts.map((item) => item.groupId), ['g0', 'work']);
 }
 if (require.main === module) run().catch((error) => { console.error(error); process.exitCode = 1; });
 module.exports = { createServer, createDevice, config, empty, set };

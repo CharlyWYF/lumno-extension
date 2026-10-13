@@ -224,13 +224,15 @@ async function run() {
   const orderDevice = device();
   const saveOrder = new Function('initial', 'NEWTAB_SHORTCUTS_STORE', 'storageArea', `
     let newtabShortcuts = initial, newtabShortcutIcons = {}, shortcutPersistenceInFlightCount = 0;
-    let overflow = [], renderCount = 0;
+    let overflow = [], renderCount = 0, shortcutGroups = NEWTAB_SHORTCUTS_STORE.getDefaultShortcutState().groups;
+    let shortcutMigratedAt = 0;
+    const overflowArea = { set(value, fn) { overflow = value[NEWTAB_SHORTCUTS_STORE.SHORTCUTS_LOCAL_OVERFLOW_KEY].items; fn(); } };
     function getShortcutStoreOptions() { return {}; }
     function getNextShortcutIconMap() { return {}; }
     function areShortcutIconMapsEqual() { return true; }
-    function getShortcutSyncByteBudget() { return Promise.resolve(23040); }
-    function isShortcutSyncStorageActive() { return true; }
-    function writeShortcutLocalState(items) { overflow = items; return Promise.resolve(); }
+    function getShortcutSyncBudget() { return Promise.resolve({ maxTotalBytes: 23040, legacyKeysPresent: false }); }
+    function getShortcutOverflowStorageArea() { return overflowArea; }
+    function applyShortcutState(state) { newtabShortcuts = state.items; shortcutGroups = state.groups; }
     function getShortcutStorageLastError() { return null; }
     function pruneShortcutFavicons() {} function renderShortcuts() { renderCount += 1; }
     function showToast() { throw new Error('Successful reorder should not show an error'); }
@@ -263,13 +265,13 @@ async function run() {
 
   const other = entry(aMap, 'entry-other');
   await shortcuts.saveShortcuts(b.chrome.storage.sync, [item, other]);
-  await shortcuts.saveShortcut(b.chrome.storage.sync, { ...item, title: 'Updated' });
+  await shortcuts.saveShortcuts(b.chrome.storage.sync, [{ ...item, title: 'Updated' }, other]);
   assert.strictEqual((await shortcuts.loadShortcuts(b.chrome.storage.sync)).length, 2, 'saving one portable entry preserves other folders');
   const plan = drag.planBookmarkToShortcut({ shortcuts: [item], record: legacy, index: 1, maxShortcuts: 1,
     getFolderId: (row) => row.folderId || aRuntime.getNode(row, aMap)?.id });
   assert.strictEqual(plan.shortcutId, item.id, 'repeat drag uses the existing portable entry');
 
-  const sourceDevice = device({ sync: shortcuts.createShortcutStoragePayload([legacy]) });
+  const sourceDevice = device({ sync: { [shortcuts.LEGACY_SHORTCUTS_KEY]: [legacy] } });
   const controller = refs.createSyncController({ chrome: sourceDevice.chrome, settings, shortcuts });
   controller.start();
   await controller.refresh();

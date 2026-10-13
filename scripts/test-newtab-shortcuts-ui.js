@@ -1323,25 +1323,25 @@ assertContains(
 
 assertContains(
   newtabJs,
-  "const NEWTAB_SHORTCUTS_STORAGE_KEY = '_x_extension_newtab_shortcuts_2026_unique_';",
-  'newtab runtime should define a dedicated storage key for shortcuts'
+  'const NEWTAB_SHORTCUTS_STORAGE_KEYS = NEWTAB_SHORTCUTS_STORE.SHORTCUT_STORAGE_KEYS;',
+  'newtab runtime should watch the grouped and legacy shortcut storage keys'
 );
 
 assertContains(
   newtabJs,
-  "'_x_extension_newtab_shortcuts_local_overflow_2026_unique_'",
+  'const NEWTAB_SHORTCUTS_LOCAL_OVERFLOW_STORAGE_KEY = NEWTAB_SHORTCUTS_STORE.SHORTCUTS_LOCAL_OVERFLOW_KEY;',
   'shortcut items outside the protected sync budget should have a device-local overflow store'
 );
 
 assert.match(
-  getFunctionSource(newtabJs, 'getShortcutSyncByteBudget'),
-  /getStorageBytesInUse\(syncArea, null\)[\s\S]*?getStorageBytesInUse\(syncArea, NEWTAB_SHORTCUTS_STORAGE_KEYS\)[\s\S]*?NEWTAB_SHORTCUTS_CRITICAL_SYNC_RESERVE_BYTES/,
+  getFunctionSource(newtabJs, 'getShortcutSyncBudget'),
+  /getStorageBytesInUse\(syncArea, null\)[\s\S]*?getStorageBytesInUse\(syncArea, NEWTAB_SHORTCUTS_STORE\.SHORTCUTS_SYNC_KEYS\)[\s\S]*?getStorageBytesInUse\(syncArea, NEWTAB_SHORTCUTS_STORE\.LEGACY_SHORTCUTS_CHUNK_KEYS\)[\s\S]*?NEWTAB_SHORTCUTS_CRITICAL_SYNC_RESERVE_BYTES/,
   'shortcut sync planning should reserve total quota for critical settings'
 );
 
 assertContains(
   newtabJs,
-  'NEWTAB_SHORTCUTS_STORAGE_KEY',
+  'NEWTAB_SHORTCUTS_STORAGE_KEYS',
   'newtab runtime should include shortcuts in storage handling'
 );
 
@@ -1371,8 +1371,8 @@ assertContains(
 
 assertContains(
   newtabJs,
-  'const MAX_NEWTAB_SHORTCUTS = 60;',
-  'newtab should allow up to sixty shortcuts'
+  'const MAX_NEWTAB_SHORTCUTS = NEWTAB_SHORTCUTS_STORE.DEFAULT_MAX_SHORTCUTS;',
+  'newtab should allow as many shortcuts as the shortcut store keeps'
 );
 
 assertContains(
@@ -2554,7 +2554,7 @@ assertContains(
 
 assert.match(
   getFunctionSource(newtabJs, 'persistShortcuts'),
-  /createShortcutStoragePlan\(normalized,[\s\S]*?writeShortcutLocalState\(plan\.overflowItems, false\)[\s\S]*?saveShortcutStoragePlan[\s\S]*?writeShortcutLocalState\(normalized, true\)[\s\S]*?newtab_shortcuts_sync_limit_reached/,
+  /normalizeShortcutState\(\{[\s\S]*?groups: settings\.groups \|\| shortcutGroups[\s\S]*?persistShortcutState\(storageArea, nextState, \{[\s\S]*?overflowArea: getShortcutOverflowStorageArea\(\)[\s\S]*?maxTotalBytes: budget\.maxTotalBytes[\s\S]*?newtab_shortcuts_sync_limit_reached/,
   'shortcut persistence should keep overflow local, surface sync failures, and show the approved warning'
 );
 

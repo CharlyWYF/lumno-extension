@@ -6,14 +6,12 @@
       shortcutFolderRuntime,
       bookmarksRuntime,
       isShortcutDragActive,
-      NEWTAB_SHORTCUTS_STORAGE_KEY,
       MAX_NEWTAB_SHORTCUTS,
       normalizeHost,
       sanitizeDisplayText,
       providerStorageRuntime,
       storageAreaName,
       NEWTAB_SHORTCUTS_STORE,
-      NEWTAB_SHORTCUTS_STORAGE_KEYS,
       NEWTAB_SHORTCUTS_CRITICAL_SYNC_RESERVE_BYTES,
       NEWTAB_SHORTCUTS_LOCAL_OVERFLOW_STORAGE_KEY,
       shortcutIconStore,
@@ -104,6 +102,14 @@
 
     let shortcutsView = null;
     let shortcutStorageReloadTimer = null;
+    // Groups and the migration time of the stored shortcut state; items live
+    // in pageState.newtabShortcuts.
+    let shortcutGroups = NEWTAB_SHORTCUTS_STORE.getDefaultShortcutState().groups;
+    let shortcutMigratedAt = 0;
+    let shortcutStateTorn = false;
+    let shortcutTornReloadCount = 0;
+    const SHORTCUT_TORN_RELOAD_LIMIT = 3;
+    const SHORTCUT_TORN_RELOAD_DELAY_MS = 1500;
     const shortcutFaviconPending = new Map();
     const shortcutFaviconRequestQueue = [];
     const SHORTCUT_FAVICON_MAX_CONCURRENT_REQUESTS = 3;
@@ -141,7 +147,6 @@
 
     function getShortcutStoreOptions(extraOptions) {
       return {
-        key: NEWTAB_SHORTCUTS_STORAGE_KEY,
         maxShortcuts: MAX_NEWTAB_SHORTCUTS,
         normalizeHost,
         sanitizeDisplayText,
@@ -194,115 +199,78 @@
       });
     }
 
-    function getShortcutSyncByteBudget() {
-      const defaultBudget = Number(
-        NEWTAB_SHORTCUTS_STORE.DEFAULT_SHORTCUTS_SYNC_TOTAL_BUDGET_BYTES
-      ) || (3 * 7680);
+    // Sync bytes the next save may use, and whether the legacy flat list is
+    // still in browser sync. Unknown usage leaves no sync budget, so the save
+    // keeps everything in the local overflow record instead of risking the
+    // space other settings need.
+    function getShortcutSyncBudget() {
       if (!isShortcutSyncStorageActive()) {
-        return Promise.resolve(Number.MAX_SAFE_INTEGER);
+        return Promise.resolve({ maxTotalBytes: Number.MAX_SAFE_INTEGER, legacyKeysPresent: false });
       }
       const syncArea = chrome.storage.sync;
-      const totalQuotaBytes = Math.max(
-        0,
-        Number(syncArea.QUOTA_BYTES) || (100 * 1024)
-      );
       return Promise.all([
         getStorageBytesInUse(syncArea, null),
-        getStorageBytesInUse(syncArea, NEWTAB_SHORTCUTS_STORAGE_KEYS)
-      ]).then(([totalBytes, shortcutBytes]) => {
-        const nonShortcutBytes = Math.max(0, totalBytes - shortcutBytes);
-        const protectedBudget = Math.max(
-          0,
-          totalQuotaBytes - NEWTAB_SHORTCUTS_CRITICAL_SYNC_RESERVE_BYTES - nonShortcutBytes
-        );
-        return Math.min(defaultBudget, protectedBudget);
-      }).catch(() => 0);
+        getStorageBytesInUse(syncArea, NEWTAB_SHORTCUTS_STORE.SHORTCUTS_SYNC_KEYS),
+        getStorageBytesInUse(syncArea, NEWTAB_SHORTCUTS_STORE.LEGACY_SHORTCUTS_CHUNK_KEYS)
+      ]).then(([totalBytes, shortcutBytes, legacyBytes]) => ({
+        maxTotalBytes: NEWTAB_SHORTCUTS_STORE.getShortcutSyncBudget({
+          quotaBytes: Number(syncArea.QUOTA_BYTES) || (100 * 1024),
+          reserveBytes: NEWTAB_SHORTCUTS_CRITICAL_SYNC_RESERVE_BYTES,
+          totalBytes,
+          shortcutBytes,
+          legacyBytes
+        }),
+        legacyKeysPresent: legacyBytes > 0
+      })).catch(() => ({ maxTotalBytes: 0, legacyKeysPresent: false }));
     }
 
-    function normalizeShortcutLocalState(value) {
-      if (Array.isArray(value)) {
-        return {
-          authoritative: false,
-          items: NEWTAB_SHORTCUTS_STORE.normalizeShortcuts(
-            value,
-            getShortcutStoreOptions()
-          )
-        };
-      }
-      const source = value && typeof value === 'object' ? value : {};
-      return {
-        authoritative: source.authoritative === true,
-        items: NEWTAB_SHORTCUTS_STORE.normalizeShortcuts(
-          source.items,
-          getShortcutStoreOptions()
-        )
-      };
-    }
-
-    function readShortcutLocalState() {
+    function readShortcutOverflowRecord() {
       const overflowArea = getShortcutOverflowStorageArea();
       if (!overflowArea || typeof overflowArea.get !== 'function') {
-        return Promise.resolve(normalizeShortcutLocalState(null));
+        return Promise.resolve(null);
       }
       return new Promise((resolve) => {
         try {
           overflowArea.get([NEWTAB_SHORTCUTS_LOCAL_OVERFLOW_STORAGE_KEY], (result) => {
             if (getShortcutStorageLastError()) {
-              resolve(normalizeShortcutLocalState(null));
+              resolve(null);
               return;
             }
-            resolve(normalizeShortcutLocalState(
-              result && result[NEWTAB_SHORTCUTS_LOCAL_OVERFLOW_STORAGE_KEY]
-            ));
+            resolve(result ? result[NEWTAB_SHORTCUTS_LOCAL_OVERFLOW_STORAGE_KEY] : null);
           });
         } catch (error) {
-          resolve(normalizeShortcutLocalState(null));
+          resolve(null);
         }
       });
     }
 
-    function writeShortcutLocalState(items, authoritative) {
-      const overflowArea = getShortcutOverflowStorageArea();
-      if (!overflowArea || typeof overflowArea.set !== 'function') {
-        return Promise.resolve();
-      }
-      const localState = {
-        version: 1,
-        authoritative: authoritative === true,
-        items: NEWTAB_SHORTCUTS_STORE.normalizeShortcuts(
-          items,
-          getShortcutStoreOptions()
-        ),
-        updatedAt: Date.now()
-      };
-      return new Promise((resolve, reject) => {
+    function readShortcutSyncValues() {
+      return new Promise((resolve) => {
         try {
-          const maybePromise = overflowArea.set({
-            [NEWTAB_SHORTCUTS_LOCAL_OVERFLOW_STORAGE_KEY]: localState
-          }, () => {
-            const runtimeError = getShortcutStorageLastError();
-            if (runtimeError) {
-              reject(new Error(runtimeError.message || 'Could not save local shortcuts'));
-              return;
-            }
-            resolve();
+          const maybePromise = storageArea.get(NEWTAB_SHORTCUTS_STORE.SHORTCUT_STORAGE_KEYS.slice(), (result) => {
+            resolve(result || {});
           });
           if (maybePromise && typeof maybePromise.then === 'function') {
-            maybePromise.then(resolve).catch(reject);
+            maybePromise.then((result) => resolve(result || {})).catch(() => resolve({}));
           }
         } catch (error) {
-          reject(error);
+          resolve({});
         }
       });
     }
 
-    function scheduleShortcutStorageReload() {
+    function scheduleShortcutStorageReload(delayMs) {
       if (shortcutStorageReloadTimer !== null) {
         window.clearTimeout(shortcutStorageReloadTimer);
       }
       shortcutStorageReloadTimer = window.setTimeout(() => {
         shortcutStorageReloadTimer = null;
         loadShortcuts().then(() => {
+          // A torn read can miss shortcuts, so their icons wait for a full one.
+          if (shortcutStateTorn) {
+            renderShortcuts();
+            return;
+          }
           pruneShortcutFavicons(pageState.newtabShortcuts);
           const prunedIcons = getNextShortcutIconMap(pageState.newtabShortcuts);
           if (!areShortcutIconMapsEqual(pageState.newtabShortcutIcons, prunedIcons)) {
@@ -311,7 +279,7 @@
           }
           renderShortcuts();
         });
-      }, 32);
+      }, Number.isFinite(delayMs) ? delayMs : 32);
     }
 
     function getShortcutIconDataUrl(shortcutId) {
@@ -677,24 +645,34 @@
       });
     }
 
+    function applyShortcutState(state) {
+      pageState.newtabShortcuts = state.items;
+      shortcutGroups = state.groups;
+      shortcutMigratedAt = Number(state.migratedAt) || 0;
+    }
+
     function loadShortcuts() {
       if (!storageArea) {
-        pageState.newtabShortcuts = NEWTAB_SHORTCUTS_STORE.getDefaultShortcuts(getShortcutStoreOptions());
+        applyShortcutState(NEWTAB_SHORTCUTS_STORE.getDefaultShortcutState(getShortcutStoreOptions()));
         return Promise.resolve(pageState.newtabShortcuts);
       }
       return Promise.all([
-        NEWTAB_SHORTCUTS_STORE.loadShortcuts(storageArea, getShortcutStoreOptions()),
-        readShortcutLocalState()
-      ]).then(([syncedItems, localState]) => {
-        if (localState && localState.authoritative === true) {
-          pageState.newtabShortcuts = localState.items;
-        } else {
-          pageState.newtabShortcuts = NEWTAB_SHORTCUTS_STORE.mergeShortcutLists(
-            syncedItems,
-            localState && localState.items,
-            getShortcutStoreOptions()
-          );
+        readShortcutSyncValues(),
+        readShortcutOverflowRecord()
+      ]).then(([values, overflowRecord]) => {
+        const state = NEWTAB_SHORTCUTS_STORE.readShortcutState(values, overflowRecord, getShortcutStoreOptions());
+        applyShortcutState(state);
+        shortcutStateTorn = state.torn === true;
+        // Part of another device's save has not arrived yet; read again
+        // shortly instead of rewriting anything from a mixed copy.
+        if (state.torn) {
+          if (shortcutTornReloadCount < SHORTCUT_TORN_RELOAD_LIMIT) {
+            shortcutTornReloadCount += 1;
+            scheduleShortcutStorageReload(SHORTCUT_TORN_RELOAD_DELAY_MS);
+          }
+          return pageState.newtabShortcuts;
         }
+        shortcutTornReloadCount = 0;
         if (pageState.newtabShortcuts.some((shortcut) => shortcut.type === 'folder')) {
           return refreshShortcutFolderReferences().then(() => pageState.newtabShortcuts);
         }
@@ -820,6 +798,10 @@
 
     function loadVisibleShortcuts() {
       return Promise.all([loadShortcuts(), loadShortcutIcons(), loadShortcutFavicons(), loadFolderColors()]).then(() => {
+        if (shortcutStateTorn) {
+          renderShortcuts();
+          return pageState.newtabShortcuts;
+        }
         const prunedIcons = getNextShortcutIconMap(pageState.newtabShortcuts);
         const shouldPrune = !areShortcutIconMapsEqual(pageState.newtabShortcutIcons, prunedIcons);
         const shouldPruneFavicons = pruneShortcutFavicons(pageState.newtabShortcuts, false);
@@ -880,13 +862,18 @@
       const settings = persistOptions && typeof persistOptions === 'object'
         ? persistOptions
         : {};
-      const normalized = NEWTAB_SHORTCUTS_STORE.normalizeShortcuts(nextShortcuts, options);
+      const nextState = NEWTAB_SHORTCUTS_STORE.normalizeShortcutState({
+        groups: settings.groups || shortcutGroups,
+        items: nextShortcuts,
+        migratedAt: shortcutMigratedAt
+      }, options);
+      const normalized = nextState.items;
       const previousIcons = pageState.newtabShortcutIcons;
       const nextIcons = getNextShortcutIconMap(normalized, iconChange);
       const iconsChanged = !areShortcutIconMapsEqual(previousIcons, nextIcons);
       let didWriteIcons = false;
       let didStartItemPersistence = false;
-      const syncBudgetReady = getShortcutSyncByteBudget();
+      const syncBudgetReady = getShortcutSyncBudget();
       const iconsReady = iconsChanged
         ? shortcutIconStore.writeAll(nextIcons).then((savedIcons) => {
           didWriteIcons = true;
@@ -901,51 +888,20 @@
         });
         if (!storageArea) {
           return finishTrackedPersistence(Promise.resolve({
-            items: normalized,
+            state: nextState,
             localOnlyIds: [],
             syncLimited: false
           }));
         }
-        if (!isShortcutSyncStorageActive()) {
-          return finishTrackedPersistence(NEWTAB_SHORTCUTS_STORE.saveShortcuts(storageArea, normalized, {
+        return finishTrackedPersistence(syncBudgetReady.then((budget) => (
+          NEWTAB_SHORTCUTS_STORE.persistShortcutState(storageArea, nextState, {
             ...options,
-            maxItemBytes: Number.MAX_SAFE_INTEGER,
-            maxTotalBytes: Number.MAX_SAFE_INTEGER
-          }).then((items) => ({
-            items,
-            localOnlyIds: [],
-            syncLimited: false
-          })));
-        }
-        return finishTrackedPersistence(syncBudgetReady.then((maxTotalBytes) => {
-          const plan = NEWTAB_SHORTCUTS_STORE.createShortcutStoragePlan(normalized, {
-            ...options,
-            maxTotalBytes
-          });
-          const overflowIds = plan.overflowItems.map((item) => String(item && item.id || ''));
-          return writeShortcutLocalState(plan.overflowItems, false)
-            .then(() => NEWTAB_SHORTCUTS_STORE.saveShortcutStoragePlan(
-              storageArea,
-              plan,
-              {
-                ...options,
-                getLastError: getShortcutStorageLastError
-              }
-            ))
-            .then(() => ({
-              items: normalized,
-              localOnlyIds: overflowIds,
-              syncLimited: overflowIds.length > 0
-            }))
-            .catch((syncError) => {
-              return writeShortcutLocalState(normalized, true).then(() => ({
-                items: normalized,
-                localOnlyIds: normalized.map((item) => String(item && item.id || '')),
-                syncError,
-                syncLimited: true
-              }));
-            });
-        }));
+            overflowArea: getShortcutOverflowStorageArea(),
+            maxTotalBytes: budget.maxTotalBytes,
+            legacyKeysPresent: budget.legacyKeysPresent,
+            getLastError: getShortcutStorageLastError
+          })
+        )));
       };
       return iconsReady
         .then((savedIcons) => {
@@ -953,8 +909,7 @@
           return persistItems();
         })
         .then((result) => {
-          const items = result && Array.isArray(result.items) ? result.items : normalized;
-          pageState.newtabShortcuts = items;
+          applyShortcutState(result && result.state ? result.state : nextState);
           pruneShortcutFavicons(pageState.newtabShortcuts);
           if (settings.render !== false) {
             renderShortcuts();
@@ -1082,8 +1037,9 @@
         return Promise.resolve(false);
       }
       nextShortcut.id = currentShortcut.id;
-      nextShortcut.createdAt = currentShortcut.createdAt;
-      nextShortcut.updatedAt = Date.now();
+      if (currentShortcut.groupId) {
+        nextShortcut.groupId = currentShortcut.groupId;
+      }
       const nextShortcuts = [];
       pageState.newtabShortcuts.forEach((item) => {
         if (!item) {

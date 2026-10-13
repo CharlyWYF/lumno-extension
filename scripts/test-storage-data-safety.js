@@ -45,6 +45,10 @@ const expectedSyncKeys = [
   '_x_extension_newtab_shortcuts_2026_unique_',
   '_x_extension_newtab_shortcuts_chunk_2_2026_unique_',
   '_x_extension_newtab_shortcuts_chunk_3_2026_unique_',
+  // Grouped shortcut state; the three keys above stay readable for migration.
+  '_x_extension_newtab_shortcuts_v2_2026_unique_',
+  '_x_extension_newtab_shortcuts_v2_chunk_2_2026_unique_',
+  '_x_extension_newtab_shortcuts_v2_chunk_3_2026_unique_',
   '_x_extension_newtab_shortcuts_visible_2026_unique_',
   '_x_extension_newtab_shortcut_add_visible_2026_unique_',
   '_x_extension_newtab_shortcut_dock_magnification_enabled_2026_unique_',

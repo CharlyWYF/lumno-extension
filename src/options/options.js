@@ -846,6 +846,20 @@
     '_x_extension_newtab_shortcuts_chunk_2_2026_unique_';
   const NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY = SETTINGS.NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY ||
     '_x_extension_newtab_shortcuts_chunk_3_2026_unique_';
+  const NEWTAB_LEGACY_SHORTCUTS_STORAGE_KEYS = [
+    NEWTAB_SHORTCUTS_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY
+  ];
+  // Grouped shortcut state. Its three keys are one save and move together.
+  const NEWTAB_SHORTCUTS_V2_STORAGE_KEY = '_x_extension_newtab_shortcuts_v2_2026_unique_';
+  const NEWTAB_SHORTCUTS_V2_CHUNK_2_STORAGE_KEY = '_x_extension_newtab_shortcuts_v2_chunk_2_2026_unique_';
+  const NEWTAB_SHORTCUTS_V2_CHUNK_3_STORAGE_KEY = '_x_extension_newtab_shortcuts_v2_chunk_3_2026_unique_';
+  const NEWTAB_SHORTCUTS_V2_STORAGE_KEYS = [
+    NEWTAB_SHORTCUTS_V2_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_V2_CHUNK_2_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_V2_CHUNK_3_STORAGE_KEY
+  ];
   const NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY = '_x_extension_newtab_shortcuts_visible_2026_unique_';
   const NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY = '_x_extension_newtab_shortcut_add_visible_2026_unique_';
   const NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY = '_x_extension_newtab_shortcut_dock_magnification_enabled_2026_unique_';
@@ -984,6 +998,9 @@
     NEWTAB_SHORTCUTS_STORAGE_KEY,
     NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY,
     NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_V2_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_V2_CHUNK_2_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_V2_CHUNK_3_STORAGE_KEY,
     NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY,
     NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY,
     NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY,
@@ -1624,6 +1641,15 @@
         const missingSyncValues = {};
         keys.forEach((key) => {
           if (typeof localResult[key] !== 'undefined' && typeof syncResult[key] === 'undefined') {
+            missingSyncValues[key] = localResult[key];
+          }
+        });
+        // Grouped shortcuts move only as a whole save, never chunk by chunk.
+        const [shortcutsHeadKey] = NEWTAB_SHORTCUTS_V2_STORAGE_KEYS;
+        NEWTAB_SHORTCUTS_V2_STORAGE_KEYS.forEach((key) => {
+          if (!Object.prototype.hasOwnProperty.call(missingSyncValues, shortcutsHeadKey)) {
+            delete missingSyncValues[key];
+          } else if (typeof localResult[key] !== 'undefined') {
             missingSyncValues[key] = localResult[key];
           }
         });
@@ -5275,6 +5301,16 @@
             }
           });
         }
+        // A file from before shortcut groups holds only the flat list. Clearing
+        // the grouped copy makes New Tab read and migrate the imported list.
+        const importsGroupedShortcuts = Object.prototype.hasOwnProperty.call(data, NEWTAB_SHORTCUTS_V2_STORAGE_KEYS[0]);
+        const shortcutKeysToClear = !importsGroupedShortcuts &&
+          NEWTAB_LEGACY_SHORTCUTS_STORAGE_KEYS.some((key) => Object.prototype.hasOwnProperty.call(payload, key))
+          ? NEWTAB_SHORTCUTS_V2_STORAGE_KEYS.slice()
+          : [];
+        if (!importsGroupedShortcuts) {
+          NEWTAB_SHORTCUTS_V2_STORAGE_KEYS.forEach((key) => { delete payload[key]; });
+        }
         if (
           !Object.prototype.hasOwnProperty.call(
             data,
@@ -5306,8 +5342,15 @@
               syncImportInput.value = '';
               return;
             }
-            toastTask.done(getMessage('sync_import_done', '导入完成'));
-            refreshSyncStatus();
+            const finishImport = () => {
+              toastTask.done(getMessage('sync_import_done', '导入完成'));
+              refreshSyncStatus();
+            };
+            if (!shortcutKeysToClear.length) {
+              finishImport();
+              return;
+            }
+            storageArea.remove(shortcutKeysToClear, finishImport);
           });
         } else {
           toastTask.cancel();

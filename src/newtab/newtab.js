@@ -435,9 +435,7 @@
   const RESTORE_SEARCH_LAYOUT_LOCK_MS = 900;
   const PINNED_RECENT_SITES_STORAGE_KEY = '_x_extension_newtab_pinned_recent_sites_2026_unique_';
   const HIDDEN_RECENT_SITES_STORAGE_KEY = '_x_extension_newtab_hidden_recent_sites_2026_unique_';
-  const NEWTAB_SHORTCUTS_STORAGE_KEY = '_x_extension_newtab_shortcuts_2026_unique_';
-  const NEWTAB_SHORTCUTS_LOCAL_OVERFLOW_STORAGE_KEY =
-    '_x_extension_newtab_shortcuts_local_overflow_2026_unique_';
+  const NEWTAB_SHORTCUTS_LOCAL_OVERFLOW_STORAGE_KEY = NEWTAB_SHORTCUTS_STORE.SHORTCUTS_LOCAL_OVERFLOW_KEY;
   const NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY = '_x_extension_newtab_shortcuts_visible_2026_unique_';
   const NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY = '_x_extension_newtab_shortcut_add_visible_2026_unique_';
   const NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY = '_x_extension_newtab_shortcut_dock_magnification_enabled_2026_unique_';
@@ -506,12 +504,9 @@
     maxDataUrlLength: 192 * 1024
   };
   const MAX_PINNED_RECENT_SITES = 3;
-  const MAX_NEWTAB_SHORTCUTS = 60;
-  const NEWTAB_SHORTCUTS_CRITICAL_SYNC_RESERVE_BYTES = 64 * 1024;
-  const NEWTAB_SHORTCUTS_STORAGE_KEYS = NEWTAB_SHORTCUTS_STORE.getShortcutStorageKeys({
-    key: NEWTAB_SHORTCUTS_STORAGE_KEY,
-    maxShortcuts: MAX_NEWTAB_SHORTCUTS
-  });
+  const MAX_NEWTAB_SHORTCUTS = NEWTAB_SHORTCUTS_STORE.DEFAULT_MAX_SHORTCUTS;
+  const NEWTAB_SHORTCUTS_CRITICAL_SYNC_RESERVE_BYTES = NEWTAB_SHORTCUTS_STORE.DEFAULT_SHORTCUTS_SYNC_RESERVE_BYTES;
+  const NEWTAB_SHORTCUTS_STORAGE_KEYS = NEWTAB_SHORTCUTS_STORE.SHORTCUT_STORAGE_KEYS;
   const NEWTAB_EXTERNAL_CHANGE_DEBOUNCE_MS = 120;
   const NEWTAB_RESIZE_DENSITY_SETTLE_MS = 140;
   const pageSearchParams = new URLSearchParams(window.location.search || '');
@@ -4084,14 +4079,12 @@
     shortcutFolderRuntime,
     bookmarksRuntime,
     isShortcutDragActive: (...args) => isShortcutDragActive(...args),
-    NEWTAB_SHORTCUTS_STORAGE_KEY,
     MAX_NEWTAB_SHORTCUTS,
     normalizeHost,
     sanitizeDisplayText,
     providerStorageRuntime,
     storageAreaName,
     NEWTAB_SHORTCUTS_STORE,
-    NEWTAB_SHORTCUTS_STORAGE_KEYS,
     NEWTAB_SHORTCUTS_CRITICAL_SYNC_RESERVE_BYTES,
     NEWTAB_SHORTCUTS_LOCAL_OVERFLOW_STORAGE_KEY,
     shortcutIconStore,

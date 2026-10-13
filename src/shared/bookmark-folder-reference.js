@@ -182,7 +182,7 @@
         const ref = node && describe(node.id, nodeMap);
         if (!ref || (item.folderRef && JSON.stringify(item.folderRef) === JSON.stringify(ref))) return item;
         const { folderId: _localId, ...portable } = item;
-        return { ...portable, folderRef: ref, title: String(node.title || ''), updatedAt: Date.now() };
+        return { ...portable, folderRef: ref, title: String(node.title || '') };
       });
     }
     function visibleItems(items, nodeMap) {
@@ -202,7 +202,7 @@
     const store = opts.shortcuts || root.LumnoNewtabShortcutsStore;
     const provider = opts.provider || settings.createProviderStorageRuntime(chromeApi);
     const runtime = createRuntime({ chrome: chromeApi });
-    const overflowKey = '_x_extension_newtab_shortcuts_local_overflow_2026_unique_';
+    const overflowKey = store.SHORTCUTS_LOCAL_OVERFLOW_KEY;
     let revision = 0;
     let timer = null;
     let chain = Promise.resolve();
@@ -225,13 +225,11 @@
       await Promise.all([provider.ready, runtime.ready]);
       const generation = revision;
       const sync = provider.getActiveAreaName() === 'sync';
-      const values = await storage(provider.area, 'get', store.DEFAULT_SHORTCUTS_CHUNK_KEYS);
+      const values = await storage(provider.area, 'get', store.SHORTCUT_STORAGE_KEYS.slice());
       const local = sync ? await storage(chromeApi.storage.local, 'get', [overflowKey]) : {};
-      const overflow = local[overflowKey] || {};
-      const primary = store.DEFAULT_SHORTCUTS_CHUNK_KEYS.flatMap((key) => Array.isArray(values[key]) ? values[key] : []);
-      const extra = Array.isArray(overflow) ? overflow : (Array.isArray(overflow.items) ? overflow.items : []);
-      const items = store.normalizeShortcuts(overflow.authoritative === true ? extra : [...primary, ...(extra || [])]);
-      if (!items.some((item) => item.type === 'folder')) return;
+      const state = store.readShortcutState(values, local[overflowKey]);
+      // A save from another device is still arriving; its next part reruns this.
+      if (state.torn || !state.items.some((item) => item.type === 'folder')) return;
       const nodes = await new Promise((resolve, reject) => {
         chromeApi.bookmarks.getTree((tree) => {
           const error = chromeApi.runtime && chromeApi.runtime.lastError;
@@ -239,28 +237,23 @@
           else resolve(tree);
         });
       });
-      const next = runtime.reconcile(items, buildNodeMap(nodes));
+      const next = runtime.reconcile(state.items, buildNodeMap(nodes));
       await runtime.flush();
-      if (generation !== revision || JSON.stringify(next) === JSON.stringify(items)) return;
+      if (generation !== revision || JSON.stringify(next) === JSON.stringify(state.items)) return;
+      const nextState = { groups: state.groups, items: next, migratedAt: state.migratedAt };
       if (!sync) {
-        await store.saveShortcuts(provider.area, next, { maxItemBytes: Number.MAX_SAFE_INTEGER,
-          maxTotalBytes: Number.MAX_SAFE_INTEGER });
+        await store.persistShortcutState(provider.area, nextState);
         return;
       }
       const allSync = await storage(chromeApi.storage.sync, 'get', null);
       if (generation !== revision) return;
-      const otherBytes = Object.entries(allSync).filter(([key]) => !store.DEFAULT_SHORTCUTS_CHUNK_KEYS.includes(key))
-        .reduce((sum, [key, value]) => sum + store.getShortcutStorageItemByteSize(key, value), 0);
-      const plan = store.createShortcutStoragePlan(next, { maxTotalBytes: Math.min(store.DEFAULT_SHORTCUTS_SYNC_TOTAL_BUDGET_BYTES,
-        Math.max(0, (chromeApi.storage.sync.QUOTA_BYTES || 102400) - 65536 - otherBytes)) });
-      await storage(chromeApi.storage.local, 'set', { [overflowKey]: { authoritative: false, items: plan.overflowItems } });
-      try {
-        await store.saveShortcutStoragePlan(chromeApi.storage.sync, plan, {
-          getLastError: () => chromeApi.runtime && chromeApi.runtime.lastError
-        });
-      } catch (_error) {
-        await storage(chromeApi.storage.local, 'set', { [overflowKey]: { authoritative: true, items: next } });
-      }
+      const usage = store.measureShortcutSyncUsage(allSync);
+      await store.persistShortcutState(chromeApi.storage.sync, nextState, {
+        overflowArea: chromeApi.storage.local,
+        maxTotalBytes: store.getShortcutSyncBudget({ ...usage, quotaBytes: chromeApi.storage.sync.QUOTA_BYTES }),
+        legacyKeysPresent: usage.legacyBytes > 0,
+        getLastError: () => chromeApi.runtime && chromeApi.runtime.lastError
+      });
     }
     function refresh() {
       if (timer) clearTimeout(timer);
@@ -287,7 +280,7 @@
           runtime.accept(changes[BINDINGS_KEY].newValue);
           schedule();
         } else if (changes[settings.LOCAL_PRIMARY_STORAGE_KEY] || changes[overflowKey] ||
-            (provider.isActiveAreaName(area) && store.DEFAULT_SHORTCUTS_CHUNK_KEYS.some((key) => changes[key]))) schedule();
+            (provider.isActiveAreaName(area) && store.SHORTCUT_STORAGE_KEYS.some((key) => changes[key]))) schedule();
       });
       refresh().catch((error) => { if (opts.onError) opts.onError(error); });
     }

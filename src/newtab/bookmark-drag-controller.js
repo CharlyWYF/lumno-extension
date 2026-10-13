@@ -881,9 +881,8 @@
           await bookmarksRuntime.ensureReady(true);
           const folderRef = FOLDER_REFERENCES.describe(folderId, bookmarksRuntime.getNodeMap());
           if (!folderRef) throw new Error('The stacked folder cannot be referenced.');
-          const now = Date.now();
           const nextShortcuts = planShortcuts({
-            id: folderShortcutId, type: 'folder', folderRef, title, createdAt: now, updatedAt: now
+            id: folderShortcutId, type: 'folder', folderRef, title
           });
           if (!nextShortcuts) throw new Error('Shortcuts changed while stacking.');
           shortcutFolderRuntime.bind(folderShortcutId, folderId);
