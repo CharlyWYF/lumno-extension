@@ -194,7 +194,7 @@ async function openPage(cdp, viewport) {
       })()`);
     },
     async key(key, modifiers = 0) {
-      const codes = { Enter: ['Enter', 13], Escape: ['Escape', 27], z: ['KeyZ', 90] };
+      const codes = { Enter: ['Enter', 13], Escape: ['Escape', 27], Backspace: ['Backspace', 8], z: ['KeyZ', 90] };
       const [code, keyCode] = codes[key];
       // Enter carries its character, or a form would not submit.
       const text = key === 'Enter' ? { type: 'keyDown', text: '\r', unmodifiedText: '\r' } : { type: 'rawKeyDown' };
@@ -435,6 +435,74 @@ check('dock magnification leaves tile boxes in place', WIDE, async (page) => {
     await page.settle(250);
   }
   return movedBetween(before, await page.snapshot());
+});
+
+// A magnified icon reaches up across the row gap toward the title above.
+// Its top still belongs to the icon; only the title row itself wakes the
+// title, and pointing there settles the icons.
+check('pointing at the top of a magnified icon leaves the title above asleep', WIDE, async (page) => {
+  await page.seed(BASE_GROUPS, BASE_ITEMS);
+  const state = (groupId, id) => page.evaluate(`(() => {
+    const header = document.querySelector('.x-nt-shortcut-group-header[data-shortcut-group-id="${groupId}"]');
+    const tile = document.querySelector('[data-shortcut-id="${id}"]');
+    return { header: header.matches(':hover'), tile: tile.matches(':hover'),
+      dock: tile.closest('.x-nt-shortcuts-grid').getAttribute('data-dock-active') === 'true' };
+  })()`);
+  const problems = [];
+  for (const [groupId, id] of [['g0', 'a1'], ['work', 'w1']]) {
+    await page.hover(`[data-shortcut-id="${id}"]`);
+    await page.settle(400);
+    const icon = await page.rect(`[data-shortcut-id="${id}"] .x-nt-shortcut-icon`);
+    await page.mouse('mouseMoved', icon.x, icon.top + 2, { button: 'none' });
+    await page.settle(250);
+    const onIcon = await state(groupId, id);
+    if (onIcon.header || !onIcon.tile || !onIcon.dock) {
+      problems.push({ key: `${id} icon top ${JSON.stringify(onIcon)}`, dx: 0, dy: 0 });
+    }
+    const header = await page.rect(`.x-nt-shortcut-group-header[data-shortcut-group-id="${groupId}"]`);
+    await page.mouse('mouseMoved', icon.x, header.top + 2, { button: 'none' });
+    await page.settle(250);
+    const onTitle = await state(groupId, id);
+    if (!onTitle.header || onTitle.tile || onTitle.dock) {
+      problems.push({ key: `${groupId} title row ${JSON.stringify(onTitle)}`, dx: 0, dy: 0 });
+    }
+  }
+  return problems;
+});
+
+// One group is no grouping: no title row, whatever it is named. The first
+// new group names the existing row "Shortcuts", and that name can be cleared.
+check('a single group shows no title, and the first new group names it', WIDE, async (page) => {
+  const problems = [];
+  const note = (key) => problems.push({ key, dx: 0, dy: 0 });
+  const headerCount = () => page.evaluate(`document.querySelectorAll('.x-nt-shortcut-group-header').length`);
+  await page.seed([{ id: 'g0', title: '工作' }], BASE_ITEMS.filter((item) => item.groupId === 'g0'));
+  if (await headerCount()) note('a titled single group shows a title row');
+  await page.seed([{ id: 'g0', title: '' }], BASE_ITEMS.filter((item) => item.groupId === 'g0'));
+  if (await headerCount()) note('an untitled single group shows a title row');
+  await page.click('.x-nt-shortcut-tile--add');
+  await page.settle(300);
+  await page.click('.x-nt-shortcut-context-menu-portal [data-value="group-create"]');
+  await page.settle();
+  await page.type('新分组');
+  await page.key('Enter');
+  await page.settle(700);
+  const titles = (await storedGroups(page)).map((group) => group[1]);
+  const shown = await page.evaluate(`(document.querySelector('[data-shortcut-group-id="g0"] .x-nt-shortcut-group-title') || {}).textContent || ''`);
+  if (titles.length !== 2 || !titles[0] || titles[1] !== '新分组' || shown !== titles[0]) {
+    note(`after creating ${JSON.stringify({ titles, shown })}`);
+  }
+  await page.click('[data-shortcut-group-id="g0"] .x-nt-shortcut-group-title', 2);
+  await page.settle();
+  await page.evaluate(`document.querySelector(${JSON.stringify(GROUP_DIALOG_INPUT)}).select()`);
+  await page.key('Backspace');
+  await page.key('Enter');
+  await page.settle(700);
+  const cleared = (await storedGroups(page)).map((group) => group[1]);
+  if (cleared[0] !== '' || await page.evaluate(`!document.querySelector('[data-shortcut-group-id="g0"][data-shortcut-group-untitled="true"]')`)) {
+    note(`after clearing ${JSON.stringify(cleared)}`);
+  }
+  return problems;
 });
 
 check('a canceled tile drag puts everything back', WIDE, async (page) => {

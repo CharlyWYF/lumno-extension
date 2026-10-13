@@ -3200,6 +3200,9 @@
   "newtab_shortcuts_group_new": {
     "message": "新建分组"
   },
+  "newtab_shortcuts_group_default_title": {
+    "message": "快捷方式"
+  },
   "newtab_shortcuts_group_title_placeholder": {
     "message": "添加标题"
   },

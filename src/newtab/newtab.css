@@ -1060,6 +1060,21 @@ body[data-nt-bottom-dock-density="tiny"] {
   --x-nt-shortcut-dock-scale: var(--x-nt-shortcut-hover-scale-near, 1.28);
   --x-nt-shortcut-dock-rise: var(--x-nt-shortcut-hover-rise-near, -6px);
 }
+/* The magnified icon grows up out of its tile, across the row gap and over
+   a group title above, but takes no pointer itself. The tile reaches up
+   under it (to its largest size: 1.28x, 6px higher), so pointing at what
+   looks like the icon stays on the icon instead of waking the title. */
+.x-nt-shortcut-tile[data-dock-distance="0"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: max(0px, calc(
+    var(--x-nt-shortcut-icon-size, 48px) * 0.28 + 6px -
+    (var(--x-nt-shortcut-tile-size, 64px) - var(--x-nt-shortcut-icon-size, 48px)) / 2
+  ));
+}
 .x-nt-shortcut-tile[data-shortcut-context-menu-open="true"] .x-nt-shortcut-icon {
   filter: brightness(0.92);
 }

@@ -1002,9 +1002,10 @@
       return shortcutGroups;
     }
 
-    // One untitled default group keeps the plain, centered shortcut rows.
+    // A single group is no grouping: it keeps the plain, centered shortcut
+    // rows and shows no title, whatever it is named.
     function isShortcutGroupLayoutActive() {
-      return !NEWTAB_SHORTCUTS_STORE.isDefaultShortcutGroupLayout(shortcutGroups);
+      return shortcutGroups.length > 1;
     }
 
     function getLastShortcutGroupId() {
@@ -1070,8 +1071,17 @@
         id: NEWTAB_SHORTCUTS_STORE.createShortcutGroupId(),
         title: String(title || '')
       }])[0];
+      // The first new group turns the existing row into a group of its own,
+      // named "Shortcuts" unless it already has a name; it can be renamed or
+      // cleared like any title.
+      const groups = shortcutGroups.length === 1 && !shortcutGroups[0].title
+        ? NEWTAB_SHORTCUTS_STORE.normalizeShortcutGroups([{
+          id: shortcutGroups[0].id,
+          title: t('newtab_shortcuts_group_default_title', 'Shortcuts')
+        }])
+        : shortcutGroups;
       return persistShortcuts(pageState.newtabShortcuts, '', undefined, {
-        groups: shortcutGroups.concat(group),
+        groups: groups.concat(group),
         animateLayout: true
       });
     }

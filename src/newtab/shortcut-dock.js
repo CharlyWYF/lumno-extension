@@ -250,6 +250,13 @@
       const tile = getShortcutTileFromNode(event.target);
       if (tile) {
         scheduleShortcutDockPointerStyles(tile, getShortcutDockPointerX(event));
+        return;
+      }
+      // A group title row is not part of the dock: pointing at it settles
+      // the icons, so a magnified icon never shows beside a waking title.
+      const target = event.target;
+      if (target && typeof target.closest === 'function' && target.closest('.x-nt-shortcut-group-header')) {
+        resetShortcutDockHover();
       }
     }
 

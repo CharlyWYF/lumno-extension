@@ -3200,6 +3200,9 @@
   "newtab_shortcuts_group_new": {
     "message": "新しいグループ"
   },
+  "newtab_shortcuts_group_default_title": {
+    "message": "ショートカット"
+  },
   "newtab_shortcuts_group_title_placeholder": {
     "message": "タイトルを追加"
   },

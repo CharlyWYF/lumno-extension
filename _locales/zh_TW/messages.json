@@ -3200,6 +3200,9 @@
   "newtab_shortcuts_group_new": {
     "message": "新增群組"
   },
+  "newtab_shortcuts_group_default_title": {
+    "message": "捷徑"
+  },
   "newtab_shortcuts_group_title_placeholder": {
     "message": "新增標題"
   },
