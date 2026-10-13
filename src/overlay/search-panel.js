@@ -38,26 +38,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
   let openInCurrentTabModifierActive = false;
   let openSwitchInNewTabModifierActive = false;
   let openInBackgroundTabModifierActive = false;
-  // Teardown steps owned by this invocation's overlay session. Controllers
-  // created deep inside the mount block register here so removeOverlay can
-  // release them without stashing them on DOM expandos.
-  const overlaySessionCleanups = [];
-  function addOverlaySessionCleanup(cleanup) {
-    if (typeof cleanup === 'function') {
-      overlaySessionCleanups.push(cleanup);
-    }
-    return cleanup;
-  }
-  function runOverlaySessionCleanups() {
-    while (overlaySessionCleanups.length > 0) {
-      const cleanup = overlaySessionCleanups.pop();
-      try {
-        cleanup();
-      } catch (error) {
-        // One failed teardown step must not keep the rest of the session alive.
-      }
-    }
-  }
   function cancelPendingOverlaySuggestionRequests() {
     overlaySuggestionRequestSeq += 1;
     if (overlayRemoteSuggestionDebounceTimer) {
@@ -105,6 +85,11 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     console.warn('Lumno: overlay runtime helper not available.');
     return;
   }
+  // Teardown steps owned by this invocation's overlay session. Controllers
+  // created deep inside the mount block register here so removeOverlay can
+  // release them without stashing them on DOM expandos.
+  const overlaySessionCleanups = overlayLifecycle.createSessionCleanupRegistry();
+  const addOverlaySessionCleanup = overlaySessionCleanups.add;
   const storageChangeListeners = overlayLifecycle.createChromeEventListenerRegistry(
     chrome && chrome.storage ? chrome.storage.onChanged : null
   );
@@ -1406,7 +1391,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     stopOverlayAntiTranslateObserver();
     // Session cleanups stop the mount connection guard, so they must run
     // before the host leaves the document or the guard would re-attach it.
-    runOverlaySessionCleanups();
+    overlaySessionCleanups.run();
     if (overlayElement) {
       if (overlayWheelIsolationHandler) {
         overlayElement.removeEventListener('wheel', overlayWheelIsolationHandler, true);
@@ -1491,54 +1476,18 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     overlayEngagementNoticeController = null;
   }
 
-  // Each invocation of this helper has its own closure, so a later invocation
-  // (the next hotkey press, or a re-injected runtime) cannot reach the
-  // listeners an earlier one registered. Every session therefore listens on
-  // its mount host for this event and tears itself down when asked. DOM events
-  // also cross isolated worlds, which lets a fresh extension context retire an
-  // overlay left behind by a reloaded one.
-  const OVERLAY_SESSION_DESTROY_EVENT = '_x_extension_overlay_session_destroy_2026_unique_';
-  const OVERLAY_SESSION_PRESERVE_LOADING_INTENT = 'preserve-loading-intent';
-
-  function bindOverlaySessionDestroy(overlayHost, overlayElement) {
-    if (!overlayHost || typeof overlayHost.addEventListener !== 'function') {
+  function destroyExistingOverlaySession(overlayElement, options) {
+    const mountHost = getOverlayMountHost(overlayElement);
+    const destroyed = mountHost
+      ? overlayLifecycle.requestSessionDestroy(mountHost, options)
+      : !(overlayElement && overlayElement.isConnected);
+    if (destroyed) {
+      window._x_extension_search_overlay_open_2026_unique_ = false;
       return;
     }
-    const handleDestroyRequest = (event) => {
-      overlayHost.removeEventListener(OVERLAY_SESSION_DESTROY_EVENT, handleDestroyRequest);
-      removeOverlay(overlayElement, {
-        preserveLoadingIntent: Boolean(event) &&
-          event.detail === OVERLAY_SESSION_PRESERVE_LOADING_INTENT
-      });
-    };
-    overlayHost.addEventListener(OVERLAY_SESSION_DESTROY_EVENT, handleDestroyRequest);
-    addOverlaySessionCleanup(() => {
-      overlayHost.removeEventListener(OVERLAY_SESSION_DESTROY_EVENT, handleDestroyRequest);
-    });
-  }
-
-  function destroyExistingOverlaySession(overlayElement, options) {
-    const removalOptions = options && typeof options === 'object' ? options : {};
-    const mountHost = getOverlayMountHost(overlayElement);
-    if (mountHost && typeof mountHost.dispatchEvent === 'function' &&
-        typeof CustomEvent === 'function') {
-      // The detail stays a string so it survives the isolated-world boundary.
-      mountHost.dispatchEvent(new CustomEvent(OVERLAY_SESSION_DESTROY_EVENT, {
-        detail: removalOptions.preserveLoadingIntent === true
-          ? OVERLAY_SESSION_PRESERVE_LOADING_INTENT
-          : ''
-      }));
-    }
-    const stillMounted = mountHost
-      ? mountHost.isConnected
-      : Boolean(overlayElement && overlayElement.isConnected);
-    if (stillMounted) {
-      // An overlay from a runtime that predates session teardown: remove its
-      // DOM at least, as before.
-      removeOverlay(overlayElement, removalOptions);
-    } else {
-      window._x_extension_search_overlay_open_2026_unique_ = false;
-    }
+    // An overlay from a runtime that predates session teardown: remove its
+    // DOM at least, as before.
+    removeOverlay(overlayElement, options);
   }
 
   const overlayShell = globalThis.LumnoOverlayShell;
@@ -1589,7 +1538,9 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       return;
     }
     setOverlayStoredContextToken(overlay);
-    bindOverlaySessionDestroy(overlayHost, overlay);
+    addOverlaySessionCleanup(overlayLifecycle.onSessionDestroyRequest(overlayHost, (options) => {
+      removeOverlay(overlay, options);
+    }));
     overlay.classList.add('x-lumno-search-entry');
     setOverlayMountVisibility(overlayHost, true);
     applyNoTranslate(overlay);

@@ -682,6 +682,78 @@
     });
   }
 
+  // Teardown steps owned by one overlay session, run newest first. A failing
+  // step never keeps the rest of the session alive.
+  function createSessionCleanupRegistry() {
+    const cleanups = [];
+    return Object.freeze({
+      add(cleanup) {
+        if (typeof cleanup === 'function') {
+          cleanups.push(cleanup);
+        }
+        return cleanup;
+      },
+      run() {
+        while (cleanups.length > 0) {
+          const cleanup = cleanups.pop();
+          try {
+            cleanup();
+          } catch (error) {
+            // Keep releasing the remaining steps.
+          }
+        }
+      },
+      get size() { return cleanups.length; }
+    });
+  }
+
+  // Every invocation of the overlay helper runs in its own closure, so a later
+  // invocation (the next hotkey press, or a re-injected runtime) cannot reach
+  // the listeners an earlier one registered. Each session therefore listens on
+  // its mount host for this event and tears itself down when asked. DOM events
+  // cross isolated worlds, which also lets a fresh extension context retire an
+  // overlay left behind by a reloaded one; the detail stays a string for the
+  // same reason.
+  const SESSION_DESTROY_EVENT = '_x_extension_overlay_session_destroy_2026_unique_';
+  const SESSION_PRESERVE_LOADING_INTENT = 'preserve-loading-intent';
+
+  function onSessionDestroyRequest(host, destroy) {
+    if (!host || typeof host.addEventListener !== 'function' || typeof destroy !== 'function') {
+      return () => {};
+    }
+    const handleDestroyRequest = (event) => {
+      host.removeEventListener(SESSION_DESTROY_EVENT, handleDestroyRequest);
+      destroy({
+        preserveLoadingIntent: Boolean(event) &&
+          event.detail === SESSION_PRESERVE_LOADING_INTENT
+      });
+    };
+    host.addEventListener(SESSION_DESTROY_EVENT, handleDestroyRequest);
+    return () => {
+      host.removeEventListener(SESSION_DESTROY_EVENT, handleDestroyRequest);
+    };
+  }
+
+  // Asks the session mounted on `host` to tear itself down. Returns true when
+  // the host has left the document afterwards.
+  function requestSessionDestroy(host, options) {
+    if (!host || typeof host.dispatchEvent !== 'function') {
+      return false;
+    }
+    const doc = host.ownerDocument;
+    const win = doc && doc.defaultView;
+    const CustomEventCtor = (win && win.CustomEvent) ||
+      (typeof CustomEvent === 'function' ? CustomEvent : null);
+    if (CustomEventCtor) {
+      host.dispatchEvent(new CustomEventCtor(SESSION_DESTROY_EVENT, {
+        detail: options && options.preserveLoadingIntent === true
+          ? SESSION_PRESERVE_LOADING_INTENT
+          : ''
+      }));
+    }
+    return host.isConnected !== true;
+  }
+
   // A page-level key listener must only act on keys meant for the overlay:
   // keys from inside its mount host, or keys sent while nothing on the page
   // holds focus (they then target the body or the document). A focused
@@ -718,7 +790,10 @@
     createChromeEventListenerRegistry,
     createFrameTracker,
     createMountConnectionGuard,
+    createSessionCleanupRegistry,
     createViewportSizeSync,
-    isOverlayKeyEvent
+    isOverlayKeyEvent,
+    onSessionDestroyRequest,
+    requestSessionDestroy
   });
 });
