@@ -185,11 +185,6 @@ assert.match(
   'the first trusted keydown should be relayed for background verification while shortcut configuration is pending'
 );
 assert.match(
-  backgroundSource,
-  /case 'triggerShowSearchFromPageHotkey':[\s\S]*request\.requiresShortcutVerification === true[\s\S]*getConfiguredFallbackShortcut\(\(shortcut\) =>[\s\S]*SHORTCUT_KEY_MATCHER\.descriptorMatchesShortcut\(request\.observedShortcut, spec\)[\s\S]*triggerVerifiedPageHotkey\(shortcut\)/,
-  'the background should validate the cold-start key descriptor against the live browser shortcut before opening Lumno'
-);
-assert.match(
   switcherBridgeSource,
   /TAB_SWITCHER_RELEASE_REPLAY_WINDOW_MS[\s\S]*recentTrustedKeydownAtByKey[\s\S]*function rememberTrustedTabSwitcherShortcutKeydown\(event\)[\s\S]*function rememberTrustedTabSwitcherShortcutRelease\(event\)[\s\S]*function getBufferedTabSwitcherShortcutReleaseKey\(keys, commandStartedAt\)[\s\S]*observedAt >= startedAt[\s\S]*keydownAt <= observedAt[\s\S]*request\.commandStartedAt[\s\S]*function notifyTabSwitcherShortcutModifierReleased\(event\)[\s\S]*event\.isTrusted !== true[\s\S]*rememberTrustedTabSwitcherShortcutRelease\(event\)[\s\S]*relayTabSwitcherShortcutRelease\(key\)[\s\S]*window\.addEventListener\('keydown',\s*rememberTrustedTabSwitcherShortcutKeydown,\s*true\)[\s\S]*window\.addEventListener\('keyup',\s*notifyTabSwitcherShortcutModifierReleased,\s*true\)/,
   'extension pages should preserve the same trusted keydown/keyup release replay behavior through their persistent bridge'
@@ -1671,11 +1666,6 @@ assert.deepStrictEqual(
     "commitOpenTabSwitcherInWindow(senderTab.windowId, 'keyup')"
   ],
   'the open switcher should only be committed by a real keyup notification'
-);
-assert.match(
-  backgroundSource,
-  /shortcuts:\s*\{[\s\S]*'notifyTabSwitcherShortcutModifierReleased'[\s\S]*handler:\s*handleShortcutMessage[\s\S]*case 'notifyTabSwitcherShortcutModifierReleased':[\s\S]*handleTabSwitcherShortcutModifierReleased/,
-  'the trusted frame release notification should be routed into the tab switcher commit path'
 );
 assert.match(
   injectSwitcherBlock,

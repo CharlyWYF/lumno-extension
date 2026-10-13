@@ -1,25 +1,30 @@
 const assert = require('assert');
 
 const routerApi = require('../src/background/message-router.js');
+const { loadBackground, wait } = require('./helpers/background-harness');
 
-function run() {
+function testRouterModule() {
   const calls = [];
-  const router = routerApi.createRouter({
-    tabs: {
-      actions: ['switchToTab', 'getTabsForOverlay'],
-      handler: (request, sender, sendResponse) => {
-        calls.push({ request, sender });
-        sendResponse({ ok: true, group: 'tabs' });
+  const router = routerApi.createRouter(
+    {
+      switchToTab(request, sender, sendResponse) {
+        calls.push({ action: 'switchToTab', request, sender });
+        sendResponse({ ok: true });
+        return undefined;
+      },
+      getTabsForOverlay(request, sender, sendResponse) {
+        calls.push({ action: 'getTabsForOverlay', request, sender });
+        sendResponse({ ok: true, area: 'tabs' });
         return true;
       }
     },
-    empty: {
-      actions: [],
-      handler: () => {
-        throw new Error('empty group should not be registered');
+    {
+      getSearchSuggestions(_request, _sender, sendResponse) {
+        sendResponse({ ok: true, area: 'search' });
+        return true;
       }
     }
-  });
+  );
 
   let response = null;
   const asyncResult = routerApi.dispatch(
@@ -30,37 +35,113 @@ function run() {
       response = value;
     }
   );
-
-  assert.strictEqual(asyncResult, true);
-  assert.deepStrictEqual(response, { ok: true, group: 'tabs' });
+  assert.strictEqual(asyncResult, true, 'an async handler result should reach the runtime listener');
+  assert.deepStrictEqual(response, { ok: true, area: 'tabs' });
   assert.strictEqual(calls.length, 1);
   assert.strictEqual(calls[0].sender.tab.id, 42);
 
+  routerApi.dispatch(router, { action: 'getSearchSuggestions' }, {}, (value) => {
+    response = value;
+  });
+  assert.deepStrictEqual(response, { ok: true, area: 'search' }, 'handlers from every map should be routed');
+
   response = null;
-  const unknownResult = routerApi.dispatch(
-    router,
-    { action: 'unknownAction' },
-    {},
-    (value) => {
-      response = value;
-    }
-  );
+  const unknownResult = routerApi.dispatch(router, { action: 'unknownAction' }, {}, (value) => {
+    response = value;
+  });
   assert.strictEqual(unknownResult, undefined);
   assert.deepStrictEqual(response, { ok: false });
 
+  response = null;
+  routerApi.dispatch(router, null, {}, (value) => {
+    response = value;
+  });
+  assert.deepStrictEqual(response, { ok: false }, 'a message without an action is unknown');
+
+  assert.strictEqual(router.has('switchToTab'), true);
+  assert.deepStrictEqual(router.actions().sort(), ['getSearchSuggestions', 'getTabsForOverlay', 'switchToTab']);
+
   assert.throws(() => {
-    routerApi.createRouter({
-      first: {
-        actions: ['duplicate'],
-        handler: () => {}
-      },
-      second: {
-        actions: ['duplicate'],
-        handler: () => {}
-      }
-    });
-  }, /Duplicate background message action/);
+    routerApi.createRouter({ duplicate() {} }, { duplicate() {} });
+  }, /Duplicate background message action: duplicate/);
+  assert.throws(() => {
+    routerApi.createRouter({ broken: 'not a function' });
+  }, /not a function: broken/);
 }
 
-run();
-console.log('message router tests passed');
+// Every runtime message the extension's pages and content scripts send must
+// keep reaching a background handler.
+const EXPECTED_BACKGROUND_ACTIONS = [
+  'webdav',
+  'switchToTab', 'reportTabVisible', 'notifyTopFrameDocumentStarted', 'notifyOverlayClosed',
+  'updateOverlayLoadingSession', 'getTabsForOverlay', 'trackSearchTab', 'closeOtherTabsForOverlay',
+  'swapNewtabForFocus',
+  'getShowSearchShortcut', 'getCopyCurrentUrlCommandShortcut', 'copyCurrentPageUrl',
+  'triggerShowSearchFromPageHotkey', 'notifyTabSwitcherShortcutModifierReleased', 'getShortcutRules',
+  'pipRequestOwnership', 'pipReleaseOwnership', 'openDocumentPipPicker', 'siteTryEnterPiPInMainWorld',
+  'iqiyiTryEnterPiPInMainWorld', 'iqiyiSetupAutoPiPInMainWorld', 'forceExitPiPInMainWorld',
+  'ytForceExitPiPInMainWorld',
+  'searchOrNavigate', 'getSearchSuggestions', 'getSearchEngineSuggestions',
+  'recordSearchSuggestionSelection', 'deleteHistoryUrl',
+  'getSiteSearchProviders', 'getHelpCenterSearchResults', 'runSiteSearchProviderQuery',
+  'runAggregateSearchQuery',
+  'runSelectionQuickAction',
+  'getLocaleMessages', 'getFileSchemeAccessStatus',
+  'openOptionsPage', 'openOnboardingPage', 'openExtensionShortcutsPage', 'openSiteSearchOptionsPage',
+  'openReleasePage', 'openBookmarkManager', 'openBookmarkFolderInNewTabGroup', 'createTab', 'openNewTab',
+  'openExtensionDetailsPage', 'probeProgressSeries',
+  'resolveFaviconCandidates', 'getFaviconData', 'getShortcutFaviconData', 'resolveSiteThemeColor'
+];
+
+async function testBackgroundRegistry() {
+  const harness = loadBackground({
+    tabs: [{ id: 5, windowId: 1, index: 0, active: true, url: 'https://example.com/', title: 'Example' }],
+    commands: [{ name: 'show-search', shortcut: '⌘⇧K' }, { name: 'show-tab-switcher', shortcut: 'Alt+Q' }],
+    expose: ['backgroundMessageRouter']
+  });
+  const router = harness.exposed('backgroundMessageRouter');
+  assert.deepStrictEqual(
+    JSON.parse(JSON.stringify(router.actions())).sort(),
+    EXPECTED_BACKGROUND_ACTIONS.slice().sort(),
+    'the background should route exactly the known runtime message actions'
+  );
+
+  const unknown = await harness.sendMessage({ action: 'definitelyNotAnAction' });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(unknown)), { ok: false });
+
+  const shortcut = await harness.sendMessage({ action: 'getShowSearchShortcut' });
+  assert.ok(shortcut && typeof shortcut.shortcut === 'string' && shortcut.shortcut.length > 0,
+    'a routed handler should answer through sendResponse');
+
+  const senderTab = { id: 5, windowId: 1, url: 'https://example.com/' };
+  const release = await harness.sendMessage(
+    { action: 'notifyTabSwitcherShortcutModifierReleased', key: 'Alt' },
+    { tab: senderTab }
+  );
+  assert.strictEqual(release && release.ok, true,
+    'a trusted frame release should be routed into the tab switcher commit path');
+  assert.strictEqual(release.committed, false, 'no switcher is open, so nothing is committed');
+
+  const copy = harness.sendMessage({ action: 'copyCurrentPageUrl' }, { tab: senderTab });
+  await wait(30);
+  assert.ok(
+    harness.calls.some((call) => call.name === 'tabs.sendMessage' && call.args[0] === 5 &&
+      call.args[1] && call.args[1].action === 'copyCurrentPageUrlFromCommand'),
+    'the slash command should reuse the current-page copy behavior in the sender tab'
+  );
+  await copy;
+
+  const selection = await harness.sendMessage({ action: 'runSelectionQuickAction' }, { tab: senderTab });
+  assert.strictEqual(selection && selection.ok, false);
+  assert.ok(selection.reason, 'the selection quick action handler, not the unknown-action reply, should answer');
+}
+
+(async () => {
+  testRouterModule();
+  await testBackgroundRegistry();
+  console.log('message router tests passed');
+  process.exit(0);
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

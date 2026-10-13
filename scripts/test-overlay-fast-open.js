@@ -254,11 +254,6 @@ assert.match(
   /function notifyOverlayLoadingSession\(input\)[\s\S]*?action: 'updateOverlayLoadingSession',[\s\S]*?inputValue,[\s\S]*?selectionStart,[\s\S]*?selectionEnd,[\s\S]*?focused:/,
   'typing in a loading Document should persist the live draft, selection, and focus state'
 );
-assert.match(
-  backgroundSource,
-  /case 'updateOverlayLoadingSession': \{[\s\S]*?updateOverlayLoadingSessionFromMessage\(request, sender, sendResponse\);[\s\S]*?return true;/,
-  'the background router should accept asynchronous loading-session updates from the Overlay'
-);
 assert.doesNotMatch(
   overlaySource.slice(overlaySource.lastIndexOf('const revealReady =')),
   /initialLanguageReady|initialOverlayContentReady|initialFaviconEnhancedFetchReady/,

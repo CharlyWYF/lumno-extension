@@ -6358,123 +6358,6 @@ function runAggregateSearchQuery(aggregateId, query, sender, disposition) {
   return aggregateSearchQueryRunner(aggregateId, query, sender, disposition);
 }
 
-// Route message actions by feature area before invoking the original handlers.
-const BACKGROUND_MESSAGE_ROUTE_GROUPS = Object.freeze({
-  webdav: {
-    actions: ['webdav'],
-    handler: handleWebDavMessage
-  },
-  tabs: {
-    actions: [
-      'switchToTab',
-      'reportTabVisible',
-      'notifyTopFrameDocumentStarted',
-      'notifyOverlayClosed',
-      'updateOverlayLoadingSession',
-      'getTabsForOverlay',
-      'trackSearchTab',
-      'closeOtherTabsForOverlay',
-      'swapNewtabForFocus'
-    ],
-    handler: handleTabMessage
-  },
-  shortcuts: {
-    actions: [
-      'getShowSearchShortcut',
-      'getCopyCurrentUrlCommandShortcut',
-      'copyCurrentPageUrl',
-      'triggerShowSearchFromPageHotkey',
-      'notifyTabSwitcherShortcutModifierReleased',
-      'getShortcutRules'
-    ],
-    handler: handleShortcutMessage
-  },
-  pip: {
-    actions: [
-      'pipRequestOwnership',
-      'pipReleaseOwnership',
-      'openDocumentPipPicker',
-      'siteTryEnterPiPInMainWorld',
-      'iqiyiTryEnterPiPInMainWorld',
-      'iqiyiSetupAutoPiPInMainWorld',
-      'forceExitPiPInMainWorld',
-      'ytForceExitPiPInMainWorld'
-    ],
-    handler: handlePipMessage
-  },
-  search: {
-    actions: [
-      'searchOrNavigate',
-      'getSearchSuggestions',
-      'getSearchEngineSuggestions',
-      'recordSearchSuggestionSelection',
-      'deleteHistoryUrl'
-    ],
-    handler: handleSearchMessage
-  },
-  siteSearch: {
-    actions: [
-      'getSiteSearchProviders',
-      'getHelpCenterSearchResults',
-      'runSiteSearchProviderQuery',
-      'runAggregateSearchQuery'
-    ],
-    handler: handleSiteSearchMessage
-  },
-  selectionQuickActions: {
-    actions: [
-      'runSelectionQuickAction'
-    ],
-    handler: handleSelectionQuickActionMessage
-  },
-  localeAndPermissions: {
-    actions: [
-      'getLocaleMessages',
-      'getFileSchemeAccessStatus'
-    ],
-    handler: handleLocaleAndPermissionMessage
-  },
-  extensionPages: {
-    actions: [
-      'openOptionsPage',
-      'openOnboardingPage',
-      'openExtensionShortcutsPage',
-      'openSiteSearchOptionsPage',
-      'openReleasePage',
-      'openBookmarkManager',
-      'openBookmarkFolderInNewTabGroup',
-      'createTab',
-      'openNewTab',
-      'openExtensionDetailsPage',
-      'probeProgressSeries'
-    ],
-    handler: handleExtensionPageMessage
-  },
-  favicon: {
-    actions: [
-      'resolveFaviconCandidates',
-      'getFaviconData',
-      'getShortcutFaviconData',
-      'resolveSiteThemeColor'
-    ],
-    handler: handleFaviconMessage
-  }
-});
-
-const backgroundMessageRouter = BACKGROUND_MESSAGE_ROUTER.createRouter(BACKGROUND_MESSAGE_ROUTE_GROUPS);
-
-function sendUnknownBackgroundMessageResponse(sendResponse) {
-  sendResponse({ ok: false });
-  return;
-}
-
-function dispatchBackgroundMessage(request, sender, sendResponse) {
-  return BACKGROUND_MESSAGE_ROUTER.dispatch(backgroundMessageRouter, request, sender, sendResponse);
-}
-
-// Listen for extension runtime messages.
-chrome.runtime.onMessage.addListener(dispatchBackgroundMessage);
-
 const shortcutFolderSyncController = providerStorageRuntime &&
   chrome.bookmarks && typeof chrome.bookmarks.getTree === 'function'
   ? globalThis.LumnoBookmarkFolderReference.createSyncController({ chrome, provider: providerStorageRuntime,
@@ -6501,226 +6384,220 @@ function handleWebDavMessage(request, sender, sendResponse) {
   return true;
 }
 
-function handleTabMessage(request, sender, sendResponse) {
-  switch (request.action) {
-    case 'swapNewtabForFocus': {
-      swapNewtabForFocus(sender && sender.tab ? sender.tab : null, sender && sender.url, (result) => {
-        sendResponse(result);
-      });
-      return true;
+// Tabs, overlay lifecycle and tab visibility.
+const TAB_MESSAGE_HANDLERS = Object.freeze({
+  swapNewtabForFocus(request, sender, sendResponse) {
+    swapNewtabForFocus(sender && sender.tab ? sender.tab : null, sender && sender.url, (result) => {
+      sendResponse(result);
+    });
+    return true;
+  },
+  switchToTab(request, sender, sendResponse) {
+    if (typeof request.tabId === 'number') {
+      recordTabSwitchEvent(request.tabId);
     }
-    case 'switchToTab': {
-      if (typeof request.tabId === 'number') {
-        recordTabSwitchEvent(request.tabId);
+    focusWindowAndActivateTab(
+      request.tabId,
+      typeof request.windowId === 'number' ? request.windowId : null,
+      (result) => {
+        sendResponse(result || { ok: false });
       }
-      focusWindowAndActivateTab(
-        request.tabId,
-        typeof request.windowId === 'number' ? request.windowId : null,
-        (result) => {
-          sendResponse(result || { ok: false });
-        }
-      );
-      return true;
+    );
+    return true;
+  },
+  reportTabVisible(request, sender, sendResponse) {
+    const senderTab = sender && sender.tab ? sender.tab : null;
+    if (senderTab && typeof senderTab.id === 'number') {
+      const at = Number(request && request.at);
+      const reportedAt = Number.isFinite(at) ? at : Date.now();
+      recordTabSwitchEvent(senderTab.id, reportedAt);
+      recordRecentSwitcherTab(senderTab, reportedAt);
+      scheduleSwitcherThumbnailCapture(senderTab, 'visible');
     }
-    case 'reportTabVisible': {
-      const senderTab = sender && sender.tab ? sender.tab : null;
-      if (senderTab && typeof senderTab.id === 'number') {
-        const at = Number(request && request.at);
-        const reportedAt = Number.isFinite(at) ? at : Date.now();
-        recordTabSwitchEvent(senderTab.id, reportedAt);
-        recordRecentSwitcherTab(senderTab, reportedAt);
-        scheduleSwitcherThumbnailCapture(senderTab, 'visible');
-      }
-      sendResponse({ ok: true });
-      return;
+    sendResponse({ ok: true });
+    return;
+  },
+  notifyOverlayClosed(request, sender, sendResponse) {
+    const senderTab = sender && sender.tab ? sender.tab : null;
+    if (senderTab && typeof senderTab.id === 'number') {
+      clearOverlayLoadingRecord(senderTab.id);
     }
-    case 'notifyOverlayClosed': {
-      const senderTab = sender && sender.tab ? sender.tab : null;
-      if (senderTab && typeof senderTab.id === 'number') {
-        clearOverlayLoadingRecord(senderTab.id);
-      }
-      sendResponse({ ok: true });
-      return;
-    }
-    case 'notifyTopFrameDocumentStarted': {
-      const accepted = recoverOverlayAfterTopFrameDocumentStart(request, sender);
-      sendResponse({ ok: accepted });
-      return;
-    }
-    case 'updateOverlayLoadingSession': {
-      updateOverlayLoadingSessionFromMessage(request, sender, sendResponse);
-      return true;
-    }
-    case 'getTabsForOverlay': {
-      ensureTabSwitchStatsLoaded()
-        .catch(() => {})
-        .finally(() => {
-          const requestedCurrentTabId = Number.isFinite(Number(request && request.currentTabId))
-            ? Number(request.currentTabId)
-            : null;
-          const currentTabId = sender && sender.tab && typeof sender.tab.id === 'number'
-            ? sender.tab.id
-            : requestedCurrentTabId;
-          chrome.tabs.query({}, (tabs) => {
-            const normalizedTabs = (Array.isArray(tabs) ? tabs : [])
-              .filter((tab) => tab && tab.incognito !== true)
-              .map((tab) => {
-                const resolvedUrl = getResolvedTabUrl(tab);
-                return {
-                  id: tab.id,
-                  title: typeof tab.title === 'string' ? tab.title : '',
-                  url: resolvedUrl || '',
-                  favIconUrl: typeof tab.favIconUrl === 'string' ? tab.favIconUrl : '',
-                  lastAccessed: Number(tab.lastAccessed) || 0
-                };
-              });
-            syncTabSwitchStatsFromTabList(normalizedTabs);
-            const sortedTabs = sortTabsForOverlay(normalizedTabs);
-            tabOverlayFetchSeq += 1;
-            const withSeq = sortedTabs.map((tab) => createOverlayTabPayload(tab, tabOverlayFetchSeq));
-            sendResponse({ tabs: withSeq, currentTabId: currentTabId });
-          });
+    sendResponse({ ok: true });
+    return;
+  },
+  notifyTopFrameDocumentStarted(request, sender, sendResponse) {
+    const accepted = recoverOverlayAfterTopFrameDocumentStart(request, sender);
+    sendResponse({ ok: accepted });
+    return;
+  },
+  updateOverlayLoadingSession(request, sender, sendResponse) {
+    updateOverlayLoadingSessionFromMessage(request, sender, sendResponse);
+    return true;
+  },
+  getTabsForOverlay(request, sender, sendResponse) {
+    ensureTabSwitchStatsLoaded()
+      .catch(() => {})
+      .finally(() => {
+        const requestedCurrentTabId = Number.isFinite(Number(request && request.currentTabId))
+          ? Number(request.currentTabId)
+          : null;
+        const currentTabId = sender && sender.tab && typeof sender.tab.id === 'number'
+          ? sender.tab.id
+          : requestedCurrentTabId;
+        chrome.tabs.query({}, (tabs) => {
+          const normalizedTabs = (Array.isArray(tabs) ? tabs : [])
+            .filter((tab) => tab && tab.incognito !== true)
+            .map((tab) => {
+              const resolvedUrl = getResolvedTabUrl(tab);
+              return {
+                id: tab.id,
+                title: typeof tab.title === 'string' ? tab.title : '',
+                url: resolvedUrl || '',
+                favIconUrl: typeof tab.favIconUrl === 'string' ? tab.favIconUrl : '',
+                lastAccessed: Number(tab.lastAccessed) || 0
+              };
+            });
+          syncTabSwitchStatsFromTabList(normalizedTabs);
+          const sortedTabs = sortTabsForOverlay(normalizedTabs);
+          tabOverlayFetchSeq += 1;
+          const withSeq = sortedTabs.map((tab) => createOverlayTabPayload(tab, tabOverlayFetchSeq));
+          sendResponse({ tabs: withSeq, currentTabId: currentTabId });
         });
-      return true;
+      });
+    return true;
+  },
+  trackSearchTab(request, sender, sendResponse) {
+    if (typeof request.tabId === 'number') {
+      markPendingSearchTab(request.tabId, sender && sender.tab ? sender.tab : null);
+      sendResponse({ ok: true });
+    } else {
+      sendResponse({ ok: false });
     }
-    case 'trackSearchTab': {
-      if (typeof request.tabId === 'number') {
-        markPendingSearchTab(request.tabId, sender && sender.tab ? sender.tab : null);
-        sendResponse({ ok: true });
-      } else {
-        sendResponse({ ok: false });
-      }
-      return true;
+    return true;
+  },
+  closeOtherTabsForOverlay(request, sender, sendResponse) {
+    const senderTab = sender && sender.tab ? sender.tab : null;
+    if (!senderTab || typeof senderTab.id !== 'number' || typeof senderTab.windowId !== 'number') {
+      sendResponse({ ok: false, reason: 'invalid-sender' });
+      return;
     }
-    case 'closeOtherTabsForOverlay': {
-      const senderTab = sender && sender.tab ? sender.tab : null;
-      if (!senderTab || typeof senderTab.id !== 'number' || typeof senderTab.windowId !== 'number') {
-        sendResponse({ ok: false, reason: 'invalid-sender' });
+    chrome.tabs.query({ windowId: senderTab.windowId }, (tabs) => {
+      if (chrome.runtime && chrome.runtime.lastError) {
+        sendResponse({ ok: false, reason: chrome.runtime.lastError.message || 'query-failed' });
         return;
       }
-      chrome.tabs.query({ windowId: senderTab.windowId }, (tabs) => {
+      const ungroupedId = chrome && chrome.tabGroups && typeof chrome.tabGroups.TAB_GROUP_ID_NONE === 'number'
+        ? chrome.tabGroups.TAB_GROUP_ID_NONE
+        : -1;
+      const toCloseIds = (Array.isArray(tabs) ? tabs : [])
+        .filter((tab) => {
+          if (!tab || typeof tab.id !== 'number') {
+            return false;
+          }
+          if (tab.id === senderTab.id) {
+            return false;
+          }
+          if (tab.pinned) {
+            return false;
+          }
+          if (typeof tab.groupId === 'number' && tab.groupId !== ungroupedId) {
+            return false;
+          }
+          return true;
+        })
+        .map((tab) => tab.id);
+      if (toCloseIds.length <= 0) {
+        sendResponse({ ok: true, closedCount: 0 });
+        return;
+      }
+      chrome.tabs.remove(toCloseIds, () => {
         if (chrome.runtime && chrome.runtime.lastError) {
-          sendResponse({ ok: false, reason: chrome.runtime.lastError.message || 'query-failed' });
+          sendResponse({ ok: false, reason: chrome.runtime.lastError.message || 'remove-failed' });
           return;
         }
-        const ungroupedId = chrome && chrome.tabGroups && typeof chrome.tabGroups.TAB_GROUP_ID_NONE === 'number'
-          ? chrome.tabGroups.TAB_GROUP_ID_NONE
-          : -1;
-        const toCloseIds = (Array.isArray(tabs) ? tabs : [])
-          .filter((tab) => {
-            if (!tab || typeof tab.id !== 'number') {
-              return false;
-            }
-            if (tab.id === senderTab.id) {
-              return false;
-            }
-            if (tab.pinned) {
-              return false;
-            }
-            if (typeof tab.groupId === 'number' && tab.groupId !== ungroupedId) {
-              return false;
-            }
-            return true;
-          })
-          .map((tab) => tab.id);
-        if (toCloseIds.length <= 0) {
-          sendResponse({ ok: true, closedCount: 0 });
-          return;
-        }
-        chrome.tabs.remove(toCloseIds, () => {
-          if (chrome.runtime && chrome.runtime.lastError) {
-            sendResponse({ ok: false, reason: chrome.runtime.lastError.message || 'remove-failed' });
-            return;
-          }
-          sendResponse({ ok: true, closedCount: toCloseIds.length });
-        });
+        sendResponse({ ok: true, closedCount: toCloseIds.length });
       });
-      return true;
-    }
-    default:
-      return sendUnknownBackgroundMessageResponse(sendResponse);
+    });
+    return true;
   }
-}
+});
 
-function handleShortcutMessage(request, sender, sendResponse) {
-  switch (request.action) {
-    case 'getShowSearchShortcut': {
-      getConfiguredFallbackShortcut((shortcut) => {
-        sendResponse({ shortcut: shortcut || '' });
+// Configured shortcuts and page hotkeys.
+const SHORTCUT_MESSAGE_HANDLERS = Object.freeze({
+  getShowSearchShortcut(request, sender, sendResponse) {
+    getConfiguredFallbackShortcut((shortcut) => {
+      sendResponse({ shortcut: shortcut || '' });
+    });
+    return true;
+  },
+  getCopyCurrentUrlCommandShortcut(request, sender, sendResponse) {
+    getConfiguredCopyUrlCommandShortcut((shortcut) => {
+      sendResponse({ shortcut: shortcut || '' });
+    });
+    return true;
+  },
+  copyCurrentPageUrl(request, sender, sendResponse) {
+    const senderTab = sender && sender.tab ? sender.tab : null;
+    triggerCopyCurrentUrlForTab(senderTab, 'slash-command', (ok) => {
+      sendResponse({ ok: Boolean(ok) });
+    });
+    return true;
+  },
+  triggerShowSearchFromPageHotkey(request, sender, sendResponse) {
+    const senderTab = sender && sender.tab ? sender.tab : null;
+    if (!senderTab || typeof senderTab.id !== 'number') {
+      logHotkeyDebug('page-hotkey-invalid-sender', {
+        hasSender: Boolean(sender),
+        hasTab: Boolean(sender && sender.tab)
       });
-      return true;
-    }
-    case 'getCopyCurrentUrlCommandShortcut': {
-      getConfiguredCopyUrlCommandShortcut((shortcut) => {
-        sendResponse({ shortcut: shortcut || '' });
-      });
-      return true;
-    }
-    case 'copyCurrentPageUrl': {
-      const senderTab = sender && sender.tab ? sender.tab : null;
-      triggerCopyCurrentUrlForTab(senderTab, 'slash-command', (ok) => {
-        sendResponse({ ok: Boolean(ok) });
-      });
-      return true;
-    }
-    case 'triggerShowSearchFromPageHotkey': {
-      const senderTab = sender && sender.tab ? sender.tab : null;
-      if (!senderTab || typeof senderTab.id !== 'number') {
-        logHotkeyDebug('page-hotkey-invalid-sender', {
-          hasSender: Boolean(sender),
-          hasTab: Boolean(sender && sender.tab)
-        });
-        sendResponse({ ok: false });
-        return;
-      }
-      const triggerVerifiedPageHotkey = (shortcut) => {
-        const shouldPrefillCurrentUrl = Boolean(request && request.prefillCurrentUrl);
-        const triggerSource = shouldPrefillCurrentUrl ? 'page-hotkey-prefill' : 'page-hotkey';
-        logHotkeyDebug('received', {
-          command: SHOW_SEARCH_COMMAND_NAME,
-          source: triggerSource,
-          tabId: senderTab.id,
-          url: senderTab.url || '',
-          pendingUrl: senderTab.pendingUrl || '',
-          prefillCurrentUrl: shouldPrefillCurrentUrl,
-          verifiedAfterColdStart: Boolean(request && request.requiresShortcutVerification)
-        });
-        rememberPageHotkeyContext(senderTab);
-        triggerShowSearchForTab(senderTab, triggerSource);
-        sendResponse({ ok: true, shortcut: shortcut || '' });
-      };
-      if (request && request.requiresShortcutVerification === true) {
-        getConfiguredFallbackShortcut((shortcut) => {
-          const spec = SHORTCUT_KEY_MATCHER.parseShortcut(shortcut);
-          const matched = SHORTCUT_KEY_MATCHER.descriptorMatchesShortcut(request.observedShortcut, spec);
-          if (!matched) {
-            sendResponse({ ok: false, reason: 'shortcut-mismatch', shortcut: shortcut || '' });
-            return;
-          }
-          triggerVerifiedPageHotkey(shortcut);
-        });
-        return true;
-      }
-      triggerVerifiedPageHotkey('');
+      sendResponse({ ok: false });
       return;
     }
-    case 'notifyTabSwitcherShortcutModifierReleased': {
-      const senderTab = sender && sender.tab ? sender.tab : null;
-      handleTabSwitcherShortcutModifierReleased(senderTab, request && request.key, (didCommit) => {
-        sendResponse({ ok: true, committed: didCommit === true });
+    const triggerVerifiedPageHotkey = (shortcut) => {
+      const shouldPrefillCurrentUrl = Boolean(request && request.prefillCurrentUrl);
+      const triggerSource = shouldPrefillCurrentUrl ? 'page-hotkey-prefill' : 'page-hotkey';
+      logHotkeyDebug('received', {
+        command: SHOW_SEARCH_COMMAND_NAME,
+        source: triggerSource,
+        tabId: senderTab.id,
+        url: senderTab.url || '',
+        pendingUrl: senderTab.pendingUrl || '',
+        prefillCurrentUrl: shouldPrefillCurrentUrl,
+        verifiedAfterColdStart: Boolean(request && request.requiresShortcutVerification)
+      });
+      rememberPageHotkeyContext(senderTab);
+      triggerShowSearchForTab(senderTab, triggerSource);
+      sendResponse({ ok: true, shortcut: shortcut || '' });
+    };
+    if (request && request.requiresShortcutVerification === true) {
+      getConfiguredFallbackShortcut((shortcut) => {
+        const spec = SHORTCUT_KEY_MATCHER.parseShortcut(shortcut);
+        const matched = SHORTCUT_KEY_MATCHER.descriptorMatchesShortcut(request.observedShortcut, spec);
+        if (!matched) {
+          sendResponse({ ok: false, reason: 'shortcut-mismatch', shortcut: shortcut || '' });
+          return;
+        }
+        triggerVerifiedPageHotkey(shortcut);
       });
       return true;
     }
-    case 'getShortcutRules': {
-      loadShortcutRules().then((items) => {
-        sendResponse({ items: items });
-      });
-      return true;
-    }
-    default:
-      return sendUnknownBackgroundMessageResponse(sendResponse);
+    triggerVerifiedPageHotkey('');
+    return;
+  },
+  notifyTabSwitcherShortcutModifierReleased(request, sender, sendResponse) {
+    const senderTab = sender && sender.tab ? sender.tab : null;
+    handleTabSwitcherShortcutModifierReleased(senderTab, request && request.key, (didCommit) => {
+      sendResponse({ ok: true, committed: didCommit === true });
+    });
+    return true;
+  },
+  getShortcutRules(request, sender, sendResponse) {
+    loadShortcutRules().then((items) => {
+      sendResponse({ items: items });
+    });
+    return true;
   }
-}
+});
 
 function sendPipMainWorldResponse(methodName, sender, sendResponse) {
   if (typeof pipMainWorld[methodName] !== 'function') {
@@ -6748,241 +6625,235 @@ function getSearchEngineSuggestionRequestKey(request, sender) {
   return `${senderTabId}:${senderFrameId}:${context}`;
 }
 
-function handlePipMessage(request, sender, sendResponse) {
-  switch (request.action) {
-    case 'pipRequestOwnership': {
-      requestGlobalPipOwnership(sender, request && request.kind ? String(request.kind) : '')
-        .then((result) => {
-          sendResponse(result);
-        })
-        .catch((error) => {
-          sendResponse({
-            ok: false,
-            granted: false,
-            reason: error && error.message ? error.message : String(error || 'ownership-request-failed')
-          });
-        });
-      return true;
-    }
-    case 'pipReleaseOwnership': {
-      releaseGlobalPipOwnership(sender, request && request.token ? String(request.token) : '')
-        .then((result) => {
-          sendResponse(result);
-        })
-        .catch((error) => {
-          sendResponse({
-            ok: false,
-            released: false,
-            reason: error && error.message ? error.message : String(error || 'ownership-release-failed')
-          });
-        });
-      return true;
-    }
-    case 'openDocumentPipPicker': {
-      const senderTab = sender && sender.tab ? sender.tab : null;
-      if (!senderTab || typeof senderTab.id !== 'number') {
-        sendResponse({ ok: false, reason: 'no-sender-tab' });
-        return;
-      }
-      openDocumentPipPickerOnTab(senderTab, 'search-command').then((enabled) => {
+// Picture-in-picture ownership and main-world helpers.
+const PIP_MESSAGE_HANDLERS = Object.freeze({
+  pipRequestOwnership(request, sender, sendResponse) {
+    requestGlobalPipOwnership(sender, request && request.kind ? String(request.kind) : '')
+      .then((result) => {
+        sendResponse(result);
+      })
+      .catch((error) => {
         sendResponse({
-          ok: enabled === true,
-          enabled: enabled === true
+          ok: false,
+          granted: false,
+          reason: error && error.message ? error.message : String(error || 'ownership-request-failed')
         });
       });
-      return true;
+    return true;
+  },
+  pipReleaseOwnership(request, sender, sendResponse) {
+    releaseGlobalPipOwnership(sender, request && request.token ? String(request.token) : '')
+      .then((result) => {
+        sendResponse(result);
+      })
+      .catch((error) => {
+        sendResponse({
+          ok: false,
+          released: false,
+          reason: error && error.message ? error.message : String(error || 'ownership-release-failed')
+        });
+      });
+    return true;
+  },
+  openDocumentPipPicker(request, sender, sendResponse) {
+    const senderTab = sender && sender.tab ? sender.tab : null;
+    if (!senderTab || typeof senderTab.id !== 'number') {
+      sendResponse({ ok: false, reason: 'no-sender-tab' });
+      return;
     }
-    case 'siteTryEnterPiPInMainWorld': {
-      sendPipMainWorldResponse('siteTryEnterPiPInMainWorld', sender, sendResponse);
-      return true;
-    }
-    case 'iqiyiTryEnterPiPInMainWorld': {
-      sendPipMainWorldResponse('iqiyiTryEnterPiPInMainWorld', sender, sendResponse);
-      return true;
-    }
-    case 'iqiyiSetupAutoPiPInMainWorld': {
-      sendPipMainWorldResponse('iqiyiSetupAutoPiPInMainWorld', sender, sendResponse);
-      return true;
-    }
-    case 'forceExitPiPInMainWorld': {
-      sendPipMainWorldResponse('forceExitPiPInMainWorld', sender, sendResponse);
-      return true;
-    }
-    case 'ytForceExitPiPInMainWorld': {
-      sendPipMainWorldResponse('youtubeForceExitPiPInMainWorld', sender, sendResponse);
-      return true;
-    }
-    default:
-      return sendUnknownBackgroundMessageResponse(sendResponse);
+    openDocumentPipPickerOnTab(senderTab, 'search-command').then((enabled) => {
+      sendResponse({
+        ok: enabled === true,
+        enabled: enabled === true
+      });
+    });
+    return true;
+  },
+  siteTryEnterPiPInMainWorld(request, sender, sendResponse) {
+    sendPipMainWorldResponse('siteTryEnterPiPInMainWorld', sender, sendResponse);
+    return true;
+  },
+  iqiyiTryEnterPiPInMainWorld(request, sender, sendResponse) {
+    sendPipMainWorldResponse('iqiyiTryEnterPiPInMainWorld', sender, sendResponse);
+    return true;
+  },
+  iqiyiSetupAutoPiPInMainWorld(request, sender, sendResponse) {
+    sendPipMainWorldResponse('iqiyiSetupAutoPiPInMainWorld', sender, sendResponse);
+    return true;
+  },
+  forceExitPiPInMainWorld(request, sender, sendResponse) {
+    sendPipMainWorldResponse('forceExitPiPInMainWorld', sender, sendResponse);
+    return true;
+  },
+  ytForceExitPiPInMainWorld(request, sender, sendResponse) {
+    sendPipMainWorldResponse('youtubeForceExitPiPInMainWorld', sender, sendResponse);
+    return true;
   }
-}
+});
 
-function handleSearchMessage(request, sender, sendResponse) {
-  switch (request.action) {
-    case 'searchOrNavigate': {
-      const query = request.query ? String(request.query) : '';
-      const forceSearch = Boolean(request.forceSearch);
-      const openInBackgroundTab = request.disposition === 'backgroundTab';
-      const sourceTab = sender && sender.tab ? sender.tab : null;
-      Promise.all([loadShortcutRules(), resolveSearchResultTabPlacement(sourceTab)]).then(([rules, placement]) => {
-        const createResolvedTab = (url, callback) => {
-          createSearchResultTab({
-            url,
-            active: !openInBackgroundTab
-          }, sourceTab, callback, placement);
-        };
-        const shortcutUrl = getShortcutUrl(query, rules);
-        if (shortcutUrl) {
-          createResolvedTab(shortcutUrl, () => {
-            sendResponse({ ok: true, url: shortcutUrl });
-          });
-          return;
-        }
-        const directUrl = !forceSearch ? getDirectNavigationUrl(query) : '';
-        if (directUrl) {
-          createResolvedTab(directUrl, () => {
-            sendResponse({ ok: true, url: directUrl });
-          });
-        } else {
-          // It's a search query - use browser default search engine
-          const fallbackUrl = buildDefaultSearchUrl(query);
-          // Preserve the original browser search path unless an adjacent position is selected.
-          if (typeof placement.index !== 'number') {
-            if (openInBackgroundTab) {
-              createResolvedTab(fallbackUrl, () => {
-                sendResponse({ ok: true, url: fallbackUrl });
-              });
-              return;
-            }
-            if (chrome && chrome.search && typeof chrome.search.query === 'function') {
-              markPendingSearchTab(null, sourceTab);
-              try {
-                chrome.search.query({ text: query, disposition: 'NEW_TAB' }, () => {
-                  if (chrome.runtime && chrome.runtime.lastError) {
-                    pendingSearchAt = 0;
-                    pendingSearchTabId = null;
-                    pendingSearchGroupContext = null;
-                    createResolvedTab(fallbackUrl, () => {
-                      sendResponse({ ok: true, url: fallbackUrl });
-                    });
-                    return;
-                  }
-                  sendResponse({ ok: true, url: fallbackUrl });
-                });
-                return;
-              } catch (error) {
-                pendingSearchAt = 0;
-                pendingSearchTabId = null;
-                pendingSearchGroupContext = null;
-              }
-            }
+// Search, suggestions and history.
+const SEARCH_MESSAGE_HANDLERS = Object.freeze({
+  searchOrNavigate(request, sender, sendResponse) {
+    const query = request.query ? String(request.query) : '';
+    const forceSearch = Boolean(request.forceSearch);
+    const openInBackgroundTab = request.disposition === 'backgroundTab';
+    const sourceTab = sender && sender.tab ? sender.tab : null;
+    Promise.all([loadShortcutRules(), resolveSearchResultTabPlacement(sourceTab)]).then(([rules, placement]) => {
+      const createResolvedTab = (url, callback) => {
+        createSearchResultTab({
+          url,
+          active: !openInBackgroundTab
+        }, sourceTab, callback, placement);
+      };
+      const shortcutUrl = getShortcutUrl(query, rules);
+      if (shortcutUrl) {
+        createResolvedTab(shortcutUrl, () => {
+          sendResponse({ ok: true, url: shortcutUrl });
+        });
+        return;
+      }
+      const directUrl = !forceSearch ? getDirectNavigationUrl(query) : '';
+      if (directUrl) {
+        createResolvedTab(directUrl, () => {
+          sendResponse({ ok: true, url: directUrl });
+        });
+      } else {
+        // It's a search query - use browser default search engine
+        const fallbackUrl = buildDefaultSearchUrl(query);
+        // Preserve the original browser search path unless an adjacent position is selected.
+        if (typeof placement.index !== 'number') {
+          if (openInBackgroundTab) {
             createResolvedTab(fallbackUrl, () => {
               sendResponse({ ok: true, url: fallbackUrl });
             });
             return;
           }
           if (chrome && chrome.search && typeof chrome.search.query === 'function') {
-            createResolvedTab('about:blank', (tab, info) => {
-              if (!tab || typeof tab.id !== 'number' || !info || !info.ok) {
-                sendResponse({ ok: false, reason: (info && info.reason) || 'tab-create-failed' });
-                return;
-              }
-              markPendingSearchTab(tab.id, sourceTab);
-              SEARCH_RESULT_TABS.searchInTab(chrome, {
-                query,
-                tabId: tab.id,
-                fallbackUrl,
-                onFallback() {
-                  if (pendingSearchTabId === tab.id) {
-                    pendingSearchAt = 0;
-                    pendingSearchTabId = null;
-                    pendingSearchGroupContext = null;
-                  }
+            markPendingSearchTab(null, sourceTab);
+            try {
+              chrome.search.query({ text: query, disposition: 'NEW_TAB' }, () => {
+                if (chrome.runtime && chrome.runtime.lastError) {
+                  pendingSearchAt = 0;
+                  pendingSearchTabId = null;
+                  pendingSearchGroupContext = null;
+                  createResolvedTab(fallbackUrl, () => {
+                    sendResponse({ ok: true, url: fallbackUrl });
+                  });
+                  return;
                 }
-              }, (result) => {
-                sendResponse({ ...result, url: fallbackUrl });
+                sendResponse({ ok: true, url: fallbackUrl });
               });
-            });
-            return;
+              return;
+            } catch (error) {
+              pendingSearchAt = 0;
+              pendingSearchTabId = null;
+              pendingSearchGroupContext = null;
+            }
           }
           createResolvedTab(fallbackUrl, () => {
             sendResponse({ ok: true, url: fallbackUrl });
           });
+          return;
         }
-      });
-      return true;
-    }
-    case 'getSearchSuggestions': {
-      const query = request.query;
-      const requestKey = getSearchEngineSuggestionRequestKey(request, sender);
-      if (shouldPrefetchSearchEngineSuggestions(request, query)) {
-        scheduleSearchEngineSuggestionPrefetch(requestKey, query);
-      } else {
-        abortSearchEngineSuggestionRequest(requestKey);
-      }
-      getSearchSuggestions(query, {
-        sourceTypes: request.sourceTypes,
-        includeOpenTabs: request.includeOpenTabs
-      }).then(suggestions => {
-        sendResponse({ suggestions: suggestions });
-      }).catch(() => {
-        sendResponse({ suggestions: [] });
-      });
-      return true; // Keep the message channel open for async response
-    }
-    case 'getSearchEngineSuggestions': {
-      const query = request.query;
-      const requestKey = getSearchEngineSuggestionRequestKey(request, sender);
-      const requestRecord = consumeSearchEngineSuggestionRequest(requestKey, query);
-      if (!requestRecord) {
-        sendResponse({ suggestions: [], aborted: false, hasRemoteSuggestions: false });
-        return;
-      }
-      const controller = requestRecord.controller;
-      getSearchEngineSuggestions(query, request.localSuggestions, {
-        signal: controller.signal,
-        rawEngineSuggestionsPromise: startSearchEngineSuggestionRequest(requestRecord),
-        searchFirst: request.searchFirst === true
-      }).then((suggestions) => {
-        const isCurrent = searchEngineSuggestionRequests.get(requestKey) === requestRecord;
-        const hasRemoteSuggestions = isCurrent && !controller.signal.aborted && suggestions.some((suggestion) => (
-          suggestion && suggestion.type === 'googleSuggest'
-        ));
-        sendResponse({
-          suggestions: isCurrent && !controller.signal.aborted ? suggestions : [],
-          aborted: !isCurrent || controller.signal.aborted,
-          hasRemoteSuggestions
-        });
-      }).catch(() => {
-        sendResponse({ suggestions: [], aborted: controller.signal.aborted, hasRemoteSuggestions: false });
-      }).finally(() => {
-        if (searchEngineSuggestionRequests.get(requestKey) === requestRecord) {
-          releaseSearchEngineSuggestionRequest(requestKey, requestRecord);
-        }
-      });
-      return true;
-    }
-    case 'recordSearchSuggestionSelection': {
-      recordSearchSuggestionSelection(request)
-        .then((result) => {
-          sendResponse(result);
-        })
-        .catch((error) => {
-          sendResponse({
-            ok: false,
-            reason: error && error.message ? error.message : 'record-selection-failed'
+        if (chrome && chrome.search && typeof chrome.search.query === 'function') {
+          createResolvedTab('about:blank', (tab, info) => {
+            if (!tab || typeof tab.id !== 'number' || !info || !info.ok) {
+              sendResponse({ ok: false, reason: (info && info.reason) || 'tab-create-failed' });
+              return;
+            }
+            markPendingSearchTab(tab.id, sourceTab);
+            SEARCH_RESULT_TABS.searchInTab(chrome, {
+              query,
+              tabId: tab.id,
+              fallbackUrl,
+              onFallback() {
+                if (pendingSearchTabId === tab.id) {
+                  pendingSearchAt = 0;
+                  pendingSearchTabId = null;
+                  pendingSearchGroupContext = null;
+                }
+              }
+            }, (result) => {
+              sendResponse({ ...result, url: fallbackUrl });
+            });
           });
+          return;
+        }
+        createResolvedTab(fallbackUrl, () => {
+          sendResponse({ ok: true, url: fallbackUrl });
         });
-      return true;
+      }
+    });
+    return true;
+  },
+  getSearchSuggestions(request, sender, sendResponse) {
+    const query = request.query;
+    const requestKey = getSearchEngineSuggestionRequestKey(request, sender);
+    if (shouldPrefetchSearchEngineSuggestions(request, query)) {
+      scheduleSearchEngineSuggestionPrefetch(requestKey, query);
+    } else {
+      abortSearchEngineSuggestionRequest(requestKey);
     }
-    case 'deleteHistoryUrl': {
-      const targetUrl = typeof request.url === 'string' ? request.url : '';
-      return deleteHistoryUrlFromSearch(targetUrl, sendResponse);
+    getSearchSuggestions(query, {
+      sourceTypes: request.sourceTypes,
+      includeOpenTabs: request.includeOpenTabs
+    }).then(suggestions => {
+      sendResponse({ suggestions: suggestions });
+    }).catch(() => {
+      sendResponse({ suggestions: [] });
+    });
+    return true; // Keep the message channel open for async response
+  },
+  getSearchEngineSuggestions(request, sender, sendResponse) {
+    const query = request.query;
+    const requestKey = getSearchEngineSuggestionRequestKey(request, sender);
+    const requestRecord = consumeSearchEngineSuggestionRequest(requestKey, query);
+    if (!requestRecord) {
+      sendResponse({ suggestions: [], aborted: false, hasRemoteSuggestions: false });
+      return;
     }
-    default:
-      return sendUnknownBackgroundMessageResponse(sendResponse);
+    const controller = requestRecord.controller;
+    getSearchEngineSuggestions(query, request.localSuggestions, {
+      signal: controller.signal,
+      rawEngineSuggestionsPromise: startSearchEngineSuggestionRequest(requestRecord),
+      searchFirst: request.searchFirst === true
+    }).then((suggestions) => {
+      const isCurrent = searchEngineSuggestionRequests.get(requestKey) === requestRecord;
+      const hasRemoteSuggestions = isCurrent && !controller.signal.aborted && suggestions.some((suggestion) => (
+        suggestion && suggestion.type === 'googleSuggest'
+      ));
+      sendResponse({
+        suggestions: isCurrent && !controller.signal.aborted ? suggestions : [],
+        aborted: !isCurrent || controller.signal.aborted,
+        hasRemoteSuggestions
+      });
+    }).catch(() => {
+      sendResponse({ suggestions: [], aborted: controller.signal.aborted, hasRemoteSuggestions: false });
+    }).finally(() => {
+      if (searchEngineSuggestionRequests.get(requestKey) === requestRecord) {
+        releaseSearchEngineSuggestionRequest(requestKey, requestRecord);
+      }
+    });
+    return true;
+  },
+  recordSearchSuggestionSelection(request, sender, sendResponse) {
+    recordSearchSuggestionSelection(request)
+      .then((result) => {
+        sendResponse(result);
+      })
+      .catch((error) => {
+        sendResponse({
+          ok: false,
+          reason: error && error.message ? error.message : 'record-selection-failed'
+        });
+      });
+    return true;
+  },
+  deleteHistoryUrl(request, sender, sendResponse) {
+    const targetUrl = typeof request.url === 'string' ? request.url : '';
+    return deleteHistoryUrlFromSearch(targetUrl, sendResponse);
   }
-}
+});
 
 function deleteHistoryUrlFromSearch(targetUrl, sendResponse) {
   if (!targetUrl) {
@@ -7033,328 +6904,339 @@ function getHelpCenterSearchResults(query, locale) {
   }));
 }
 
-function handleSiteSearchMessage(request, sender, sendResponse) {
-  switch (request.action) {
-    case 'getSiteSearchProviders': {
-      loadSiteSearchProviders().then((items) => {
-        sendResponse({ items: items });
-      }).catch(() => {
-        sendResponse({
-          items: [],
-          reason: 'site-search-provider-load-failed'
-        });
-      });
-      return true;
-    }
-    case 'getHelpCenterSearchResults': {
-      getHelpCenterSearchResults(request.query, request.locale).then((items) => {
-        sendResponse({ items });
-      }).catch(() => {
-        sendResponse({ items: [], reason: 'help-center-index-unavailable' });
-      });
-      return true;
-    }
-    case 'runSiteSearchProviderQuery': {
-      runInteractiveSiteSearchProvider(
-        request.provider,
-        request.query,
-        sender,
-        request.disposition
-      ).then((result) => {
-        sendResponse(result);
-      }).catch((error) => {
-        sendResponse({
-          ok: false,
-          reason: error && error.message ? error.message : 'interactive-site-search-failed'
-        });
-      });
-      return true;
-    }
-    case 'runAggregateSearchQuery': {
-      runAggregateSearchQuery(
-        request.aggregateId,
-        request.query,
-        sender,
-        request.disposition
-      ).then(sendResponse).catch((error) => {
-        sendResponse({
-          ok: false,
-          reason: error && error.message ? error.message : 'aggregate-search-failed'
-        });
-      });
-      return true;
-    }
-    default:
-      return sendUnknownBackgroundMessageResponse(sendResponse);
-  }
-}
-
-function handleSelectionQuickActionMessage(request, sender, sendResponse) {
-  if (request.action !== 'runSelectionQuickAction') {
-    return sendUnknownBackgroundMessageResponse(sendResponse);
-  }
-  runSelectionQuickAction(request, sender)
-    .then((result) => {
-      sendResponse(result);
-    })
-    .catch((error) => {
+// Site search, help center and aggregate search.
+const SITE_SEARCH_MESSAGE_HANDLERS = Object.freeze({
+  getSiteSearchProviders(request, sender, sendResponse) {
+    loadSiteSearchProviders().then((items) => {
+      sendResponse({ items: items });
+    }).catch(() => {
       sendResponse({
-        ok: false,
-        reason: error && error.message ? error.message : 'selection-quick-action-failed'
+        items: [],
+        reason: 'site-search-provider-load-failed'
       });
     });
-  return true;
-}
-
-function handleLocaleAndPermissionMessage(request, sender, sendResponse) {
-  switch (request.action) {
-    case 'getLocaleMessages': {
-      const locale = normalizeLocaleForMessages(request.locale);
-      const localePath = chrome.runtime.getURL(`_locales/${locale}/messages.json`);
-      fetch(localePath, { cache: 'no-store' })
-        .then((response) => response.json())
-        .then((messages) => {
-          sendResponse({ messages: messages || {} });
-        })
-        .catch(() => {
-          sendResponse({ messages: {} });
-        });
-      return true;
-    }
-    case 'getFileSchemeAccessStatus': {
-      checkFileSchemeAccess((isAllowed) => {
-        sendResponse({
-          ok: true,
-          allowed: isAllowed === true,
-          supported: isAllowed !== null,
-          detailsUrl: getExtensionDetailsUrl()
-        });
+    return true;
+  },
+  getHelpCenterSearchResults(request, sender, sendResponse) {
+    getHelpCenterSearchResults(request.query, request.locale).then((items) => {
+      sendResponse({ items });
+    }).catch(() => {
+      sendResponse({ items: [], reason: 'help-center-index-unavailable' });
+    });
+    return true;
+  },
+  runSiteSearchProviderQuery(request, sender, sendResponse) {
+    runInteractiveSiteSearchProvider(
+      request.provider,
+      request.query,
+      sender,
+      request.disposition
+    ).then((result) => {
+      sendResponse(result);
+    }).catch((error) => {
+      sendResponse({
+        ok: false,
+        reason: error && error.message ? error.message : 'interactive-site-search-failed'
       });
-      return true;
-    }
-    default:
-      return sendUnknownBackgroundMessageResponse(sendResponse);
+    });
+    return true;
+  },
+  runAggregateSearchQuery(request, sender, sendResponse) {
+    runAggregateSearchQuery(
+      request.aggregateId,
+      request.query,
+      sender,
+      request.disposition
+    ).then(sendResponse).catch((error) => {
+      sendResponse({
+        ok: false,
+        reason: error && error.message ? error.message : 'aggregate-search-failed'
+      });
+    });
+    return true;
   }
-}
+});
 
-function handleExtensionPageMessage(request, sender, sendResponse) {
-  switch (request.action) {
-    case 'probeProgressSeries': {
-      // Pinning from New Tab: does the open page read as an episode or chapter?
-      if (!progressTrackingEnabled) {
-        sendResponse({ ok: true, series: false });
-        return false;
-      }
-      progressTracker.probeSeries(String(request.url || '')).then((series) => {
-        sendResponse({ ok: true, series: series === true });
-      }, () => sendResponse({ ok: false, series: false }));
-      return true;
-    }
-    case 'openOptionsPage': {
-      openExtensionOptionsPage({ disposition: request.disposition, hash: request.hash }, (ok) => {
-        sendResponse({ ok: ok !== false });
-      });
-      return true;
-    }
-    case 'openOnboardingPage': {
-      openOnboardingPage({ reason: 'manual', disposition: request.disposition }, (ok) => {
-        sendResponse({ ok: ok !== false });
-      });
-      return true;
-    }
-    case 'openReleasePage': {
-      const reason = typeof request.reason === 'string' ? request.reason : 'manual';
-      openReleasePage({ reason, disposition: request.disposition }, (ok) => {
-        sendResponse({ ok: ok !== false });
-      });
-      return true;
-    }
-    case 'openExtensionShortcutsPage': {
-      openExtensionShortcutsPage({ disposition: request.disposition }, (ok) => {
-        sendResponse({ ok: ok !== false });
-      });
-      return true;
-    }
-    case 'openSiteSearchOptionsPage': {
-      openSiteSearchOptionsPage({ disposition: request.disposition }, (ok) => {
-        sendResponse({ ok: ok !== false });
-      });
-      return true;
-    }
-    case 'openBookmarkManager': {
-      openBookmarkManagerPage().then((url) => {
-        sendResponse({ ok: true, url: url });
-      }).catch(() => {
-        sendResponse({ ok: false });
-      });
-      return true;
-    }
-    case 'openBookmarkFolderInNewTabGroup': {
-      const sourceTab = sender && sender.tab ? sender.tab : null;
-      BOOKMARK_TAB_GROUPS.openBookmarkFolderInNewTabGroup(chrome, {
-        folderId: request.folderId,
-        title: request.title,
-        windowId: sourceTab && typeof sourceTab.windowId === 'number'
-          ? sourceTab.windowId
-          : undefined,
-        insertIndex: sourceTab && typeof sourceTab.index === 'number'
-          ? sourceTab.index + 1
-          : undefined
-      }).then(sendResponse).catch((error) => {
+// Selection quick actions.
+const SELECTION_QUICK_ACTION_MESSAGE_HANDLERS = Object.freeze({
+  runSelectionQuickAction(request, sender, sendResponse) {
+    runSelectionQuickAction(request, sender)
+      .then((result) => {
+        sendResponse(result);
+      })
+      .catch((error) => {
         sendResponse({
           ok: false,
-          reason: error && error.message
-            ? error.message
-            : 'bookmark-tab-group-failed'
+          reason: error && error.message ? error.message : 'selection-quick-action-failed'
         });
       });
-      return true;
+    return true;
+  }
+});
+
+// Locale messages and permission probes.
+const LOCALE_AND_PERMISSION_MESSAGE_HANDLERS = Object.freeze({
+  getLocaleMessages(request, sender, sendResponse) {
+    const locale = normalizeLocaleForMessages(request.locale);
+    const localePath = chrome.runtime.getURL(`_locales/${locale}/messages.json`);
+    fetch(localePath, { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((messages) => {
+        sendResponse({ messages: messages || {} });
+      })
+      .catch(() => {
+        sendResponse({ messages: {} });
+      });
+    return true;
+  },
+  getFileSchemeAccessStatus(request, sender, sendResponse) {
+    checkFileSchemeAccess((isAllowed) => {
+      sendResponse({
+        ok: true,
+        allowed: isAllowed === true,
+        supported: isAllowed !== null,
+        detailsUrl: getExtensionDetailsUrl()
+      });
+    });
+    return true;
+  }
+});
+
+// Extension pages, tab creation and progress probes.
+const EXTENSION_PAGE_MESSAGE_HANDLERS = Object.freeze({
+  probeProgressSeries(request, sender, sendResponse) {
+    // Pinning from New Tab: does the open page read as an episode or chapter?
+    if (!progressTrackingEnabled) {
+      sendResponse({ ok: true, series: false });
+      return false;
     }
-    case 'createTab': {
-      const targetUrl = typeof request.url === 'string' ? request.url : '';
-      const sourceTab = sender && sender.tab ? sender.tab : null;
-      if (!targetUrl) {
-        sendResponse({ ok: false });
-        return;
-      }
-      if (request.disposition === 'currentTab') {
-        const senderTabId = sender && sender.tab && typeof sender.tab.id === 'number'
-          ? sender.tab.id
-          : null;
-        const updateTab = (tabId) => {
-          chrome.tabs.update(tabId, { url: targetUrl, active: true }, () => {
-            sendResponse({ ok: !(chrome.runtime && chrome.runtime.lastError) });
-          });
-        };
-        if (typeof senderTabId === 'number') {
-          updateTab(senderTabId);
-          return true;
-        }
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          const activeTab = Array.isArray(tabs) && tabs.length > 0 ? tabs[0] : null;
-          if (activeTab && typeof activeTab.id === 'number') {
-            updateTab(activeTab.id);
-            return;
-          }
-          sendResponse({ ok: false });
+    progressTracker.probeSeries(String(request.url || '')).then((series) => {
+      sendResponse({ ok: true, series: series === true });
+    }, () => sendResponse({ ok: false, series: false }));
+    return true;
+  },
+  openOptionsPage(request, sender, sendResponse) {
+    openExtensionOptionsPage({ disposition: request.disposition, hash: request.hash }, (ok) => {
+      sendResponse({ ok: ok !== false });
+    });
+    return true;
+  },
+  openOnboardingPage(request, sender, sendResponse) {
+    openOnboardingPage({ reason: 'manual', disposition: request.disposition }, (ok) => {
+      sendResponse({ ok: ok !== false });
+    });
+    return true;
+  },
+  openReleasePage(request, sender, sendResponse) {
+    const reason = typeof request.reason === 'string' ? request.reason : 'manual';
+    openReleasePage({ reason, disposition: request.disposition }, (ok) => {
+      sendResponse({ ok: ok !== false });
+    });
+    return true;
+  },
+  openExtensionShortcutsPage(request, sender, sendResponse) {
+    openExtensionShortcutsPage({ disposition: request.disposition }, (ok) => {
+      sendResponse({ ok: ok !== false });
+    });
+    return true;
+  },
+  openSiteSearchOptionsPage(request, sender, sendResponse) {
+    openSiteSearchOptionsPage({ disposition: request.disposition }, (ok) => {
+      sendResponse({ ok: ok !== false });
+    });
+    return true;
+  },
+  openBookmarkManager(request, sender, sendResponse) {
+    openBookmarkManagerPage().then((url) => {
+      sendResponse({ ok: true, url: url });
+    }).catch(() => {
+      sendResponse({ ok: false });
+    });
+    return true;
+  },
+  openBookmarkFolderInNewTabGroup(request, sender, sendResponse) {
+    const sourceTab = sender && sender.tab ? sender.tab : null;
+    BOOKMARK_TAB_GROUPS.openBookmarkFolderInNewTabGroup(chrome, {
+      folderId: request.folderId,
+      title: request.title,
+      windowId: sourceTab && typeof sourceTab.windowId === 'number'
+        ? sourceTab.windowId
+        : undefined,
+      insertIndex: sourceTab && typeof sourceTab.index === 'number'
+        ? sourceTab.index + 1
+        : undefined
+    }).then(sendResponse).catch((error) => {
+      sendResponse({
+        ok: false,
+        reason: error && error.message
+          ? error.message
+          : 'bookmark-tab-group-failed'
+      });
+    });
+    return true;
+  },
+  createTab(request, sender, sendResponse) {
+    const targetUrl = typeof request.url === 'string' ? request.url : '';
+    const sourceTab = sender && sender.tab ? sender.tab : null;
+    if (!targetUrl) {
+      sendResponse({ ok: false });
+      return;
+    }
+    if (request.disposition === 'currentTab') {
+      const senderTabId = sender && sender.tab && typeof sender.tab.id === 'number'
+        ? sender.tab.id
+        : null;
+      const updateTab = (tabId) => {
+        chrome.tabs.update(tabId, { url: targetUrl, active: true }, () => {
+          sendResponse({ ok: !(chrome.runtime && chrome.runtime.lastError) });
         });
+      };
+      if (typeof senderTabId === 'number') {
+        updateTab(senderTabId);
         return true;
       }
-      createSearchResultTab({ url: targetUrl, active: request.disposition !== 'backgroundTab' }, sourceTab, (_tab, info) => {
-        sendResponse({ ok: Boolean(info && info.ok) });
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const activeTab = Array.isArray(tabs) && tabs.length > 0 ? tabs[0] : null;
+        if (activeTab && typeof activeTab.id === 'number') {
+          updateTab(activeTab.id);
+          return;
+        }
+        sendResponse({ ok: false });
       });
       return true;
     }
-    case 'openNewTab': {
-      createTabWithSourceGroup({
-        active: request.disposition !== 'backgroundTab'
-      }, sender && sender.tab ? sender.tab : null, (_tab, info) => {
-        sendResponse({ ok: Boolean(info && info.ok) });
-      });
-      return true;
-    }
-    case 'openExtensionDetailsPage': {
-      const detailsUrl = getExtensionDetailsUrl();
-      createTabWithSourceGroup({
-        url: detailsUrl,
-        active: request.disposition !== 'backgroundTab'
-      }, sender && sender.tab ? sender.tab : null, (_tab, info) => {
-        sendResponse({ ok: Boolean(info && info.ok), url: detailsUrl });
-      });
-      return true;
-    }
-    default:
-      return sendUnknownBackgroundMessageResponse(sendResponse);
+    createSearchResultTab({ url: targetUrl, active: request.disposition !== 'backgroundTab' }, sourceTab, (_tab, info) => {
+      sendResponse({ ok: Boolean(info && info.ok) });
+    });
+    return true;
+  },
+  openNewTab(request, sender, sendResponse) {
+    createTabWithSourceGroup({
+      active: request.disposition !== 'backgroundTab'
+    }, sender && sender.tab ? sender.tab : null, (_tab, info) => {
+      sendResponse({ ok: Boolean(info && info.ok) });
+    });
+    return true;
+  },
+  openExtensionDetailsPage(request, sender, sendResponse) {
+    const detailsUrl = getExtensionDetailsUrl();
+    createTabWithSourceGroup({
+      url: detailsUrl,
+      active: request.disposition !== 'backgroundTab'
+    }, sender && sender.tab ? sender.tab : null, (_tab, info) => {
+      sendResponse({ ok: Boolean(info && info.ok), url: detailsUrl });
+    });
+    return true;
   }
-}
+});
 
-function handleFaviconMessage(request, sender, sendResponse) {
-  switch (request.action) {
-    case 'resolveFaviconCandidates': {
-      const targetUrl = request.url || '';
-      const hostOverride = request.host || '';
-      const fallbackUrl = request.fallbackUrl || '';
-      const preferredTheme = request.preferredTheme || '';
-      const options = {
-        includeChromeFallback: request.excludeChromeFallback ? false : true,
-        forceFresh: request.forceFresh === true
-      };
-      resolveFaviconCandidates(targetUrl, hostOverride, fallbackUrl, preferredTheme, options).then((urls) => {
-        sendResponse({ urls: Array.isArray(urls) ? urls : [] });
-      }).catch(() => {
-        sendResponse({ urls: [] });
-      });
-      return true;
+// Favicons and site theme colors.
+const FAVICON_MESSAGE_HANDLERS = Object.freeze({
+  resolveFaviconCandidates(request, sender, sendResponse) {
+    const targetUrl = request.url || '';
+    const hostOverride = request.host || '';
+    const fallbackUrl = request.fallbackUrl || '';
+    const preferredTheme = request.preferredTheme || '';
+    const options = {
+      includeChromeFallback: request.excludeChromeFallback ? false : true,
+      forceFresh: request.forceFresh === true
+    };
+    resolveFaviconCandidates(targetUrl, hostOverride, fallbackUrl, preferredTheme, options).then((urls) => {
+      sendResponse({ urls: Array.isArray(urls) ? urls : [] });
+    }).catch(() => {
+      sendResponse({ urls: [] });
+    });
+    return true;
+  },
+  getFaviconData(request, sender, sendResponse) {
+    const targetUrl = request.url || '';
+    const pageUrl = request.pageUrl || '';
+    if (!targetUrl || typeof targetUrl !== 'string' || targetUrl.startsWith('data:')) {
+      sendResponse({ data: '' });
+      return;
     }
-    case 'getFaviconData': {
-      const targetUrl = request.url || '';
-      const pageUrl = request.pageUrl || '';
-      if (!targetUrl || typeof targetUrl !== 'string' || targetUrl.startsWith('data:')) {
+    loadFaviconRequestBlacklistItems().then(() => {
+      if (isBlockedLocalFaviconUrl(targetUrl)) {
+        logBlockedLocalFavicon(targetUrl, 'message:getFaviconData');
         sendResponse({ data: '' });
         return;
       }
-      loadFaviconRequestBlacklistItems().then(() => {
-        if (isBlockedLocalFaviconUrl(targetUrl)) {
-          logBlockedLocalFavicon(targetUrl, 'message:getFaviconData');
+      try {
+        const targetHost = new URL(targetUrl).hostname;
+        if (shouldBlockFaviconForHost(targetHost)) {
           sendResponse({ data: '' });
           return;
         }
-        try {
-          const targetHost = new URL(targetUrl).hostname;
-          if (shouldBlockFaviconForHost(targetHost)) {
-            sendResponse({ data: '' });
-            return;
-          }
-        } catch (e) {
-          // Ignore parse failures and continue with non-local handling.
-        }
-        fetchFaviconData(targetUrl, pageUrl).then((dataUrl) => {
-          sendResponse({ data: dataUrl || '' });
-        }).catch(() => {
-          sendResponse({ data: '' });
-        });
+      } catch (e) {
+        // Ignore parse failures and continue with non-local handling.
+      }
+      fetchFaviconData(targetUrl, pageUrl).then((dataUrl) => {
+        sendResponse({ data: dataUrl || '' });
       }).catch(() => {
         sendResponse({ data: '' });
       });
-      return true;
-    }
-    case 'getShortcutFaviconData': {
-      const pageUrl = request.pageUrl || '';
-      const preferredTheme = request.preferredTheme || '';
-      fetchShortcutFaviconData(pageUrl, preferredTheme, '', request.refresh === true, request.iconSource).then((result) => {
-        sendResponse(result || {
-          data: '',
-          sourceUrl: '',
-          width: 0,
-          height: 0,
-          vector: false
-        });
-      }).catch(() => {
-        sendResponse({
-          data: '',
-          sourceUrl: '',
-          width: 0,
-          height: 0,
-          vector: false
-        });
+    }).catch(() => {
+      sendResponse({ data: '' });
+    });
+    return true;
+  },
+  getShortcutFaviconData(request, sender, sendResponse) {
+    const pageUrl = request.pageUrl || '';
+    const preferredTheme = request.preferredTheme || '';
+    fetchShortcutFaviconData(pageUrl, preferredTheme, '', request.refresh === true, request.iconSource).then((result) => {
+      sendResponse(result || {
+        data: '',
+        sourceUrl: '',
+        width: 0,
+        height: 0,
+        vector: false
       });
-      return true;
-    }
-    case 'resolveSiteThemeColor': {
-      const targetUrl = request.url || '';
-      const hostOverride = request.host || '';
-      const preferredTheme = request.preferredTheme || '';
-      resolveSiteThemeColor(targetUrl, hostOverride, preferredTheme).then((result) => {
-        sendResponse(result || { accentRgb: null, source: '' });
-      }).catch(() => {
-        sendResponse({ accentRgb: null, source: '' });
+    }).catch(() => {
+      sendResponse({
+        data: '',
+        sourceUrl: '',
+        width: 0,
+        height: 0,
+        vector: false
       });
-      return true;
-    }
-    default:
-      return sendUnknownBackgroundMessageResponse(sendResponse);
+    });
+    return true;
+  },
+  resolveSiteThemeColor(request, sender, sendResponse) {
+    const targetUrl = request.url || '';
+    const hostOverride = request.host || '';
+    const preferredTheme = request.preferredTheme || '';
+    resolveSiteThemeColor(targetUrl, hostOverride, preferredTheme).then((result) => {
+      sendResponse(result || { accentRgb: null, source: '' });
+    }).catch(() => {
+      sendResponse({ accentRgb: null, source: '' });
+    });
+    return true;
   }
+});
+
+// One action -> handler registry for runtime messages. Each feature area
+// above owns its handlers; adding an action is one entry in its area's map,
+// and the router rejects an action registered twice.
+const backgroundMessageRouter = BACKGROUND_MESSAGE_ROUTER.createRouter(
+  { webdav: handleWebDavMessage },
+  TAB_MESSAGE_HANDLERS,
+  SHORTCUT_MESSAGE_HANDLERS,
+  PIP_MESSAGE_HANDLERS,
+  SEARCH_MESSAGE_HANDLERS,
+  SITE_SEARCH_MESSAGE_HANDLERS,
+  SELECTION_QUICK_ACTION_MESSAGE_HANDLERS,
+  LOCALE_AND_PERMISSION_MESSAGE_HANDLERS,
+  EXTENSION_PAGE_MESSAGE_HANDLERS,
+  FAVICON_MESSAGE_HANDLERS
+);
+
+function dispatchBackgroundMessage(request, sender, sendResponse) {
+  return BACKGROUND_MESSAGE_ROUTER.dispatch(backgroundMessageRouter, request, sender, sendResponse);
 }
+
+// Listen for extension runtime messages.
+chrome.runtime.onMessage.addListener(dispatchBackgroundMessage);
 
 let siteSearchCache = null;
 let siteSearchPromise = null;

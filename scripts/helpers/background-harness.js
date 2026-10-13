@@ -330,6 +330,9 @@ function createChromeStub(config) {
 function loadBackground(options) {
   const config = options || {};
   const { chromeApi, calls } = createChromeStub(config);
+  if (typeof config.configureChrome === 'function') {
+    config.configureChrome(chromeApi, calls);
+  }
   const context = vm.createContext({
     console: config.console || {
       log() {},

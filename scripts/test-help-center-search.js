@@ -355,8 +355,6 @@ function testSuggestionSource() {
 const backgroundSource = fs.readFileSync('src/background/background.js', 'utf8');
 const importBlock = backgroundSource.match(/importScripts\(([\s\S]*?)\);/)[1];
 assert.ok(importBlock.includes("'src/shared/community-links.js'") && importBlock.includes("'src/shared/help-center-search.js'"));
-assert.match(backgroundSource, /'getHelpCenterSearchResults',\n/, 'the message should be routed to the site search handler');
-assert.match(backgroundSource, /case 'getHelpCenterSearchResults':/);
 assert.match(backgroundSource, /parse: HELP_CENTER_SEARCH\.normalizeSynonyms/, 'background should load the synonym list');
 assert.match(backgroundSource, /response\.status === 404 \? \{ ok: true, json: \(\) => \[\] \}/, 'a missing synonym list should be cached as empty');
 const overlayFiles = backgroundSource.slice(backgroundSource.indexOf('const overlayInjectionFiles'));
