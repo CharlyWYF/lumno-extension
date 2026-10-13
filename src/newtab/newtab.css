@@ -817,8 +817,10 @@ body[data-drag-source="shortcut"] .x-nt-shortcuts-section {
   opacity: 0;
   transition: opacity 120ms ease;
 }
+/* Keyboard focus anywhere in the header reveals the button; a mouse press
+   focuses it too, and that focus must not keep it shown after its menu closes. */
 .x-nt-shortcut-group-header:hover .x-nt-shortcut-group-more,
-.x-nt-shortcut-group-header:focus-within .x-nt-shortcut-group-more,
+.x-nt-shortcut-group-header:has(:focus-visible) .x-nt-shortcut-group-more,
 .x-nt-shortcut-group-more[data-shortcut-context-menu-open="true"] {
   opacity: 1;
 }
