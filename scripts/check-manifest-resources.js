@@ -49,6 +49,7 @@ const injectedScriptFiles = [
   'src/overlay/lifecycle.js',
   'src/overlay/site-fixes.js',
   'src/overlay/page-theme.js',
+  'src/overlay/notices.js',
   'src/overlay/search-panel.js',
   'src/overlay/tab-switcher.js',
   'src/content/document-pip-picker.js'

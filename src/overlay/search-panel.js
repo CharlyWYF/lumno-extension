@@ -21,9 +21,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
   let overlayEngagementNoticeController = null;
   let inputHistoryController = null;
   let isApplyingSearchInputHistory = false;
-  let overlayUpdateNoticeFrameListener = null;
-  let overlayUpdateNoticeFrameVisualViewport = null;
-  let overlayUpdateNoticeMountTimer = null;
   let overlayEnterCleanupElement = null;
   let overlayEnterCleanupTimer = null;
   let overlayEnterTransitionEndHandler = null;
@@ -74,6 +71,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
   const FEATURE_HINTS = globalThis.LumnoFeatureHints;
   const UPDATE_NOTICE = globalThis.LumnoUpdateNotice;
   const ENGAGEMENT_NOTICE = globalThis.LumnoEngagementNotice;
+  const OVERLAY_NOTICES = globalThis.LumnoOverlayNotices;
   const FAVICON_UTILS = globalThis.LumnoFaviconUtils;
   const FAVICON_THEME = globalThis.LumnoNewtabFaviconTheme;
   const overlayRuntime = globalThis.LumnoOverlayRuntime;
@@ -1051,80 +1049,21 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     overlayViewportSizeSync.stop();
   }
 
-  function syncOverlayUpdateNoticeFrame(overlayElement) {
-    const noticeElement = overlayUpdateNoticeController && overlayUpdateNoticeController.element
-      ? overlayUpdateNoticeController.element
-      : null;
-    const engagementNoticeElement =
-      overlayEngagementNoticeController && overlayEngagementNoticeController.element
-        ? overlayEngagementNoticeController.element
-        : null;
-    const noticeElements = [noticeElement, engagementNoticeElement].filter(Boolean);
-    if (noticeElements.length === 0 || !overlayElement) {
-      return;
-    }
-    const sizePreset = getOverlaySizePreset(overlaySizeMode);
-    const width = overlayElement.style.getPropertyValue('width') || `${sizePreset.width}px`;
-    const maxWidth = overlayElement.style.getPropertyValue('max-width') || 'calc(100vw - 24px)';
-    const left = overlayElement.style.getPropertyValue('left') || '50%';
-    const top = overlayElement.style.getPropertyValue('top') || '20vh';
-    const visibleScale = overlayElement.style.getPropertyValue('--x-ov-visible-scale') || '1';
-    noticeElements.forEach((element) => {
-      element.style.setProperty('width', width, 'important');
-      element.style.setProperty('max-width', maxWidth, 'important');
-      element.style.setProperty('left', left, 'important');
-      element.style.setProperty('top', top, 'important');
-      element.style.setProperty('--x-ov-visible-scale', visibleScale, 'important');
-      if (typeof element.style.removeProperty === 'function') {
-        element.style.removeProperty('zoom');
-      }
-      element.setAttribute('data-theme', overlayElement.getAttribute('data-theme') || '');
-    });
-  }
-
-  function stopOverlayUpdateNoticeFrameSync() {
-    if (overlayUpdateNoticeFrameListener) {
-      window.removeEventListener('resize', overlayUpdateNoticeFrameListener);
-      if (overlayUpdateNoticeFrameVisualViewport &&
-          typeof overlayUpdateNoticeFrameVisualViewport.removeEventListener === 'function') {
-        overlayUpdateNoticeFrameVisualViewport.removeEventListener('resize', overlayUpdateNoticeFrameListener);
-      }
-      overlayUpdateNoticeFrameListener = null;
-      overlayUpdateNoticeFrameVisualViewport = null;
-    }
-  }
-
-  function clearOverlayUpdateNoticeMountTimer() {
-    if (overlayUpdateNoticeMountTimer !== null) {
-      clearTimeout(overlayUpdateNoticeMountTimer);
-      overlayUpdateNoticeMountTimer = null;
-    }
-  }
-
-  function startOverlayUpdateNoticeFrameSync(overlayElement) {
-    stopOverlayUpdateNoticeFrameSync();
-    if (!overlayElement) {
-      return;
-    }
-    overlayUpdateNoticeFrameListener = () => {
-      syncOverlayUpdateNoticeFrame(overlayElement);
-    };
-    window.addEventListener('resize', overlayUpdateNoticeFrameListener, { passive: true });
-    if (window.visualViewport && typeof window.visualViewport.addEventListener === 'function') {
-      window.visualViewport.addEventListener('resize', overlayUpdateNoticeFrameListener, { passive: true });
-      overlayUpdateNoticeFrameVisualViewport = window.visualViewport;
-    }
-    syncOverlayUpdateNoticeFrame(overlayElement);
-  }
+  const overlayNoticeLayer = OVERLAY_NOTICES.createNoticeLayer(window, {
+    getUpdateNotice: () => overlayUpdateNoticeController,
+    getEngagementNotice: () => overlayEngagementNoticeController,
+    getSizePreset: () => getOverlaySizePreset(overlaySizeMode),
+    decorate: applyNoTranslateDeep
+  });
 
   function applyOverlaySizeForPageZoom(overlayElement) {
     overlayViewportSizeSync.apply(overlayElement);
-    syncOverlayUpdateNoticeFrame(overlayElement);
+    overlayNoticeLayer.sync(overlayElement);
   }
 
   function startOverlayViewportSizeSync(overlayElement) {
     overlayViewportSizeSync.start(overlayElement);
-    syncOverlayUpdateNoticeFrame(overlayElement);
+    overlayNoticeLayer.sync(overlayElement);
   }
 
   function getOrCreateOverlayContextToken() {
@@ -1386,8 +1325,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       overlayRevealGate = null;
     }
     stopOverlayViewportSizeSync();
-    stopOverlayUpdateNoticeFrameSync();
-    clearOverlayUpdateNoticeMountTimer();
+    overlayNoticeLayer.stop();
     stopOverlayAntiTranslateObserver();
     // Session cleanups stop the mount connection guard, so they must run
     // before the host leaves the document or the guard would re-attach it.
@@ -1579,7 +1517,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       overlayThemeMode = mode;
       const previousResolvedTheme = overlay ? overlay.getAttribute('data-theme') : '';
       applyOverlayThemeVariables(overlay, mode);
-      syncOverlayUpdateNoticeFrame(overlay);
+      overlayNoticeLayer.sync(overlay);
       const nextResolvedTheme = overlay ? overlay.getAttribute('data-theme') : '';
       suggestionItems.forEach((item) => {
         if (item && item._xTheme) {
@@ -1948,64 +1886,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
           });
         }
       });
-    function shouldAnimateOverlayUpdateNoticeMount(noticeElement) {
-      if (!noticeElement || noticeElement.getAttribute('data-visible') !== 'true') {
-        return false;
-      }
-      return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    }
-
-    function finishOverlayUpdateNoticeMountAnimation(noticeElement) {
-      if (noticeElement) {
-        noticeElement.removeAttribute('data-overlay-mounting');
-      }
-    }
-
-    function mountOverlayUpdateNotice() {
-      const noticeElement = overlayUpdateNoticeController && overlayUpdateNoticeController.element
-        ? overlayUpdateNoticeController.element
-        : null;
-      if (!noticeElement || noticeElement.parentNode) {
-        return;
-      }
-      const animateMount = shouldAnimateOverlayUpdateNoticeMount(noticeElement);
-      if (animateMount) {
-        noticeElement.setAttribute('data-overlay-mounting', 'true');
-      }
-      applyNoTranslateDeep(noticeElement);
-      if (overlayStyleRoot && typeof overlayStyleRoot.insertBefore === 'function') {
-        overlayStyleRoot.insertBefore(noticeElement, overlay);
-      } else if (document.body) {
-        document.body.appendChild(noticeElement);
-      }
-      if (overlayUpdateNoticeController &&
-          typeof overlayUpdateNoticeController.recordExposure === 'function') {
-        overlayUpdateNoticeController.recordExposure();
-      }
-      syncOverlayUpdateNoticeFrame(overlay);
-      if (animateMount) {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            finishOverlayUpdateNoticeMountAnimation(noticeElement);
-          });
-        });
-      } else {
-        finishOverlayUpdateNoticeMountAnimation(noticeElement);
-      }
-      const engagementNoticeElement =
-        overlayEngagementNoticeController && overlayEngagementNoticeController.element
-          ? overlayEngagementNoticeController.element
-          : null;
-      if (engagementNoticeElement && !engagementNoticeElement.parentNode) {
-        applyNoTranslateDeep(engagementNoticeElement);
-        if (overlayStyleRoot && typeof overlayStyleRoot.insertBefore === 'function') {
-          overlayStyleRoot.insertBefore(engagementNoticeElement, overlay);
-        } else if (document.body) {
-          document.body.appendChild(engagementNoticeElement);
-        }
-        syncOverlayUpdateNoticeFrame(overlay);
-      }
-    }
     const setInputScopedStyle = (element, property, value) => {
       if (!element) {
         return;
@@ -7595,19 +7475,8 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     });
     mountConnectionGuard.start(overlayHost);
     startOverlayViewportSizeSync(overlay);
-    startOverlayUpdateNoticeFrameSync(overlay);
+    overlayNoticeLayer.startFrameSync(overlay);
     startOverlayAntiTranslateObserver(overlay);
-
-    function scheduleOverlayUpdateNoticeMount(delayMs) {
-      clearOverlayUpdateNoticeMountTimer();
-      overlayUpdateNoticeMountTimer = setTimeout(() => {
-        overlayUpdateNoticeMountTimer = null;
-        if (!overlay || !overlay.isConnected) {
-          return;
-        }
-        mountOverlayUpdateNotice();
-      }, Math.max(0, Number(delayMs) || 0));
-    }
 
     function focusOverlayInputForReveal() {
       if (!searchInput || !searchInput.isConnected ||
@@ -7690,12 +7559,12 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         overlay.style.setProperty('opacity', '1', 'important');
         overlay.style.setProperty('transform', revealTransform, 'important');
         finishOverlayPanelEnterAnimation(overlay);
-        scheduleOverlayUpdateNoticeMount(0);
+        overlayNoticeLayer.scheduleMount(overlay, overlayStyleRoot, 0);
       } else {
         clearOverlayEnterAnimationFrames();
         overlayFrameTracker.runEnterAnimation(overlay, () => {
           playOverlayPanelEnterAnimation(overlay, revealTransform);
-          scheduleOverlayUpdateNoticeMount(360);
+          overlayNoticeLayer.scheduleMount(overlay, overlayStyleRoot, 360);
         });
       }
     };

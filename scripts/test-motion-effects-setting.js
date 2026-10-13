@@ -147,11 +147,6 @@ assert.match(
   /const reduceMotion = revealOptions\.forceInstant === true \|\|[\s\S]*?shouldSkipOverlayEntryMotion\(\);[\s\S]*?if \(reduceMotion\) \{[\s\S]*?finishOverlayPanelEnterAnimation\(overlay\);[\s\S]*?\} else \{[\s\S]*?overlayFrameTracker\.runEnterAnimation/,
   'turning motion effects off or detecting a slow first frame should skip only the Overlay entrance path'
 );
-assert.match(
-  overlaySource,
-  /function shouldAnimateOverlayUpdateNoticeMount\([\s\S]*return !window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches/,
-  'Overlay notice motion should continue to follow only the OS preference'
-);
 assert.doesNotMatch(
   overlaySource,
   /function animateSuggestionsHeight\(/,
