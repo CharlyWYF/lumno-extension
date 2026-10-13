@@ -521,6 +521,12 @@
   "overlay_close_other_tabs_tooltip": {
     "message": "關閉其他分頁"
   },
+  "overlay_close_other_tabs_confirm": {
+    "message": "關閉此視窗中的其他分頁？釘選和群組內的分頁會保留。"
+  },
+  "overlay_close_other_tabs_confirm_button": {
+    "message": "關閉"
+  },
   "settings_shortcuts_status": {
     "message": "目前：{shortcut}"
   },

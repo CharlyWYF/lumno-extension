@@ -1,7 +1,28 @@
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent
+} from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
+import {
+  PopconfirmContent,
+  type PopconfirmClassNames,
+  type PopconfirmCopy
+} from './popconfirm-content';
 
 type StyleOverrides = Record<string, string>;
+
+export interface SearchInputActionConfirm {
+  // Read on every open, so the copy follows the current UI language.
+  getCopy(): PopconfirmCopy;
+  onConfirm(event: MouseEvent): void;
+}
+
+type SecondaryActionConfig = NonNullable<SearchInputConfig['secondaryAction']>;
 
 export interface SearchInputConfig {
   clearAction?: {
@@ -36,6 +57,8 @@ export interface SearchInputConfig {
   secondaryAction?: {
     ariaLabel?: string;
     className?: string;
+    // Asks in a popconfirm under the button before running the action.
+    confirm?: SearchInputActionConfirm;
     html?: string;
     id: string;
   };
@@ -208,6 +231,135 @@ function noTranslateProps() {
   };
 }
 
+const POPCONFIRM_CLASS_NAMES: PopconfirmClassNames = Object.freeze({
+  actions: 'x-lumno-search-input__popconfirm-actions',
+  cancel:
+    'x-lumno-search-input__popconfirm-button x-lumno-search-input__popconfirm-button--secondary',
+  confirm:
+    'x-lumno-search-input__popconfirm-button x-lumno-search-input__popconfirm-button--primary',
+  text: 'x-lumno-search-input__popconfirm-text'
+});
+const POPCONFIRM_GAP = 6;
+
+function SecondaryAction({ action }: { action: SecondaryActionConfig }) {
+  const confirm = action.confirm;
+  const [open, setOpen] = useState(false);
+  // Kept after closing so the bubble fades out with its content.
+  const [copy, setCopy] = useState<PopconfirmCopy | null>(null);
+  const [position, setPosition] = useState<CSSProperties>({});
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popconfirmRef = useRef<HTMLDivElement>(null);
+  const popconfirmId = useId();
+
+  const close = (restoreFocus: boolean) => {
+    setOpen(false);
+    if (restoreFocus) {
+      triggerRef.current?.focus({ preventScroll: true });
+    }
+  };
+
+  useEffect(() => {
+    const trigger = triggerRef.current;
+    if (!open || !trigger) {
+      return undefined;
+    }
+    // The Overlay lives in a closed ShadowRoot, whose nodes are hidden from
+    // document listeners, so watch the root the button is rendered in.
+    const root = trigger.getRootNode() as Document | ShadowRoot;
+    const onPointerDown = (event: Event) => {
+      const path = event.composedPath();
+      if (
+        path.includes(trigger) ||
+        (popconfirmRef.current && path.includes(popconfirmRef.current))
+      ) {
+        return;
+      }
+      setOpen(false);
+    };
+    root.addEventListener('pointerdown', onPointerDown, true);
+    return () => {
+      root.removeEventListener('pointerdown', onPointerDown, true);
+    };
+  }, [open]);
+
+  const onKeyDown = (event: ReactKeyboardEvent) => {
+    if (!open || event.key !== 'Escape') {
+      return;
+    }
+    // Close only the bubble, not the surface around the search input.
+    event.preventDefault();
+    event.stopPropagation();
+    close(true);
+  };
+
+  const toggle = () => {
+    const trigger = triggerRef.current;
+    if (!confirm || !trigger) {
+      return;
+    }
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const parent = trigger.offsetParent as HTMLElement | null;
+    setPosition({
+      right: parent
+        ? parent.clientWidth - trigger.offsetLeft - trigger.offsetWidth
+        : 0,
+      top: trigger.offsetTop + trigger.offsetHeight + POPCONFIRM_GAP
+    });
+    setCopy(confirm.getCopy());
+    setOpen(true);
+  };
+
+  return (
+    <>
+      <button
+        {...noTranslateProps()}
+        aria-controls={confirm ? popconfirmId : undefined}
+        aria-expanded={confirm ? open : undefined}
+        aria-haspopup={confirm ? 'dialog' : undefined}
+        aria-label={action.ariaLabel || ''}
+        className={action.className || ''}
+        dangerouslySetInnerHTML={{
+          __html: action.html || ''
+        }}
+        id={action.id}
+        onClick={confirm ? toggle : undefined}
+        onKeyDown={confirm ? onKeyDown : undefined}
+        ref={triggerRef}
+        type="button"
+      />
+      {confirm ? (
+        <div
+          {...noTranslateProps()}
+          aria-hidden={!open}
+          aria-label={copy?.message}
+          className="x-lumno-search-input__popconfirm"
+          data-open={open ? 'true' : 'false'}
+          id={popconfirmId}
+          onKeyDown={onKeyDown}
+          ref={popconfirmRef}
+          role="dialog"
+          style={position}
+        >
+          {copy ? (
+            <PopconfirmContent
+              classNames={POPCONFIRM_CLASS_NAMES}
+              copy={copy}
+              onCancel={() => close(true)}
+              onConfirm={(event) => {
+                close(false);
+                confirm.onConfirm(event.nativeEvent);
+              }}
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 function SearchInput({ config }: { config: SearchInputConfig }) {
   const modeSurface =
     config.modeBadge?.surface === 'overlay' ? 'overlay' : 'newtab';
@@ -337,16 +489,7 @@ function SearchInput({ config }: { config: SearchInputConfig }) {
         />
       ) : null}
       {config.secondaryAction ? (
-        <button
-          {...noTranslateProps()}
-          aria-label={config.secondaryAction.ariaLabel || ''}
-          className={config.secondaryAction.className || ''}
-          dangerouslySetInnerHTML={{
-            __html: config.secondaryAction.html || ''
-          }}
-          id={config.secondaryAction.id}
-          type="button"
-        />
+        <SecondaryAction action={config.secondaryAction} />
       ) : null}
       {config.modeBadge ? (
         <div

@@ -166,6 +166,94 @@ describe('Shared search input React island', () => {
     expect(parts.modeBadge?.dataset.surface).toBe('overlay');
     expect(parts.modeBadge?.hidden).toBe(false);
   });
+
+  it('asks in a popconfirm before running a confirmed secondary action', () => {
+    const onConfirm = vi.fn();
+    const getCopy = vi.fn(() => ({
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Close',
+      confirmLabelKey: 'close_confirm_button',
+      message: 'Close other tabs?',
+      messageKey: 'close_confirm'
+    }));
+    const parts = create({
+      secondaryAction: {
+        ariaLabel: 'Close other tabs',
+        confirm: { getCopy, onConfirm },
+        id: 'close-tabs'
+      }
+    });
+    const trigger = parts.secondaryAction!;
+    const popconfirm = parts.container.querySelector<HTMLElement>(
+      '.x-lumno-search-input__popconfirm'
+    )!;
+
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
+    expect(trigger.getAttribute('aria-controls')).toBe(popconfirm.id);
+    expect(popconfirm.dataset.open).toBe('false');
+
+    act(() => trigger.click());
+    expect(getCopy).toHaveBeenCalledTimes(1);
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    expect(popconfirm.dataset.open).toBe('true');
+    expect(popconfirm.getAttribute('aria-label')).toBe('Close other tabs?');
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    const [cancel, confirm] = Array.from(
+      popconfirm.querySelectorAll<HTMLButtonElement>('button')
+    );
+    expect(confirm.dataset.i18n).toBe('close_confirm_button');
+    act(() => cancel.click());
+    expect(popconfirm.dataset.open).toBe('false');
+    expect(document.activeElement).toBe(trigger);
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    act(() => trigger.click());
+    act(() => confirm.click());
+    expect(popconfirm.dataset.open).toBe('false');
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onConfirm.mock.calls[0][0]).toBeInstanceOf(MouseEvent);
+  });
+
+  it('closes the popconfirm on Escape and outside pointerdown without bubbling Escape', () => {
+    const onDocumentKeyDown = vi.fn();
+    const parts = create({
+      secondaryAction: {
+        confirm: {
+          getCopy: () => ({
+            cancelLabel: 'Cancel',
+            confirmLabel: 'Close',
+            message: 'Close other tabs?',
+            messageKey: 'close_confirm'
+          }),
+          onConfirm: vi.fn()
+        },
+        id: 'close-tabs'
+      }
+    });
+    const trigger = parts.secondaryAction!;
+    const popconfirm = parts.container.querySelector<HTMLElement>(
+      '.x-lumno-search-input__popconfirm'
+    )!;
+    document.addEventListener('keydown', onDocumentKeyDown);
+
+    act(() => trigger.click());
+    act(() => {
+      trigger.dispatchEvent(
+        new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' })
+      );
+    });
+    expect(popconfirm.dataset.open).toBe('false');
+    expect(onDocumentKeyDown).not.toHaveBeenCalled();
+
+    act(() => trigger.click());
+    act(() => {
+      parts.input.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    });
+    expect(popconfirm.dataset.open).toBe('false');
+    document.removeEventListener('keydown', onDocumentKeyDown);
+  });
+
   it('shows the clear action only while the field has text and clears on click', () => {
     const onInput = vi.fn();
     const parts = create({

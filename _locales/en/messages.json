@@ -521,6 +521,12 @@
   "overlay_close_other_tabs_tooltip": {
     "message": "Close other tabs"
   },
+  "overlay_close_other_tabs_confirm": {
+    "message": "Close other tabs in this window? Pinned and grouped tabs stay open."
+  },
+  "overlay_close_other_tabs_confirm_button": {
+    "message": "Close"
+  },
   "settings_shortcuts_status": {
     "message": "Current: {shortcut}"
   },

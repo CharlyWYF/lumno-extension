@@ -36,7 +36,7 @@ assert.doesNotMatch(
 
 const closeOtherTabsBlock = getFunctionBlock(
   overlaySource,
-  "closeOtherTabsButton.addEventListener('click', function(event)",
+  'function confirmCloseOtherTabs(event)',
   '// Add focus styles'
 );
 assert.match(

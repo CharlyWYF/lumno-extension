@@ -3,7 +3,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import {
   PopconfirmContent,
   type PopconfirmCopy
-} from './popconfirm-content';
+} from '../shared/popconfirm-content';
 
 export interface PopconfirmRenderModel extends PopconfirmCopy {
   open: boolean;

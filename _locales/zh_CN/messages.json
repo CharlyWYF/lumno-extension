@@ -521,6 +521,12 @@
   "overlay_close_other_tabs_tooltip": {
     "message": "关闭其他标签页"
   },
+  "overlay_close_other_tabs_confirm": {
+    "message": "关闭此窗口中的其他标签页？置顶和分组内的标签页会保留。"
+  },
+  "overlay_close_other_tabs_confirm_button": {
+    "message": "关闭"
+  },
   "settings_shortcuts_status": {
     "message": "当前：{shortcut}"
   },

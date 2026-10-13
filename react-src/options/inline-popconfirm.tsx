@@ -3,7 +3,7 @@ import { useExclusiveAsyncAction } from '../shared/use-exclusive-async-action';
 import {
   PopconfirmContent,
   type PopconfirmCopy
-} from './popconfirm-content';
+} from '../shared/popconfirm-content';
 
 export interface InlinePopconfirmCopy extends PopconfirmCopy {}
 

@@ -842,10 +842,141 @@
   font: inherit !important;
 }
 
+/* Asks before a secondary action runs; the button sits at the right edge, so the bubble grows leftward. */
+.x-lumno-search-input__popconfirm {
+  all: unset;
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: 180px;
+  max-width: 260px;
+  padding: 12px;
+  border: 1px solid var(--x-nt-panel-border, var(--x-ov-border, rgba(15, 23, 42, 0.08)));
+  border-radius: var(--lumno-radius-xl, 12px);
+  background: var(--x-nt-mode-menu-bg, var(--x-ov-mode-menu-bg, #ffffff));
+  box-shadow: var(--lumno-shadow-popover, 0 14px 36px rgba(15, 23, 42, 0.15));
+  color: var(--x-nt-text, var(--x-ov-text, #1f2937));
+  font: 400 var(--lumno-font-size-md, 13px) / 1.5 "Open Sans", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  text-align: left;
+  cursor: default;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px) scale(0.98);
+  transform-origin: top right;
+  visibility: hidden;
+  transition:
+    opacity var(--lumno-duration-sm, 160ms) ease,
+    transform var(--lumno-duration-md, 180ms) ease,
+    visibility 0s linear var(--lumno-duration-md, 180ms);
+}
+
+[data-theme="dark"] .x-lumno-search-input__popconfirm {
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+}
+
+.x-lumno-search-input__popconfirm[data-open="true"] {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.x-lumno-search-input__popconfirm-text {
+  all: unset;
+  display: block;
+  color: inherit;
+  font: inherit;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.x-lumno-search-input__popconfirm-actions {
+  all: unset;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.x-lumno-search-input__popconfirm-button {
+  all: unset;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--x-lumno-popconfirm-button-border, transparent);
+  border-radius: var(--lumno-radius-pill, 999px);
+  background: var(--x-lumno-popconfirm-button-bg, transparent);
+  background-clip: padding-box;
+  box-shadow: var(--x-lumno-popconfirm-button-shadow, none);
+  color: var(--x-lumno-popconfirm-button-color, inherit);
+  font: 500 var(--lumno-font-size-sm, 12px) / 1 "Open Sans", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--lumno-duration-sm, 160ms) ease,
+    box-shadow var(--lumno-duration-sm, 160ms) ease,
+    color var(--lumno-duration-sm, 160ms) ease;
+}
+
+.x-lumno-search-input__popconfirm-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: var(--x-lumno-popconfirm-button-sheen, none);
+}
+
+.x-lumno-search-input__popconfirm-button:hover {
+  background: var(--x-lumno-popconfirm-button-hover-bg, var(--x-lumno-popconfirm-button-bg, transparent));
+  box-shadow: var(--x-lumno-popconfirm-button-hover-shadow, var(--x-lumno-popconfirm-button-shadow, none));
+}
+
+.x-lumno-search-input__popconfirm-button:focus-visible {
+  outline: 2px solid var(--lumno-color-focus-ring, rgba(59, 130, 246, 0.65));
+  outline-offset: 2px;
+}
+
+.x-lumno-search-input__popconfirm-button--secondary {
+  --x-lumno-popconfirm-button-bg: var(--x-nt-hover-bg, var(--x-ov-hover-bg, rgba(148, 163, 184, 0.16)));
+  --x-lumno-popconfirm-button-hover-bg: var(--x-ext-input-icon-hover-bg, rgba(148, 163, 184, 0.24));
+}
+
+.x-lumno-search-input__popconfirm-button--primary {
+  --x-lumno-popconfirm-button-border: var(--lumno-color-primary-border, #12161f);
+  --x-lumno-popconfirm-button-bg: var(--lumno-color-primary, linear-gradient(180deg, #404859 0%, #273042 100%));
+  --x-lumno-popconfirm-button-hover-bg: var(--lumno-color-primary-hover, linear-gradient(180deg, #4a5467 0%, #2f3a4f 100%));
+  --x-lumno-popconfirm-button-color: var(--lumno-color-on-primary, #ffffff);
+  --x-lumno-popconfirm-button-shadow: var(--lumno-shadow-primary, 0 1px 2px rgba(15, 23, 42, 0.18), 0 3px 6px -2px rgba(15, 23, 42, 0.24));
+  --x-lumno-popconfirm-button-hover-shadow: var(--lumno-shadow-primary-hover, 0 2px 3px rgba(15, 23, 42, 0.2), 0 6px 12px -4px rgba(15, 23, 42, 0.3));
+  --x-lumno-popconfirm-button-sheen: var(--lumno-shadow-primary-sheen, inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 1px 3px rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.22));
+  font-weight: 600;
+}
+
+@supports (corner-shape: superellipse(1.25)) {
+  .x-lumno-search-input__popconfirm {
+    corner-shape: superellipse(1.25);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .x-lumno-search-input-mode__menu {
     animation: none !important;
     transition: none !important;
+  }
+
+  .x-lumno-search-input__popconfirm {
+    transition: none;
   }
 
   .x-lumno-search-input-mode__prefix [data-search-input-mode-prefix-chevron] {

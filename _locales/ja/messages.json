@@ -521,6 +521,12 @@
   "overlay_close_other_tabs_tooltip": {
     "message": "他のタブを閉じる"
   },
+  "overlay_close_other_tabs_confirm": {
+    "message": "このウィンドウの他のタブを閉じますか？固定タブとグループ内のタブは残ります。"
+  },
+  "overlay_close_other_tabs_confirm_button": {
+    "message": "閉じる"
+  },
   "settings_shortcuts_status": {
     "message": "現在：{shortcut}"
   },

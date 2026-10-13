@@ -6882,7 +6882,11 @@
       id: '_x_extension_newtab_close_other_tabs_2026_unique_',
       className: 'x-nt-close-other-tabs',
       ariaLabel: t('overlay_close_other_tabs_tooltip', '关闭其他标签页'),
-      html: getRiSvg('ri-brush-2-line', 'ri-size-16')
+      html: getRiSvg('ri-brush-2-line', 'ri-size-16'),
+      confirm: {
+        getCopy: getCloseOtherTabsConfirmCopy,
+        onConfirm: closeOtherTabs
+      }
     },
     onInput: function(event) {
       searchSuggestionsDismissed = false;
@@ -7603,25 +7607,39 @@
     closeOtherTabsButton.addEventListener('blur', resetCloseOtherTabsButtonVisualState);
     closeOtherTabsButton.addEventListener('pointerup', resetCloseOtherTabsButtonVisualState);
     closeOtherTabsButton.addEventListener('pointercancel', resetCloseOtherTabsButtonVisualState);
-    closeOtherTabsButton.addEventListener('click', function(event) {
-      if (!event || event.isTrusted !== true) {
+    // The click opens the popconfirm; closeOtherTabs runs once it is confirmed.
+    closeOtherTabsButton.addEventListener('click', hideSearchInputCursorTooltip);
+  }
+
+  function getCloseOtherTabsConfirmCopy() {
+    return {
+      message: t('overlay_close_other_tabs_confirm', '关闭此窗口中的其他标签页？置顶和分组内的标签页会保留。'),
+      messageKey: 'overlay_close_other_tabs_confirm',
+      confirmLabel: t('overlay_close_other_tabs_confirm_button', '关闭'),
+      confirmLabelKey: 'overlay_close_other_tabs_confirm_button',
+      cancelLabel: t('confirm_cancel', '取消')
+    };
+  }
+
+  function closeOtherTabs(event) {
+    if (!event || event.isTrusted !== true) {
+      return;
+    }
+    const closeOtherTabsButton = inputParts && inputParts.secondaryAction;
+    // The confirm button is going away with its bubble; keep typing in the field.
+    searchInput.focus({ preventScroll: true });
+    chrome.runtime.sendMessage({ action: 'closeOtherTabsForOverlay' }, (response) => {
+      if (closeOtherTabsButton) {
+        closeOtherTabsButton.removeAttribute('data-hover-active');
+      }
+      if (chrome.runtime.lastError || !response || response.ok !== true) {
         return;
       }
-      event.preventDefault();
-      event.stopPropagation();
-      hideSearchInputCursorTooltip();
-      chrome.runtime.sendMessage({ action: 'closeOtherTabsForOverlay' }, (response) => {
-        resetCloseOtherTabsButtonVisualState();
-        closeOtherTabsButton.blur();
-        if (chrome.runtime.lastError || !response || response.ok !== true) {
-          return;
-        }
-        // Closed tabs may still be listed among the open-tab suggestions.
-        const query = searchInput.value.trim();
-        if (query) {
-          requestSuggestions(query, { immediate: true });
-        }
-      });
+      // Closed tabs may still be listed among the open-tab suggestions.
+      const query = searchInput.value.trim();
+      if (query) {
+        requestSuggestions(query, { immediate: true });
+      }
     });
   }
 

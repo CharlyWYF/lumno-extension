@@ -1922,7 +1922,11 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         id: '_x_extension_search_close_other_tabs_2026_unique_',
         className: 'x-ov-close-other-tabs',
         ariaLabel: t('overlay_close_other_tabs_tooltip', '关闭其他标签页'),
-        html: getRiSvg('ri-brush-2-line', 'ri-size-16')
+        html: getRiSvg('ri-brush-2-line', 'ri-size-16'),
+        confirm: {
+          getCopy: getCloseOtherTabsConfirmCopy,
+          onConfirm: confirmCloseOtherTabs
+        }
       },
       modeBadge: {
         id: '_x_extension_mode_badge_2024_unique_',
@@ -2898,27 +2902,36 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     if (closeOtherTabsButton) {
       const closeOtherTooltipText = () => t('overlay_close_other_tabs_tooltip', '关闭其他标签页');
       bindInputActionCursorTooltip(closeOtherTabsButton, closeOtherTooltipText);
-      closeOtherTabsButton.addEventListener('click', function(event) {
-        if (!event || event.isTrusted !== true) {
+      // The click opens the popconfirm; confirmCloseOtherTabs runs once it is confirmed.
+      closeOtherTabsButton.addEventListener('click', hideInputActionCursorTooltip);
+    }
+
+    function getCloseOtherTabsConfirmCopy() {
+      return {
+        message: t('overlay_close_other_tabs_confirm', '关闭此窗口中的其他标签页？置顶和分组内的标签页会保留。'),
+        messageKey: 'overlay_close_other_tabs_confirm',
+        confirmLabel: t('overlay_close_other_tabs_confirm_button', '关闭'),
+        confirmLabelKey: 'overlay_close_other_tabs_confirm_button',
+        cancelLabel: t('confirm_cancel', '取消')
+      };
+    }
+
+    function confirmCloseOtherTabs(event) {
+      if (!event || event.isTrusted !== true) {
+        return;
+      }
+      // The confirm button is going away with its bubble; keep typing in the field.
+      searchInput.focus({ preventScroll: true });
+      chrome.runtime.sendMessage({ action: 'closeOtherTabsForOverlay' }, (response) => {
+        resetCloseOtherTabsButtonVisualState();
+        if (!response || response.ok !== true) {
           return;
         }
-        event.preventDefault();
-        event.stopPropagation();
-        hideInputActionCursorTooltip();
-        chrome.runtime.sendMessage({ action: 'closeOtherTabsForOverlay' }, (response) => {
-          resetCloseOtherTabsButtonVisualState();
-          if (typeof closeOtherTabsButton.blur === 'function') {
-            closeOtherTabsButton.blur();
-          }
-          if (!response || response.ok !== true) {
-            return;
-          }
-          if (latestOverlayQuery) {
-            requestOverlaySearchSuggestions(latestOverlayQuery);
-            return;
-          }
-          requestTabsAndRender();
-        });
+        if (latestOverlayQuery) {
+          requestOverlaySearchSuggestions(latestOverlayQuery);
+          return;
+        }
+        requestTabsAndRender();
       });
     }
 
