@@ -341,5 +341,49 @@ assert.deepStrictEqual(
   'an armed observer should still relay the next live release after rejecting a stale buffered release'
 );
 
+// The configured shortcut comes from chrome.commands in the background. Each
+// request wakes the service worker, so typing must never ask for it; only a
+// window regaining focus (after a possible shortcut edit) should.
+{
+  const realNow = window.Date.now;
+  let fakeNow = realNow() + 60 * 1000;
+  window.Date.now = () => fakeNow;
+  try {
+    shortcutResponseCallbacks.length = 0;
+    for (let i = 0; i < 5; i += 1) {
+      fakeNow += 20 * 1000;
+      keydownHandler({
+        altKey: false,
+        code: 'KeyA',
+        ctrlKey: false,
+        isComposing: false,
+        isTrusted: true,
+        key: 'a',
+        metaKey: false,
+        preventDefault() {},
+        repeat: false,
+        shiftKey: false,
+        stopPropagation() {},
+        target: editableTarget
+      });
+    }
+    assert.strictEqual(shortcutResponseCallbacks.length, 0, 'keydowns should not poll the background for the shortcut');
+
+    window.document.body.appendChild(editableTarget);
+    editableTarget.dispatchEvent(new window.FocusEvent('focus'));
+    assert.strictEqual(shortcutResponseCallbacks.length, 0, 'focusing a field inside the page should not poll the background');
+
+    window.dispatchEvent(new window.FocusEvent('focus'));
+    assert.strictEqual(shortcutResponseCallbacks.length, 1, 'the window regaining focus should refresh the shortcut once');
+    window.dispatchEvent(new window.FocusEvent('focus'));
+    assert.strictEqual(shortcutResponseCallbacks.length, 1, 'a focus burst should share one refresh');
+    fakeNow += 5 * 1000;
+    window.dispatchEvent(new window.FocusEvent('focus'));
+    assert.strictEqual(shortcutResponseCallbacks.length, 2, 'a later return to the window should refresh again');
+  } finally {
+    window.Date.now = realNow;
+  }
+}
+
 dom.window.close();
 console.log('tab switcher shortcut release relay tests passed');

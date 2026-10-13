@@ -1,46 +1,36 @@
 (function(root) {
   'use strict';
 
-  function normalizeActions(actions) {
-    if (!Array.isArray(actions)) {
-      return [];
-    }
-    return actions
-      .map((action) => String(action || '').trim())
-      .filter(Boolean);
-  }
-
-  function normalizeRouteGroup(name, descriptor) {
-    const groupName = String(name || '').trim();
-    const routeDescriptor = descriptor && typeof descriptor === 'object' ? descriptor : {};
-    const actions = Array.isArray(descriptor) ? descriptor : routeDescriptor.actions;
-    const handler = routeDescriptor.handler || routeDescriptor.handle;
-    return Object.freeze({
-      name: groupName,
-      actions: Object.freeze(normalizeActions(actions)),
-      handler: typeof handler === 'function' ? handler : null
-    });
-  }
-
-  function createRouter(routeGroups) {
-    const groups = {};
-    const routes = {};
-    Object.entries(routeGroups || {}).forEach(([name, descriptor]) => {
-      const group = normalizeRouteGroup(name, descriptor);
-      if (!group.name || group.actions.length <= 0 || !group.handler) {
-        return;
-      }
-      groups[group.name] = group;
-      group.actions.forEach((action) => {
-        if (routes[action]) {
+  // Builds one action -> handler registry from any number of handler maps
+  // ({ actionName(request, sender, sendResponse) { ... } }). Feature areas can
+  // keep their handlers together; an action registered by two maps throws.
+  function createRouter(...handlerMaps) {
+    const handlers = new Map();
+    handlerMaps.forEach((handlerMap) => {
+      Object.entries(handlerMap || {}).forEach(([rawAction, handler]) => {
+        const action = String(rawAction || '').trim();
+        if (!action) {
+          return;
+        }
+        if (typeof handler !== 'function') {
+          throw new Error(`Background message handler is not a function: ${action}`);
+        }
+        if (handlers.has(action)) {
           throw new Error(`Duplicate background message action: ${action}`);
         }
-        routes[action] = group;
+        handlers.set(action, handler);
       });
     });
     return Object.freeze({
-      groups: Object.freeze(groups),
-      routes: Object.freeze(routes)
+      has(action) {
+        return handlers.has(String(action || ''));
+      },
+      actions() {
+        return Array.from(handlers.keys());
+      },
+      get(action) {
+        return handlers.get(String(action || '')) || null;
+      }
     });
   }
 
@@ -53,8 +43,7 @@
 
   function dispatch(router, request, sender, sendResponse) {
     const action = request && request.action ? String(request.action) : '';
-    const route = action && router && router.routes ? router.routes[action] : null;
-    const handler = route && typeof route.handler === 'function' ? route.handler : null;
+    const handler = action && router ? router.get(action) : null;
     if (!handler) {
       return sendUnknownResponse(sendResponse);
     }

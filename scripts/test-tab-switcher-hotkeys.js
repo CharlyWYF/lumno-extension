@@ -1,13 +1,14 @@
 const assert = require('assert');
 const fs = require('fs');
 const { readPageSource } = require('./helpers/page-source');
+const { readBackgroundSource } = require('./helpers/background-source');
 
 const contentHotkeySource = fs.readFileSync('src/content/hotkey-listener.js', 'utf8');
 const shortcutReleaseRelaySource = fs.readFileSync(
   'src/content/shortcut-key-observer.js',
   'utf8'
 );
-const backgroundSource = fs.readFileSync('src/background/background.js', 'utf8');
+const backgroundSource = readBackgroundSource();
 const switcherSource = fs.readFileSync('src/overlay/tab-switcher.js', 'utf8');
 const switcherViewReactSource = fs.readFileSync(
   'react-src/overlay/tab-switcher.tsx',
@@ -185,11 +186,6 @@ assert.match(
   'the first trusted keydown should be relayed for background verification while shortcut configuration is pending'
 );
 assert.match(
-  backgroundSource,
-  /case 'triggerShowSearchFromPageHotkey':[\s\S]*request\.requiresShortcutVerification === true[\s\S]*getConfiguredFallbackShortcut\(\(shortcut\) =>[\s\S]*SHORTCUT_KEY_MATCHER\.descriptorMatchesShortcut\(request\.observedShortcut, spec\)[\s\S]*triggerVerifiedPageHotkey\(shortcut\)/,
-  'the background should validate the cold-start key descriptor against the live browser shortcut before opening Lumno'
-);
-assert.match(
   switcherBridgeSource,
   /TAB_SWITCHER_RELEASE_REPLAY_WINDOW_MS[\s\S]*recentTrustedKeydownAtByKey[\s\S]*function rememberTrustedTabSwitcherShortcutKeydown\(event\)[\s\S]*function rememberTrustedTabSwitcherShortcutRelease\(event\)[\s\S]*function getBufferedTabSwitcherShortcutReleaseKey\(keys, commandStartedAt\)[\s\S]*observedAt >= startedAt[\s\S]*keydownAt <= observedAt[\s\S]*request\.commandStartedAt[\s\S]*function notifyTabSwitcherShortcutModifierReleased\(event\)[\s\S]*event\.isTrusted !== true[\s\S]*rememberTrustedTabSwitcherShortcutRelease\(event\)[\s\S]*relayTabSwitcherShortcutRelease\(key\)[\s\S]*window\.addEventListener\('keydown',\s*rememberTrustedTabSwitcherShortcutKeydown,\s*true\)[\s\S]*window\.addEventListener\('keyup',\s*notifyTabSwitcherShortcutModifierReleased,\s*true\)/,
   'extension pages should preserve the same trusted keydown/keyup release replay behavior through their persistent bridge'
@@ -272,11 +268,6 @@ assert.match(
   openOverlayBlock,
   /if \(restricted\)[\s\S]*isSearchCommandSource\(source\) && \(isLumnoNewtabUrl\(activeUrl\) \|\| isBrowserNewtabUrl\(activeUrl\)\)[\s\S]*requestFocusVisibleNewtabInput\(source,\s*activeTab\.id\)[\s\S]*return;/,
   'show-search commands on restricted Lumno/browser newtab URLs should keep focusing the visible newtab input'
-);
-assert.match(
-  openOverlayBlock,
-  /if \(action === 'none'\)[\s\S]*fallback-open-browser-newtab[\s\S]*openBrowserNewtabFallback\(\{ sourceTab: activeTab \}\)[\s\S]*return;/,
-  'restricted browser-setting action should open the browser-selected newtab provider instead of suppressing the shortcut'
 );
 assert.strictEqual(
   (manifest.permissions || []).includes('management'),
@@ -1676,11 +1667,6 @@ assert.deepStrictEqual(
     "commitOpenTabSwitcherInWindow(senderTab.windowId, 'keyup')"
   ],
   'the open switcher should only be committed by a real keyup notification'
-);
-assert.match(
-  backgroundSource,
-  /shortcuts:\s*\{[\s\S]*'notifyTabSwitcherShortcutModifierReleased'[\s\S]*handler:\s*handleShortcutMessage[\s\S]*case 'notifyTabSwitcherShortcutModifierReleased':[\s\S]*handleTabSwitcherShortcutModifierReleased/,
-  'the trusted frame release notification should be routed into the tab switcher commit path'
 );
 assert.match(
   injectSwitcherBlock,

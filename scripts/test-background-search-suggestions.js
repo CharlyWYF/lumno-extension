@@ -4,7 +4,8 @@ const path = require('path');
 const vm = require('vm');
 
 const repoRoot = path.resolve(__dirname, '..');
-const backgroundSourceForAssertions = fs.readFileSync(path.join(repoRoot, 'src/background/background.js'), 'utf8');
+const { readBackgroundSource } = require('./helpers/background-source');
+const backgroundSourceForAssertions = readBackgroundSource();
 
 assert.ok(
   /searchBlacklistItems,\s*faviconRequestBlacklistItems,\s*_faviconEnhancedFetchEnabled,\s*searchSelectionStats\s*\]\s*=\s*await Promise\.all\([\s\S]*?loadSearchBlacklistItems\(\),\s*loadFaviconRequestBlacklistItems\(\),\s*loadFaviconEnhancedFetchEnabled\(\),\s*loadSearchSelectionStats\(\)/.test(backgroundSourceForAssertions),

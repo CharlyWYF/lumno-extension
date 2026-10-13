@@ -8,7 +8,14 @@
       // A listener from the previous extension context may already be invalid.
     }
   }
-  const SHOW_SEARCH_SHORTCUT_REFRESH_MS = 15000;
+  // The configured shortcut lives in chrome.commands, which a content script
+  // cannot read or observe, so it is fetched from the background. Asking on
+  // every keydown woke the service worker from every frame while the user
+  // typed; instead the frame asks once at startup and again when its window
+  // regains focus (the user may have just edited the shortcut in
+  // chrome://extensions/shortcuts). The interval only folds the focus and
+  // visibilitychange that arrive together on a tab switch into one request.
+  const SHOW_SEARCH_SHORTCUT_REFRESH_MIN_INTERVAL_MS = 2000;
   const RELEASE_REPLAY_WINDOW_MS = 5000;
   const SHORTCUT_KEY_MATCHER = globalThis.LumnoShortcutKeyMatcher;
   let showSearchShortcutRaw = '';
@@ -44,7 +51,7 @@
 
   function refreshShowSearchShortcut(force) {
     const now = Date.now();
-    if (!force && (now - showSearchShortcutRefreshedAt) < SHOW_SEARCH_SHORTCUT_REFRESH_MS) {
+    if (!force && (now - showSearchShortcutRefreshedAt) < SHOW_SEARCH_SHORTCUT_REFRESH_MIN_INTERVAL_MS) {
       return;
     }
     showSearchShortcutRefreshedAt = now;
@@ -97,7 +104,6 @@
       return;
     }
     rememberTrustedShortcutKeydown(event);
-    refreshShowSearchShortcut(false);
     const descriptor = SHORTCUT_KEY_MATCHER.describeKeyboardEvent(event);
     if (!showSearchShortcutSpec) {
       relayUnresolvedShowSearchShortcut(event, descriptor);
@@ -282,9 +288,18 @@
     relayTabSwitcherShortcutRelease(key);
   }
 
-  const refreshShowSearchShortcutOnFocus = () => refreshShowSearchShortcut(true);
+  // A capturing focus listener on window also sees every element focus inside
+  // the page; only the window itself gaining focus can follow a shortcut edit.
+  const refreshShowSearchShortcutOnFocus = (event) => {
+    if (event && event.target !== window) {
+      return;
+    }
+    refreshShowSearchShortcut(false);
+  };
+  // Every frame of a tab becomes visible together; the top frame speaks for
+  // the tab and a subframe refreshes when its own window takes focus.
   const refreshShowSearchShortcutOnVisibility = () => {
-    if (document.visibilityState === 'visible') {
+    if (window.top === window && document.visibilityState === 'visible') {
       refreshShowSearchShortcut(false);
     }
   };

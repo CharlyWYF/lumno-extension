@@ -1,11 +1,9 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { readBackgroundSource } = require('./helpers/background-source');
 
-const backgroundSource = fs.readFileSync(
-  path.join(__dirname, '..', 'src/background/background.js'),
-  'utf8'
-);
+const backgroundSource = readBackgroundSource();
 
 function extractFunctionSource(source, name) {
   const needle = `function ${name}(`;

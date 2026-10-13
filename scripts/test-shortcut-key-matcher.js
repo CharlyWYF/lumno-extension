@@ -84,21 +84,24 @@ assert.strictEqual(
 );
 
 const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
-const hotkeyScripts = manifest.content_scripts[0].js;
+const shortcutObserverEntry = manifest.content_scripts.find((entry) =>
+  Array.isArray(entry.js) && entry.js.includes('src/content/shortcut-key-observer.js'));
 assert(
-  hotkeyScripts.indexOf('src/shared/shortcut-key-matcher.js') <
-    hotkeyScripts.indexOf('src/content/hotkey-listener.js'),
-  'content hotkey listener should load the shared matcher first'
+  shortcutObserverEntry &&
+    shortcutObserverEntry.js.indexOf('src/shared/shortcut-key-matcher.js') <
+      shortcutObserverEntry.js.indexOf('src/content/shortcut-key-observer.js'),
+  'the page shortcut observer should load the shared matcher first'
 );
-const contentHotkeySource = fs.readFileSync('src/content/hotkey-listener.js', 'utf8');
+assert.strictEqual(
+  manifest.content_scripts.filter((entry) =>
+    Array.isArray(entry.js) && entry.js.includes('src/shared/shortcut-key-matcher.js')).length,
+  1,
+  'the shared matcher should be injected once per frame, by the observer entry that uses it'
+);
 const onboardingSource = fs.readFileSync('src/onboarding/onboarding-content.js', 'utf8');
 const onboardingHtml = readPageSource('src/onboarding/onboarding.html');
 const newtabSource = readNewtabRuntimeSource();
 const newtabHtml = readPageSource('newtab.html');
-assert.match(contentHotkeySource, /SHORTCUT_KEY_MATCHER\.parseShortcut\(nextShortcut\)/);
-assert.match(contentHotkeySource, /SHORTCUT_KEY_MATCHER\.eventMatchesShortcut\(event, shortcutSpec\)/);
-assert.doesNotMatch(contentHotkeySource, /function parseShortcut\(/);
-assert.doesNotMatch(contentHotkeySource, /function shortcutMatchesEvent\(/);
 assert.match(onboardingSource, /SHORTCUT_KEY_MATCHER\.parseShortcut\(normalizeShortcutValue\(shortcut\)\)/);
 assert.match(onboardingSource, /SHORTCUT_KEY_MATCHER\.eventMatchesShortcut\(event, parseShortcutHotkey\(shortcut\)\)/);
 assert.doesNotMatch(onboardingSource, /function getShortcutKeyTokenFromCode\(/);

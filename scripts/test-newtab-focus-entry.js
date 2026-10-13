@@ -307,18 +307,8 @@ async function runEntry({
     );
   }
 
-  const openNewTabBlock = backgroundSource.match(/case 'openNewTab': \{([\s\S]*?)\n    \}/);
-  assert(openNewTabBlock, 'background should expose the openNewTab action');
-  assert.doesNotMatch(
-    openNewTabBlock[1],
-    /\burl\s*:/,
-    'openNewTab should omit an extension URL so Chromium opens chrome://newtab'
-  );
-  assert.match(
-    openNewTabBlock[1],
-    /createTabWithSourceGroup\(\{[\s\S]*active:/,
-    'openNewTab should retain foreground/background disposition while using the browser New Tab route'
-  );
+  // The background openNewTab handler is covered by
+  // scripts/test-background-message-handlers.js.
 
   console.log('newtab focus entry tests passed');
 }).catch((error) => {

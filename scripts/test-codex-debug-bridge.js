@@ -7,6 +7,7 @@ const repoRoot = path.join(__dirname, '..');
 const backgroundBridge = require('../src/background/codex-debug-bridge.js');
 const surfaceBridge = require('../src/shared/codex-debug-surface.js');
 const manifest = require('../manifest.json');
+const { readBackgroundSource } = require('./helpers/background-source');
 
 const CODEX_STABLE_ID = 'hehggadaopoacecdllhhajmbjkdcmajg';
 const CODEX_BETA_ID = 'lfkehkpjohcoelkpembgemeipeppanef';
@@ -937,7 +938,7 @@ function runWiringTests() {
     'the redirect-only newtab shell should not bootstrap a debug surface before navigation'
   );
 
-  const backgroundSource = fs.readFileSync(path.join(repoRoot, 'src/background/background.js'), 'utf8');
+  const backgroundSource = readBackgroundSource();
   assert(backgroundSource.includes("importScripts(chrome.runtime.getURL('src/background/codex-debug-bridge.js'))"));
   assert(
     (backgroundSource.match(/'src\/shared\/codex-debug-surface\.js'/g) || []).length >= 3,

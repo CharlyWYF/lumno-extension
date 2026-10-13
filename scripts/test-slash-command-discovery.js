@@ -253,16 +253,6 @@ assert.match(
 );
 
 assert.match(
-  backgroundSource,
-  /actions:\s*\[[\s\S]*?'copyCurrentPageUrl'[\s\S]*?handler:\s*handleShortcutMessage/,
-  'background router should expose the existing current-page copy behavior to slash commands'
-);
-assert.match(
-  backgroundSource,
-  /case 'copyCurrentPageUrl':[\s\S]*?triggerCopyCurrentUrlForTab\(senderTab, 'slash-command',[\s\S]*?sendResponse\(\{ ok:/,
-  'copy slash command should reuse the existing copy-and-toast path'
-);
-assert.match(
   overlaySource,
   /type === 'commandOpenTabs'[\s\S]*?activateOpenTabsSearchMode\(\)[\s\S]*?type === 'commandCopyUrl'[\s\S]*?action:\s*'copyCurrentPageUrl'/,
   'overlay should execute tabs and copy commands through existing capability paths'

@@ -11,14 +11,14 @@ const createFunctions = source.slice(
   source.indexOf('function createTabWithSourceGroup('),
   source.indexOf('function moveTabToSourceGroupContext(')
 );
-const searchHandler = source.slice(
-  source.indexOf('function handleSearchMessage('),
-  source.indexOf('function handleSiteSearchMessage(')
-);
-const pageHandler = source.slice(
-  source.indexOf('function handleExtensionPageMessage('),
-  source.indexOf('function handleFaviconMessage(')
-);
+function sliceHandlerMap(name, nextName) {
+  const start = source.indexOf(`const ${name} = `);
+  const end = source.indexOf(`const ${nextName} = `);
+  assert.ok(start >= 0 && end > start, `${name} should be followed by ${nextName}`);
+  return `${source.slice(start, end)}\nglobalThis.${name} = ${name};\n`;
+}
+const searchHandler = sliceHandlerMap('SEARCH_MESSAGE_HANDLERS', 'SITE_SEARCH_MESSAGE_HANDLERS');
+const pageHandler = sliceHandlerMap('EXTENSION_PAGE_MESSAGE_HANDLERS', 'FAVICON_MESSAGE_HANDLERS');
 
 function createHarness(options = {}) {
   const created = [];
@@ -89,10 +89,10 @@ function createHarness(options = {}) {
   });
   vm.runInContext(createFunctions + searchHandler + pageHandler, context);
   const send = (request, sender = { tab: { ...currentSource, index: 1 } }) => new Promise((resolve) => {
-    const handler = request.action === 'searchOrNavigate'
-      ? context.handleSearchMessage
-      : context.handleExtensionPageMessage;
-    handler(request, sender, resolve);
+    const handlers = request.action === 'searchOrNavigate'
+      ? context.SEARCH_MESSAGE_HANDLERS
+      : context.EXTENSION_PAGE_MESSAGE_HANDLERS;
+    handlers[request.action](request, sender, resolve);
   });
   return { send, created, updated, searched, grouped };
 }

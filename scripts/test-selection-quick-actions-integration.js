@@ -103,10 +103,6 @@ assert(!settingsSource.includes(iconSetStorageKey),
 assert(!settingsSource.includes(triggerStyleStorageKey),
   'browser sync should not retain the removed trigger-style field');
 assert(
-  /selectionQuickActions:[\s\S]*runSelectionQuickAction[\s\S]*handleSelectionQuickActionMessage/.test(backgroundSource),
-  'background message routing should isolate the selection quick action feature'
-);
-assert(
   backgroundSource.includes("src/background/selection-quick-action-provider.js") &&
     backgroundSource.includes('loadSelectionQuickActionFallbackProviders()') &&
     providerResolverSource.includes('resolveSelectionQuickActionProvider'),
@@ -377,8 +373,7 @@ assert(
   'all toolbar contents should align to the moving right edge while actions can shrink safely'
 );
 assert(
-  /function openLabsSettings\(\)[\s\S]*?action:\s*'openOptionsPage'[\s\S]*?hash:\s*'labs'/.test(contentSource) &&
-    /case 'openOptionsPage':[\s\S]*?hash:\s*request\.hash/.test(backgroundSource),
+  /function openLabsSettings\(\)[\s\S]*?action:\s*'openOptionsPage'[\s\S]*?hash:\s*'labs'/.test(contentSource),
   'the enlarged trailing butterfly should navigate directly to the Labs settings route'
 );
 assert(

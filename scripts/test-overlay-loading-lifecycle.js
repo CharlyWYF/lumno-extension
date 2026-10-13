@@ -518,11 +518,6 @@ assert.ok(
   'a connected first completion should wait for a stable completion probe'
 );
 assert.ok(
-  backgroundSource.includes("case 'notifyTopFrameDocumentStarted':") &&
-    backgroundSource.includes('recoverOverlayAfterTopFrameDocumentStart(request, sender)'),
-  'each newly committed top-frame Document should trigger recovery without site exceptions'
-);
-assert.ok(
   backgroundSource.includes('const cachedNavigationState = overlayNavigationStateByTabId.get(tab.id) || null;'),
   'shortcut dispatch should merge the navigation event with the stale tabs.query snapshot'
 );

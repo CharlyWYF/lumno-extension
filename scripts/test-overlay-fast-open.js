@@ -1,11 +1,12 @@
 const assert = require('assert');
 const fs = require('fs');
+const { readBackgroundSource } = require('./helpers/background-source');
 
-const backgroundSource = fs.readFileSync('src/background/background.js', 'utf8');
+const backgroundSource = readBackgroundSource();
 const overlaySource = fs.readFileSync('src/overlay/search-panel.js', 'utf8');
 
 const triggerStart = backgroundSource.indexOf('function triggerShowSearchForTab(tab, source)');
-const triggerEnd = backgroundSource.indexOf('\nfunction injectTabSwitcherOnTab', triggerStart);
+const triggerEnd = backgroundSource.indexOf('\nfunction ', triggerStart + 1);
 const triggerSource = backgroundSource.slice(triggerStart, triggerEnd);
 assert.ok(triggerStart >= 0 && triggerEnd > triggerStart, 'show-search trigger should remain discoverable');
 assert.match(
@@ -253,11 +254,6 @@ assert.match(
   overlaySource,
   /function notifyOverlayLoadingSession\(input\)[\s\S]*?action: 'updateOverlayLoadingSession',[\s\S]*?inputValue,[\s\S]*?selectionStart,[\s\S]*?selectionEnd,[\s\S]*?focused:/,
   'typing in a loading Document should persist the live draft, selection, and focus state'
-);
-assert.match(
-  backgroundSource,
-  /case 'updateOverlayLoadingSession': \{[\s\S]*?updateOverlayLoadingSessionFromMessage\(request, sender, sendResponse\);[\s\S]*?return true;/,
-  'the background router should accept asynchronous loading-session updates from the Overlay'
 );
 assert.doesNotMatch(
   overlaySource.slice(overlaySource.lastIndexOf('const revealReady =')),

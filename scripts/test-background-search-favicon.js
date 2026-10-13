@@ -1,9 +1,10 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { readBackgroundSource } = require('./helpers/background-source');
 
 const repoRoot = path.resolve(__dirname, '..');
-const backgroundJs = fs.readFileSync(path.join(repoRoot, 'src/background/background.js'), 'utf8');
+const backgroundJs = readBackgroundSource();
 
 function getFunctionBlock(source, startNeedle, endNeedle) {
   const start = source.indexOf(startNeedle);

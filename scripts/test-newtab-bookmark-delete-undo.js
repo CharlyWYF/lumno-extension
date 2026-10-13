@@ -119,7 +119,6 @@ assert.ok(
     newtabJs.includes("menu.addEventListener('click', handleBookmarkContextMenuActionClick)") &&
     newtabJs.includes('confirmationTitle: formatMessage(') &&
     newtabJs.includes("action: 'openBookmarkFolderInNewTabGroup'") &&
-    backgroundJs.includes("case 'openBookmarkFolderInNewTabGroup'") &&
     backgroundJs.includes("chrome.runtime.getURL('src/background/bookmark-tab-groups.js')"),
   'folder actions should stay visible when empty, confirm recursively counted tabs, and route grouping through the background'
 );

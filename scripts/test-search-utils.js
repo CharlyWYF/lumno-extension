@@ -643,7 +643,7 @@ assert.strictEqual(
 );
 assertDirectNavigationDelegatesToShared('src/newtab/newtab.js');
 assertDirectNavigationDelegatesToShared('src/overlay/search-panel.js');
-assertDirectNavigationDelegatesToShared('src/background/background.js');
+assertDirectNavigationDelegatesToShared('src/background/search-suggestions-service.js');
 assertTabMatchUrlDelegatesToShared('src/newtab/newtab.js');
 assertTabMatchUrlDelegatesToShared('src/overlay/search-panel.js');
 assertTabMatchUrlDelegatesToShared('src/overlay/search-panel.js', { includeSearch: false });
