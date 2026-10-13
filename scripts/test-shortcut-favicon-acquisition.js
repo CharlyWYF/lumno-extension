@@ -7,9 +7,10 @@ const shortcutsStore = require('../src/newtab/shortcuts-store.js');
 const searchUtils = require('../src/shared/search-utils.js');
 const faviconCache = require('../src/shared/favicon-cache.js');
 const { readNewtabRuntimeSource } = require('./helpers/newtab-source');
+const { readBackgroundSource } = require('./helpers/background-source');
 
 const repoRoot = path.resolve(__dirname, '..');
-const backgroundSource = fs.readFileSync(path.join(repoRoot, 'src/background/background.js'), 'utf8');
+const backgroundSource = readBackgroundSource();
 const newtabSource = readNewtabRuntimeSource();
 
 function extractFunction(source, name) {

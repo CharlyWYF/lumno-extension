@@ -4,6 +4,7 @@ const fs = require('fs');
 const settings = require('../src/shared/settings.js');
 const { readPageSource } = require('./helpers/page-source');
 const { readNewtabRuntimeSource } = require('./helpers/newtab-source');
+const { readBackgroundSource } = require('./helpers/background-source');
 
 const auditOutput = execFileSync(process.execPath, ['scripts/audit-i18n.js'], {
   encoding: 'utf8'
@@ -18,7 +19,7 @@ assert.strictEqual(
 
 const optionsSource = fs.readFileSync('src/options/options.js', 'utf8');
 const optionsHtml = readPageSource('src/options/options.html');
-const backgroundSource = fs.readFileSync('src/background/background.js', 'utf8');
+const backgroundSource = readBackgroundSource();
 const newtabSource = readNewtabRuntimeSource();
 const wallpaperSource = fs.readFileSync('src/newtab/wallpaper.js', 'utf8');
 const overlaySource = fs.readFileSync('src/overlay/search-panel.js', 'utf8');

@@ -163,8 +163,8 @@ assert.deepStrictEqual(
     'src/background/background.js:chrome.storage.sync:BOOKMARK_TOPBAR_LOCAL_STORAGE_KEYS',
     'src/background/background.js:chrome.storage.sync:LANGUAGE_MESSAGES_STORAGE_KEY',
     'src/background/background.js:localArea:REMOVED_AI_LOCAL_STORAGE_KEYS',
-    'src/background/background.js:localArea:legacyKeys',
     'src/background/background.js:syncArea:REMOVED_AI_SYNC_STORAGE_KEYS',
+    'src/background/favicon-service.js:localArea:legacyKeys',
     'src/newtab/bookmark-display-settings.js:bookmarkTopbarSurfaceStorageArea:BOOKMARK_TOPBAR_SURFACE_COLOR_STORAGE_KEY',
     'src/newtab/bookmark-display-settings.js:localArea:BOOKMARK_TOPBAR_SURFACE_COLOR_STORAGE_KEY',
     'src/newtab/bookmark-display-settings.js:syncArea:cleanupKeys'

@@ -5,9 +5,10 @@ const path = require('path');
 const blacklistUtils = require('../src/shared/blacklist-utils.js');
 const faviconUtils = require('../src/shared/favicon-utils.js');
 const settings = require('../src/shared/settings.js');
+const { readBackgroundSource } = require('./helpers/background-source');
 
 const repoRoot = path.resolve(__dirname, '..');
-const backgroundSource = fs.readFileSync(path.join(repoRoot, 'src/background/background.js'), 'utf8');
+const backgroundSource = readBackgroundSource();
 
 function extractFunctionSource(source, name) {
   const needle = `function ${name}(`;

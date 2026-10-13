@@ -1,8 +1,9 @@
 const assert = require('assert');
 const fs = require('fs');
 const faviconUtils = require('../src/shared/favicon-utils.js');
+const { readBackgroundSource } = require('./helpers/background-source');
 
-const source = fs.readFileSync('src/background/background.js', 'utf8');
+const source = readBackgroundSource();
 
 function extractFunction(name) {
   const start = source.indexOf(`function ${name}(`);
