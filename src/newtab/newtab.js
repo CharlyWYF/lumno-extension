@@ -2869,7 +2869,7 @@
   addStorageChangeListener((changes, areaName) => {
     if (areaName === 'local' && changes[FOLDER_REFERENCES.BINDINGS_KEY]) {
       shortcutFolderRuntime.accept(changes[FOLDER_REFERENCES.BINDINGS_KEY].newValue);
-      if (!isShortcutDragActive()) renderShortcuts();
+      renderShortcuts();
     }
     if (isPrimaryStorageAreaName(areaName) && changes[FOLDER_COLOR_REFS_STORAGE_KEY]) {
       folderColorRefs = NEWTAB_BOOKMARK_FOLDER_ICON.normalizeFolderColorRefs(changes[FOLDER_COLOR_REFS_STORAGE_KEY].newValue);
@@ -4227,6 +4227,7 @@
     getShortcutFaviconCandidateUrl,
     getShortcutTitle,
     renderShortcuts,
+    flushDeferredShortcutRender,
     loadNewtabShortcutPreferences,
     loadVisibleShortcuts,
     persistShortcuts,
@@ -4523,7 +4524,6 @@
     hideCursorTooltip,
     isEditableElement: (...args) => isEditableElement(...args),
     closeBookmarkCascadeMenu,
-    suppressCanceledDragClick: (...args) => suppressCanceledDragClick(...args),
     renderCurrentBookmarkPage: (...args) => renderCurrentBookmarkPage(...args),
     applyShortcutGroupDeleteRecord,
     autoScrollShortcutArea: (...args) => autoScrollShortcutArea(...args),
@@ -5760,7 +5760,6 @@
     autoScrollShortcutArea,
     animateShortcutLayoutChange,
     scheduleShortcutDragMove,
-    suppressCanceledDragClick,
     finishShortcutDrag,
     isShortcutDragActive,
     isBookmarkSurfaceDragStateActive,
@@ -5772,6 +5771,7 @@
     getShortcutTileId,
     getShortcutTileById,
     renderShortcuts,
+    flushDeferredShortcutRender,
     resetShortcutDockHover,
     NEWTAB_BOOKMARK_MOVE_HISTORY,
     persistShortcuts,

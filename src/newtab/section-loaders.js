@@ -304,7 +304,7 @@
         updateBookmarkBreadcrumb();
         renderCurrentBookmarkPage();
         playPendingBookmarkLayoutAnimation();
-        if (!isShortcutDragActive() && pageState.newtabShortcuts.some((shortcut) => shortcut.type === 'folder')) {
+        if (pageState.newtabShortcuts.some((shortcut) => shortcut.type === 'folder')) {
           renderShortcuts();
         }
         bookmarkDataDirty = false;

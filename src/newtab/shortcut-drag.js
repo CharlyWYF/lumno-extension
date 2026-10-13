@@ -8,6 +8,7 @@
       getShortcutTileId,
       getShortcutTileById,
       renderShortcuts,
+      flushDeferredShortcutRender,
       resetShortcutDockHover,
       NEWTAB_BOOKMARK_MOVE_HISTORY,
       persistShortcuts,
@@ -55,6 +56,11 @@
 
     // Page state still owned by newtab.js; read and written through accessors.
     const pageState = deps.pageState;
+
+    // One click guard for every drag on the page (drag-click-guard.js).
+    function getDragClickGuard() {
+      return root.LumnoNewtabDragClickGuard.getDragClickGuard();
+    }
 
     const SHORTCUT_DRAG_START_THRESHOLD_PX = 10;
     const SHORTCUT_REORDER_ANIMATION_MS = 180;
@@ -630,36 +636,8 @@
       });
     }
 
-    function suppressCanceledDragClick(element, flagName, pointerId) {
-      if (element._xDragCancelClickCleanup) {
-        element._xDragCancelClickCleanup();
-      }
-      element[flagName] = true;
-      const cleanup = () => {
-        document.removeEventListener('pointerup', onRelease, true);
-        document.removeEventListener('pointercancel', onRelease, true);
-        document.removeEventListener('pointerdown', onNextPress, true);
-        delete element._xDragCancelClickCleanup;
-      };
-      const onRelease = (releaseEvent) => {
-        if (releaseEvent.pointerId !== pointerId) {
-          return;
-        }
-        cleanup();
-        // A canceled drag can still generate a click when the held mouse is
-        // released later. Keep suppression through that click's event turn.
-        window.setTimeout(() => { element[flagName] = false; }, 0);
-      };
-      const onNextPress = () => {
-        cleanup();
-        element[flagName] = false;
-      };
-      element._xDragCancelClickCleanup = cleanup;
-      document.addEventListener('pointerup', onRelease, true);
-      document.addEventListener('pointercancel', onRelease, true);
-      document.addEventListener('pointerdown', onNextPress, true);
-    }
-
+    // Renders asked for during the drag were held back (see renderShortcuts);
+    // whatever the drop does first, they run once it has settled.
     function finishShortcutDrag(event, options) {
       if (!pageState.shortcutDragState) {
         return;
@@ -667,6 +645,11 @@
       if (event && pageState.shortcutDragState.pointerId !== event.pointerId) {
         return;
       }
+      const outcome = endShortcutDrag(event, options);
+      Promise.resolve(outcome).then(flushDeferredShortcutRender, flushDeferredShortcutRender);
+    }
+
+    function endShortcutDrag(event, options) {
       const state = pageState.shortcutDragState;
       detachShortcutDragDocumentListeners();
       if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) {
@@ -716,14 +699,7 @@
           tile.style.pointerEvents = '';
         }
         if (state.isDragging) {
-          tile._xShortcutSuppressClick = true;
-          if (event) {
-            window.setTimeout(() => {
-              tile._xShortcutSuppressClick = false;
-            }, 0);
-          } else {
-            suppressCanceledDragClick(tile, '_xShortcutSuppressClick', state.pointerId);
-          }
+          getDragClickGuard().armAfterDrag(event, state.pointerId);
         }
       }
       if (bookmarkDropTarget) {
@@ -732,12 +708,9 @@
         if (event && typeof event.preventDefault === 'function') {
           event.preventDefault();
         }
-        if (bookmarkDropTarget.kind === 'shortcut-stack') {
-          stackShortcuts(state, bookmarkDropTarget);
-        } else {
-          moveShortcutToBookmarks(state, bookmarkDropTarget);
-        }
-        return;
+        return bookmarkDropTarget.kind === 'shortcut-stack'
+          ? stackShortcuts(state, bookmarkDropTarget)
+          : moveShortcutToBookmarks(state, bookmarkDropTarget);
       }
       // The empty bookmarks bar shown for the drag hides again however the
       // drag ends.
@@ -754,15 +727,15 @@
         if (event && typeof event.preventDefault === 'function') {
           event.preventDefault();
         }
-        persistShortcutOrder(state).then(() => {
+        return persistShortcutOrder(state).then(() => {
           animateShortcutLayoutChange(renderShortcuts);
           scheduleWallpaperAdaptiveToneUpdate();
         });
-        return;
       }
       if (options && options.cancel) {
         resetShortcutDockHover();
       }
+      return undefined;
     }
 
     // Reordering re-inserts the captured tile, which drops pointer capture, and
@@ -1130,7 +1103,8 @@
       scheduleShortcutGroupDragMove(state, pointerX, pointerY);
     }
 
-    function finishShortcutGroupDrag(commit) {
+    // `release` is the pointer event that ended the drag; null for Escape.
+    function finishShortcutGroupDrag(commit, release) {
       const state = shortcutGroupDragState;
       if (!state) return;
       shortcutGroupDragState = null;
@@ -1145,12 +1119,7 @@
       state.header.removeAttribute('data-shortcut-group-dragging');
       document.body.removeAttribute('data-drag-source');
       // The release would otherwise click the untitled group's title.
-      const suppressClick = (clickEvent) => {
-        clickEvent.preventDefault();
-        clickEvent.stopPropagation();
-      };
-      document.addEventListener('click', suppressClick, true);
-      window.setTimeout(() => document.removeEventListener('click', suppressClick, true), 0);
+      getDragClickGuard().armAfterDrag(release, state.pointerId);
       if (commit && state.targetIndex >= 0) {
         moveShortcutGroupToIndex(state.groupId, state.targetIndex);
       }
@@ -1158,13 +1127,13 @@
 
     function handleShortcutGroupDragPointerUp(event) {
       if (shortcutGroupDragState && event.pointerId === shortcutGroupDragState.pointerId) {
-        finishShortcutGroupDrag(true);
+        finishShortcutGroupDrag(true, event);
       }
     }
 
     function handleShortcutGroupDragPointerCancel(event) {
       if (shortcutGroupDragState && event.pointerId === shortcutGroupDragState.pointerId) {
-        finishShortcutGroupDrag(false);
+        finishShortcutGroupDrag(false, event);
       }
     }
 
@@ -1172,7 +1141,7 @@
       if (event.key === 'Escape' && shortcutGroupDragState && shortcutGroupDragState.isDragging) {
         event.preventDefault();
         event.stopPropagation();
-        finishShortcutGroupDrag(false);
+        finishShortcutGroupDrag(false, null);
       }
     }
 
@@ -1267,7 +1236,6 @@
       autoScrollShortcutArea,
       animateShortcutLayoutChange,
       scheduleShortcutDragMove,
-      suppressCanceledDragClick,
       finishShortcutDrag,
       isShortcutDragActive,
       isBookmarkSurfaceDragStateActive,

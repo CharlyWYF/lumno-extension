@@ -1099,25 +1099,6 @@
       }
     }
 
-    function clearBookmarkDragClickSuppression(itemButton) {
-      if (!itemButton) {
-        return;
-      }
-      if (itemButton._xBookmarkSuppressClickTimer) {
-        windowObj.clearTimeout(itemButton._xBookmarkSuppressClickTimer);
-        itemButton._xBookmarkSuppressClickTimer = 0;
-      }
-      itemButton._xBookmarkSuppressClick = false;
-    }
-
-    function consumeBookmarkDragClickSuppression(itemButton) {
-      if (!itemButton || !itemButton._xBookmarkSuppressClick) {
-        return false;
-      }
-      clearBookmarkDragClickSuppression(itemButton);
-      return true;
-    }
-
     function clearBookmarkCascadeLevelHoverSuppression(levelElement) {
       getBookmarkCascadeLevelItems(levelElement).forEach((button) => {
         setBookmarkCascadeItemHoverSuppressed(button, false);
@@ -1425,7 +1406,6 @@
           event.preventDefault();
         });
         itemButton.addEventListener('pointerdown', (event) => {
-          clearBookmarkDragClickSuppression(itemButton);
           onItemPointerDown({
             event,
             item,
@@ -1541,12 +1521,7 @@
             setBookmarkCascadeLevelActiveItem(levelElement, itemButton);
             clearBookmarkCascadeLevelsFrom(safeLevelIndex + 1);
           });
-          itemButton.addEventListener('click', (event) => {
-            if (consumeBookmarkDragClickSuppression(itemButton)) {
-              event.preventDefault();
-              event.stopPropagation();
-              return;
-            }
+          itemButton.addEventListener('click', () => {
             cancelBookmarkCascadeHoverIntent();
             openNestedLevel();
           });
@@ -1595,7 +1570,7 @@
             activateLeafItem();
           });
           itemButton.addEventListener('click', (event) => {
-            if (consumeBookmarkDragClickSuppression(itemButton) || isActivationSuppressed()) {
+            if (isActivationSuppressed()) {
               event.preventDefault();
               event.stopPropagation();
               return;

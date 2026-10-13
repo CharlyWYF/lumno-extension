@@ -630,10 +630,20 @@
       }
     }
 
+    // A shortcut drag moves the rendered tiles by hand until it ends, so a
+    // render asked for meanwhile (a favicon that resolved, a storage change)
+    // waits and runs once the drag is over.
+    let shortcutRenderDeferred = false;
+
     function renderShortcuts() {
       if (!pageState.shortcutGrid || !shortcutsView) {
         return;
       }
+      if (isShortcutDragActive()) {
+        shortcutRenderDeferred = true;
+        return;
+      }
+      shortcutRenderDeferred = false;
       hideShortcutTooltip();
       closeShortcutContextMenu();
       pageState.newtabShortcuts = NEWTAB_SHORTCUTS_STORE.normalizeShortcuts(pageState.newtabShortcuts, getShortcutStoreOptions());
@@ -659,6 +669,12 @@
           document.body && document.body.getAttribute('data-nt-ready') === '1'
         )
       });
+    }
+
+    function flushDeferredShortcutRender() {
+      if (shortcutRenderDeferred && !isShortcutDragActive()) {
+        renderShortcuts();
+      }
     }
 
     // A drag moves tiles between groups without rendering; the grid follows
@@ -1607,6 +1623,7 @@
       getShortcutFaviconCandidateUrl,
       getShortcutTitle,
       renderShortcuts,
+      flushDeferredShortcutRender,
       loadNewtabShortcutPreferences,
       loadVisibleShortcuts,
       persistShortcuts,

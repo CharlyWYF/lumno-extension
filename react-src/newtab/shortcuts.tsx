@@ -43,7 +43,6 @@ interface ThemeSuggestion {
 export interface ShortcutTileElement extends HTMLButtonElement {
   _xHost?: string;
   _xTheme?: ThemeValue;
-  _xShortcutSuppressClick?: boolean;
   _xSetBookmarkMenuVisualActive?: (active: boolean) => void;
 }
 
@@ -412,11 +411,7 @@ function ShortcutTile({
     event: ReactMouseEvent<HTMLButtonElement> |
       ReactKeyboardEvent<HTMLButtonElement>
   ): void {
-    const tile = tileRef.current;
-    if (
-      tile?._xShortcutSuppressClick ||
-      (event.type === 'click' && options.isActivationSuppressed())
-    ) {
+    if (event.type === 'click' && options.isActivationSuppressed()) {
       event.preventDefault();
       event.stopPropagation();
       return;

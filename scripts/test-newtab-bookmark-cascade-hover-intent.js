@@ -749,41 +749,6 @@ async function openCascadeWithSubmenu(overrides) {
     );
   }
 
-  {
-    const { anchor, clock, documentObj, runtime } = createCascadeRuntimeFixture();
-    runtime.open({ id: 'root', title: 'Root' }, anchor);
-    await flushPromises();
-    let levels = getMenuLevels(documentObj);
-    const folderItem = getMenuItems(levels[0])[0];
-    folderItem._xBookmarkSuppressClick = true;
-    folderItem._xBookmarkSuppressClickTimer = clock.setTimeout(() => {}, 420);
-
-    const syntheticClick = createFakeEvent('click', { target: folderItem });
-    folderItem.dispatchEvent(syntheticClick);
-    levels = getMenuLevels(documentObj);
-    assert.strictEqual(
-      syntheticClick.defaultPrevented,
-      true,
-      'the click synthesized by a completed drag should be suppressed'
-    );
-    assert.strictEqual(
-      folderItem._xBookmarkSuppressClick,
-      false,
-      'drag click suppression should be consumed instead of blocking later clicks'
-    );
-    assert.strictEqual(
-      levels.length,
-      1,
-      'the suppressed drag click should not open a nested folder'
-    );
-
-    folderItem.dispatchEvent(createFakeEvent('click', { target: folderItem }));
-    assert.strictEqual(
-      getMenuLevels(documentObj).length,
-      2,
-      'the next deliberate click should still open the nested folder'
-    );
-  }
 
   {
     const { clock, documentObj } = await openCascadeWithSubmenu();
