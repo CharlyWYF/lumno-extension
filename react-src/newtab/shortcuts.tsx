@@ -31,7 +31,6 @@ export interface ShortcutGroup {
 export interface ShortcutsLayout {
   grouped?: boolean;
   groups?: ShortcutGroup[];
-  editingGroupId?: string;
 }
 
 interface ThemeSuggestion {
@@ -110,13 +109,10 @@ export interface ShortcutsViewOptions {
   onAddContextMenu?: (sourceElement: HTMLButtonElement) => void;
   groupHeaders?: HTMLElement[];
   getGroupPlaceholder?: () => string;
-  getGroupTitleLabel?: () => string;
   getGroupActionsLabel?: (title: string) => string;
   getGroupMoreIconSvg?: () => string;
   onGroupMenu?: (groupId: string, anchor: HTMLElement) => void;
-  onGroupRenameStart?: (groupId: string) => void;
-  onGroupRename?: (groupId: string, title: string) => void;
-  onGroupRenameCancel?: () => void;
+  onGroupRename?: (groupId: string, sourceElement: HTMLElement) => void;
   getGroupEmptyLabel?: () => string;
   onGroupAdd?: (groupId: string, sourceElement: HTMLButtonElement) => void;
 }
@@ -191,13 +187,10 @@ interface NormalizedOptions {
   onAddContextMenu: (sourceElement: HTMLButtonElement) => void;
   groupHeaders: HTMLElement[];
   getGroupPlaceholder: () => string;
-  getGroupTitleLabel: () => string;
   getGroupActionsLabel: (title: string) => string;
   getGroupMoreIconSvg: () => string;
   onGroupMenu: (groupId: string, anchor: HTMLElement) => void;
-  onGroupRenameStart: (groupId: string) => void;
-  onGroupRename: (groupId: string, title: string) => void;
-  onGroupRenameCancel: () => void;
+  onGroupRename: (groupId: string, sourceElement: HTMLElement) => void;
   getGroupEmptyLabel: () => string;
   onGroupAdd: (groupId: string, sourceElement: HTMLButtonElement) => void;
 }
@@ -253,13 +246,10 @@ function normalizeOptions(
     onAddContextMenu: options.onAddContextMenu || (() => {}),
     groupHeaders: Array.isArray(options.groupHeaders) ? options.groupHeaders : [],
     getGroupPlaceholder: options.getGroupPlaceholder || (() => ''),
-    getGroupTitleLabel: options.getGroupTitleLabel || (() => ''),
     getGroupActionsLabel: options.getGroupActionsLabel || ((title) => title),
     getGroupMoreIconSvg: options.getGroupMoreIconSvg || (() => ''),
     onGroupMenu: options.onGroupMenu || (() => {}),
-    onGroupRenameStart: options.onGroupRenameStart || (() => {}),
     onGroupRename: options.onGroupRename || (() => {}),
-    onGroupRenameCancel: options.onGroupRenameCancel || (() => {}),
     getGroupEmptyLabel: options.getGroupEmptyLabel || (() => ''),
     onGroupAdd: options.onGroupAdd || (() => {})
   };
@@ -492,46 +482,15 @@ function ShortcutTile({
 }
 
 // A group's title row spans the whole grid, so its tiles start on a new row
-// and every row holds tiles of one group. Its title edits in place.
+// and every row holds tiles of one group. The title renames in a dialog.
 function ShortcutGroupHeader({
   group,
-  editing,
   options
 }: {
   group: ShortcutGroup;
-  editing: boolean;
   options: NormalizedOptions;
 }) {
   const moreRef = useRef<HTMLButtonElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const finishedRef = useRef(false);
-  const [draft, setDraft] = useState(group.title);
-
-  useLayoutEffect(() => {
-    if (!editing) {
-      return;
-    }
-    finishedRef.current = false;
-    setDraft(group.title);
-    const input = inputRef.current;
-    if (input) {
-      input.focus();
-      input.select();
-    }
-    // The draft starts from the title the edit opened with.
-  }, [editing]);
-
-  function finish(save: boolean): void {
-    if (finishedRef.current) {
-      return;
-    }
-    finishedRef.current = true;
-    if (save) {
-      options.onGroupRename(group.id, draft);
-    } else {
-      options.onGroupRenameCancel();
-    }
-  }
 
   function openMenu(): void {
     options.hideTooltip();
@@ -543,47 +502,16 @@ function ShortcutGroupHeader({
       className="x-nt-shortcut-group-header"
       data-shortcut-group-id={group.id}
       data-shortcut-group-untitled={group.title ? undefined : 'true'}
-      data-shortcut-group-editing={editing ? 'true' : undefined}
       onContextMenu={(event) => {
-        if (editing) {
-          return;
-        }
         event.preventDefault();
         event.stopPropagation();
         openMenu();
       }}
     >
-      {editing ? (
-        <input
-          ref={inputRef}
-          className="x-nt-shortcut-group-input"
-          type="text"
-          value={draft}
-          maxLength={24}
-          spellCheck={false}
-          autoComplete="off"
-          aria-label={options.getGroupTitleLabel()}
-          placeholder={options.getGroupPlaceholder()}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.nativeEvent.isComposing) {
-              return;
-            }
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              finish(true);
-            } else if (event.key === 'Escape') {
-              event.preventDefault();
-              event.stopPropagation();
-              finish(false);
-            }
-          }}
-          onBlur={() => finish(true)}
-        />
-      ) : group.title ? (
+      {group.title ? (
         <span
           className="x-nt-shortcut-group-title"
-          onDoubleClick={() => options.onGroupRenameStart(group.id)}
+          onDoubleClick={(event) => options.onGroupRename(group.id, event.currentTarget)}
         >
           {group.title}
         </span>
@@ -591,26 +519,24 @@ function ShortcutGroupHeader({
         <button
           type="button"
           className="x-nt-shortcut-group-title x-nt-shortcut-group-title--placeholder"
-          onClick={() => options.onGroupRenameStart(group.id)}
+          onClick={(event) => options.onGroupRename(group.id, event.currentTarget)}
         >
           {options.getGroupPlaceholder()}
         </button>
       )}
-      {editing ? null : (
-        <button
-          ref={moreRef}
-          type="button"
-          className="x-nt-shortcut-group-more"
-          aria-haspopup="menu"
-          aria-label={options.getGroupActionsLabel(group.title)}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            openMenu();
-          }}
-          dangerouslySetInnerHTML={{ __html: options.getGroupMoreIconSvg() }}
-        />
-      )}
+      <button
+        ref={moreRef}
+        type="button"
+        className="x-nt-shortcut-group-more"
+        aria-haspopup="menu"
+        aria-label={options.getGroupActionsLabel(group.title)}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openMenu();
+        }}
+        dangerouslySetInnerHTML={{ __html: options.getGroupMoreIconSvg() }}
+      />
     </div>
   );
 }
@@ -653,7 +579,6 @@ function ShortcutsList({
           <ShortcutGroupHeader
             key={`group:${group.id}`}
             group={group}
-            editing={layout.editingGroupId === group.id}
             options={options}
           />,
           ...(isEmpty(group)

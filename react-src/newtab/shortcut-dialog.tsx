@@ -30,7 +30,9 @@ export type OnlineIconSource = 'service' | 'favicon-is' | 'cache';
 type IconMode = OnlineIconSource | 'custom' | 'builtin';
 const ICON_MODES: IconMode[] = ['builtin', 'service', 'favicon-is', 'cache', 'custom'];
 const ICON_REFRESH_SUCCESS_MS = 2000;
-export type ShortcutDialogItemType = 'shortcut' | 'bookmark' | 'folder';
+// A group needs only a name, which may be empty: an untitled group just
+// starts a new row of shortcuts.
+export type ShortcutDialogItemType = 'shortcut' | 'bookmark' | 'folder' | 'group';
 
 function isOnlineIconSource(value: unknown): value is OnlineIconSource {
   return value === 'service' || value === 'favicon-is' || value === 'cache';
@@ -206,7 +208,7 @@ const INITIAL_FORM_STATE: FormState = {
 };
 
 function normalizeItemType(value: unknown): ShortcutDialogItemType {
-  return value === 'bookmark' || value === 'folder' ? value : 'shortcut';
+  return value === 'bookmark' || value === 'folder' || value === 'group' ? value : 'shortcut';
 }
 
 function createInitialFormState(
@@ -218,7 +220,7 @@ function createInitialFormState(
   const itemType = normalizeItemType(openOptions.itemType);
   const iconEditable = itemType === 'shortcut' || (itemType === 'bookmark' && openOptions.iconEditable === true);
   const customIcon = iconEditable ? String(shortcut?.iconDataUrl || '') : '';
-  const url = itemType !== 'folder' ? String(shortcut?.url || '') : '';
+  const url = itemType !== 'folder' && itemType !== 'group' ? String(shortcut?.url || '') : '';
   let iconMode: IconMode = 'cache';
   if (shortcut && iconEditable) {
     iconMode = customIcon ? 'custom'
@@ -374,7 +376,7 @@ const ShortcutDialogView = forwardRef<ShortcutDialogViewHandle, ShortcutDialogVi
       });
       const payload = Object.freeze<ShortcutDialogPayload>({
         title: current.name,
-        url: current.itemType === 'folder' ? '' : current.url,
+        url: current.itemType === 'folder' || current.itemType === 'group' ? '' : current.url,
         mode: current.mode,
         itemType: current.itemType,
         itemId: current.editingId,
@@ -657,6 +659,7 @@ const ShortcutDialogView = forwardRef<ShortcutDialogViewHandle, ShortcutDialogVi
     const isShortcutItem = formState.itemType === 'shortcut';
     const isBookmarkItem = formState.itemType === 'bookmark';
     const isFolderItem = formState.itemType === 'folder';
+    const isGroupItem = formState.itemType === 'group';
     const hasIcon = Boolean(formState.iconDataUrl);
     const isOnlineIcon = formState.iconMode !== 'custom';
     const isBuiltinIcon = formState.iconMode === 'builtin';
@@ -743,6 +746,10 @@ const ShortcutDialogView = forwardRef<ShortcutDialogViewHandle, ShortcutDialogVi
           <h2 id={titleId} className="x-nt-shortcut-dialog-title">
             {isConfirmVariant
               ? confirmation?.confirmationTitle
+              : isGroupItem
+              ? isEditMode
+                ? options.t('newtab_shortcuts_group_dialog_rename_title', 'Rename group')
+                : options.t('newtab_shortcuts_group_new', 'New group')
               : isFolderItem
               ? options.t('bookmarks_edit_folder_dialog_title', 'Rename folder')
               : isBookmarkItem
@@ -772,12 +779,14 @@ const ShortcutDialogView = forwardRef<ShortcutDialogViewHandle, ShortcutDialogVi
                 ref={nameInputRef}
                 type="text"
                 autoComplete="off"
-                maxLength={isShortcutItem ? 64 : 255}
+                maxLength={isShortcutItem ? 64 : isGroupItem ? 24 : 255}
                 className="_x_extension_shortcut_input_2024_unique_"
                 placeholder={
                   isShortcutItem
                     ? options.t('newtab_shortcuts_name_placeholder', 'Lumno')
-                    : options.t('bookmarks_name_placeholder', 'Name')
+                    : isGroupItem
+                      ? options.t('newtab_shortcuts_group_name_placeholder', 'Optional; an untitled group only starts a new row')
+                      : options.t('bookmarks_name_placeholder', 'Name')
                 }
                 value={formState.name}
                 disabled={formState.busy}
@@ -790,7 +799,7 @@ const ShortcutDialogView = forwardRef<ShortcutDialogViewHandle, ShortcutDialogVi
           </label>
           ) : null}
 
-          {!isConfirmVariant && !isFolderItem ? (
+          {!isConfirmVariant && !isFolderItem && !isGroupItem ? (
             <div className="x-nt-shortcut-field">
               <div className="x-nt-shortcut-url-label-row">
                 <label htmlFor={urlInputId}>

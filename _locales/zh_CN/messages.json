@@ -3203,9 +3203,6 @@
   "newtab_shortcuts_group_title_placeholder": {
     "message": "添加标题"
   },
-  "newtab_shortcuts_group_title_label": {
-    "message": "分组标题"
-  },
   "newtab_shortcuts_group_actions": {
     "message": "{group}：操作"
   },
@@ -3271,5 +3268,14 @@
   },
   "options_shortcut_sync_none_webdav": {
     "message": "快捷方式：浏览器同步空间已满，{count} 个都通过 WebDAV 同步。"
+  },
+  "newtab_shortcuts_add_site": {
+    "message": "添加网站"
+  },
+  "newtab_shortcuts_group_dialog_rename_title": {
+    "message": "重命名分组"
+  },
+  "newtab_shortcuts_group_name_placeholder": {
+    "message": "可以留空，留空时只用来分隔"
   }
 }

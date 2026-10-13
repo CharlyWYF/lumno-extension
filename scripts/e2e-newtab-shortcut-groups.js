@@ -196,7 +196,9 @@ async function openPage(cdp, viewport) {
     async key(key, modifiers = 0) {
       const codes = { Enter: ['Enter', 13], Escape: ['Escape', 27], z: ['KeyZ', 90] };
       const [code, keyCode] = codes[key];
-      await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key, code, windowsVirtualKeyCode: keyCode, modifiers });
+      // Enter carries its character, or a form would not submit.
+      const text = key === 'Enter' ? { type: 'keyDown', text: '\r', unmodifiedText: '\r' } : { type: 'rawKeyDown' };
+      await send('Input.dispatchKeyEvent', { ...text, key, code, windowsVirtualKeyCode: keyCode, modifiers });
       await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: keyCode, modifiers });
     },
     async type(text) {
@@ -325,33 +327,87 @@ check('hovering an untitled group shows its placeholder in place', WIDE, async (
   return movedBetween(before, await page.snapshot());
 });
 
-check('editing an untitled group title moves nothing', WIDE, async (page) => {
+const GROUP_DIALOG_INPUT = '.x-nt-shortcut-dialog input._x_extension_shortcut_input_2024_unique_';
+const storedGroups = (page) => page.evaluate(`new Promise((resolve) => chrome.storage.sync.get(
+  '_x_extension_newtab_shortcuts_v2_2026_unique_', (values) => resolve(values._x_extension_newtab_shortcuts_v2_2026_unique_.g)))`);
+const dialogState = (page) => page.evaluate(`(() => {
+  const dialog = document.querySelector('.x-nt-shortcut-dialog');
+  const input = document.querySelector(${JSON.stringify(GROUP_DIALOG_INPUT)});
+  const open = Boolean(dialog && dialog.getBoundingClientRect().height > 0 && getComputedStyle(dialog).visibility !== 'hidden');
+  return { open, title: open ? (dialog.querySelector('.x-nt-shortcut-dialog-title') || {}).textContent : '',
+    value: input ? input.value : null, urlFields: dialog ? dialog.querySelectorAll('input').length : 0,
+    focused: document.activeElement === input };
+})()`);
+
+// Group titles are named in the shortcut dialog, never in the grid.
+check('naming an untitled group opens the dialog and moves nothing', WIDE, async (page) => {
   await page.seed(BASE_GROUPS, BASE_ITEMS);
   const before = await page.snapshot();
   await page.hover('[data-shortcut-group-id="g0"]', -200);
   await page.settle(200);
   await page.click('[data-shortcut-group-id="g0"] .x-nt-shortcut-group-title--placeholder');
   await page.settle();
-  const editing = movedBetween(before, await page.snapshot());
+  const problems = [];
+  const state = await dialogState(page);
+  if (!state.open || state.value !== '' || !state.focused || state.urlFields !== 1) {
+    problems.push({ key: `dialog ${JSON.stringify(state)}`, dx: 0, dy: 0 });
+  }
+  problems.push(...movedBetween(before, await page.snapshot()));
   await page.key('Escape');
   await page.settle();
-  return [...editing, ...movedBetween(before, await page.snapshot()).map((entry) => ({ ...entry, key: `after Esc ${entry.key}` }))];
+  problems.push(...movedBetween(before, await page.snapshot()).map((entry) => ({ ...entry, key: `after Esc ${entry.key}` })));
+  return problems;
 });
 
-check('editing a titled group in place moves nothing, saving a longer title moves nothing else', WIDE, async (page) => {
+check('renaming a group in the dialog changes only its title', WIDE, async (page) => {
   await page.seed(BASE_GROUPS, BASE_ITEMS);
   const before = await page.snapshot();
   await page.click('[data-shortcut-group-id="work"] .x-nt-shortcut-group-title', 2);
   await page.settle();
-  const editing = movedBetween(before, await page.snapshot());
-  await page.evaluate('document.activeElement.select()');
+  const problems = [];
+  const state = await dialogState(page);
+  if (!state.open || state.value !== '工作') problems.push({ key: `dialog ${JSON.stringify(state)}`, dx: 0, dy: 0 });
+  await page.evaluate(`document.querySelector(${JSON.stringify(GROUP_DIALOG_INPUT)}).select()`);
   await page.type('工作和项目管理');
-  await page.settle(200);
-  const typing = movedBetween(before, await page.snapshot());
   await page.key('Enter');
-  await page.settle();
-  return [...editing, ...typing.map((e) => ({ ...e, key: `typing ${e.key}` })),
-    ...movedBetween(before, await page.snapshot()).map((e) => ({ ...e, key: `saved ${e.key}` }))];
+  await page.settle(700);
+  const titles = (await storedGroups(page)).map((group) => group[1]);
+  if (titles[1] !== '工作和项目管理') problems.push({ key: `stored titles ${JSON.stringify(titles)}`, dx: 0, dy: 0 });
+  if ((await dialogState(page)).open) problems.push({ key: 'dialog stayed open', dx: 0, dy: 0 });
+  problems.push(...movedBetween(before, await page.snapshot()).map((e) => ({ ...e, key: `saved ${e.key}` })));
+  return problems;
+});
+
+// The add tile asks what to add on a click and has no right-click menu.
+check('the add tile offers a site, a group or hiding it', WIDE, async (page) => {
+  await page.seed(BASE_GROUPS, BASE_ITEMS);
+  // A closed menu keeps its options laid out; its control says whether it is open.
+  const menu = () => page.evaluate(`(() => {
+    const control = document.querySelector('.x-nt-shortcut-context-menu');
+    if (!control || control.getAttribute('data-open') !== 'true') return [];
+    return Array.from(document.querySelectorAll('.x-nt-shortcut-context-menu-portal:not(.x-nt-bookmark-context-menu-portal):not(.x-nt-recent-context-menu-portal) [data-value]'))
+      .map((option) => option.getAttribute('data-value'));
+  })()`);
+  const problems = [];
+  await page.contextMenu('.x-nt-shortcut-tile--add');
+  await page.settle(300);
+  if ((await menu()).length) problems.push({ key: `right-click opened ${JSON.stringify(await menu())}`, dx: 0, dy: 0 });
+  await page.click('.x-nt-shortcut-tile--add');
+  await page.settle(300);
+  const options = await menu();
+  if (JSON.stringify(options) !== JSON.stringify(['shortcut-add', 'group-create', 'hide-add'])) {
+    problems.push({ key: `menu ${JSON.stringify(options)}`, dx: 0, dy: 0 });
+  }
+  await page.click('.x-nt-shortcut-tile--add');
+  await page.settle(300);
+  if ((await menu()).length) problems.push({ key: 'a second press left the menu open', dx: 0, dy: 0 });
+  await page.click('.x-nt-shortcut-tile--add');
+  await page.settle(300);
+  await page.click('.x-nt-shortcut-context-menu-portal [data-value="shortcut-add"]');
+  await page.settle(500);
+  const state = await dialogState(page);
+  if (!state.open || state.urlFields < 2) problems.push({ key: `add site dialog ${JSON.stringify(state)}`, dx: 0, dy: 0 });
+  return problems;
 });
 
 check('group and tile menus open in place', WIDE, async (page) => {
@@ -479,14 +535,16 @@ async function dragShowsEmptyBookmarksBar(page) {
 check('creating a group adds below without moving what is there', WIDE, async (page) => {
   await page.seed(BASE_GROUPS, BASE_ITEMS);
   const before = await page.snapshot();
-  await page.contextMenu('.x-nt-shortcut-tile--add');
+  await page.click('.x-nt-shortcut-tile--add');
   await page.settle(300);
   await page.click('.x-nt-shortcut-context-menu-portal [data-value="group-create"]');
   await page.settle();
   await page.type('新分组');
   await page.key('Enter');
   await page.settle();
-  return movedBetween(before, await page.snapshot(), ['add']);
+  const titles = (await storedGroups(page)).map((group) => group[1]);
+  return [...movedBetween(before, await page.snapshot(), ['add']),
+    ...(titles[3] === '新分组' ? [] : [{ key: `stored titles ${JSON.stringify(titles)}`, dx: 0, dy: 0 }])];
 });
 
 check('deleting a group and undoing it restores every position', WIDE, async (page) => {
@@ -520,11 +578,12 @@ check('the search box and dock hold still while groups change', WIDE, async (pag
   const before = await page.snapshot();
   const keep = (snap) => Object.fromEntries(Object.entries(snap).filter(([key]) => key === 'search' || key === 'dock'));
   const moves = [];
-  await page.contextMenu('.x-nt-shortcut-tile--add');
+  await page.click('.x-nt-shortcut-tile--add');
   await page.settle(300);
   await page.click('.x-nt-shortcut-context-menu-portal [data-value="group-create"]');
   await page.settle();
-  await page.key('Escape');
+  // An empty name makes an untitled group.
+  await page.key('Enter');
   await page.settle();
   moves.push(...movedBetween(keep(before), await page.snapshot()).map((e) => ({ ...e, key: `create ${e.key}` })));
   const target = await page.rect('.x-nt-shortcut-group-empty');

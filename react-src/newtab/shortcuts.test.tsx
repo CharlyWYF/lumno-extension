@@ -635,43 +635,20 @@ describe('Shortcuts React island', () => {
       expect(onGroupMenu).toHaveBeenNthCalledWith(2, 'work', more);
     });
 
-    it('edits a title in place: Enter saves, Escape cancels, an empty title starts editing on click', () => {
+    it('asks to rename a group from a double-clicked title or an untitled group\'s placeholder', () => {
       const onGroupRename = vi.fn();
-      const onGroupRenameCancel = vi.fn();
-      const onGroupRenameStart = vi.fn();
-      const { view, options } = createView({ onGroupRename, onGroupRenameCancel, onGroupRenameStart });
+      const { view, options } = createView({ onGroupRename });
       const grid = options.grid as HTMLElement;
-      renderItems(view, items, { grouped: true, groups, editingGroupId: 'work' });
-      const input = grid.querySelector<HTMLInputElement>('.x-nt-shortcut-group-input')!;
-
-      expect(document.activeElement).toBe(input);
-      expect(input.value).toBe('工作');
-      act(() => {
-        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
-        setter.call(input, '学习');
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      });
-      act(() => {
-        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-      });
-      act(() => { input.blur(); });
-      expect(onGroupRename).toHaveBeenCalledTimes(1);
-      expect(onGroupRename).toHaveBeenCalledWith('work', '学习');
-
       renderItems(view, items, { grouped: true, groups });
-      renderItems(view, items, { grouped: true, groups, editingGroupId: 'work' });
-      const again = grid.querySelector<HTMLInputElement>('.x-nt-shortcut-group-input')!;
-      act(() => {
-        again.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-      });
-      expect(onGroupRenameCancel).toHaveBeenCalledTimes(1);
-      expect(onGroupRename).toHaveBeenCalledTimes(1);
 
-      renderItems(view, items, { grouped: true, groups });
-      act(() => {
-        grid.querySelector<HTMLButtonElement>('.x-nt-shortcut-group-title--placeholder')!.click();
-      });
-      expect(onGroupRenameStart).toHaveBeenCalledWith('g0');
+      const title = grid.querySelector<HTMLElement>('[data-shortcut-group-id="work"] .x-nt-shortcut-group-title')!;
+      act(() => { title.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); });
+      expect(onGroupRename).toHaveBeenLastCalledWith('work', title);
+
+      const placeholder = grid.querySelector<HTMLButtonElement>('.x-nt-shortcut-group-title--placeholder')!;
+      act(() => { placeholder.click(); });
+      expect(onGroupRename).toHaveBeenLastCalledWith('g0', placeholder);
+      expect(grid.querySelector('input')).toBeNull();
     });
   });
 });

@@ -789,8 +789,7 @@ body[data-drag-source="shortcut"] .x-nt-shortcuts-section {
   margin-top: 0;
 }
 /* An untitled group only breaks the rows; its title row stays thin, and its
-   placeholder, menu button and title field show over it, reaching into the
-   row gaps, so naming it does not push the rows below. */
+   placeholder and menu button show over it, reaching into the row gaps. */
 .x-nt-shortcut-group-header[data-shortcut-group-untitled="true"] {
   height: 12px;
   margin-top: 4px;
@@ -844,37 +843,6 @@ body[data-drag-source="shortcut"] .x-nt-shortcuts-section {
 .x-nt-shortcut-group-more:focus-visible {
   outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
   outline-offset: 1px;
-}
-/* The title edits in place: same type and padding as the title, so the
-   text does not move, on a soft field that grows with what is typed. */
-.x-nt-shortcut-group-input {
-  all: unset;
-  box-sizing: border-box;
-  width: 10em;
-  min-width: 6em;
-  max-width: min(16em, 100%);
-  padding: 3px 4px;
-  border-radius: var(--lumno-radius-sm);
-  background: var(--x-nt-bookmark-pager-hover-bg, rgba(17, 24, 39, 0.08));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 18%, transparent);
-  font: inherit;
-  color: inherit;
-  caret-color: currentColor;
-  cursor: text;
-  transition: box-shadow 120ms ease;
-}
-@supports (field-sizing: content) {
-  .x-nt-shortcut-group-input {
-    width: auto;
-    field-sizing: content;
-  }
-}
-.x-nt-shortcut-group-input:focus {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 40%, transparent);
-}
-.x-nt-shortcut-group-input::placeholder {
-  color: inherit;
-  opacity: 0.5;
 }
 body[data-drag-source="shortcut"] .x-nt-shortcut-group-more,
 body[data-drag-source="shortcut"] .x-nt-shortcut-group-title--placeholder {
@@ -4610,10 +4578,6 @@ body[data-wallpaper-active="true"] .x-nt-shortcut-group-header {
   color: var(--x-nt-wallpaper-adaptive-ink);
   text-shadow: 0 1px 1px var(--x-nt-wallpaper-adaptive-shadow),
     0 0 12px var(--x-nt-wallpaper-adaptive-halo);
-}
-body[data-wallpaper-active="true"] .x-nt-shortcut-group-input {
-  background: var(--x-nt-wallpaper-adaptive-hover-bg);
-  text-shadow: none;
 }
 body[data-wallpaper-active="true"] .x-nt-shortcut-group-more:hover,
 body[data-wallpaper-active="true"] .x-nt-shortcut-group-more[data-shortcut-context-menu-open="true"],

@@ -378,6 +378,7 @@
   const SHORTCUT_CONTEXT_MENU_REMOVE_VALUE = 'remove';
   const SHORTCUT_CONTEXT_MENU_HIDE_ADD_VALUE = 'hide-add';
   const SHORTCUT_GROUP_MENU_VALUES = Object.freeze({
+    addShortcut: 'shortcut-add',
     create: 'group-create',
     rename: 'group-rename',
     addSite: 'group-add-site',
@@ -765,8 +766,7 @@
     hideShortcutTooltip: (...args) => hideShortcutTooltip(...args),
     getShortcutTileId,
     SHORTCUT_GROUP_MENU_VALUES,
-    createShortcutGroup: (...args) => createShortcutGroup(...args),
-    startShortcutGroupRename: (...args) => startShortcutGroupRename(...args),
+    openShortcutGroupDialog: (...args) => openShortcutGroupDialog(...args),
     openShortcutAddDialog: (...args) => openShortcutAddDialog(...args),
     moveShortcutGroup: (...args) => moveShortcutGroup(...args),
     deleteShortcutGroup: (...args) => deleteShortcutGroup(...args),
@@ -2348,7 +2348,7 @@
     shortcutGroupHeaders.forEach((header) => {
       shortcutToneTargets.push({
         element: header,
-        sampleElement: header.querySelector('.x-nt-shortcut-group-title, .x-nt-shortcut-group-input') || header,
+        sampleElement: header.querySelector('.x-nt-shortcut-group-title') || header,
         minWidth: 112,
         minHeight: 32
       });
@@ -4116,8 +4116,7 @@
     getShortcutGroups,
     isShortcutGroupLayoutActive,
     openShortcutAddDialog,
-    createShortcutGroup,
-    startShortcutGroupRename,
+    openShortcutGroupDialog,
     moveShortcutGroup,
     moveShortcutGroupToIndex,
     deleteShortcutGroup,
@@ -4779,7 +4778,12 @@
     };
     if (target && target.kind === 'add') {
       return [
-        createGroupOption,
+        {
+          action: SHORTCUT_GROUP_MENU_VALUES.addShortcut,
+          value: SHORTCUT_GROUP_MENU_VALUES.addShortcut,
+          label: t('newtab_shortcuts_add_site', 'Add site')
+        },
+        { ...createGroupOption, disabled: getShortcutGroups().length >= NEWTAB_SHORTCUTS_STORE.DEFAULT_MAX_SHORTCUT_GROUPS },
         {
           value: SHORTCUT_CONTEXT_MENU_HIDE_ADD_VALUE,
           label: t('newtab_shortcuts_hide_add', 'Hide'),
@@ -4866,7 +4870,7 @@
         shortcutContextMenuTarget && shortcutContextMenuTarget.kind === 'group'
           ? SHORTCUT_GROUP_MENU_VALUES.rename
           : shortcutContextMenuTarget && shortcutContextMenuTarget.kind === 'add'
-          ? SHORTCUT_CONTEXT_MENU_HIDE_ADD_VALUE
+          ? SHORTCUT_GROUP_MENU_VALUES.addShortcut
           : NEWTAB_CONTEXT_MENU_OPEN_VALUE
       );
     }

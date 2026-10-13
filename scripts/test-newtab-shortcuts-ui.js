@@ -1390,13 +1390,19 @@ assertContains(
 assertContains(
   shortcutsReact,
   'onContextMenu={(event) => {',
-  'the add tile should expose a right-click menu action'
+  'the add tile should keep the browser menu away from its right click'
 );
 
 assertContains(
   newtabJs,
-  'onAddContextMenu: openShortcutAddContextMenu',
-  'the newtab adapter should open a menu when the add tile is right-clicked'
+  'onAdd: openShortcutAddContextMenu,',
+  'a click on the add tile should ask whether to add a site or a group, or to hide the tile'
+);
+
+assertContains(
+  newtabJs,
+  'onAddContextMenu: () => {},',
+  'the add tile should have no right-click menu'
 );
 
 assertContains(

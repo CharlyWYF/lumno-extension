@@ -27,8 +27,7 @@
       hideShortcutTooltip,
       getShortcutTileId,
       SHORTCUT_GROUP_MENU_VALUES,
-      createShortcutGroup,
-      startShortcutGroupRename,
+      openShortcutGroupDialog,
       openShortcutAddDialog,
       moveShortcutGroup,
       deleteShortcutGroup,
@@ -186,7 +185,11 @@
         return;
       }
       if (action === SHORTCUT_GROUP_MENU_VALUES.create) {
-        createShortcutGroup();
+        openShortcutGroupDialog('', sourceElement);
+        return;
+      }
+      if (target.kind === 'add' && action === SHORTCUT_GROUP_MENU_VALUES.addShortcut) {
+        openShortcutAddDialog(sourceElement);
         return;
       }
       if (target.kind === 'group') {
@@ -231,7 +234,7 @@
         return;
       }
       if (action === SHORTCUT_GROUP_MENU_VALUES.rename) {
-        startShortcutGroupRename(groupId);
+        openShortcutGroupDialog(groupId, sourceElement);
       } else if (action === SHORTCUT_GROUP_MENU_VALUES.addSite) {
         openShortcutAddDialog(sourceElement, groupId);
       } else if (action === SHORTCUT_GROUP_MENU_VALUES.moveUp) {
@@ -258,10 +261,21 @@
       handleShortcutContextMenuAction(option.getAttribute('data-value'));
     }
 
+    // A button that opened the menu closes it when pressed again, instead
+    // of the press closing it and the click opening it once more.
+    let reopenBlockedAnchor = null;
+
+    // The menu's own outside-press handling may already have closed it, so
+    // the menu's target, not its open state, says which button opened it.
     function handleShortcutContextMenuDocumentPointerDown(event) {
-      if (!isShortcutContextMenuOpen() || isShortcutContextMenuNode(event.target)) {
+      const target = pageState.shortcutContextMenuTarget;
+      if ((!target && !isShortcutContextMenuOpen()) || isShortcutContextMenuNode(event.target)) {
         return;
       }
+      const anchor = target && target.kind !== 'shortcut' ? target.tile : null;
+      reopenBlockedAnchor = anchor && typeof anchor.contains === 'function' && anchor.contains(event.target)
+        ? anchor
+        : null;
       closeShortcutContextMenu({
         syncHoverFromPointer: true,
         clientX: event.clientX,
@@ -348,6 +362,11 @@
       if (!tile || (target.kind === 'shortcut' && !shortcutId) || (target.kind === 'group' && !target.groupId)) {
         return;
       }
+      if (reopenBlockedAnchor === tile) {
+        reopenBlockedAnchor = null;
+        return;
+      }
+      reopenBlockedAnchor = null;
       if (!pageState.shortcutContextMenu) {
         pageState.shortcutContextMenu = createShortcutContextMenu();
       }
@@ -362,7 +381,7 @@
       applyShortcutContextMenuDockHover(tile);
       setShortcutContextMenuPosition(tile);
       const defaultValue = target.kind === 'add'
-        ? SHORTCUT_CONTEXT_MENU_HIDE_ADD_VALUE
+        ? SHORTCUT_GROUP_MENU_VALUES.addShortcut
         : target.kind === 'group'
           ? SHORTCUT_GROUP_MENU_VALUES.rename
           : NEWTAB_CONTEXT_MENU_OPEN_VALUE;

@@ -111,10 +111,10 @@
     let shortcutGroups = NEWTAB_SHORTCUTS_STORE.getDefaultShortcutState().groups;
     let shortcutMigratedAt = 0;
     let shortcutStateTorn = false;
-    // The group whose title is being edited, and the group a site added from
-    // the dialog joins.
-    let shortcutGroupEditingId = '';
+    // The group a site added from the dialog joins, and the group the
+    // dialog renames ('' while it creates one).
     let shortcutAddTargetGroupId = '';
+    let shortcutGroupDialogTargetId = '';
     let shortcutTornReloadCount = 0;
     const SHORTCUT_TORN_RELOAD_LIMIT = 3;
     const SHORTCUT_TORN_RELOAD_DELAY_MS = 1500;
@@ -638,13 +638,9 @@
       pageState.newtabShortcuts = NEWTAB_SHORTCUTS_STORE.normalizeShortcuts(pageState.newtabShortcuts, getShortcutStoreOptions());
       const items = getVisibleShortcuts();
       const grouped = isShortcutGroupLayoutActive();
-      if (!shortcutGroups.some((group) => group.id === shortcutGroupEditingId)) {
-        shortcutGroupEditingId = '';
-      }
       shortcutsView.render(items, {
         grouped,
-        groups: shortcutGroups,
-        editingGroupId: shortcutGroupEditingId
+        groups: shortcutGroups
       });
       if (grouped) {
         scheduleWallpaperAdaptiveToneUpdate();
@@ -1028,54 +1024,62 @@
       openShortcutDialog({ sourceElement });
     }
 
-    function createShortcutGroup() {
-      if (pageState.bookmarkMoveHistoryBusy) {
-        return Promise.resolve(false);
+    // Groups are named in the shortcut dialog: an empty groupId creates one.
+    function openShortcutGroupDialog(groupId, sourceElement) {
+      const group = groupId ? shortcutGroups.find((item) => item.id === groupId) : null;
+      if (groupId && !group) {
+        return;
       }
-      const maxGroups = NEWTAB_SHORTCUTS_STORE.DEFAULT_MAX_SHORTCUT_GROUPS;
-      if (shortcutGroups.length >= maxGroups) {
-        showToast(formatMessage(
-          'newtab_shortcuts_group_limit_reached',
-          'You can create up to {count} groups.',
-          { count: maxGroups }
-        ), true);
-        return Promise.resolve(false);
+      if (!group && shortcutGroups.length >= NEWTAB_SHORTCUTS_STORE.DEFAULT_MAX_SHORTCUT_GROUPS) {
+        showGroupLimitToast();
+        return;
       }
-      const group = { id: NEWTAB_SHORTCUTS_STORE.createShortcutGroupId(), title: '' };
-      shortcutGroupEditingId = group.id;
-      return persistShortcuts(pageState.newtabShortcuts, '', undefined, {
-        groups: shortcutGroups.concat(group),
-        animateLayout: true
-      }).then((saved) => {
-        if (!saved && shortcutGroupEditingId === group.id) {
-          shortcutGroupEditingId = '';
-        }
-        return saved;
+      hideShortcutTooltip();
+      shortcutGroupDialogTargetId = group ? group.id : '';
+      openShortcutDialog({
+        sourceElement,
+        itemType: 'group',
+        mode: group ? SHORTCUT_DIALOG_MODE_EDIT : 'add',
+        shortcut: group ? { id: group.id, title: group.title } : null
       });
     }
 
-    function startShortcutGroupRename(groupId) {
-      if (!shortcutGroups.some((group) => group.id === groupId)) {
-        return;
-      }
-      shortcutGroupEditingId = groupId;
-      renderShortcuts();
+    function saveShortcutGroupFromDialog(title) {
+      return shortcutGroupDialogTargetId
+        ? renameShortcutGroup(shortcutGroupDialogTargetId, title)
+        : createShortcutGroup(title);
     }
 
-    function cancelShortcutGroupRename() {
-      if (!shortcutGroupEditingId) {
-        return;
+    function showGroupLimitToast() {
+      showToast(formatMessage(
+        'newtab_shortcuts_group_limit_reached',
+        'You can create up to {count} groups.',
+        { count: NEWTAB_SHORTCUTS_STORE.DEFAULT_MAX_SHORTCUT_GROUPS }
+      ), true);
+    }
+
+    function createShortcutGroup(title) {
+      if (pageState.bookmarkMoveHistoryBusy) {
+        return Promise.resolve(false);
       }
-      shortcutGroupEditingId = '';
-      renderShortcuts();
+      if (shortcutGroups.length >= NEWTAB_SHORTCUTS_STORE.DEFAULT_MAX_SHORTCUT_GROUPS) {
+        showGroupLimitToast();
+        return Promise.resolve(false);
+      }
+      const group = NEWTAB_SHORTCUTS_STORE.normalizeShortcutGroups([{
+        id: NEWTAB_SHORTCUTS_STORE.createShortcutGroupId(),
+        title: String(title || '')
+      }])[0];
+      return persistShortcuts(pageState.newtabShortcuts, '', undefined, {
+        groups: shortcutGroups.concat(group),
+        animateLayout: true
+      });
     }
 
     function renameShortcutGroup(groupId, title) {
-      shortcutGroupEditingId = '';
       const nextTitle = NEWTAB_SHORTCUTS_STORE.normalizeShortcutGroups([{ id: groupId, title }])[0].title;
       const group = shortcutGroups.find((item) => item.id === groupId);
       if (!group || group.title === nextTitle) {
-        renderShortcuts();
         return Promise.resolve(Boolean(group));
       }
       return persistShortcuts(pageState.newtabShortcuts, '', undefined, {
@@ -1494,19 +1498,17 @@
         getAddLabel: () => t('newtab_shortcuts_add', 'Add shortcut'),
         getAddIconSvg: () => getRiSvg('ri-add-line', 'ri-size-28'),
         getAddVisible: () => pageState.newtabShortcutAddVisible && pageState.newtabShortcuts.length < MAX_NEWTAB_SHORTCUTS,
-        onAdd: (sourceElement) => openShortcutAddDialog(sourceElement, getLastShortcutGroupId()),
-        onAddContextMenu: openShortcutAddContextMenu,
+        // The add tile asks what to add, or offers to hide itself.
+        onAdd: openShortcutAddContextMenu,
+        onAddContextMenu: () => {},
         groupHeaders: shortcutGroupHeaders,
         getGroupPlaceholder: () => t('newtab_shortcuts_group_title_placeholder', 'Add a title'),
-        getGroupTitleLabel: () => t('newtab_shortcuts_group_title_label', 'Group title'),
         getGroupActionsLabel: (title) => formatMessage('newtab_shortcuts_group_actions', '{group} actions', {
           group: title || t('newtab_shortcuts_group_untitled_name', 'Untitled group')
         }),
         getGroupMoreIconSvg: () => getRiSvg('ri-more-fill', 'ri-size-16'),
         onGroupMenu: handleShortcutGroupMenu,
-        onGroupRenameStart: startShortcutGroupRename,
-        onGroupRename: renameShortcutGroup,
-        onGroupRenameCancel: cancelShortcutGroupRename,
+        onGroupRename: openShortcutGroupDialog,
         getGroupEmptyLabel: () => t('newtab_shortcuts_group_add_site', 'Add site'),
         onGroupAdd: (groupId, sourceElement) => openShortcutAddDialog(sourceElement, groupId)
       });
@@ -1534,6 +1536,9 @@
         isIconSourceAvailable: isShortcutDialogIconSourceAvailable,
         refreshOnlineIcon: refreshShortcutDialogOnlineIcon,
         onSubmit(payload) {
+          if (payload.itemType === 'group') {
+            return saveShortcutGroupFromDialog(payload.title);
+          }
           if (payload.itemType === SHORTCUT_DIALOG_ITEM_BOOKMARK ||
               payload.itemType === SHORTCUT_DIALOG_ITEM_FOLDER) {
             return saveBookmarkFromDialog(payload.title, payload.url, {
@@ -1596,8 +1601,8 @@
       isShortcutGroupLayoutActive,
       getShortcutGroupDisplayTitle,
       openShortcutAddDialog,
+      openShortcutGroupDialog,
       createShortcutGroup,
-      startShortcutGroupRename,
       renameShortcutGroup,
       moveShortcutGroup,
       moveShortcutGroupToIndex,

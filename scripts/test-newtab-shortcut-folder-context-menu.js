@@ -66,7 +66,9 @@ function assertShortcutContextMenuFolderVisuals() {
     isShortcutContextMenuNode: (node) => node === 'menu',
     syncShortcutDockHoverFromPoint() {},
     NEWTAB_CONTEXT_MENU_OPEN_VALUE: 'open',
-    SHORTCUT_CONTEXT_MENU_HIDE_ADD_VALUE: 'hide'
+    SHORTCUT_CONTEXT_MENU_HIDE_ADD_VALUE: 'hide',
+    SHORTCUT_GROUP_MENU_VALUES: { addShortcut: 'shortcut-add', rename: 'group-rename' },
+    reopenBlockedAnchor: null
   };
   vm.runInNewContext([
     'isShortcutContextMenuOpen',

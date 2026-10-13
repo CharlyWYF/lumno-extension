@@ -3203,9 +3203,6 @@
   "newtab_shortcuts_group_title_placeholder": {
     "message": "タイトルを追加"
   },
-  "newtab_shortcuts_group_title_label": {
-    "message": "グループ名"
-  },
   "newtab_shortcuts_group_actions": {
     "message": "{group} の操作"
   },
@@ -3271,5 +3268,14 @@
   },
   "options_shortcut_sync_none_webdav": {
     "message": "ショートカット：ブラウザーの同期容量がいっぱいのため、{count} 件すべてが WebDAV で同期されています。"
+  },
+  "newtab_shortcuts_add_site": {
+    "message": "サイトを追加"
+  },
+  "newtab_shortcuts_group_dialog_rename_title": {
+    "message": "グループ名を変更"
+  },
+  "newtab_shortcuts_group_name_placeholder": {
+    "message": "空欄にすると区切りとしてだけ使われます"
   }
 }

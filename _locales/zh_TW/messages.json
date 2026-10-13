@@ -3203,9 +3203,6 @@
   "newtab_shortcuts_group_title_placeholder": {
     "message": "新增標題"
   },
-  "newtab_shortcuts_group_title_label": {
-    "message": "群組標題"
-  },
   "newtab_shortcuts_group_actions": {
     "message": "{group}：操作"
   },
@@ -3271,5 +3268,14 @@
   },
   "options_shortcut_sync_none_webdav": {
     "message": "捷徑：瀏覽器同步空間已滿，{count} 個都透過 WebDAV 同步。"
+  },
+  "newtab_shortcuts_add_site": {
+    "message": "新增網站"
+  },
+  "newtab_shortcuts_group_dialog_rename_title": {
+    "message": "重新命名群組"
+  },
+  "newtab_shortcuts_group_name_placeholder": {
+    "message": "可以留空，留空時只用來分隔"
   }
 }
