@@ -1412,9 +1412,30 @@ function testBottomDockCssDefinesAdaptiveDensityVariables() {
   );
   assert.match(
     newtabHtml,
-    /@media \(max-width:\s*640px\)[\s\S]*?\.x-nt-wallpaper-panel\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?left:\s*max\(12px,\s*env\(safe-area-inset-left\)\);[\s\S]*?right:\s*max\(12px,\s*env\(safe-area-inset-right\)\);[\s\S]*?bottom:\s*calc\(max\(12px,\s*env\(safe-area-inset-bottom\)\) \+ 56px\);[\s\S]*?width:\s*auto;[\s\S]*?max-width:\s*none;[\s\S]*?max-height:\s*min\([\s\S]*?calc\(100dvh - 100px - var\(--x-nt-top-safe-inset\) - var\(--x-nt-bottom-safe-inset\)\),[\s\S]*?calc\(100dvh - 80px - var\(--x-nt-top-occupied-inset\) - var\(--x-nt-bottom-safe-inset\)\)[\s\S]*?\);[\s\S]*?padding:\s*16px;[\s\S]*?\.x-nt-wallpaper-panel-scroll\s*\{[\s\S]*?scrollbar-gutter:\s*auto;/,
+    /@media \(max-width:\s*640px\)[\s\S]*?\.x-nt-wallpaper-panel\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?left:\s*max\(12px,\s*env\(safe-area-inset-left\)\);[\s\S]*?right:\s*max\(12px,\s*env\(safe-area-inset-right\)\);[\s\S]*?bottom:\s*calc\(max\(12px,\s*env\(safe-area-inset-bottom\)\) \+ 56px\);[\s\S]*?width:\s*auto;[\s\S]*?max-width:\s*none;[\s\S]*?max-height:\s*calc\(100dvh - 80px - var\(--x-nt-top-bar-max-inset\) - var\(--x-nt-bottom-safe-inset\)\);[\s\S]*?padding:\s*16px;[\s\S]*?\.x-nt-wallpaper-panel-scroll\s*\{[\s\S]*?scrollbar-gutter:\s*auto;/,
     'mobile wallpaper panel should be safe-area aware and independently scrollable'
   );
+  assert.match(
+    newtabHtml,
+    /:root\s*\{[\s\S]*?--x-nt-top-bar-max-inset:\s*calc\(48px \+ var\(--x-nt-top-safe-inset\)\);/,
+    'the top bar reserve should match the floating bookmarks bar'
+  );
+  const panelMaxHeights = newtabHtml.match(/\.x-nt-wallpaper-panel\s*\{[^}]*\}/g)
+    .map((rule) => rule.match(/max-height:[^;]*;/g) || [])
+    .flat();
+  assert.ok(panelMaxHeights.length > 0, 'appearance panel should cap its height');
+  panelMaxHeights.forEach((declaration) => {
+    assert.match(
+      declaration,
+      /var\(--x-nt-top-bar-max-inset\)/,
+      `appearance panel height should always leave room for the top bar: ${declaration}`
+    );
+    assert.doesNotMatch(
+      declaration,
+      /--x-nt-top-occupied-inset/,
+      `appearance panel should not resize when the top bookmarks bar shows or changes layout: ${declaration}`
+    );
+  });
 }
 
 testCompactDockKeepsSearchEntryClearOnShortViewports();

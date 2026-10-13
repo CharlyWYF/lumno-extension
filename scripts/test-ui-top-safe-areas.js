@@ -47,8 +47,8 @@ assert.doesNotMatch(
 );
 assert.match(
   newtabHtml,
-  /\.x-nt-wallpaper-panel\s*\{[\s\S]*?max-height:\s*min\([\s\S]*?var\(--x-nt-top-occupied-inset,\s*0px\)[\s\S]*?overflow:\s*hidden;[\s\S]*?\.x-nt-wallpaper-panel-scroll\s*\{[\s\S]*?overflow:\s*hidden auto;[\s\S]*?overscroll-behavior:\s*contain;/,
-  'the appearance panel should stay below occupied top UI and contain scrolling inside its body'
+  /\.x-nt-wallpaper-panel\s*\{[\s\S]*?max-height:\s*calc\(100dvh - 76px - var\(--x-nt-top-bar-max-inset\)\);[\s\S]*?overflow:\s*hidden;[\s\S]*?\.x-nt-wallpaper-panel-scroll\s*\{[\s\S]*?overflow:\s*hidden auto;[\s\S]*?overscroll-behavior:\s*contain;/,
+  'the appearance panel should stay below the top bar however it shows and contain scrolling inside its body'
 );
 assert.match(
   newtabHtml,

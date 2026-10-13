@@ -81,6 +81,8 @@ body.x-nt-bottom-layout:not(.x-nt-mobile-flow) {
     var(--x-nt-visual-viewport-bottom-inset, 0px)
   );
   --x-nt-top-occupied-inset: var(--x-nt-top-safe-inset);
+  /* The most the top bookmarks bar ever takes (its floating layout), shown or not. */
+  --x-nt-top-bar-max-inset: calc(48px + var(--x-nt-top-safe-inset));
   --x-nt-top-floating-gap: 12px;
   --x-nt-bg: #ffffff;
   --x-nt-text: #111827;
@@ -278,9 +280,7 @@ body[data-nt-top-occupied="true"] {
   );
 }
 body[data-nt-top-occupied="true"][data-nt-top-layout="floating"] {
-  --x-nt-top-occupied-inset: calc(
-    48px + var(--x-nt-top-safe-inset)
-  );
+  --x-nt-top-occupied-inset: var(--x-nt-top-bar-max-inset);
 }
 body[data-wallpaper-active="true"] {
   --x-nt-wallpaper-overlay: var(--x-nt-wallpaper-effect-overlay);
@@ -4781,14 +4781,10 @@ body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-open="true"]:not(
   bottom: 46px;
   width: 424px;
   max-width: calc(100vw - 32px);
-  max-height: min(
-    calc(100vh - 84px),
-    calc(100vh - 76px - var(--x-nt-top-occupied-inset, 0px))
-  );
-  max-height: min(
-    calc(100dvh - 84px),
-    calc(100dvh - 76px - var(--x-nt-top-occupied-inset, 0px))
-  );
+  /* Leave room for the top bookmarks bar whether or not it shows, so turning it on,
+     off or between docked and floating never resizes or moves the open panel. */
+  max-height: calc(100vh - 76px - var(--x-nt-top-bar-max-inset));
+  max-height: calc(100dvh - 76px - var(--x-nt-top-bar-max-inset));
   /* No bottom inset: the scroll area and the pinned help footer bring their own. */
   padding: var(--x-nt-panel-padding) var(--x-nt-panel-padding) 0;
   border-radius: var(--lumno-radius-dialog);
@@ -6966,14 +6962,8 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
     --x-nt-panel-tab-gap: 5px;
     --x-nt-panel-grid-gap: 14px;
     max-width: calc(100vw - 28px);
-    max-height: min(
-      calc(100vh - 72px),
-      calc(100vh - 70px - var(--x-nt-top-occupied-inset, 0px))
-    );
-    max-height: min(
-      calc(100dvh - 72px),
-      calc(100dvh - 70px - var(--x-nt-top-occupied-inset, 0px))
-    );
+    max-height: calc(100vh - 70px - var(--x-nt-top-bar-max-inset));
+    max-height: calc(100dvh - 70px - var(--x-nt-top-bar-max-inset));
     padding: 18px;
   }
   #_x_extension_newtab_bookmarks_2024_unique_,
@@ -7044,29 +7034,13 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
     --x-nt-panel-divider-gap: 16px;
     --x-nt-panel-item-gap: 18px;
     --x-nt-panel-option-gap: 12px;
-    max-height: min(
-      calc(100vh - 76px),
-      calc(100vh - 70px - var(--x-nt-top-occupied-inset, 0px))
-    );
-    max-height: min(
-      calc(100dvh - 76px),
-      calc(100dvh - 70px - var(--x-nt-top-occupied-inset, 0px))
-    );
+    max-height: calc(100vh - 70px - var(--x-nt-top-bar-max-inset));
+    max-height: calc(100dvh - 70px - var(--x-nt-top-bar-max-inset));
   }
 }
 @media (max-height: 430px) {
   :root {
     --x-nt-shortcuts-section-margin-top: 6px;
-  }
-  .x-nt-wallpaper-panel {
-    max-height: min(
-      calc(100vh - 68px),
-      calc(100vh - 70px - var(--x-nt-top-occupied-inset, 0px))
-    );
-    max-height: min(
-      calc(100dvh - 68px),
-      calc(100dvh - 70px - var(--x-nt-top-occupied-inset, 0px))
-    );
   }
 }
 @media (max-width: 640px) {
@@ -7185,10 +7159,7 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
     bottom: calc(max(12px, env(safe-area-inset-bottom)) + 56px);
     width: auto;
     max-width: none;
-    max-height: min(
-      calc(100dvh - 100px - var(--x-nt-top-safe-inset) - var(--x-nt-bottom-safe-inset)),
-      calc(100dvh - 80px - var(--x-nt-top-occupied-inset) - var(--x-nt-bottom-safe-inset))
-    );
+    max-height: calc(100dvh - 80px - var(--x-nt-top-bar-max-inset) - var(--x-nt-bottom-safe-inset));
     --x-nt-panel-padding: 16px;
   }
   .x-nt-wallpaper-panel-scroll {
