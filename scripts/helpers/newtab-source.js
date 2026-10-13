@@ -30,6 +30,7 @@ const NEWTAB_RUNTIME_MODULES = [
   'src/newtab/page-preferences.js',
   'src/newtab/appearance-modes.js',
   'src/newtab/section-headers.js',
+  'src/newtab/recent-mode-switch.js',
   'src/newtab/input-focus.js',
   'src/newtab/entry-motion.js'
 ];

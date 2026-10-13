@@ -92,8 +92,9 @@ assert.ok(
   'wallpaper mode-menu icons should retain the sampled foreground color on hover and while open'
 );
 
-assert.ok(
-  /recentModeMenu = createSectionModeSelect\(\{[^}]*asHeading: true,/.test(newtabJs),
+assertContains(
+  newtabJs,
+  'recentModeMenu = NEWTAB_RECENT_MODE_SWITCH.createRecentModeSwitch({',
   'the recent heading should itself be the display mode switch'
 );
 assertContains(
@@ -101,18 +102,13 @@ assertContains(
   'recentHeading.hidden = true;',
   'the recent mode switch should replace the plain heading rather than repeat it'
 );
-assertContains(
-  newtabJs,
-  'bindSectionModeSelectHoverOpen(control, created.menu);',
-  'the heading mode switch should open its menu on hover'
+assert.ok(
+  /\.x-nt-recent-mode-switch\[data-expanded="false"\]\s+\.x-nt-recent-mode-switch-option\[aria-checked="false"\]\s*\{[^}]*width:\s*0;/.test(newtabHtml),
+  'the collapsed recent mode switch should show only the current mode'
 );
 assert.ok(
-  !/\.x-nt-recent-header-bar\s+\.x-nt-section-mode-select\s*\{[^}]*margin-left:\s*auto;/.test(newtabHtml),
+  !/\.x-nt-recent-header-bar\s+\.x-nt-recent-mode-switch\s*\{[^}]*margin-left:\s*auto;/.test(newtabHtml),
   'the recent display mode switch should stay at the start of its header row, not float right'
-);
-assert.ok(
-  /\.x-nt-section-mode-select--heading\s+\._x_extension_select_icon_2024_unique_\s*\{[^}]*opacity:\s*0;/.test(newtabHtml),
-  'the heading mode switch should hide its chevron until it is pointed at or open'
 );
 
 console.log('newtab bookmark pager tooltip tests passed');

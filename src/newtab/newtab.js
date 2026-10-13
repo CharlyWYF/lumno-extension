@@ -1695,8 +1695,6 @@
   // A heading mode menu opens once the mouse rests on the heading, so a pointer passing over
   // it does not flash the menu, and waits a moment before closing so the pointer can cross
   // the gap into the menu.
-  const SECTION_MODE_HOVER_OPEN_DELAY_MS = 100;
-  const SECTION_MODE_HOVER_CLOSE_DELAY_MS = 200;
   const SEARCH_LAYOUT_MIN_TOP_PX = 28;
   const SEARCH_LAYOUT_MIN_BOTTOM_PX = 20;
   const SEARCH_LAYOUT_UPSHIFT_RATIO = 0.06;
@@ -4081,6 +4079,7 @@
   });
 
   const NEWTAB_SECTION_HEADERS = globalThis.LumnoNewtabSectionHeaders;
+  const NEWTAB_RECENT_MODE_SWITCH = globalThis.LumnoNewtabRecentModeSwitch;
   const {
     updateRecentHeading,
     updateRecentModeMenu,
@@ -4723,20 +4722,14 @@
     if (!sectionModeSelectController || typeof sectionModeSelectController.createSelect !== 'function') {
       return null;
     }
-    // A heading select is the section heading itself: it shows the current mode's name and
-    // opens on hover, so it needs no menu title or tooltip. The others are a "more" button.
-    const asHeading = config.asHeading === true;
     const currentValue = typeof config.getValue === 'function' ? config.getValue() : '';
     const title = t(config.menuTitleKey, config.menuTitleFallback || 'Display mode');
     const created = sectionModeSelectController.createSelect({
       id: config.id,
       selectId: config.id ? `${config.id}_select` : '',
-      className: asHeading
-        ? 'x-nt-section-mode-select x-nt-section-mode-select--heading'
-        : 'x-nt-section-mode-select',
-      iconOnly: !asHeading,
-      // A heading keeps the select's default chevron.
-      triggerIconClass: asHeading ? undefined : 'ri-more-line',
+      className: 'x-nt-section-mode-select',
+      iconOnly: true,
+      triggerIconClass: 'ri-more-line',
       menuClassName: 'x-nt-section-mode-portal',
       menuAlign: 'left',
       menuWidth: 'content',
@@ -4745,10 +4738,10 @@
       menuPortal: true,
       menuPortalZIndex: SECTION_MODE_MENU_PORTAL_Z_INDEX,
       menuPortalOffset: SECTION_MODE_MENU_PORTAL_OFFSET_PX,
-      menuTitle: asHeading ? '' : title,
+      menuTitle: title,
       value: currentValue,
       ariaLabel: title,
-      tooltip: asHeading ? undefined : title,
+      tooltip: title,
       onAction: typeof config.onAction === 'function'
         ? ({ action }) => config.onAction(action)
         : null,
@@ -4768,16 +4761,10 @@
         const nextTitle = t(config.menuTitleKey, config.menuTitleFallback || 'Display mode');
         const nextValue = typeof config.getValue === 'function' ? config.getValue() : '';
         const nextOptions = getSectionModeSelectOptions(config);
-        if (!asHeading && typeof sectionModeSelectController.setMenuTitle === 'function') {
+        if (typeof sectionModeSelectController.setMenuTitle === 'function') {
           sectionModeSelectController.setMenuTitle(control, nextTitle);
         }
         sectionModeSelectController.setOptions(control, nextOptions, nextValue);
-        if (asHeading) {
-          // The visible name is hidden from assistive tech, so the trigger is named after it.
-          const selectedOption = nextOptions.find((option) => option.value === nextValue);
-          trigger.setAttribute('aria-label', selectedOption ? selectedOption.label : nextTitle);
-          return;
-        }
         trigger.setAttribute('aria-label', nextTitle);
         trigger.setAttribute('data-tooltip', nextTitle);
       }
@@ -4788,11 +4775,6 @@
         config.onChange(nextMode);
       }
     });
-    if (asHeading) {
-      bindSectionModeSelectHoverOpen(control, created.menu);
-      api.update();
-      return api;
-    }
     const showButtonTooltip = () => {
       if (sectionModeSelectController.isOpen(control)) {
         return;
@@ -4813,66 +4795,6 @@
     trigger.addEventListener('blur', hideTopActionTooltip);
     api.update();
     return api;
-  }
-
-  // Opens a heading mode menu while the mouse rests on the heading or the menu and closes it
-  // once the mouse has left both. Touch and keyboard still open it by tapping or pressing.
-  function bindSectionModeSelectHoverOpen(control, menu) {
-    let openTimer = 0;
-    let closeTimer = 0;
-    let openedByHover = false;
-    const isMouse = (event) => Boolean(event && event.pointerType === 'mouse');
-    const clearTimers = () => {
-      window.clearTimeout(openTimer);
-      window.clearTimeout(closeTimer);
-      openTimer = 0;
-      closeTimer = 0;
-    };
-    const handleEnter = (event) => {
-      if (!isMouse(event)) {
-        return;
-      }
-      clearTimers();
-      if (sectionModeSelectController.isOpen(control)) {
-        return;
-      }
-      openTimer = window.setTimeout(() => {
-        openTimer = 0;
-        openedByHover = true;
-        sectionModeSelectController.setOpen(control, true);
-      }, SECTION_MODE_HOVER_OPEN_DELAY_MS);
-    };
-    const handleLeave = (event) => {
-      if (!isMouse(event)) {
-        return;
-      }
-      clearTimers();
-      if (!openedByHover) {
-        return;
-      }
-      closeTimer = window.setTimeout(() => {
-        closeTimer = 0;
-        openedByHover = false;
-        sectionModeSelectController.setOpen(control, false);
-      }, SECTION_MODE_HOVER_CLOSE_DELAY_MS);
-    };
-    control.addEventListener('pointerenter', handleEnter);
-    control.addEventListener('pointerleave', handleLeave);
-    if (menu) {
-      menu.addEventListener('pointerenter', (event) => {
-        if (isMouse(event)) {
-          clearTimers();
-        }
-      });
-      menu.addEventListener('pointerleave', handleLeave);
-    }
-    // Clicking the heading under a menu the hover opened keeps it open instead of toggling it
-    // shut; the capture listener runs before the trigger's own click handler.
-    control.addEventListener('click', (event) => {
-      if (openedByHover && sectionModeSelectController.isOpen(control)) {
-        event.stopPropagation();
-      }
-    }, true);
   }
 
   function setContentSectionVisible(section, visible) {
@@ -5533,11 +5455,10 @@
   recentHeader = pageStructureRuntime.recent.header;
   recentHeading = pageStructureRuntime.recent.heading;
   updateRecentHeading();
-  recentModeMenu = createSectionModeSelect({
-    id: '_x_extension_newtab_recent_mode_2026_unique_',
-    asHeading: true,
-    menuTitleKey: 'display_mode_title',
-    menuTitleFallback: 'Display mode',
+  recentModeMenu = NEWTAB_RECENT_MODE_SWITCH.createRecentModeSwitch({
+    documentObj: document,
+    windowObj: window,
+    t,
     getValue: () => currentRecentMode,
     onChange: (nextMode) => {
       setRecentMode(nextMode);
@@ -5595,10 +5516,8 @@
     toggleProgressTracking: toggleRecentProgressTracking
   });
   // The mode switch shows the current heading, so it stands in for the plain heading.
-  if (recentModeMenu) {
-    recentHeading.hidden = true;
-    recentHeader.appendChild(recentModeMenu.control);
-  }
+  recentHeading.hidden = true;
+  recentHeader.appendChild(recentModeMenu.control);
   let recentRenderSignature = '';
   let recentLoadedOnce = false;
   const bottomDockRuntime = NEWTAB_DOCK.createBottomDockRuntime({
