@@ -41,7 +41,9 @@
   </a>
 </p>
 
-<p align="center">当前版本：<code>1.0.1</code></p>
+<p align="center">当前版本：<code>1.0.2</code>（自定义分支）</p>
+
+本分支在“最近访问 / 最常访问”的显示模式中增加“自定义”。选择后点击“管理网站”，即可添加、编辑、移除和调整网站顺序，最多保存 24 个网站，超出当前行数时可翻页。列表保存在本设备。详见[自定义网站说明](docs/custom-recent-sites.md)。
 
 <img width="1200" height="480" alt="Lumno Chrome 命令栏插件：在任意网页搜索标签页、书签和历史记录" src="./assets/images/readme/banner.webp" decoding="async" />
 
@@ -218,7 +220,7 @@ npm run test:newtab-layout
 npm run test:onboarding-content
 ```
 
-`npm run package:store` 会读取 `manifest.json` 的版本号，并生成 `dist/lumno-store-v<version>.zip`。本命令依赖系统可用的 `zip` 和 `zipinfo`。
+`npm run package:store` 会读取 `manifest.json` 的版本号，并生成 `dist/lumno-store-v<version>.zip`。Windows 使用系统自带的 .NET ZIP 功能，其他系统需要 `zip` 和 `zipinfo`。
 
 `npm run package:firefox` 会先生成商店包，再转换为 `dist/firefox` 中的 Firefox 版。所有 Firefox 专属改动都列在 `scripts/build-firefox.js` 中：用后台脚本替代服务工作线程、Gecko 扩展 ID、Firefox 快捷键、去掉自动画中画脚本，以及用带 `__firefox` 后缀的语言条目替换对应的基础文案。试用时打开 `about:debugging#/runtime/this-firefox`，选择「临时加载附加组件」，再选中 `dist/firefox/manifest.json`；运行 `npm run lint:firefox` 可用 `web-ext` 检查。共享代码中请调用 `LumnoBrowserProfile.isFirefoxExtensionRuntime()` 判断运行环境，不要直接检查 URL 协议；只属于某一类浏览器的界面用 `data-browser-only="chromium"` 标记（在其他浏览器中隐藏），设置项则用 `data-browser-unsupported="firefox"`（显示为禁用并说明原因）。
 

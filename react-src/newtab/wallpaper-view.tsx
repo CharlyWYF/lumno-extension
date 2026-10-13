@@ -896,7 +896,7 @@ function WallpaperPanel({ model }: { model: Record<string, any> }) {
           <div className="x-nt-panel-divider" />
           <ToggleSection arrowIcon={arrowIcon} name="recentSettings">
             <SettingRow titleRef="recentModeLabel">
-              <RowTabs attribute="data-recent-mode" name="recentMode" values={['latest', 'most']} />
+              <RowTabs attribute="data-recent-mode" name="recentMode" values={['latest', 'most', 'custom']} />
             </SettingRow>
             <SettingRow titleRef="recentRowsLabel">
               <RowTabs attribute="data-recent-rows" labeled name="recentRows" values={['1', '2']} />

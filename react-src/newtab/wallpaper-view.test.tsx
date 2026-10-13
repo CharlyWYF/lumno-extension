@@ -365,7 +365,7 @@ describe('New Tab React wallpaper view', () => {
       (button) => button.dataset.bookmarkTopbarLayout
     )).toEqual(['docked', 'floating']);
     expect(Array.from(refs.recentModeTabs.querySelectorAll('button'), (button) => button.dataset.recentMode))
-      .toEqual(['latest', 'most']);
+      .toEqual(['latest', 'most', 'custom']);
     expect(Array.from(refs.recentRowsTabs.querySelectorAll('button'), (button) => button.textContent))
       .toEqual(['1', '2']);
 
