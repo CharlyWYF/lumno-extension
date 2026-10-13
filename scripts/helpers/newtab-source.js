@@ -20,6 +20,7 @@ const NEWTAB_RUNTIME_MODULES = [
   'src/newtab/shortcuts-controller.js',
   'src/newtab/shortcut-drag.js',
   'src/newtab/bookmark-drag-controller.js',
+  'src/newtab/recent-card-drag.js',
   'src/newtab/section-loaders.js',
   'src/newtab/card-themes.js',
   'src/newtab/search-modes.js',

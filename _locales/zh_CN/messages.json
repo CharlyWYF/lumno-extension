@@ -2531,6 +2531,15 @@
   "newtab_shortcuts_remove_redone": {
     "message": "已重新移除快捷方式 · 按 {shortcut} 撤回"
   },
+  "newtab_shortcuts_add_undone": {
+    "message": "已撤回添加的快捷方式 · 按 {shortcut} 重做"
+  },
+  "newtab_shortcuts_add_redone": {
+    "message": "已重新添加快捷方式 · 按 {shortcut} 撤回"
+  },
+  "newtab_recent_added_to_folder": {
+    "message": "已添加到“{folder}”"
+  },
   "newtab_shortcuts_open_folder": {
     "message": "打开文件夹"
   },

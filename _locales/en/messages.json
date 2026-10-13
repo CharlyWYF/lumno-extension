@@ -2531,6 +2531,15 @@
   "newtab_shortcuts_remove_redone": {
     "message": "Shortcut removed · {shortcut} to undo"
   },
+  "newtab_shortcuts_add_undone": {
+    "message": "Shortcut add undone · {shortcut} to redo"
+  },
+  "newtab_shortcuts_add_redone": {
+    "message": "Shortcut added again · {shortcut} to undo"
+  },
+  "newtab_recent_added_to_folder": {
+    "message": "Added to “{folder}”"
+  },
   "newtab_shortcuts_open_folder": {
     "message": "Open folder"
   },

@@ -2045,6 +2045,68 @@ body[data-drag-source] * {
 body[data-drag-blocked="true"] {
   --x-nt-drag-cursor: not-allowed;
 }
+/* A dragged recent card stays in place, faded, while a copy of it shrinks
+   into a site icon on the pointer (recent-card-drag.js). */
+.x-nt-recent-card[data-recent-dragging="true"] .x-nt-recent-card-visual,
+.x-nt-recent-card[data-recent-dragging="true"]:hover .x-nt-recent-card-visual {
+  opacity: 0.4;
+  transform: scale(0.97);
+  box-shadow: var(--x-nt-recent-card-shadow);
+  transition: transform var(--lumno-duration-xl) cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity var(--lumno-duration-xl) ease, box-shadow var(--lumno-duration-xl) ease;
+}
+.x-nt-recent-card[data-recent-dragging="true"] .x-nt-recent-pin,
+.x-nt-recent-card[data-recent-dragging="true"] .x-nt-recent-track {
+  opacity: 0;
+}
+.x-nt-recent-drag-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  will-change: transform;
+}
+.x-nt-recent-drag-ghost-body {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+}
+.x-nt-recent-drag-ghost .x-nt-recent-drag-ghost-snapshot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.x-nt-recent-drag-ghost-snapshot .x-nt-recent-card-visual {
+  height: 100%;
+  transition: none;
+}
+.x-nt-recent-drag-ghost-snapshot .x-nt-recent-inner {
+  transition: none;
+}
+.x-nt-recent-drag-ghost-icon {
+  position: absolute;
+  inset: 0;
+  width: 44px;
+  height: 44px;
+  margin: auto;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+.x-nt-recent-drag-ghost-icon .x-nt-recent-drag-ghost-favicon {
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  border-radius: 6px;
+  object-fit: contain;
+}
 .x-nt-bookmark-card[data-bookmark-dragging="true"],
 .x-nt-bookmark-card[data-bookmark-dropping="true"] {
   z-index: 8;

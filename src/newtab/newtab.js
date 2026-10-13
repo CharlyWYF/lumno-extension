@@ -812,7 +812,8 @@
     syncShortcutDockFolderMenu
   } = NEWTAB_SHORTCUT_DOCK.createShortcutDock({
     isShortcutDragActive: (...args) => isShortcutDragActive(...args),
-    isBookmarkDragActive: (...args) => isBookmarkDragActive(...args),
+    isBookmarkDragActive: () => isBookmarkDragActive() ||
+      Boolean(recentCardDragRuntime && recentCardDragRuntime.isRecentCardDragActive()),
     isShortcutContextMenuOpen,
     applyShortcutContextMenuDockHover,
     clearShortcutContextMenuTileActive,
@@ -838,6 +839,8 @@
 
   let shortcutDockPendingPointerX = Number.NaN;
   let shortcutDragState = null;
+  // Set once the recent-card drag runtime exists; earlier helpers ask it lazily.
+  let recentCardDragRuntime = null;
   const shortcutTiles = [];
   const shortcutGroupHeaders = [];
   const SHORTCUT_DIALOG_MODE_EDIT = NEWTAB_SHORTCUT_DIALOG.MODE_EDIT || 'edit';
@@ -4060,7 +4063,8 @@
     shortcutTooltipController,
     t,
     isShortcutDragActive: (...args) => isShortcutDragActive(...args),
-    isBookmarkDragActive: (...args) => isBookmarkDragActive(...args),
+    isBookmarkDragActive: () => isBookmarkDragActive() ||
+      Boolean(recentCardDragRuntime && recentCardDragRuntime.isRecentCardDragActive()),
     isShortcutContextMenuOpen,
     shortcutDialogTooltipController,
     bookmarkCursorTooltipController,
@@ -4456,6 +4460,7 @@
     getExternalBookmarkSurfacePoint,
     isValidExternalBookmarkDropTarget,
     getShortcutFolderDropTargetAt,
+    getShortcutInsertionDropTarget,
     getExternalBookmarkDropTarget,
     isPointOverShortcutDropSurface,
     applyBookmarkShortcutTransfer,
@@ -4511,7 +4516,9 @@
     markBookmarkTreeDirty: (...args) => markBookmarkTreeDirty(...args),
     loadBookmarks: (...args) => loadBookmarks(...args),
     getBookmarkPageCount: (...args) => getBookmarkPageCount(...args),
-    isBookmarkSurfaceDragStateActive: (...args) => isBookmarkSurfaceDragStateActive(...args),
+    // A recent card dragged over the bookmarks opens folders like the others.
+    isBookmarkSurfaceDragStateActive: (state) => isBookmarkSurfaceDragStateActive(state) ||
+      Boolean(recentCardDragRuntime && recentCardDragRuntime.isRecentCardDragState(state)),
     openBookmarkCascadeMenu,
     navigateBookmarkFolder,
     switchBookmarkPageDuringDrag: (...args) => switchBookmarkPageDuringDrag(...args),
@@ -5512,6 +5519,9 @@
     togglePinned: togglePinnedRecentSite,
     onItemContextMenu: handleRecentCardContextMenu,
     isActivationSuppressed: isCardActivationSuppressed,
+    onCardPointerDown: (payload) => {
+      if (recentCardDragRuntime) recentCardDragRuntime.handleRecentCardPointerDown(payload);
+    },
     getProgressState: getRecentProgressState,
     toggleProgressTracking: toggleRecentProgressTracking
   });
@@ -5774,6 +5784,73 @@
     }
   });
 
+  const NEWTAB_RECENT_CARD_DRAG = globalThis.LumnoNewtabRecentCardDrag;
+  recentCardDragRuntime = NEWTAB_RECENT_CARD_DRAG.createRecentCardDrag({
+    NEWTAB_SHORTCUTS_STORE,
+    NEWTAB_CROSS_SURFACE_DRAG,
+    NEWTAB_BOOKMARK_MOVE_HISTORY,
+    getShortcutStoreOptions,
+    getShortcutFolderId,
+    MAX_NEWTAB_SHORTCUTS,
+    persistShortcuts,
+    bookmarkMoveHistory,
+    bookmarksRuntime,
+    isBookmarkTopbarMode,
+    isBookmarkCascadeSurfaceAtPoint,
+    getExternalBookmarkSurfacePoint,
+    getExternalBookmarkDropTarget,
+    getShortcutFolderDropTargetAt,
+    getShortcutInsertionDropTarget,
+    isPointOverShortcutDropSurface,
+    isValidExternalBookmarkDropTarget,
+    autoScrollShortcutArea,
+    setDragDropTarget,
+    clearDragDropTarget,
+    getBookmarkDragPageSwitchDirection,
+    scheduleBookmarkDragPageSwitch,
+    clearBookmarkDragPageSwitch,
+    scheduleBookmarkDragFolderSwitch,
+    clearBookmarkDragFolderSwitch,
+    applyBookmarkShortcutTransfer,
+    queueBookmarkLayoutAnimation,
+    isEmptyBookmarkRootHidden,
+    renderCurrentBookmarkPage: (...args) => renderCurrentBookmarkPage(...args),
+    closeBookmarkCascadeMenu,
+    closeRecentContextMenu,
+    hideCursorTooltip,
+    hideTopActionTooltip,
+    resetShortcutDockHover,
+    suppressCanceledDragClick,
+    scheduleWallpaperAdaptiveToneUpdate,
+    showToast,
+    t,
+    formatMessage,
+    getRiSvg,
+    pageState: {
+      get newtabShortcuts() {
+        return newtabShortcuts;
+      },
+      get bookmarkMoveHistoryBusy() {
+        return bookmarkMoveHistoryBusy;
+      },
+      set bookmarkMoveHistoryBusy(value) {
+        bookmarkMoveHistoryBusy = value;
+      },
+      get bookmarkTopbarRuntime() {
+        return bookmarkTopbarRuntime;
+      },
+      get bookmarkGrid() {
+        return bookmarkGrid;
+      },
+      get bookmarkDragState() {
+        return bookmarkDragState;
+      },
+      get shortcutDragState() {
+        return shortcutDragState;
+      }
+    }
+  });
+
   const NEWTAB_SECTION_LOADERS = globalThis.LumnoNewtabSectionLoaders;
   const {
     renderBookmarks,
@@ -5787,6 +5864,8 @@
     forceReloadRecentSitesForI18n
   } = NEWTAB_SECTION_LOADERS.createSectionLoaders({
     isShortcutDragActive,
+    isRecentCardDragActive: recentCardDragRuntime.isRecentCardDragActive,
+    resumeRecentCardDragAfterFolderSwitch: recentCardDragRuntime.resumeRecentCardDragAfterFolderSwitch,
     isBookmarkTopbarMode,
     scheduleShortcutDragMove,
     updateBookmarkDragLayoutCache,
@@ -8243,9 +8322,10 @@
 
   document.addEventListener('keydown', function(event) {
     if (folderColorPicker && folderColorPicker.isOpen()) return;
-    if (event && event.key === 'Escape' && (shortcutDragState || bookmarkDragState)) {
+    if (event && event.key === 'Escape' && (shortcutDragState || bookmarkDragState || recentCardDragRuntime.hasRecentCardDragSession())) {
       finishShortcutDrag(null, { cancel: true });
       finishBookmarkDrag(null, { canceled: true });
+      recentCardDragRuntime.finishRecentCardDrag(null, { cancel: true });
       event.preventDefault();
       event.stopPropagation();
       return;

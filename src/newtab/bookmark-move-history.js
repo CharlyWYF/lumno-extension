@@ -155,6 +155,9 @@
     if (record && record.kind === 'shortcut-delete') {
       return createShortcutDeleteRecord(record);
     }
+    if (record && record.kind === 'shortcut-add') {
+      return createShortcutAddRecord(record);
+    }
     if (record && record.kind === 'shortcut-group-delete') {
       return createShortcutGroupDeleteRecord(record);
     }
@@ -181,6 +184,16 @@
     });
   }
 
+  // Adding a site as a shortcut, e.g. by dragging a recent-site card onto
+  // the shortcuts; undo removes it again.
+  function createShortcutAddRecord(options) {
+    const record = createShortcutDeleteRecord(options);
+    return record && Object.freeze({ ...record, kind: 'shortcut-add' });
+  }
+
+  // Moves a site between a bookmark and a shortcut. Without either shortcut
+  // it only creates (`to`) or removes (`from`) a website bookmark, as when a
+  // recent-site card is dropped onto the bookmarks.
   function createTransferRecord(options) {
     const config = options && typeof options === 'object' ? options : {};
     const from = normalizeLocation(config.from);
@@ -188,7 +201,8 @@
     const snapshot = cloneBookmarkSnapshot(config.snapshot);
     const beforeShortcut = config.beforeShortcut && createShortcutDeleteRecord(config.beforeShortcut);
     const afterShortcut = config.afterShortcut && createShortcutDeleteRecord(config.afterShortcut);
-    if ((!from && !to) || !snapshot || (!beforeShortcut && !afterShortcut) ||
+    const bookmarkOnly = !beforeShortcut && !afterShortcut;
+    if ((!from && !to) || !snapshot || (bookmarkOnly && (!snapshot.url || (from && to))) ||
         (!snapshot.url && (!from || !to || !config.bookmarkId))) {
       return null;
     }
@@ -412,6 +426,7 @@
     cloneBookmarkSnapshot,
     createDeleteRecord,
     createShortcutDeleteRecord,
+    createShortcutAddRecord,
     createShortcutStackRecord,
     createTransferRecord,
     createShortcutReorderRecord,
