@@ -61,9 +61,10 @@
       );
     }
 
+    // A group's menu button is marked as well as tiles, so clear by the mark.
     function clearShortcutContextMenuTileActive() {
       const tiles = pageState.shortcutGrid
-        ? Array.from(pageState.shortcutGrid.querySelectorAll('.x-nt-shortcut-tile'))
+        ? Array.from(pageState.shortcutGrid.querySelectorAll('[data-shortcut-context-menu-open]'))
         : [];
       tiles.forEach((tile) => {
         if (!tile.hasAttribute('data-shortcut-context-menu-open')) {

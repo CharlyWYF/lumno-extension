@@ -427,6 +427,45 @@ check('group and tile menus open in place', WIDE, async (page) => {
   return [...groupMenu, ...tileMenu.map((e) => ({ ...e, key: `tile menu ${e.key}` }))];
 });
 
+// However the group menu closes, its button lets go and hides with the pointer
+// away. A key that closed it leaves the button focused, showing its ring.
+check('a group menu button hides once its menu closes', WIDE, async (page) => {
+  await page.seed(BASE_GROUPS, BASE_ITEMS);
+  const more = '[data-shortcut-group-id="work"] .x-nt-shortcut-group-more';
+  const shown = () => page.evaluate(`(() => {
+    const button = document.querySelector(${JSON.stringify(more)});
+    return button.hasAttribute('data-shortcut-context-menu-open') ||
+      (getComputedStyle(button).opacity !== '0' && !button.matches(':focus-visible'));
+  })()`);
+  const away = { x: 8, y: 540 };
+  const closers = {
+    Escape: () => page.key('Escape'),
+    'a press outside': async () => {
+      await page.mouse('mousePressed', away.x, away.y, { buttons: 1 });
+      await page.mouse('mouseReleased', away.x, away.y);
+    },
+    'a second press': () => page.click(more),
+    'renaming': async () => {
+      await page.click('.x-nt-shortcut-context-menu-portal [data-value="group-rename"]');
+      await page.settle(400);
+      await page.key('Escape');
+    }
+  };
+  const problems = [];
+  for (const [how, close] of Object.entries(closers)) {
+    await page.hover('[data-shortcut-group-id="work"] .x-nt-shortcut-group-title');
+    await page.settle(150);
+    await page.click(more);
+    await page.settle(300);
+    await close();
+    await page.settle(300);
+    await page.mouse('mouseMoved', away.x, away.y, { button: 'none' });
+    await page.settle(300);
+    if (await shown()) problems.push({ key: `button still shown after ${how}`, dx: 0, dy: 0 });
+  }
+  return problems;
+});
+
 check('dock magnification leaves tile boxes in place', WIDE, async (page) => {
   await page.seed(BASE_GROUPS, BASE_ITEMS);
   const before = await page.snapshot();
