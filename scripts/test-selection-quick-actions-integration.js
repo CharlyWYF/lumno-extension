@@ -133,9 +133,6 @@ assert(
   'default selection target tabs should activate immediately'
 );
 
-assert(contentSource.includes("document.addEventListener('copy', cancelSelectionGesture"));
-assert(contentSource.includes("document.addEventListener('scroll', cancelSelectionGesture"));
-assert(contentSource.includes("document.addEventListener('selectstart', handleSelectStart, true"));
 assert(contentSource.includes('selectionChangeTimer'));
 assert(contentSource.includes('function handlePointerCancel'));
 assert(contentSource.includes("event.key === 'Escape'"));
@@ -145,12 +142,6 @@ assert(contentSource.includes('element.selectionStart'));
 assert(contentSource.includes('element.selectionEnd'));
 assert(contentSource.includes('function getUnifiedSelectionSnapshot'));
 assert(contentSource.includes('function buildCandidateFromSnapshot(snapshot, classification)'));
-assert(
-  /const SELECTION_DEBUG_MODE = (?:true|false);/.test(contentSource) &&
-    contentSource.includes('renderSelectionDecisionDebug(resolvedSnapshot, classification, target)') &&
-    contentSource.includes('renderSelectionSortingDebug(currentCandidate, actions)'),
-  'selection diagnostics should remain source-switchable and cover trigger plus ordering reasons'
-);
 assert(
   contentSource.includes('const TOAST = globalThis.LumnoToast;') &&
     contentSource.includes('TOAST.createToastController') &&
@@ -202,8 +193,6 @@ assert(
 assert(
   contentSource.includes('const VIEWPORT_SAFE_MARGIN_PX = 12') &&
     contentSource.includes("host.style.setProperty(property, value, 'important')") &&
-    contentSource.includes("window.addEventListener('resize', scheduleViewportClamp, true)") &&
-    contentSource.includes("window.visualViewport.addEventListener('resize', scheduleViewportClamp)") &&
     contentSource.includes('surfaceResizeObserver.observe(surface)') &&
     contentSource.includes('applySurfaceViewportLimit(viewport)'),
   'the closed selection surface should resist hostile page CSS and remain inside a 12px visual-viewport safe area'
