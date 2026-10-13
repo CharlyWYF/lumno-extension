@@ -105,85 +105,42 @@
   // WebDAV carries them together with the wallpapers. The legacy single color
   // is migrated into the light and dark colors on each device.
   const BOOKMARK_TOPBAR_WEBDAV_STORAGE_KEYS = Object.freeze(BOOKMARK_TOPBAR_LOCAL_STORAGE_KEYS.slice(0, 3));
-  // User-controlled preferences that are safe to store in chrome.storage.sync.
-  // Keep generated caches, device state, and custom wallpaper media out of this list.
-  const CHROME_SYNC_STORAGE_KEYS = Object.freeze([
-    '_x_extension_theme_mode_2024_unique_',
-    '_x_extension_language_2024_unique_',
-    '_x_extension_recent_mode_2024_unique_',
-    '_x_extension_recent_count_2024_unique_',
-    '_x_extension_newtab_width_mode_2026_unique_',
-    '_x_extension_newtab_search_width_2026_unique_',
-    '_x_extension_newtab_input_auto_focus_enabled_2026_unique_',
-    NEWTAB_QUOTE_PREFS_STORAGE_KEY,
-    '_x_extension_newtab_theme_mode_2026_unique_',
-    '_x_extension_newtab_theme_scope_2026_unique_',
-    '_x_extension_newtab_zen_mode_2026_unique_',
-    '_x_extension_newtab_wallpaper_2026_unique_',
-    NEWTAB_ONLINE_WALLPAPER_STORAGE_KEY,
-    NEWTAB_LINK_WALLPAPERS_STORAGE_KEY,
-    NEWTAB_DAILY_WALLPAPER_PICKS_STORAGE_KEY,
-    '_x_extension_newtab_wallpaper_overlay_2026_unique_',
-    '_x_extension_newtab_wallpaper_effect_2026_unique_',
-    '_x_extension_newtab_favicon_2026_unique_',
-    '_x_extension_overlay_size_mode_2026_unique_',
-    '_x_extension_overlay_enter_animation_2026_unique_',
-    '_x_extension_overlay_page_theme_adaptation_enabled_2026_unique_',
-    '_x_extension_bookmark_count_2024_unique_',
-    '_x_extension_bookmark_columns_2024_unique_',
-    '_x_extension_bookmark_view_mode_2026_unique_',
-    '_x_extension_bookmark_folder_icons_visible_2026_unique_',
-    BOOKMARK_FOLDER_COLOR_REFS_STORAGE_KEY,
-    BOOKMARK_FOLDER_COLOR_PRESETS_STORAGE_KEY,
-    '_x_extension_newtab_pinned_recent_sites_2026_unique_',
-    '_x_extension_newtab_hidden_recent_sites_2026_unique_',
-    '_x_extension_newtab_shortcuts_2026_unique_',
-    NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY,
-    NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY,
-    ...NEWTAB_SHORTCUTS_V2_STORAGE_KEYS,
-    '_x_extension_newtab_shortcuts_visible_2026_unique_',
-    '_x_extension_newtab_shortcut_add_visible_2026_unique_',
-    '_x_extension_newtab_shortcut_dock_magnification_enabled_2026_unique_',
-    NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY,
-    NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY,
-    NEWTAB_SHORTCUT_WIDTH_STORAGE_KEY,
-    NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY,
-    NEWTAB_SHORTCUT_SIZE_STORAGE_KEY,
-    NEWTAB_SHORTCUT_GAP_STORAGE_KEY,
-    '_x_extension_update_notice_enabled_2026_unique_',
-    '_x_extension_motion_effects_enabled_2026_unique_',
-    '_x_extension_simple_mode_enabled_2026_unique_',
-    '_x_extension_number_shortcut_instant_enabled_2026_unique_',
-    '_x_extension_macos_ctrl_suggestion_navigation_enabled_2026_unique_',
-    '_x_extension_auto_pip_enabled_2026_unique_',
-    '_x_extension_tab_switcher_enabled_2026_unique_',
-    '_x_extension_document_pip_enabled_2026_unique_',
-    '_x_extension_pinned_tab_recovery_enabled_2026_unique_',
-    '_x_extension_selection_quick_actions_enabled_2026_unique_',
-    '_x_extension_selection_quick_actions_provider_2026_unique_',
-    '_x_extension_selection_quick_actions_group_enabled_2026_unique_',
-    '_x_extension_overlay_tab_priority_2024_unique_',
-    '_x_extension_newtab_wordmark_visible_2026_unique_',
-    '_x_extension_newtab_time_font_weight_2026_unique_',
-    '_x_extension_newtab_time_seconds_visible_2026_unique_',
-    '_x_extension_restricted_action_2024_unique_',
-    '_x_extension_search_result_priority_2026_unique_',
-    '_x_extension_search_result_source_types_2026_unique_',
-    '_x_extension_search_result_display_limit_2026_unique_',
-    SEARCH_RESULT_TAB_POSITION_STORAGE_KEY,
-    '_x_extension_overlay_open_tabs_default_visible_2026_unique_',
-    '_x_extension_fallback_hotkey_2024_unique_',
-    '_x_extension_site_search_custom_2024_unique_',
-    '_x_extension_site_search_disabled_2024_unique_',
-    AGGREGATE_SEARCH_STORAGE_KEY,
-    AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY,
-    PROGRESS_TRACKING_ENABLED_STORAGE_KEY,
-    NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY,
-    '_x_extension_search_blacklist_2026_unique_',
-    '_x_extension_favicon_request_blacklist_2026_unique_',
-    '_x_extension_favicon_enhanced_fetch_enabled_2026_unique_',
-    '_x_extension_default_search_engine_2024_unique_'
-  ]);
+  const LANGUAGE_STORAGE_KEY = '_x_extension_language_2024_unique_';
+  const RECENT_MODE_STORAGE_KEY = '_x_extension_recent_mode_2024_unique_';
+  const RECENT_COUNT_STORAGE_KEY = '_x_extension_recent_count_2024_unique_';
+  const NEWTAB_WIDTH_MODE_STORAGE_KEY = '_x_extension_newtab_width_mode_2026_unique_';
+  const NEWTAB_SEARCH_WIDTH_STORAGE_KEY = '_x_extension_newtab_search_width_2026_unique_';
+  const NEWTAB_ZEN_MODE_STORAGE_KEY = '_x_extension_newtab_zen_mode_2026_unique_';
+  const NEWTAB_WALLPAPER_STORAGE_KEY = '_x_extension_newtab_wallpaper_2026_unique_';
+  const NEWTAB_WALLPAPER_OVERLAY_STORAGE_KEY = '_x_extension_newtab_wallpaper_overlay_2026_unique_';
+  const NEWTAB_WALLPAPER_EFFECT_STORAGE_KEY = '_x_extension_newtab_wallpaper_effect_2026_unique_';
+  const NEWTAB_FAVICON_STORAGE_KEY = '_x_extension_newtab_favicon_2026_unique_';
+  const OVERLAY_SIZE_MODE_STORAGE_KEY = '_x_extension_overlay_size_mode_2026_unique_';
+  const BOOKMARK_COUNT_STORAGE_KEY = '_x_extension_bookmark_count_2024_unique_';
+  const BOOKMARK_COLUMNS_STORAGE_KEY = '_x_extension_bookmark_columns_2024_unique_';
+  const BOOKMARK_VIEW_MODE_STORAGE_KEY = '_x_extension_bookmark_view_mode_2026_unique_';
+  const PINNED_RECENT_SITES_STORAGE_KEY = '_x_extension_newtab_pinned_recent_sites_2026_unique_';
+  const HIDDEN_RECENT_SITES_STORAGE_KEY = '_x_extension_newtab_hidden_recent_sites_2026_unique_';
+  const NEWTAB_SHORTCUTS_STORAGE_KEY = '_x_extension_newtab_shortcuts_2026_unique_';
+  const AUTO_PIP_ENABLED_STORAGE_KEY = '_x_extension_auto_pip_enabled_2026_unique_';
+  const TAB_SWITCHER_ENABLED_STORAGE_KEY = '_x_extension_tab_switcher_enabled_2026_unique_';
+  const DOCUMENT_PIP_ENABLED_STORAGE_KEY = '_x_extension_document_pip_enabled_2026_unique_';
+  const PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY = '_x_extension_pinned_tab_recovery_enabled_2026_unique_';
+  const OVERLAY_TAB_PRIORITY_STORAGE_KEY = '_x_extension_overlay_tab_priority_2024_unique_';
+  const RESTRICTED_ACTION_STORAGE_KEY = '_x_extension_restricted_action_2024_unique_';
+  const SEARCH_RESULT_PRIORITY_STORAGE_KEY = '_x_extension_search_result_priority_2026_unique_';
+  const SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY = '_x_extension_search_result_source_types_2026_unique_';
+  const FALLBACK_SHORTCUT_STORAGE_KEY = '_x_extension_fallback_hotkey_2024_unique_';
+  const SITE_SEARCH_STORAGE_KEY = '_x_extension_site_search_custom_2024_unique_';
+  const SITE_SEARCH_DISABLED_STORAGE_KEY = '_x_extension_site_search_disabled_2024_unique_';
+  const SEARCH_BLACKLIST_STORAGE_KEY = '_x_extension_search_blacklist_2026_unique_';
+  const FAVICON_REQUEST_BLACKLIST_STORAGE_KEY = '_x_extension_favicon_request_blacklist_2026_unique_';
+  const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = '_x_extension_default_search_engine_2024_unique_';
+  // When and how settings last synced (manual sync or an import); written to the primary area.
+  const SYNC_META_STORAGE_KEY = '_x_extension_sync_meta_2024_unique_';
+  const RESTRICTED_ACTION_AUTO_BROWSER_SETTING_DONE_STORAGE_KEY = '_x_extension_restricted_action_auto_browser_setting_done_2026_unique_';
+  // localStorage: the Options page theme from its last load, applied before its scripts load.
+  const OPTIONS_THEME_PRELOAD_STORAGE_KEY = '_x_extension_options_theme_preload_2026_unique_';
   const SELECTION_QUICK_ACTIONS_PROVIDER_KEYS = Object.freeze([
     'gpt',
     'gm',
@@ -206,6 +163,85 @@
   const NEWTAB_TIME_FONT_WEIGHT_DEFAULT = 320;
   const NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY =
     '_x_extension_newtab_time_seconds_visible_2026_unique_';
+  // User-controlled preferences that are safe to store in chrome.storage.sync.
+  // Keep generated caches, device state, and custom wallpaper media out of this list.
+  const CHROME_SYNC_STORAGE_KEYS = Object.freeze([
+    THEME_STORAGE_KEY,
+    LANGUAGE_STORAGE_KEY,
+    RECENT_MODE_STORAGE_KEY,
+    RECENT_COUNT_STORAGE_KEY,
+    NEWTAB_WIDTH_MODE_STORAGE_KEY,
+    NEWTAB_SEARCH_WIDTH_STORAGE_KEY,
+    NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY,
+    NEWTAB_QUOTE_PREFS_STORAGE_KEY,
+    NEWTAB_THEME_MODE_STORAGE_KEY,
+    NEWTAB_THEME_SCOPE_STORAGE_KEY,
+    NEWTAB_ZEN_MODE_STORAGE_KEY,
+    NEWTAB_WALLPAPER_STORAGE_KEY,
+    NEWTAB_ONLINE_WALLPAPER_STORAGE_KEY,
+    NEWTAB_LINK_WALLPAPERS_STORAGE_KEY,
+    NEWTAB_DAILY_WALLPAPER_PICKS_STORAGE_KEY,
+    NEWTAB_WALLPAPER_OVERLAY_STORAGE_KEY,
+    NEWTAB_WALLPAPER_EFFECT_STORAGE_KEY,
+    NEWTAB_FAVICON_STORAGE_KEY,
+    OVERLAY_SIZE_MODE_STORAGE_KEY,
+    OVERLAY_ENTER_ANIMATION_STORAGE_KEY,
+    OVERLAY_PAGE_THEME_ADAPTATION_ENABLED_STORAGE_KEY,
+    BOOKMARK_COUNT_STORAGE_KEY,
+    BOOKMARK_COLUMNS_STORAGE_KEY,
+    BOOKMARK_VIEW_MODE_STORAGE_KEY,
+    BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY,
+    BOOKMARK_FOLDER_COLOR_REFS_STORAGE_KEY,
+    BOOKMARK_FOLDER_COLOR_PRESETS_STORAGE_KEY,
+    PINNED_RECENT_SITES_STORAGE_KEY,
+    HIDDEN_RECENT_SITES_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY,
+    ...NEWTAB_SHORTCUTS_V2_STORAGE_KEYS,
+    NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY,
+    NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY,
+    NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY,
+    NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY,
+    NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY,
+    NEWTAB_SHORTCUT_WIDTH_STORAGE_KEY,
+    NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY,
+    NEWTAB_SHORTCUT_SIZE_STORAGE_KEY,
+    NEWTAB_SHORTCUT_GAP_STORAGE_KEY,
+    UPDATE_NOTICE_ENABLED_STORAGE_KEY,
+    MOTION_EFFECTS_ENABLED_STORAGE_KEY,
+    SIMPLE_MODE_ENABLED_STORAGE_KEY,
+    NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY,
+    MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY,
+    AUTO_PIP_ENABLED_STORAGE_KEY,
+    TAB_SWITCHER_ENABLED_STORAGE_KEY,
+    DOCUMENT_PIP_ENABLED_STORAGE_KEY,
+    PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY,
+    SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY,
+    SELECTION_QUICK_ACTIONS_PROVIDER_STORAGE_KEY,
+    SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY,
+    OVERLAY_TAB_PRIORITY_STORAGE_KEY,
+    NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
+    NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
+    NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY,
+    RESTRICTED_ACTION_STORAGE_KEY,
+    SEARCH_RESULT_PRIORITY_STORAGE_KEY,
+    SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY,
+    SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY,
+    SEARCH_RESULT_TAB_POSITION_STORAGE_KEY,
+    OVERLAY_OPEN_TABS_DEFAULT_VISIBLE_STORAGE_KEY,
+    FALLBACK_SHORTCUT_STORAGE_KEY,
+    SITE_SEARCH_STORAGE_KEY,
+    SITE_SEARCH_DISABLED_STORAGE_KEY,
+    AGGREGATE_SEARCH_STORAGE_KEY,
+    AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY,
+    PROGRESS_TRACKING_ENABLED_STORAGE_KEY,
+    NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY,
+    SEARCH_BLACKLIST_STORAGE_KEY,
+    FAVICON_REQUEST_BLACKLIST_STORAGE_KEY,
+    FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY,
+    DEFAULT_SEARCH_ENGINE_STORAGE_KEY
+  ]);
 
   function normalizeLocale(locale) {
     const raw = String(locale || '').trim();
@@ -1067,6 +1103,40 @@
     WEBDAV_DISMISSED_CONNECTIONS_STORAGE_KEY,
     ASSET_REVISION_STORAGE_KEY,
     THEME_STORAGE_KEY,
+    LANGUAGE_STORAGE_KEY,
+    RECENT_MODE_STORAGE_KEY,
+    RECENT_COUNT_STORAGE_KEY,
+    NEWTAB_WIDTH_MODE_STORAGE_KEY,
+    NEWTAB_SEARCH_WIDTH_STORAGE_KEY,
+    NEWTAB_ZEN_MODE_STORAGE_KEY,
+    NEWTAB_WALLPAPER_STORAGE_KEY,
+    NEWTAB_WALLPAPER_OVERLAY_STORAGE_KEY,
+    NEWTAB_WALLPAPER_EFFECT_STORAGE_KEY,
+    NEWTAB_FAVICON_STORAGE_KEY,
+    OVERLAY_SIZE_MODE_STORAGE_KEY,
+    BOOKMARK_COUNT_STORAGE_KEY,
+    BOOKMARK_COLUMNS_STORAGE_KEY,
+    BOOKMARK_VIEW_MODE_STORAGE_KEY,
+    PINNED_RECENT_SITES_STORAGE_KEY,
+    HIDDEN_RECENT_SITES_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_STORAGE_KEY,
+    AUTO_PIP_ENABLED_STORAGE_KEY,
+    TAB_SWITCHER_ENABLED_STORAGE_KEY,
+    DOCUMENT_PIP_ENABLED_STORAGE_KEY,
+    PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY,
+    OVERLAY_TAB_PRIORITY_STORAGE_KEY,
+    RESTRICTED_ACTION_STORAGE_KEY,
+    SEARCH_RESULT_PRIORITY_STORAGE_KEY,
+    SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY,
+    FALLBACK_SHORTCUT_STORAGE_KEY,
+    SITE_SEARCH_STORAGE_KEY,
+    SITE_SEARCH_DISABLED_STORAGE_KEY,
+    SEARCH_BLACKLIST_STORAGE_KEY,
+    FAVICON_REQUEST_BLACKLIST_STORAGE_KEY,
+    DEFAULT_SEARCH_ENGINE_STORAGE_KEY,
+    SYNC_META_STORAGE_KEY,
+    RESTRICTED_ACTION_AUTO_BROWSER_SETTING_DONE_STORAGE_KEY,
+    OPTIONS_THEME_PRELOAD_STORAGE_KEY,
     NEWTAB_THEME_MODE_STORAGE_KEY,
     NEWTAB_THEME_SCOPE_STORAGE_KEY,
     NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY,
@@ -1210,7 +1280,7 @@
 (function(root, factory) {
   root.LumnoAutoPipCore = factory();
 })(typeof globalThis !== 'undefined' ? globalThis : this, function() {
-  const AUTO_PIP_ENABLED_STORAGE_KEY = '_x_extension_auto_pip_enabled_2026_unique_';
+  const AUTO_PIP_ENABLED_STORAGE_KEY = globalThis.LumnoSettings.AUTO_PIP_ENABLED_STORAGE_KEY;
   const DOCUMENT_PIP_ACTIVE_FLAG = '__lumno_document_pip_active_2026__';
   const PAGE_BRIDGE_REQUEST_EVENT = '__lumno_yt_force_exit_pip_req_2026__';
   const PAGE_BRIDGE_RESPONSE_EVENT = '__lumno_yt_force_exit_pip_res_2026__';

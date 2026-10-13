@@ -2,7 +2,7 @@
   const MODEL = globalThis.LumnoOnboardingContent;
   const NAVIGATION_DISPOSITION = globalThis.LumnoNavigationDisposition;
 
-  const LANGUAGE_STORAGE_KEY = '_x_extension_language_2024_unique_';
+  const LANGUAGE_STORAGE_KEY = globalThis.LumnoSettings.LANGUAGE_STORAGE_KEY;
   const SHOW_SEARCH_COMMAND_NAME = 'show-search';
   const ONBOARDING_SEARCH_OVERLAY_COMMAND_ACTION = 'triggerOnboardingSearchOverlayFromCommand';
   const SHORTCUT_PLACEHOLDER = '{shortcut}';
