@@ -148,9 +148,19 @@
       tile.style.removeProperty('top');
     }
 
+    // Everything in the grid that can shift when shortcuts move: tiles, the
+    // add tile, group titles and empty groups' slots.
+    function getShortcutLayoutElements() {
+      return pageState.shortcutGrid
+        ? Array.from(pageState.shortcutGrid.querySelectorAll(
+          '.x-nt-shortcut-tile, .x-nt-shortcut-group-header, .x-nt-shortcut-group-empty'
+        ))
+        : getShortcutReorderTiles();
+    }
+
     function getShortcutTileRectMap() {
       const rects = new Map();
-      getShortcutReorderTiles().forEach((tile) => {
+      getShortcutLayoutElements().forEach((tile) => {
         if (tile && typeof tile.getBoundingClientRect === 'function') {
           rects.set(tile, tile.getBoundingClientRect());
         }
@@ -204,7 +214,7 @@
       if (!beforeRects || !pageState.shortcutGrid) {
         return;
       }
-      getShortcutReorderTiles().forEach((tile) => {
+      getShortcutLayoutElements().forEach((tile) => {
         if (!tile || tile === draggedTile || !tile.style || typeof tile.getBoundingClientRect !== 'function') {
           return;
         }
@@ -234,6 +244,15 @@
           }, SHORTCUT_REORDER_ANIMATION_MS + 80);
         });
       });
+    }
+
+    // Runs a change that re-renders the shortcuts and slides whatever it moved
+    // from where it was, so a re-centered grid glides instead of jumping.
+    function animateShortcutLayoutChange(change) {
+      const beforeRects = getShortcutTileRectMap();
+      const result = change();
+      animateShortcutLayoutShift(beforeRects, null);
+      return result;
     }
 
     function setShortcutDragTileTransform(state, pointerX, pointerY) {
@@ -681,21 +700,23 @@
         }
         return;
       }
-      if (options && options.cancel && state.hasReordered) {
-        restoreShortcutDragOrder(state);
-        return;
-      }
+      // The empty bookmarks bar shown for the drag hides again however the
+      // drag ends.
       if (state.isDragging &&
           pageState.bookmarkGrid &&
           pageState.bookmarkGrid.getAttribute('data-bookmark-empty-drop-surface') === 'true') {
         renderCurrentBookmarkPage();
+      }
+      if (options && options.cancel && state.hasReordered) {
+        restoreShortcutDragOrder(state);
+        return;
       }
       if (state.isDragging && state.hasReordered) {
         if (event && typeof event.preventDefault === 'function') {
           event.preventDefault();
         }
         persistShortcutOrder(state).then(() => {
-          renderShortcuts();
+          animateShortcutLayoutChange(renderShortcuts);
           scheduleWallpaperAdaptiveToneUpdate();
         });
         return;
@@ -1189,6 +1210,7 @@
       setShortcutDragTileTransform,
       getShortcutInsertionSlotAt,
       autoScrollShortcutArea,
+      animateShortcutLayoutChange,
       scheduleShortcutDragMove,
       suppressCanceledDragClick,
       finishShortcutDrag,

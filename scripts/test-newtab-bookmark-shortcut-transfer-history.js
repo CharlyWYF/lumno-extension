@@ -83,6 +83,7 @@ function createRuntime() {
     closeBookmarkCascadeMenu() {}, suppressCanceledDragClick() {}, renderCurrentBookmarkPage() {},
     refreshOpenBookmarkCascadeMenu() {}, settleShortcutDragTile() {},
     persistShortcutOrder: () => Promise.resolve(true), renderShortcuts() {},
+    animateShortcutLayoutChange(change) { return change(); },
     resetShortcutDockHover() {},
     getShortcutTileById(id) { return context.hiddenShortcutIds.has(id) ? null : { id }; },
     moveShortcutTileElement(tile, index) {

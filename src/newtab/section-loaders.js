@@ -49,6 +49,41 @@
     let recentLoadToken = 0;
     let recentDataDirty = true;
 
+    // A drag shows the empty bookmarks bar as a drop target. The search box
+    // holds still meanwhile, so the dock grows over free space, and the bar
+    // stays hidden when it would cover shortcuts: the shortcut area would
+    // then shrink and scroll under the pointer.
+    function isDragActive() {
+      return Boolean((pageState.bookmarkDragState && pageState.bookmarkDragState.isDragging) || isShortcutDragActive());
+    }
+
+    function getShortcutAreaLimit() {
+      const section = typeof document !== 'undefined' && document.querySelector
+        ? document.querySelector('.x-nt-shortcuts-section')
+        : null;
+      return section && section.style ? section.style.getPropertyValue('--x-nt-shortcuts-max-height') : '';
+    }
+
+    function showEmptyBookmarkRoot(visible, keepForDrag) {
+      const limitBefore = getShortcutAreaLimit();
+      const layoutOptions = isDragActive() ? { preserveSearchEntryLayout: true } : undefined;
+      setBookmarkSurfaceVisible(visible);
+      updateBookmarkGridHeightLock();
+      updateBookmarkSectionPosition(layoutOptions);
+      const limitAfter = getShortcutAreaLimit();
+      const coversShortcuts = keepForDrag && limitAfter &&
+        (!limitBefore || Number.parseFloat(limitAfter) < Number.parseFloat(limitBefore));
+      if (!coversShortcuts) {
+        return;
+      }
+      if (pageState.bookmarkGrid) {
+        pageState.bookmarkGrid.removeAttribute('data-bookmark-empty-drop-surface');
+      }
+      setBookmarkSurfaceVisible(false);
+      updateBookmarkGridHeightLock();
+      updateBookmarkSectionPosition(layoutOptions);
+    }
+
     function renderBookmarks(items) {
       const normalizedItems = Array.isArray(items) ? items : [];
       const isAtRoot = String(pageState.bookmarkCurrentFolderId || '') === String(pageState.bookmarkRootFolderId || '1');
@@ -97,9 +132,7 @@
       syncOpenBookmarkCascadeAnchorVisual();
       if (!renderResult.changed) {
         if (normalizedItems.length === 0) {
-          setBookmarkSurfaceVisible(!isAtRoot || keepEmptyRootVisibleForDrag);
-          updateBookmarkGridHeightLock();
-          updateBookmarkSectionPosition();
+          showEmptyBookmarkRoot(!isAtRoot || keepEmptyRootVisibleForDrag, keepEmptyRootVisibleForDrag);
         } else {
           setBookmarkSurfaceVisible(true);
           updateBookmarkGridHeightLock();
@@ -110,9 +143,7 @@
       }
       pageState.bookmarkRenderSignature = renderResult.signature;
       if (normalizedItems.length === 0) {
-        setBookmarkSurfaceVisible(!isAtRoot || keepEmptyRootVisibleForDrag);
-        updateBookmarkGridHeightLock();
-        updateBookmarkSectionPosition();
+        showEmptyBookmarkRoot(!isAtRoot || keepEmptyRootVisibleForDrag, keepEmptyRootVisibleForDrag);
         updateBookmarkPagerState();
         return;
       }

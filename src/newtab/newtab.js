@@ -4219,6 +4219,7 @@
     SHORTCUT_DIALOG_ITEM_BOOKMARK,
     handleShortcutGroupMenu: openShortcutGroupMenu,
     WEBDAV_STATUS_STORAGE_KEY: SETTINGS.WEBDAV_STATUS_STORAGE_KEY,
+    animateShortcutLayoutChange: (...args) => animateShortcutLayoutChange(...args),
     pageState: {
       get newtabShortcuts() {
         return newtabShortcuts;
@@ -5545,6 +5546,7 @@
     setShortcutDragTileTransform,
     getShortcutInsertionSlotAt,
     autoScrollShortcutArea,
+    animateShortcutLayoutChange,
     scheduleShortcutDragMove,
     suppressCanceledDragClick,
     finishShortcutDrag,

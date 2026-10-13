@@ -97,7 +97,8 @@
       hideShortcutDialogTooltip,
       SHORTCUT_DIALOG_ITEM_BOOKMARK,
       handleShortcutGroupMenu,
-      WEBDAV_STATUS_STORAGE_KEY
+      WEBDAV_STATUS_STORAGE_KEY,
+      animateShortcutLayoutChange
     } = deps;
 
     // Page state still owned by newtab.js; read and written through accessors.
@@ -927,10 +928,19 @@
           return persistItems();
         })
         .then((result) => {
-          applyShortcutState(result && result.state ? result.state : nextState);
-          pruneShortcutFavicons(pageState.newtabShortcuts);
-          if (settings.render !== false) {
-            renderShortcuts();
+          // Group changes and added or removed sites can re-center the grid;
+          // those renders slide the tiles over instead of jumping.
+          const applySavedState = () => {
+            applyShortcutState(result && result.state ? result.state : nextState);
+            pruneShortcutFavicons(pageState.newtabShortcuts);
+            if (settings.render !== false) {
+              renderShortcuts();
+            }
+          };
+          if (settings.animateLayout && settings.render !== false && typeof animateShortcutLayoutChange === 'function') {
+            animateShortcutLayoutChange(applySavedState);
+          } else {
+            applySavedState();
           }
           const overflowShortcutId = String(settings.syncOverflowShortcutId || '');
           const shouldWarnAboutSyncLimit = Boolean(
@@ -1034,7 +1044,8 @@
       const group = { id: NEWTAB_SHORTCUTS_STORE.createShortcutGroupId(), title: '' };
       shortcutGroupEditingId = group.id;
       return persistShortcuts(pageState.newtabShortcuts, '', undefined, {
-        groups: shortcutGroups.concat(group)
+        groups: shortcutGroups.concat(group),
+        animateLayout: true
       }).then((saved) => {
         if (!saved && shortcutGroupEditingId === group.id) {
           shortcutGroupEditingId = '';
@@ -1087,7 +1098,7 @@
       const groups = shortcutGroups.slice();
       const [group] = groups.splice(index, 1);
       groups.splice(targetIndex, 0, group);
-      return persistShortcuts(pageState.newtabShortcuts, '', undefined, { groups });
+      return persistShortcuts(pageState.newtabShortcuts, '', undefined, { groups, animateLayout: true });
     }
 
     // The sites of a deleted group join the group above it, or the one below
@@ -1141,7 +1152,7 @@
         }))
       });
       pageState.bookmarkMoveHistoryBusy = true;
-      return persistShortcuts(plan.items, '', undefined, { groups: plan.groups }).then((saved) => {
+      return persistShortcuts(plan.items, '', undefined, { groups: plan.groups, animateLayout: true }).then((saved) => {
         if (saved && record) {
           bookmarkMoveHistory.push(record);
           showToast(formatMessage(
@@ -1189,7 +1200,7 @@
         const plan = planShortcutGroupDelete(shortcutGroups, items, record.group.id,
           !record.removed.length, record.targetGroupId);
         return plan
-          ? persistShortcuts(plan.items, '', undefined, { groups: plan.groups })
+          ? persistShortcuts(plan.items, '', undefined, { groups: plan.groups, animateLayout: true })
           : Promise.resolve(false);
       }
       if (shortcutGroups.some((group) => group.id === record.group.id) ||
@@ -1210,7 +1221,7 @@
       const iconChange = record.removed.filter((entry) => entry.iconDataUrl).map((entry) => ({
         shortcutId: entry.snapshot.id, action: 'replace', dataUrl: entry.iconDataUrl
       }));
-      return persistShortcuts(next, '', iconChange, { groups });
+      return persistShortcuts(next, '', iconChange, { groups, animateLayout: true });
     }
 
     function saveNewShortcutFromDialog(title, url, iconState) {
@@ -1245,7 +1256,8 @@
           dataUrl: iconState && iconState.dataUrl
         },
         {
-          syncOverflowShortcutId: nextShortcut.id
+          syncOverflowShortcutId: nextShortcut.id,
+          animateLayout: true
         }
       );
     }
@@ -1409,7 +1421,8 @@
         iconDataUrl: pageState.newtabShortcutIcons[id]
       });
       pageState.bookmarkMoveHistoryBusy = true;
-      return persistShortcuts(pageState.newtabShortcuts.filter((item) => item && item.id !== id)).then((saved) => {
+      return persistShortcuts(pageState.newtabShortcuts.filter((item) => item && item.id !== id), '', undefined,
+        { animateLayout: true }).then((saved) => {
         if (saved) {
           bookmarkMoveHistory.push(record);
           showToast(formatMessage(
