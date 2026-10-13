@@ -682,11 +682,43 @@
     });
   }
 
+  // A page-level key listener must only act on keys meant for the overlay:
+  // keys from inside its mount host, or keys sent while nothing on the page
+  // holds focus (they then target the body or the document). A focused
+  // host-page control - including an editable body - keeps its own keys.
+  function isOverlayKeyEvent(event, mount) {
+    if (!event) {
+      return false;
+    }
+    const config = mount && typeof mount === 'object' ? mount : {};
+    const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+    if ((config.host && path.includes(config.host)) ||
+        (config.panel && path.includes(config.panel))) {
+      return true;
+    }
+    const target = event.target;
+    const doc = config.document || (target && target.ownerDocument) || null;
+    if (!target || target === doc || (doc && target === doc.defaultView)) {
+      return true;
+    }
+    if (doc && (target === doc.body || target === doc.documentElement)) {
+      const editableAttribute = typeof target.getAttribute === 'function'
+        ? target.getAttribute('contenteditable')
+        : null;
+      const editable = target.isContentEditable === true ||
+        String(doc.designMode || '').toLowerCase() === 'on' ||
+        (editableAttribute !== null && editableAttribute.toLowerCase() !== 'false');
+      return !editable;
+    }
+    return false;
+  }
+
   return Object.freeze({
     createAntiTranslateGuard,
     createChromeEventListenerRegistry,
     createFrameTracker,
     createMountConnectionGuard,
-    createViewportSizeSync
+    createViewportSizeSync,
+    isOverlayKeyEvent
   });
 });

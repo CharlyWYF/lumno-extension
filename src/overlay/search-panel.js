@@ -6656,8 +6656,25 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       });
     }
 
+    function isKeyEventForOverlay(event) {
+      return overlayLifecycle.isOverlayKeyEvent(event, {
+        document,
+        host: getOverlayMountHost(overlay),
+        panel: overlay
+      });
+    }
+
     keydownHandler = function(e) {
       if (!e || e.isTrusted !== true) {
+        return;
+      }
+      if (!isKeyEventForOverlay(e)) {
+        // A focused host-page control keeps its arrows, Enter and digits.
+        // Escape still dismisses the overlay from anywhere, like a click
+        // outside it does.
+        if (e.key === 'Escape' && overlay) {
+          removeOverlay(overlay);
+        }
         return;
       }
       syncSuggestionActionModifiersFromEvent(e);
@@ -6947,7 +6964,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     };
 
     keyupHandler = function(e) {
-      if (!e || e.isTrusted !== true) {
+      if (!e || e.isTrusted !== true || !isKeyEventForOverlay(e)) {
         return;
       }
       syncSuggestionActionModifiersFromEvent(e);
