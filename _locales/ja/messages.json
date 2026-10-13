@@ -365,6 +365,9 @@
   "settings_recent_sites_title": {
     "message": "最近使ったサイトの表示"
   },
+  "newtab_recent_rows_title": {
+    "message": "最近使ったサイトの行数"
+  },
   "settings_newtab_width_title": {
     "message": "新しいタブの内容幅"
   },

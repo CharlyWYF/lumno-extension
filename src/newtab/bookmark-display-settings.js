@@ -613,6 +613,13 @@
     }
 
     return {
+      // Keys whose changes alter the bar's shape or background.
+      bookmarkTopbarStorageKeys: [
+        BOOKMARK_TOPBAR_LAYOUT_STORAGE_KEY,
+        BOOKMARK_TOPBAR_SURFACE_MODE_STORAGE_KEY,
+        BOOKMARK_TOPBAR_SURFACE_COLOR_LIGHT_STORAGE_KEY,
+        BOOKMARK_TOPBAR_SURFACE_COLOR_DARK_STORAGE_KEY
+      ],
       normalizeBookmarkViewMode,
       shouldRepairBookmarkViewModeStorageValue,
       persistBookmarkViewMode,

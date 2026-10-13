@@ -5344,6 +5344,20 @@ body[data-theme="dark"] .x-nt-appearance-header {
 .x-nt-wallpaper-body {
   padding-left: var(--x-nt-section-indent);
 }
+/* Rows inside a section body that show or hide together. */
+.x-nt-panel-field-group {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--x-nt-panel-content-gap);
+}
+/* Rows keep their height while their body animates open or shut, so they slide in
+   with it instead of squeezing together and spreading apart. */
+.x-nt-panel-section-body > *,
+.x-nt-quote-body > *,
+.x-nt-panel-field-group > * {
+  flex-shrink: 0;
+}
 .x-nt-shortcuts-accordion-details {
   min-width: 0;
   display: block;

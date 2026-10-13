@@ -533,6 +533,7 @@
 
   const NEWTAB_BOOKMARK_DISPLAY_SETTINGS = globalThis.LumnoNewtabBookmarkDisplaySettings;
   const {
+    bookmarkTopbarStorageKeys,
     normalizeBookmarkViewMode,
     shouldRepairBookmarkViewModeStorageValue,
     persistBookmarkViewMode,
@@ -655,6 +656,7 @@
   let wallpaperControl = null;
   let wallpaperRuntime = null;
   let quoteRuntime = null;
+  let sectionPanelSettings = null;
   let feedbackControl = null;
   let feedbackReactController = null;
   let feedbackButton = null;
@@ -2492,6 +2494,60 @@
       scheduleWallpaperAdaptiveToneUpdate();
     })
   });
+  sectionPanelSettings = globalThis.LumnoNewtabSectionPanelSettings.createRuntime({
+    windowObj: window,
+    chromeObj: chrome,
+    t,
+    watchedKeys: [
+      BOOKMARK_VIEW_MODE_STORAGE_KEY,
+      BOOKMARK_COUNT_STORAGE_KEY,
+      BOOKMARK_COLUMNS_STORAGE_KEY,
+      BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY,
+      RECENT_MODE_STORAGE_KEY,
+      RECENT_COUNT_STORAGE_KEY,
+      ...bookmarkTopbarStorageKeys
+    ],
+    getBookmarkViewMode: () => currentBookmarkViewMode,
+    setBookmarkViewMode: (mode) => setBookmarkViewMode(mode),
+    getBookmarkCount: () => currentBookmarkCount,
+    setBookmarkCount: (value, options) => setSectionPreference(
+      BOOKMARK_COUNT_STORAGE_KEY,
+      normalizeBookmarkCount(value),
+      applyBookmarkCountPreference,
+      options
+    ),
+    getBookmarkColumns: () => currentBookmarkColumns,
+    setBookmarkColumns: (value, options) => setSectionPreference(
+      BOOKMARK_COLUMNS_STORAGE_KEY,
+      normalizeBookmarkColumns(value),
+      applyBookmarkColumnsPreference,
+      options
+    ),
+    getBookmarkFolderIconsVisible: () => bookmarkFolderIconsVisible,
+    setBookmarkFolderIconsVisible: (value, options) => setSectionPreference(
+      BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY,
+      normalizeBookmarkFolderIconsVisible(value),
+      applyBookmarkFolderIconsVisiblePreference,
+      options
+    ),
+    // The bar's shape and background go through the same actions as its own menu.
+    getBookmarkTopbarLayout: () => getBookmarkTopbarLayout(),
+    setBookmarkTopbarLayout: (layout) => handleBookmarkModeMenuAction(`${BOOKMARK_TOPBAR_LAYOUT_ACTION}:${layout}`),
+    getBookmarkTopbarSurfaceMode: () => getEffectiveBookmarkTopbarSurfaceMode(),
+    setBookmarkTopbarSurfaceMode: (mode) => handleBookmarkModeMenuAction(
+      `${BOOKMARK_TOPBAR_SURFACE_MODE_ACTION}:${mode}`
+    ),
+    pickBookmarkTopbarSurfaceColor: () => handleBookmarkModeMenuAction(BOOKMARK_TOPBAR_PICK_COLOR_ACTION),
+    getRecentMode: () => currentRecentMode,
+    setRecentMode: (mode) => setRecentMode(mode),
+    getRecentCount: () => currentRecentCount,
+    setRecentCount: (value, options) => setSectionPreference(
+      RECENT_COUNT_STORAGE_KEY,
+      normalizeRecentCount(value),
+      applyRecentCountPreference,
+      options
+    )
+  });
   wallpaperRuntime = NEWTAB_WALLPAPER.createWallpaperRuntime({
     documentObj: document,
     windowObj: window,
@@ -2500,6 +2556,7 @@
     storageArea,
     localWallpaperStorageArea: localStorageArea,
     getQuoteRuntime: () => quoteRuntime,
+    getSectionPanelSettings: () => sectionPanelSettings,
     storageKeys: {
       wallpaper: NEWTAB_WALLPAPER_STORAGE_KEY,
       localWallpaper: NEWTAB_LOCAL_WALLPAPER_STORAGE_KEY,
@@ -2728,6 +2785,58 @@
   observeNewtabStartupTask('appearance', initialAppearanceReadyTask);
   markNewtabStartupMilestone('appearance-bootstrap-scheduled');
 
+  // Bookmark and site-card preferences arrive from storage (Options page, other tabs) and from
+  // the appearance panel, which previews a value here before saving it; an unchanged value
+  // leaves the section alone.
+  function applyBookmarkCountPreference(value) {
+    const nextCount = normalizeBookmarkCount(value);
+    if (nextCount === currentBookmarkCount) {
+      return;
+    }
+    currentBookmarkCount = nextCount;
+    bookmarkCurrentPage = 0;
+    markBookmarkDataDirty();
+    loadBookmarks({ force: true });
+  }
+
+  function applyBookmarkColumnsPreference(value) {
+    const nextColumns = normalizeBookmarkColumns(value);
+    if (nextColumns === currentBookmarkColumns) {
+      return;
+    }
+    const previousLimit = getBookmarkLimit();
+    currentBookmarkColumns = nextColumns;
+    keepBookmarkPageAnchorAfterLimitChange(previousLimit);
+    applyBookmarkGridColumns();
+    renderCurrentBookmarkPage();
+    updateBookmarkGridHeightLock();
+    updateBookmarkSectionPosition();
+  }
+
+  function applyBookmarkFolderIconsVisiblePreference(value) {
+    bookmarkFolderIconsVisible = normalizeBookmarkFolderIconsVisible(value);
+    if (bookmarksView && typeof bookmarksView.setFolderIconsVisible === 'function') {
+      bookmarksView.setFolderIconsVisible(bookmarkFolderIconsVisible);
+    }
+  }
+
+  function applyRecentCountPreference(value) {
+    const nextCount = normalizeRecentCount(value);
+    if (nextCount === currentRecentCount) {
+      return;
+    }
+    currentRecentCount = nextCount;
+    markRecentDataDirty();
+    loadRecentSites({ force: true });
+  }
+
+  function setSectionPreference(storageKey, value, apply, options) {
+    apply(value);
+    if (options && options.persist === true && storageArea) {
+      storageArea.set({ [storageKey]: value });
+    }
+  }
+
   addStorageChangeListener((changes, areaName) => {
     if (areaName === 'local' && changes[FOLDER_REFERENCES.BINDINGS_KEY]) {
       shortcutFolderRuntime.accept(changes[FOLDER_REFERENCES.BINDINGS_KEY].newValue);
@@ -2841,10 +2950,7 @@
       updateNewtabInputAutoFocusUi();
     }
     if (changes[RECENT_COUNT_STORAGE_KEY]) {
-      const nextCount = normalizeRecentCount(changes[RECENT_COUNT_STORAGE_KEY].newValue);
-      currentRecentCount = nextCount;
-      markRecentDataDirty();
-      loadRecentSites({ force: true });
+      applyRecentCountPreference(changes[RECENT_COUNT_STORAGE_KEY].newValue);
     }
     if (changes[NEWTAB_WIDTH_MODE_STORAGE_KEY]) {
       const previousBookmarkLimit = getBookmarkLimit();
@@ -3023,38 +3129,26 @@
     if (changes[BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY]) {
       const raw = changes[BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY].newValue;
       const nextValue = normalizeBookmarkFolderIconsVisible(raw);
-      bookmarkFolderIconsVisible = nextValue;
       if (storageArea && raw !== nextValue) {
         storageArea.set({ [BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY]: nextValue });
       }
-      if (bookmarksView && typeof bookmarksView.setFolderIconsVisible === 'function') {
-        bookmarksView.setFolderIconsVisible(nextValue);
-      }
+      applyBookmarkFolderIconsVisiblePreference(nextValue);
     }
     if (changes[BOOKMARK_COUNT_STORAGE_KEY]) {
       const raw = changes[BOOKMARK_COUNT_STORAGE_KEY].newValue;
       const nextCount = normalizeBookmarkCount(raw);
-      currentBookmarkCount = nextCount;
       if (storageArea && raw !== nextCount) {
         storageArea.set({ [BOOKMARK_COUNT_STORAGE_KEY]: nextCount });
       }
-      bookmarkCurrentPage = 0;
-      markBookmarkDataDirty();
-      loadBookmarks({ force: true });
+      applyBookmarkCountPreference(nextCount);
     }
     if (changes[BOOKMARK_COLUMNS_STORAGE_KEY]) {
-      const previousLimit = getBookmarkLimit();
       const raw = changes[BOOKMARK_COLUMNS_STORAGE_KEY].newValue;
       const nextColumns = normalizeBookmarkColumns(raw);
-      currentBookmarkColumns = nextColumns;
       if (storageArea && raw !== nextColumns) {
         storageArea.set({ [BOOKMARK_COLUMNS_STORAGE_KEY]: nextColumns });
       }
-      keepBookmarkPageAnchorAfterLimitChange(previousLimit);
-      applyBookmarkGridColumns();
-      renderCurrentBookmarkPage();
-      updateBookmarkGridHeightLock();
-      updateBookmarkSectionPosition();
+      applyBookmarkColumnsPreference(nextColumns);
     }
     if (changes[TAB_RANK_SCORE_DEBUG_STORAGE_KEY]) {
       tabRankScoreDebugEnabled = normalizeTabRankScoreDebugMode(changes[TAB_RANK_SCORE_DEBUG_STORAGE_KEY].newValue);

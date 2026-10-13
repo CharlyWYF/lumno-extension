@@ -365,6 +365,9 @@
   "settings_recent_sites_title": {
     "message": "Site Cards"
   },
+  "newtab_recent_rows_title": {
+    "message": "Site card rows"
+  },
   "settings_newtab_width_title": {
     "message": "New Tab Page Content Width"
   },

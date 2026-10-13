@@ -365,6 +365,9 @@
   "settings_recent_sites_title": {
     "message": "站点卡片"
   },
+  "newtab_recent_rows_title": {
+    "message": "站点卡片行数"
+  },
   "settings_newtab_width_title": {
     "message": "新标签页内容宽度"
   },

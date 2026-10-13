@@ -111,6 +111,8 @@ describe('New Tab React wallpaper view', () => {
       'themeSectionTrigger',
       'searchSectionTrigger',
       'shortcutsAccordionTrigger',
+      'bookmarkSettingsTrigger',
+      'recentSettingsTrigger',
       'quoteAccordionTrigger',
       'wallpaperAccordionTrigger',
       'faviconSectionTrigger'
@@ -194,7 +196,7 @@ describe('New Tab React wallpaper view', () => {
     const sliderRows = controller.control.querySelectorAll<HTMLElement>(
       '.x-nt-range-slider-row'
     );
-    expect(sliderRows).toHaveLength(14);
+    expect(sliderRows).toHaveLength(16);
     sliderRows.forEach((row) => {
       const slider = row.querySelector<HTMLInputElement>('input[type="range"]');
       const valueInput = row.querySelector<HTMLInputElement>('input[type="number"]');
@@ -319,6 +321,89 @@ describe('New Tab React wallpaper view', () => {
       expect(button.classList.contains('x-range-slider-reset')).toBe(true);
       expect(button.disabled).toBe(true);
     });
+  });
+
+  it('renders the bookmark and site card sections under shortcuts', () => {
+    act(() => {
+      controller = createWallpaperViewController({
+        documentObj: document,
+        model: {
+          appearanceOptions: [],
+          favicons: [],
+          icons: { arrow: '<i class="ri-arrow-right-s-line"></i>' },
+          searchWidth: { min: 720, max: 1040, ticks: [] },
+          wallpapers: []
+        }
+      });
+    });
+    if (!controller) {
+      throw new Error('Expected wallpaper view controller');
+    }
+    const refs = controller.getRefs();
+    const shortcutsSection = refs.shortcutsAccordion.parentElement;
+    expect(shortcutsSection?.nextElementSibling?.classList.contains('x-nt-panel-divider')).toBe(true);
+    expect(shortcutsSection?.nextElementSibling?.nextElementSibling).toBe(refs.bookmarkSettingsSection);
+    expect(refs.bookmarkSettingsSection.nextElementSibling?.nextElementSibling).toBe(refs.recentSettingsSection);
+    expect(refs.recentSettingsSection.nextElementSibling).toBe(refs.quoteDivider);
+    [
+      [refs.bookmarkSettingsTrigger, refs.bookmarkSettingsBody, refs.bookmarkSettingsToggle],
+      [refs.recentSettingsTrigger, refs.recentSettingsBody, refs.recentSettingsToggle]
+    ].forEach(([trigger, body, toggle]) => {
+      expect(trigger.getAttribute('aria-expanded')).toBe('false');
+      expect(trigger.getAttribute('aria-controls')).toBe(body.id);
+      expect(body.hidden).toBe(true);
+      expect(toggle.getAttribute('role')).toBe('switch');
+    });
+    const rows = refs.bookmarkRowsSlider as HTMLInputElement;
+    const columns = refs.bookmarkColumnsSlider as HTMLInputElement;
+    expect([rows.min, rows.max, rows.step]).toEqual(['1', '8', '1']);
+    expect([columns.min, columns.max, columns.step]).toEqual(['4', '8', '1']);
+    expect(refs.bookmarkGridSettings.contains(refs.bookmarkFolderIconsToggle)).toBe(true);
+    expect(refs.bookmarkTopbarSettings.hidden).toBe(true);
+    expect(Array.from(
+      refs.bookmarkTopbarLayoutTabs.querySelectorAll('button'),
+      (button) => button.dataset.bookmarkTopbarLayout
+    )).toEqual(['docked', 'floating']);
+    expect(Array.from(refs.recentModeTabs.querySelectorAll('button'), (button) => button.dataset.recentMode))
+      .toEqual(['latest', 'most']);
+    expect(Array.from(refs.recentRowsTabs.querySelectorAll('button'), (button) => button.textContent))
+      .toEqual(['1', '2']);
+
+    const onViewModeChange = vi.fn();
+    const onSurfaceChange = vi.fn(() => false);
+    act(() => {
+      controller?.renderBookmarkViewModeSelect({
+        ariaLabel: 'Display mode',
+        onChange: onViewModeChange,
+        options: ['folder', 'list', 'top'].map((value) => ({ value, label: value })),
+        value: 'folder'
+      });
+      controller?.renderBookmarkTopbarSurfaceSelect({
+        ariaLabel: 'Bar background',
+        onChange: onSurfaceChange,
+        options: ['adaptive', 'custom'].map((value) => ({
+          value,
+          label: value,
+          radio: true,
+          checked: value === 'adaptive'
+        })),
+        value: 'adaptive'
+      });
+    });
+    expect(refs.bookmarkViewModeSelectHost.querySelector('select')?.value).toBe('folder');
+    const topOption = document.querySelector<HTMLElement>(
+      '[data-react-select-owner="x-nt-bookmark-view-mode"] [data-value="top"]'
+    );
+    expect(controller.containsSelectMenuTarget(topOption)).toBe(true);
+    act(() => topOption?.click());
+    expect(onViewModeChange).toHaveBeenCalledWith('top');
+    const customOption = document.querySelector<HTMLElement>(
+      '[data-react-select-owner="x-nt-bookmark-topbar-surface"] [data-value="custom"]'
+    );
+    act(() => customOption?.click());
+    expect(onSurfaceChange).toHaveBeenCalledWith('custom');
+    // Declined until the picker returns a color.
+    expect(refs.bookmarkTopbarSurfaceSelectHost.querySelector('select')?.value).toBe('adaptive');
   });
 
   it('updates custom wallpaper tiles without replacing the panel', () => {

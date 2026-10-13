@@ -6091,6 +6091,8 @@
       updateBingUi();
       const quoteRuntime = options.getQuoteRuntime && options.getQuoteRuntime();
       if (quoteRuntime) quoteRuntime.updateLanguage();
+      const sectionSettings = options.getSectionPanelSettings && options.getSectionPanelSettings();
+      if (sectionSettings) sectionSettings.updateLanguage();
     }
 
     // The wallpaper article opens with how this panel works, so it is the panel's help page.
@@ -6371,6 +6373,13 @@
       customWallpaperUrlSubmit = refs.urlSubmit;
       const quoteRuntime = options.getQuoteRuntime && options.getQuoteRuntime();
       if (quoteRuntime) quoteRuntime.bindSettings(refs, wallpaperViewController);
+      const sectionSettings = options.getSectionPanelSettings && options.getSectionPanelSettings();
+      if (sectionSettings) {
+        sectionSettings.bindSettings(refs, wallpaperViewController, {
+          bindSliderValueInput: bindWallpaperSliderValueInput,
+          syncSliderValueInput: syncWallpaperSliderValueInput
+        });
+      }
       bindPanelSectionDisclosure(refs.themeSectionTrigger, refs.themeSectionBody);
       bindPanelSectionDisclosure(refs.searchSectionTrigger, refs.searchSectionBody);
       bindPanelSectionDisclosure(refs.faviconSectionTrigger, refs.faviconSectionBody);

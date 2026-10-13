@@ -1,6 +1,6 @@
 import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { SegmentedTabs } from './segmented-tabs';
 import { SelectMenu, type SelectMenuOption } from './select-menu';
 import { LinkButton } from '../shared/link-button';
@@ -177,6 +177,135 @@ function SliderControl({
           inputMode: 'numeric'
         }}
         marks={tickMarks(ticks)}
+      />
+    </div>
+  );
+}
+
+// A section whose header switch turns the page section on or off; the body ships
+// collapsed and is filled in by the page runtime.
+function ToggleSection({
+  arrowIcon,
+  children,
+  name
+}: {
+  arrowIcon: string;
+  children: ReactNode;
+  name: string;
+}) {
+  const bodyId = `_x_extension_newtab_${name}_body_2026_unique_`;
+  return (
+    <div {...ref(`${name}Section`)} className="x-nt-wallpaper-section">
+      <div className="x-nt-wallpaper-panel-header">
+        <SectionTrigger
+          arrowIcon={arrowIcon}
+          bodyId={bodyId}
+          expanded={false}
+          titleRef={`${name}Title`}
+          triggerRef={`${name}Trigger`}
+        />
+        <Switch name={`${name}Toggle`} />
+      </div>
+      <div
+        {...ref(`${name}Body`)}
+        className="x-nt-panel-section-body x-nt-panel-collapsible"
+        hidden
+        id={bodyId}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function SettingRow({ children, titleRef }: { children: ReactNode; titleRef: string }) {
+  return (
+    <div className="x-nt-appearance-setting-row">
+      <span {...ref(titleRef)} className="x-nt-appearance-setting-title" />
+      {children}
+    </div>
+  );
+}
+
+// Dropdown on the right of a setting row; the view controller renders the menu into it.
+function RowSelect({ hostRef }: { hostRef: string }) {
+  return (
+    <div
+      {...ref(hostRef)}
+      className="_x_extension_select_wrap_2024_unique_ _x_extension_custom_select_2024_unique_ x-nt-row-select"
+    />
+  );
+}
+
+// Segmented choice on the right of a setting row. Labels are filled in by the page
+// runtime unless the values are their own labels.
+function RowTabs({
+  attribute,
+  labeled = false,
+  name,
+  values
+}: {
+  attribute: `data-${string}`;
+  labeled?: boolean;
+  name: string;
+  values: string[];
+}) {
+  return (
+    <SegmentedTabs
+      className="x-nt-wallpaper-tabs x-nt-row-tabs"
+      indicatorClassName="x-nt-wallpaper-tabs-indicator"
+      indicatorRef={`${name}Indicator`}
+      name={`${name}Tabs`}
+      role="group"
+    >
+      {values.map((value) => (
+        <button
+          {...{ [attribute]: value }}
+          aria-pressed="false"
+          className="x-nt-segmented-tab x-nt-wallpaper-tab"
+          data-active="false"
+          key={value}
+          type="button"
+        >
+          {labeled ? value : null}
+        </button>
+      ))}
+    </SegmentedTabs>
+  );
+}
+
+// Whole-number slider with its value box; the page runtime sets the value and labels.
+function CountSlider({
+  defaultValue,
+  marks,
+  max,
+  min,
+  name
+}: {
+  defaultValue: string;
+  marks: number[];
+  max: string;
+  min: string;
+  name: string;
+}) {
+  return (
+    <div className="x-nt-overlay-control">
+      <RangeSliderField
+        label={<span {...ref(`${name}Label`)} className="x-nt-appearance-setting-title" />}
+        {...ref(`${name}Slider`)}
+        className="x-nt-overlay-slider-wrap"
+        defaultValue={defaultValue}
+        inputClass="x-nt-overlay-slider"
+        max={max}
+        min={min}
+        rowClassName="x-nt-range-slider-row"
+        step="1"
+        valueInputProps={{
+          ...ref(`${name}SliderValueInput`),
+          defaultValue,
+          inputMode: 'numeric'
+        }}
+        marks={marks}
       />
     </div>
   );
@@ -742,6 +871,37 @@ function WallpaperPanel({ model }: { model: Record<string, any> }) {
               </div>
             </div>
           </div>
+          <div className="x-nt-panel-divider" />
+          <ToggleSection arrowIcon={arrowIcon} name="bookmarkSettings">
+            <SettingRow titleRef="bookmarkViewModeLabel">
+              <RowSelect hostRef="bookmarkViewModeSelectHost" />
+            </SettingRow>
+            {/* Rows and columns shape the bookmark grid; the top bar has its own shape and background. */}
+            <div {...ref('bookmarkGridSettings')} className="x-nt-panel-field-group x-nt-panel-collapsible">
+              <CountSlider defaultValue="2" marks={[0, 300 / 7, 100]} max="8" min="1" name="bookmarkRows" />
+              <CountSlider defaultValue="6" marks={[0, 50, 100]} max="8" min="4" name="bookmarkColumns" />
+              <SettingRow titleRef="bookmarkFolderIconsTitle">
+                <Switch name="bookmarkFolderIconsToggle" />
+              </SettingRow>
+            </div>
+            <div {...ref('bookmarkTopbarSettings')} className="x-nt-panel-field-group x-nt-panel-collapsible" hidden>
+              <SettingRow titleRef="bookmarkTopbarLayoutLabel">
+                <RowTabs attribute="data-bookmark-topbar-layout" name="bookmarkTopbarLayout" values={['docked', 'floating']} />
+              </SettingRow>
+              <SettingRow titleRef="bookmarkTopbarSurfaceLabel">
+                <RowSelect hostRef="bookmarkTopbarSurfaceSelectHost" />
+              </SettingRow>
+            </div>
+          </ToggleSection>
+          <div className="x-nt-panel-divider" />
+          <ToggleSection arrowIcon={arrowIcon} name="recentSettings">
+            <SettingRow titleRef="recentModeLabel">
+              <RowTabs attribute="data-recent-mode" name="recentMode" values={['latest', 'most']} />
+            </SettingRow>
+            <SettingRow titleRef="recentRowsLabel">
+              <RowTabs attribute="data-recent-rows" labeled name="recentRows" values={['1', '2']} />
+            </SettingRow>
+          </ToggleSection>
           <div {...ref('quoteDivider')} className="x-nt-panel-divider" />
           <div {...ref('quoteSection')} className="x-nt-wallpaper-section x-nt-quote-settings">
             <div className="x-nt-wallpaper-panel-header">
@@ -790,13 +950,9 @@ function WallpaperPanel({ model }: { model: Record<string, any> }) {
                   ))}
                 </SegmentedTabs>
               </div>
-              <div className="x-nt-appearance-setting-row">
-                <span {...ref('quotePositionLabel')} className="x-nt-appearance-setting-title" />
-                <div
-                  {...ref('quotePositionSelectHost')}
-                  className="_x_extension_select_wrap_2024_unique_ _x_extension_custom_select_2024_unique_ x-nt-row-select"
-                />
-              </div>
+              <SettingRow titleRef="quotePositionLabel">
+                <RowSelect hostRef="quotePositionSelectHost" />
+              </SettingRow>
               <div {...ref('quoteFontSizeRow')} className="x-nt-overlay-control x-nt-quote-font-size">
                 <RangeSliderField
                   label={<span {...ref('quoteFontSizeTitle')} className="x-nt-appearance-setting-title" />}
@@ -1358,6 +1514,8 @@ export interface PanelSelectModel {
 
 const EFFECT_SELECT_ID = 'x-nt-wallpaper-effect';
 const QUOTE_POSITION_SELECT_ID = 'x-nt-quote-position';
+const BOOKMARK_VIEW_MODE_SELECT_ID = 'x-nt-bookmark-view-mode';
+const BOOKMARK_TOPBAR_SURFACE_SELECT_ID = 'x-nt-bookmark-topbar-surface';
 
 export interface WallpaperViewController {
   button: HTMLButtonElement;
@@ -1368,6 +1526,8 @@ export interface WallpaperViewController {
   getRefs(): Record<string, HTMLElement>;
   panel: HTMLDivElement;
   renderCustomWallpapers(items: WallpaperItem[]): HTMLElement[];
+  renderBookmarkTopbarSurfaceSelect(select: PanelSelectModel): void;
+  renderBookmarkViewModeSelect(select: PanelSelectModel): void;
   renderEffectSelect(select: PanelSelectModel): void;
   renderQuotePositionSelect(select: PanelSelectModel): void;
   renderCuratedWallpapers(items: WallpaperItem[]): HTMLElement[];
@@ -1412,7 +1572,9 @@ export function createWallpaperViewController(
   // Panel selects render as their own roots; their menus portal to the body.
   const selects = [
     { id: EFFECT_SELECT_ID, ref: 'effectSelectHost' },
-    { id: QUOTE_POSITION_SELECT_ID, ref: 'quotePositionSelectHost' }
+    { id: QUOTE_POSITION_SELECT_ID, ref: 'quotePositionSelectHost' },
+    { id: BOOKMARK_VIEW_MODE_SELECT_ID, ref: 'bookmarkViewModeSelectHost' },
+    { id: BOOKMARK_TOPBAR_SURFACE_SELECT_ID, ref: 'bookmarkTopbarSurfaceSelectHost' }
   ].map(({ id, ref: hostRef }) => {
     const host = control.querySelector<HTMLElement>(`[data-wallpaper-ref="${hostRef}"]`)!;
     return {
@@ -1422,7 +1584,7 @@ export function createWallpaperViewController(
       root: createRoot(host) as Root
     };
   });
-  const [effectSelect, quotePositionSelect] = selects;
+  const [effectSelect, quotePositionSelect, bookmarkViewModeSelect, bookmarkTopbarSurfaceSelect] = selects;
   const renderSelect = (select: (typeof selects)[number], model: PanelSelectModel) => {
     flushSync(() => select.root.render(
       <SelectMenu
@@ -1495,6 +1657,12 @@ export function createWallpaperViewController(
     },
     renderQuotePositionSelect(select: PanelSelectModel) {
       if (!destroyed) renderSelect(quotePositionSelect, select);
+    },
+    renderBookmarkViewModeSelect(select: PanelSelectModel) {
+      if (!destroyed) renderSelect(bookmarkViewModeSelect, select);
+    },
+    renderBookmarkTopbarSurfaceSelect(select: PanelSelectModel) {
+      if (!destroyed) renderSelect(bookmarkTopbarSurfaceSelect, select);
     },
     renderOnlineWallpapers(items: WallpaperItem[]) {
       return destroyed ? [] : renderTiles(onlineRoot, onlineItemsHost, items);
