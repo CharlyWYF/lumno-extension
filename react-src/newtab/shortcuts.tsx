@@ -736,6 +736,15 @@ export function createShortcutsView(
         { maxWidth: 260 }
       );
     }
+    options.grid
+      .querySelectorAll<HTMLButtonElement>('.x-nt-shortcut-group-empty')
+      .forEach((slot) => {
+        options.bindTooltip(
+          slot,
+          () => slot.getAttribute('aria-label') || options.getGroupEmptyLabel(),
+          { maxWidth: 260 }
+        );
+      });
     return { count: normalizedItems.length };
   }
 

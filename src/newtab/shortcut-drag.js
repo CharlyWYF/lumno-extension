@@ -210,6 +210,21 @@
       }
     }
 
+    // Something that was hidden or not there has no place to slide from
+    // (a hidden box measures at the page corner), so it fades in where it is.
+    function enterShortcutLayoutElement(element) {
+      if (typeof element.animate !== 'function') {
+        return;
+      }
+      element.animate([
+        { opacity: 0, scale: '0.86' },
+        { opacity: 1, scale: '1' }
+      ], {
+        duration: SHORTCUT_REORDER_ANIMATION_MS,
+        easing: SHORTCUT_REORDER_EASING
+      });
+    }
+
     function animateShortcutLayoutShift(beforeRects, draggedTile) {
       if (!beforeRects || !pageState.shortcutGrid) {
         return;
@@ -219,11 +234,18 @@
           return;
         }
         const before = beforeRects.get(tile);
-        if (!before) {
+        if (!before || !before.width || !before.height) {
+          const shown = tile.getBoundingClientRect();
+          if (shown.width && shown.height) {
+            enterShortcutLayoutElement(tile);
+          }
           return;
         }
         clearShortcutTileLayoutAnimation(tile);
         const after = tile.getBoundingClientRect();
+        if (!after.width || !after.height) {
+          return;
+        }
         const dx = before.left - after.left;
         const dy = before.top - after.top;
         if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
@@ -314,13 +336,24 @@
     // only the tiles before the insertion point; `groupId` is the group of the
     // tile or slot the pointer is beside.
     function getShortcutInsertionSlotAt(pointerX, pointerY, excludedTile) {
+      // The dragged tile filling an empty group hides that group's slot.
+      // The slot keeps the tile's place, or the group's row would drop out
+      // of reach and the next move would send the tile back, every move.
+      const lift = excludedTile && excludedTile._xShortcutDragLift;
+      const excludedSpot = lift && lift.placeholder && lift.placeholder.isConnected
+        ? lift.placeholder
+        : excludedTile;
+      const getSlotRect = (tile) => (excludedTile && tile.previousElementSibling === excludedTile &&
+        tile.classList.contains('x-nt-shortcut-group-empty') && !tile.hidden
+        ? getShortcutTileLayoutRect(excludedSpot)
+        : getShortcutTileLayoutRect(tile));
       const layoutItems = (pageState.shortcutGrid
         ? Array.from(pageState.shortcutGrid.querySelectorAll(SHORTCUT_SLOT_SELECTOR))
         : getShortcutReorderTiles())
         .filter((tile) => tile && tile !== excludedTile)
         .map((tile) => ({
           tile,
-          rect: getShortcutTileLayoutRect(tile)
+          rect: getSlotRect(tile)
         }))
         .filter((item) => item.rect && item.rect.width > 0 && item.rect.height > 0);
       const slot = NEWTAB_CROSS_SURFACE_DRAG.getRowInsertionSlot(layoutItems, pointerX, pointerY);
