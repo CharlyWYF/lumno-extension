@@ -2,7 +2,8 @@ import type { MouseEvent } from 'react';
 import { BusyLabel } from './busy-label';
 
 export interface PopconfirmCopy {
-  cancelLabel: string;
+  // Only read when the popconfirm has a Cancel button.
+  cancelLabel?: string;
   cancelLabelKey?: string;
   confirmLabel: string;
   confirmLabelKey?: string;
@@ -37,7 +38,9 @@ export function PopconfirmContent({
   busy?: boolean;
   classNames?: PopconfirmClassNames;
   copy: PopconfirmCopy;
-  onCancel(): void;
+  // Leave it out where the surface dismisses another way; the bubble then
+  // shows only the confirm button.
+  onCancel?(): void;
   onConfirm(event: MouseEvent<HTMLButtonElement>): void;
 }) {
   return (
@@ -46,18 +49,20 @@ export function PopconfirmContent({
         {copy.message}
       </div>
       <div className={classNames.actions}>
-        <button
-          className={classNames.cancel}
-          data-i18n={copy.cancelLabelKey || 'confirm_cancel'}
-          disabled={busy}
-          onClick={(event) => {
-            event.stopPropagation();
-            onCancel();
-          }}
-          type="button"
-        >
-          {copy.cancelLabel}
-        </button>
+        {onCancel ? (
+          <button
+            className={classNames.cancel}
+            data-i18n={copy.cancelLabelKey || 'confirm_cancel'}
+            disabled={busy}
+            onClick={(event) => {
+              event.stopPropagation();
+              onCancel();
+            }}
+            type="button"
+          >
+            {copy.cancelLabel}
+          </button>
+        ) : null}
         <button
           aria-busy={busy}
           className={classNames.confirm}

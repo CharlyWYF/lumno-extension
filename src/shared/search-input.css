@@ -947,11 +947,6 @@
   outline-offset: 2px;
 }
 
-.x-lumno-search-input__popconfirm-button--secondary {
-  --x-lumno-popconfirm-button-bg: var(--x-nt-hover-bg, var(--x-ov-hover-bg, rgba(148, 163, 184, 0.16)));
-  --x-lumno-popconfirm-button-hover-bg: var(--x-ext-input-icon-hover-bg, rgba(148, 163, 184, 0.24));
-}
-
 .x-lumno-search-input__popconfirm-button--primary {
   --x-lumno-popconfirm-button-border: var(--lumno-color-primary-border, #12161f);
   --x-lumno-popconfirm-button-bg: var(--lumno-color-primary, linear-gradient(180deg, #404859 0%, #273042 100%));

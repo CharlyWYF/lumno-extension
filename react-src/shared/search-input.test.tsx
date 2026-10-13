@@ -170,7 +170,6 @@ describe('Shared search input React island', () => {
   it('asks in a popconfirm before running a confirmed secondary action', () => {
     const onConfirm = vi.fn();
     const getCopy = vi.fn(() => ({
-      cancelLabel: 'Cancel',
       confirmLabel: 'Close',
       confirmLabelKey: 'close_confirm_button',
       message: 'Close other tabs?',
@@ -199,13 +198,14 @@ describe('Shared search input React island', () => {
     expect(popconfirm.getAttribute('aria-label')).toBe('Close other tabs?');
     expect(onConfirm).not.toHaveBeenCalled();
 
-    const [cancel, confirm] = Array.from(
-      popconfirm.querySelectorAll<HTMLButtonElement>('button')
-    );
+    // No Cancel button: the action button itself closes the bubble again.
+    const buttons = popconfirm.querySelectorAll<HTMLButtonElement>('button');
+    expect(buttons).toHaveLength(1);
+    const [confirm] = Array.from(buttons);
     expect(confirm.dataset.i18n).toBe('close_confirm_button');
-    act(() => cancel.click());
+    act(() => trigger.click());
     expect(popconfirm.dataset.open).toBe('false');
-    expect(document.activeElement).toBe(trigger);
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
     expect(onConfirm).not.toHaveBeenCalled();
 
     act(() => trigger.click());
@@ -221,8 +221,7 @@ describe('Shared search input React island', () => {
       secondaryAction: {
         confirm: {
           getCopy: () => ({
-            cancelLabel: 'Cancel',
-            confirmLabel: 'Close',
+                  confirmLabel: 'Close',
             message: 'Close other tabs?',
             messageKey: 'close_confirm'
           }),

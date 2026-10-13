@@ -233,8 +233,8 @@ function noTranslateProps() {
 
 const POPCONFIRM_CLASS_NAMES: PopconfirmClassNames = Object.freeze({
   actions: 'x-lumno-search-input__popconfirm-actions',
-  cancel:
-    'x-lumno-search-input__popconfirm-button x-lumno-search-input__popconfirm-button--secondary',
+  // No Cancel button: the action button, Escape or a click outside closes it.
+  cancel: '',
   confirm:
     'x-lumno-search-input__popconfirm-button x-lumno-search-input__popconfirm-button--primary',
   text: 'x-lumno-search-input__popconfirm-text'
@@ -347,7 +347,6 @@ function SecondaryAction({ action }: { action: SecondaryActionConfig }) {
             <PopconfirmContent
               classNames={POPCONFIRM_CLASS_NAMES}
               copy={copy}
-              onCancel={() => close(true)}
               onConfirm={(event) => {
                 close(false);
                 confirm.onConfirm(event.nativeEvent);

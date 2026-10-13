@@ -7616,8 +7616,7 @@
       message: t('overlay_close_other_tabs_confirm', '关闭此窗口中的其他标签页？置顶和分组内的标签页会保留。'),
       messageKey: 'overlay_close_other_tabs_confirm',
       confirmLabel: t('overlay_close_other_tabs_confirm_button', '关闭'),
-      confirmLabelKey: 'overlay_close_other_tabs_confirm_button',
-      cancelLabel: t('confirm_cancel', '取消')
+      confirmLabelKey: 'overlay_close_other_tabs_confirm_button'
     };
   }
 
