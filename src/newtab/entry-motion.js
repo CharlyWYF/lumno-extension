@@ -70,7 +70,7 @@
         window.clearTimeout(newtabReadySettleTimer);
         newtabReadySettleTimer = 0;
       }
-      updateBookmarkSectionPosition({ releaseDockDensityLock: true });
+      updateBookmarkSectionPosition();
       document.body.setAttribute('data-nt-enter', 'done');
       root.setAttribute('data-lumno-search-entry', 'done');
       finishWordmarkEntryAnimation();
@@ -106,7 +106,7 @@
           scheduleNewtabReadyAfterViewportSettle();
           return;
         }
-        updateBookmarkSectionPosition({ releaseDockDensityLock: true });
+        updateBookmarkSectionPosition();
         requestAnimationFrame(() => {
           if (pageState.newtabResizeLayoutLocked ||
               viewportRevision !== pageState.newtabReadyViewportRevision ||

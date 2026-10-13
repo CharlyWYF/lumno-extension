@@ -151,6 +151,8 @@ async function run() {
     let shortcutGroupEditingId = '';
     function getShortcutStoreOptions() { return {}; }
     function isShortcutGroupLayoutActive() { return false; }
+    function isShortcutDragActive() { return false; }
+    let shortcutRenderDeferred = false;
     function scheduleWallpaperAdaptiveToneUpdate() {}
     function hideShortcutTooltip() {} function closeShortcutContextMenu() {}
     function syncOpenBookmarkCascadeAnchorVisual() {} function applyNewtabShortcutsVisibility() {}

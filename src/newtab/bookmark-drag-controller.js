@@ -45,7 +45,6 @@
       hideCursorTooltip,
       isEditableElement,
       closeBookmarkCascadeMenu,
-      suppressCanceledDragClick,
       renderCurrentBookmarkPage,
       applyShortcutGroupDeleteRecord,
       autoScrollShortcutArea,
@@ -59,7 +58,6 @@
     const BOOKMARK_REORDER_ANIMATION_MS = 180;
     const BOOKMARK_DROP_ANIMATION_MS = 210;
     const BOOKMARK_REORDER_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
-    const BOOKMARK_DRAG_CLICK_SUPPRESS_MS = 420;
     const BOOKMARK_DRAG_PAGE_SWITCH_DELAY_MS = 640;
     const BOOKMARK_DRAG_FOLDER_SWITCH_DELAY_MS = 640;
     let bookmarkPendingLayoutAnimation = null;
@@ -163,7 +161,7 @@
     }
 
     function animateBookmarkLayoutShift(beforeRects, draggedCard) {
-      if (!beforeRects || !pageState.bookmarkGrid) {
+      if (!beforeRects || !pageState.bookmarkGrid || NEWTAB_CROSS_SURFACE_DRAG.prefersReducedMotion(window)) {
         return;
       }
       const cardsToAnimate = getBookmarkReorderCards().filter((card) =>
@@ -272,7 +270,8 @@
       bookmarkPendingLayoutAnimation = null;
       if (!pending || !pageState.bookmarkGrid ||
           pending.folderId !== String(pageState.bookmarkCurrentFolderId || '') ||
-          pending.page !== pageState.bookmarkCurrentPage) {
+          pending.page !== pageState.bookmarkCurrentPage ||
+          NEWTAB_CROSS_SURFACE_DRAG.prefersReducedMotion(window)) {
         return false;
       }
       const shifts = [];
@@ -391,7 +390,10 @@
       }
       card.setAttribute('data-bookmark-dropping', 'true');
       card.style.pointerEvents = '';
-      card.style.transition = `transform ${BOOKMARK_DROP_ANIMATION_MS}ms ${BOOKMARK_REORDER_EASING}`;
+      const reducedMotion = NEWTAB_CROSS_SURFACE_DRAG.prefersReducedMotion(window);
+      card.style.transition = reducedMotion
+        ? 'none'
+        : `transform ${BOOKMARK_DROP_ANIMATION_MS}ms ${BOOKMARK_REORDER_EASING}`;
       card.style.transform = 'translate3d(0, 0, 0)';
       if (card._xBookmarkDropTimer) {
         window.clearTimeout(card._xBookmarkDropTimer);
@@ -404,7 +406,7 @@
         card.style.removeProperty('transform');
         card.style.removeProperty('will-change');
         card.style.pointerEvents = '';
-      }, BOOKMARK_DROP_ANIMATION_MS + 90);
+      }, reducedMotion ? 0 : BOOKMARK_DROP_ANIMATION_MS + 90);
     }
 
     function isPointInsideBookmarkElement(element, pointerX, pointerY) {
@@ -2118,19 +2120,7 @@
           card.style.pointerEvents = '';
         }
         if (state.isDragging) {
-          card._xBookmarkSuppressClick = true;
-          if (card._xBookmarkSuppressClickTimer) {
-            window.clearTimeout(card._xBookmarkSuppressClickTimer);
-          }
-          if (event) {
-            card._xBookmarkSuppressClickTimer = window.setTimeout(() => {
-              card._xBookmarkSuppressClickTimer = 0;
-              card._xBookmarkSuppressClick = false;
-            }, BOOKMARK_DRAG_CLICK_SUPPRESS_MS);
-          } else {
-            card._xBookmarkSuppressClickTimer = 0;
-            suppressCanceledDragClick(card, '_xBookmarkSuppressClick', state.pointerId);
-          }
+          root.LumnoNewtabDragClickGuard.getDragClickGuard().armAfterDrag(event, state.pointerId);
         }
       }
       if (state.isDragging && dropTarget && dropTarget.surface === 'shortcuts') {

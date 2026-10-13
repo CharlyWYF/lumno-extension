@@ -8,6 +8,7 @@
       getShortcutTileId,
       getShortcutTileById,
       renderShortcuts,
+      flushDeferredShortcutRender,
       resetShortcutDockHover,
       NEWTAB_BOOKMARK_MOVE_HISTORY,
       persistShortcuts,
@@ -55,6 +56,11 @@
 
     // Page state still owned by newtab.js; read and written through accessors.
     const pageState = deps.pageState;
+
+    // One click guard for every drag on the page (drag-click-guard.js).
+    function getDragClickGuard() {
+      return root.LumnoNewtabDragClickGuard.getDragClickGuard();
+    }
 
     const SHORTCUT_DRAG_START_THRESHOLD_PX = 10;
     const SHORTCUT_REORDER_ANIMATION_MS = 180;
@@ -214,7 +220,7 @@
     // Something that was hidden or not there has no place to slide from
     // (a hidden box measures at the page corner), so it fades in where it is.
     function enterShortcutLayoutElement(element) {
-      if (typeof element.animate !== 'function') {
+      if (typeof element.animate !== 'function' || NEWTAB_CROSS_SURFACE_DRAG.prefersReducedMotion(window)) {
         return;
       }
       element.animate([
@@ -227,7 +233,7 @@
     }
 
     function animateShortcutLayoutShift(beforeRects, draggedTile) {
-      if (!beforeRects || !pageState.shortcutGrid) {
+      if (!beforeRects || !pageState.shortcutGrid || NEWTAB_CROSS_SURFACE_DRAG.prefersReducedMotion(window)) {
         return;
       }
       getShortcutLayoutElements().forEach((tile) => {
@@ -302,7 +308,10 @@
       }
       tile.setAttribute('data-shortcut-dropping', 'true');
       tile.style.pointerEvents = '';
-      tile.style.transition = `transform ${SHORTCUT_DROP_ANIMATION_MS}ms ${SHORTCUT_REORDER_EASING}`;
+      const reducedMotion = NEWTAB_CROSS_SURFACE_DRAG.prefersReducedMotion(window);
+      tile.style.transition = reducedMotion
+        ? 'none'
+        : `transform ${SHORTCUT_DROP_ANIMATION_MS}ms ${SHORTCUT_REORDER_EASING}`;
       // A lifted tile lands on its placeholder, wherever the area scrolled.
       const lift = tile._xShortcutDragLift;
       const slotRect = lift && lift.placeholder && lift.placeholder.isConnected
@@ -323,7 +332,7 @@
         tile.style.removeProperty('transform');
         tile.style.removeProperty('will-change');
         tile.style.pointerEvents = '';
-      }, SHORTCUT_DROP_ANIMATION_MS + 90);
+      }, reducedMotion ? 0 : SHORTCUT_DROP_ANIMATION_MS + 90);
     }
 
     function getShortcutTileInsertionIndex(tile) {
@@ -512,6 +521,40 @@
         });
     }
 
+    // Alt+Arrow on a focused tile moves it one place, like a short drag:
+    // past a group's edge it joins the neighboring group. It saves and
+    // records undo the way a drop does, and keeps focus on the tile.
+    function moveShortcutByKeyboard(shortcutId, direction) {
+      if (!shortcutId || (direction !== 1 && direction !== -1) || pageState.shortcutDragState ||
+          pageState.bookmarkMoveHistoryBusy) {
+        return false;
+      }
+      const tiles = getShortcutReorderTiles();
+      const currentIndex = tiles.findIndex((tile) => getShortcutTileId(tile) === shortcutId);
+      const neighbor = currentIndex >= 0 ? tiles[currentIndex + direction] : null;
+      if (!neighbor) {
+        return false;
+      }
+      const ownGroupId = getShortcutTileGroupId(tiles[currentIndex]);
+      const neighborGroupId = getShortcutTileGroupId(neighbor);
+      const crossesGroup = neighborGroupId !== ownGroupId;
+      const state = { originalShortcuts: pageState.newtabShortcuts.slice() };
+      // Crossing into the next group keeps the index and changes the group.
+      const targetIndex = crossesGroup ? currentIndex : currentIndex + direction;
+      if (!moveShortcutItem(shortcutId, targetIndex, crossesGroup ? neighborGroupId : '')) {
+        return false;
+      }
+      persistShortcutOrder(state).then(() => {
+        animateShortcutLayoutChange(renderShortcuts);
+        scheduleWallpaperAdaptiveToneUpdate();
+        const tile = getShortcutTileById(shortcutId);
+        if (tile && typeof tile.focus === 'function' && document.activeElement !== tile) {
+          tile.focus({ preventScroll: true });
+        }
+      });
+      return true;
+    }
+
     function startShortcutDrag(event, tile) {
       if (!pageState.shortcutGrid || !tile || !pageState.shortcutDragState || pageState.shortcutDragState.tile !== tile) {
         return;
@@ -630,36 +673,8 @@
       });
     }
 
-    function suppressCanceledDragClick(element, flagName, pointerId) {
-      if (element._xDragCancelClickCleanup) {
-        element._xDragCancelClickCleanup();
-      }
-      element[flagName] = true;
-      const cleanup = () => {
-        document.removeEventListener('pointerup', onRelease, true);
-        document.removeEventListener('pointercancel', onRelease, true);
-        document.removeEventListener('pointerdown', onNextPress, true);
-        delete element._xDragCancelClickCleanup;
-      };
-      const onRelease = (releaseEvent) => {
-        if (releaseEvent.pointerId !== pointerId) {
-          return;
-        }
-        cleanup();
-        // A canceled drag can still generate a click when the held mouse is
-        // released later. Keep suppression through that click's event turn.
-        window.setTimeout(() => { element[flagName] = false; }, 0);
-      };
-      const onNextPress = () => {
-        cleanup();
-        element[flagName] = false;
-      };
-      element._xDragCancelClickCleanup = cleanup;
-      document.addEventListener('pointerup', onRelease, true);
-      document.addEventListener('pointercancel', onRelease, true);
-      document.addEventListener('pointerdown', onNextPress, true);
-    }
-
+    // Renders asked for during the drag were held back (see renderShortcuts);
+    // whatever the drop does first, they run once it has settled.
     function finishShortcutDrag(event, options) {
       if (!pageState.shortcutDragState) {
         return;
@@ -667,6 +682,11 @@
       if (event && pageState.shortcutDragState.pointerId !== event.pointerId) {
         return;
       }
+      const outcome = endShortcutDrag(event, options);
+      Promise.resolve(outcome).then(flushDeferredShortcutRender, flushDeferredShortcutRender);
+    }
+
+    function endShortcutDrag(event, options) {
       const state = pageState.shortcutDragState;
       detachShortcutDragDocumentListeners();
       if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) {
@@ -716,14 +736,7 @@
           tile.style.pointerEvents = '';
         }
         if (state.isDragging) {
-          tile._xShortcutSuppressClick = true;
-          if (event) {
-            window.setTimeout(() => {
-              tile._xShortcutSuppressClick = false;
-            }, 0);
-          } else {
-            suppressCanceledDragClick(tile, '_xShortcutSuppressClick', state.pointerId);
-          }
+          getDragClickGuard().armAfterDrag(event, state.pointerId);
         }
       }
       if (bookmarkDropTarget) {
@@ -732,12 +745,9 @@
         if (event && typeof event.preventDefault === 'function') {
           event.preventDefault();
         }
-        if (bookmarkDropTarget.kind === 'shortcut-stack') {
-          stackShortcuts(state, bookmarkDropTarget);
-        } else {
-          moveShortcutToBookmarks(state, bookmarkDropTarget);
-        }
-        return;
+        return bookmarkDropTarget.kind === 'shortcut-stack'
+          ? stackShortcuts(state, bookmarkDropTarget)
+          : moveShortcutToBookmarks(state, bookmarkDropTarget);
       }
       // The empty bookmarks bar shown for the drag hides again however the
       // drag ends.
@@ -754,15 +764,15 @@
         if (event && typeof event.preventDefault === 'function') {
           event.preventDefault();
         }
-        persistShortcutOrder(state).then(() => {
+        return persistShortcutOrder(state).then(() => {
           animateShortcutLayoutChange(renderShortcuts);
           scheduleWallpaperAdaptiveToneUpdate();
         });
-        return;
       }
       if (options && options.cancel) {
         resetShortcutDockHover();
       }
+      return undefined;
     }
 
     // Reordering re-inserts the captured tile, which drops pointer capture, and
@@ -1046,11 +1056,16 @@
       document.addEventListener('pointermove', handleShortcutGroupDragPointerMove, true);
       document.addEventListener('pointerup', handleShortcutGroupDragPointerUp, true);
       document.addEventListener('pointercancel', handleShortcutGroupDragPointerCancel, true);
-      document.addEventListener('keydown', handleShortcutGroupDragKeyDown, true);
     }
 
     function startShortcutGroupDrag(state) {
       state.isDragging = true;
+      // Escape cancels the drag before it closes any open layer.
+      root.LumnoNewtabDismissStack.getDismissStack().push('shortcut-group-drag', {
+        priority: 1,
+        isOpen: () => state === shortcutGroupDragState,
+        close: () => finishShortcutGroupDrag(false, null)
+      });
       closeShortcutContextMenu();
       hideShortcutTooltip();
       resetShortcutDockHover();
@@ -1130,14 +1145,15 @@
       scheduleShortcutGroupDragMove(state, pointerX, pointerY);
     }
 
-    function finishShortcutGroupDrag(commit) {
+    // `release` is the pointer event that ended the drag; null for Escape.
+    function finishShortcutGroupDrag(commit, release) {
       const state = shortcutGroupDragState;
       if (!state) return;
       shortcutGroupDragState = null;
       document.removeEventListener('pointermove', handleShortcutGroupDragPointerMove, true);
       document.removeEventListener('pointerup', handleShortcutGroupDragPointerUp, true);
       document.removeEventListener('pointercancel', handleShortcutGroupDragPointerCancel, true);
-      document.removeEventListener('keydown', handleShortcutGroupDragKeyDown, true);
+      root.LumnoNewtabDismissStack.getDismissStack().remove('shortcut-group-drag');
       if (state.frameId) window.cancelAnimationFrame(state.frameId);
       if (!state.isDragging) return;
       if (state.ghost) state.ghost.remove();
@@ -1145,12 +1161,7 @@
       state.header.removeAttribute('data-shortcut-group-dragging');
       document.body.removeAttribute('data-drag-source');
       // The release would otherwise click the untitled group's title.
-      const suppressClick = (clickEvent) => {
-        clickEvent.preventDefault();
-        clickEvent.stopPropagation();
-      };
-      document.addEventListener('click', suppressClick, true);
-      window.setTimeout(() => document.removeEventListener('click', suppressClick, true), 0);
+      getDragClickGuard().armAfterDrag(release, state.pointerId);
       if (commit && state.targetIndex >= 0) {
         moveShortcutGroupToIndex(state.groupId, state.targetIndex);
       }
@@ -1158,21 +1169,13 @@
 
     function handleShortcutGroupDragPointerUp(event) {
       if (shortcutGroupDragState && event.pointerId === shortcutGroupDragState.pointerId) {
-        finishShortcutGroupDrag(true);
+        finishShortcutGroupDrag(true, event);
       }
     }
 
     function handleShortcutGroupDragPointerCancel(event) {
       if (shortcutGroupDragState && event.pointerId === shortcutGroupDragState.pointerId) {
-        finishShortcutGroupDrag(false);
-      }
-    }
-
-    function handleShortcutGroupDragKeyDown(event) {
-      if (event.key === 'Escape' && shortcutGroupDragState && shortcutGroupDragState.isDragging) {
-        event.preventDefault();
-        event.stopPropagation();
-        finishShortcutGroupDrag(false);
+        finishShortcutGroupDrag(false, event);
       }
     }
 
@@ -1267,8 +1270,8 @@
       autoScrollShortcutArea,
       animateShortcutLayoutChange,
       scheduleShortcutDragMove,
-      suppressCanceledDragClick,
       finishShortcutDrag,
+      moveShortcutByKeyboard,
       isShortcutDragActive,
       isBookmarkSurfaceDragStateActive,
       handleShortcutDragPointerDown

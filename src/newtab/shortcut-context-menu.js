@@ -1,6 +1,8 @@
 (function(root) {
   // Right-click menu for shortcut tiles and the add-shortcut tile.
   function createShortcutContextMenu(deps) {
+    // Escape closes the menu through the page's dismiss stack.
+    const dismissStack = root.LumnoNewtabDismissStack.getDismissStack();
     const {
       getShortcutDockIcon,
       setShortcutDockHover,
@@ -284,13 +286,6 @@
       });
     }
 
-    function handleShortcutContextMenuDocumentKeyDown(event) {
-      if (event && event.key === 'Escape' &&
-          (pageState.shortcutContextMenuTarget || isShortcutContextMenuOpen())) {
-        closeShortcutContextMenu();
-      }
-    }
-
     function handleShortcutContextMenuDocumentFocusIn(event) {
       if (pageState.shortcutContextMenuTarget && !isShortcutContextMenuNode(event.target)) {
         closeShortcutContextMenu();
@@ -344,7 +339,6 @@
       });
       menu.addEventListener('click', handleShortcutContextMenuActionClick);
       document.addEventListener('pointerdown', handleShortcutContextMenuDocumentPointerDown, true);
-      document.addEventListener('keydown', handleShortcutContextMenuDocumentKeyDown, true);
       document.addEventListener('focusin', handleShortcutContextMenuDocumentFocusIn, true);
       (document.body || pageState.shortcutSection || document.documentElement).appendChild(control);
       return {
@@ -396,6 +390,10 @@
       pageState.shortcutContextMenu.select.value = defaultValue;
       pageState.shortcutContextMenuSelectController.sync(pageState.shortcutContextMenu.control);
       pageState.shortcutContextMenuSelectController.setOpen(pageState.shortcutContextMenu.control, true);
+      dismissStack.push('shortcut-context-menu', {
+        isOpen: () => Boolean(pageState.shortcutContextMenuTarget || isShortcutContextMenuOpen()),
+        close: () => closeShortcutContextMenu()
+      });
     }
 
     function handleShortcutContextMenu(event) {

@@ -35,8 +35,6 @@ export interface BookmarkItem {
 export interface BookmarkCardElement extends HTMLDivElement {
   _xBookmarkItem?: BookmarkItem;
   _xBookmarkPageIndex?: number;
-  _xBookmarkSuppressClick?: boolean;
-  _xBookmarkSuppressClickTimer?: number;
   _xTitleText?: string;
   _xNoThemeTint?: boolean;
   _xTheme?: ThemeValue;
@@ -712,32 +710,8 @@ function BookmarkCard({
     syncFolderExpandedState();
   }
 
-  function clearDragClickSuppression(): void {
-    const card = cardRef.current;
-    if (
-      card?._xBookmarkSuppressClickTimer &&
-      typeof options.windowObj.clearTimeout === 'function'
-    ) {
-      options.windowObj.clearTimeout(card._xBookmarkSuppressClickTimer);
-      card._xBookmarkSuppressClickTimer = 0;
-    }
-    if (card) {
-      card._xBookmarkSuppressClick = false;
-    }
-  }
-
-  function consumeDragClickSuppression(): boolean {
-    const card = cardRef.current;
-    if (!card?._xBookmarkSuppressClick) {
-      return false;
-    }
-    clearDragClickSuppression();
-    return true;
-  }
-
   function dispose(): void {
     clearHoverIntentTimer();
-    clearDragClickSuppression();
   }
 
   function setCopyActionVisible(visible: boolean): void {
@@ -792,11 +766,6 @@ function BookmarkCard({
   ): void {
     const card = cardRef.current;
     if (!card) {
-      return;
-    }
-    if (event.type === 'click' && consumeDragClickSuppression()) {
-      event.preventDefault();
-      event.stopPropagation();
       return;
     }
     if (event.type === 'click' && options.isActivationSuppressed()) {
@@ -973,7 +942,6 @@ function BookmarkCard({
         }
       }}
       onPointerDown={(event) => {
-        clearDragClickSuppression();
         clearHoverIntentTimer();
         if (
           cardRef.current &&

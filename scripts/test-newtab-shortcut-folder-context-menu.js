@@ -68,7 +68,8 @@ function assertShortcutContextMenuFolderVisuals() {
     NEWTAB_CONTEXT_MENU_OPEN_VALUE: 'open',
     SHORTCUT_CONTEXT_MENU_HIDE_ADD_VALUE: 'hide',
     SHORTCUT_GROUP_MENU_VALUES: { addShortcut: 'shortcut-add', rename: 'group-rename' },
-    reopenBlockedAnchor: null
+    reopenBlockedAnchor: null,
+    dismissStack: require('../src/newtab/dismiss-stack.js').createDismissStack({ documentObj: null })
   };
   vm.runInNewContext([
     'isShortcutContextMenuOpen',
@@ -78,7 +79,6 @@ function assertShortcutContextMenuFolderVisuals() {
     'openShortcutContextMenu',
     'closeShortcutContextMenu',
     'handleShortcutContextMenuDocumentPointerDown',
-    'handleShortcutContextMenuDocumentKeyDown',
     'handleShortcutContextMenuDocumentFocusIn'
   ].map((name) => getFunctionSource(newtabJs, name)).join('\n'), sandbox);
 
@@ -102,7 +102,7 @@ function assertShortcutContextMenuFolderVisuals() {
 
   const dismissals = [
     () => sandbox.handleShortcutContextMenuDocumentPointerDown({ target: 'outside', clientX: 0, clientY: 0 }),
-    () => sandbox.handleShortcutContextMenuDocumentKeyDown({ key: 'Escape' }),
+    () => sandbox.dismissStack.dismissTop(),
     () => sandbox.handleShortcutContextMenuDocumentFocusIn({ target: 'outside' })
   ];
   dismissals.forEach((dismiss) => {
@@ -110,7 +110,6 @@ function assertShortcutContextMenuFolderVisuals() {
     sandbox.openShortcutContextMenu({ kind: 'shortcut', shortcutId: 'folder', tile: folder });
     sandbox.handleShortcutContextMenuDocumentPointerDown({ target: 'menu' });
     sandbox.handleShortcutContextMenuDocumentFocusIn({ target: 'menu' });
-    sandbox.handleShortcutContextMenuDocumentKeyDown({ key: 'ArrowDown' });
     assert.deepStrictEqual(folder.animations, [true], 'interacting within the menu should keep its folder open');
     dismiss();
     assert.deepStrictEqual(folder.animations, [true, false], 'every menu dismissal should release its folder icon');

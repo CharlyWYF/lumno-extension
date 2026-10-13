@@ -1644,7 +1644,7 @@ assertContains(
 );
 
 assertContains(
-  getFunctionSource(newtabJs, 'finishShortcutDrag'),
+  getFunctionSource(newtabJs, 'endShortcutDrag'),
   'flushShortcutDragMove(state);',
   'shortcut drag release should apply the latest queued pointer position before persistence'
 );
@@ -1778,12 +1778,6 @@ assertContains(
   newtabJs,
   "persistShortcuts(newtabShortcuts, '', undefined, { render: false })",
   'shortcut drag reordering should use the shared quota and local overflow persistence'
-);
-
-assertContains(
-  newtabJs,
-  'tile._xShortcutSuppressClick = true;',
-  'shortcut drag reordering should prevent the release click from opening the dragged shortcut'
 );
 
 assertContains(
@@ -2141,7 +2135,7 @@ assertContains(
 );
 
 assertContains(
-  getFunctionSource(newtabJs, 'finishShortcutDrag'),
+  getFunctionSource(newtabJs, 'endShortcutDrag'),
   'detachShortcutDragDocumentListeners();',
   'shortcut drags should release their document listeners when they finish'
 );

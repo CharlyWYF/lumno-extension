@@ -287,6 +287,32 @@ describe('Shortcuts React island', () => {
     expect(openShortcut).toHaveBeenCalledTimes(3);
   });
 
+  it('moves a focused tile with Alt+Arrow instead of navigating', () => {
+    const moveShortcut = vi.fn(() => true);
+    const openShortcut = vi.fn();
+    const { view } = createView({ moveShortcut, openShortcut });
+    renderItems(view, [
+      { id: 'docs', title: 'Docs', url: 'https://example.com/docs' },
+      { id: 'mail', title: 'Mail', url: 'https://example.com/mail' }
+    ]);
+    const tile = view.getTiles()[0];
+    const press = (key: string, init: KeyboardEventInit = {}) => {
+      const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key, ...init });
+      act(() => {
+        tile.dispatchEvent(event);
+      });
+      return event;
+    };
+
+    expect(press('ArrowRight', { altKey: true }).defaultPrevented).toBe(true);
+    expect(press('ArrowLeft', { altKey: true }).defaultPrevented).toBe(true);
+    press('ArrowRight');
+    press('ArrowRight', { altKey: true, shiftKey: true });
+    expect(moveShortcut.mock.calls).toEqual([['docs', 1], ['docs', -1]]);
+    expect(openShortcut).not.toHaveBeenCalled();
+    expect(tile.getAttribute('aria-keyshortcuts')).toBe('Alt+ArrowLeft Alt+ArrowRight');
+  });
+
   it('hides the add tile when the preference is off and restores it live', () => {
     let addVisible = false;
     const { view } = createView({

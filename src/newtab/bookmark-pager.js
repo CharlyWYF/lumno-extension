@@ -143,7 +143,9 @@
       if (pageState.bookmarkPageAnimating) {
         return;
       }
-      if (!pageState.bookmarkGrid) {
+      // With reduced motion asked for, the page switches without sliding.
+      const crossSurfaceDrag = root.LumnoNewtabCrossSurfaceDrag;
+      if (!pageState.bookmarkGrid || (crossSurfaceDrag && crossSurfaceDrag.prefersReducedMotion(window))) {
         pageState.bookmarkCurrentPage = targetPage;
         renderCurrentBookmarkPage();
         updateBookmarkSectionPosition();

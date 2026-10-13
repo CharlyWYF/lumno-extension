@@ -350,10 +350,6 @@
       return SETTINGS.normalizeTabRankScoreDebugMode(value);
     }
 
-    function normalizeBookmarkCascadeDebugMode(value) {
-      return value === true;
-    }
-
     return {
       normalizeNewtabWidthMode,
       normalizeNewtabSearchWidth,
@@ -390,8 +386,7 @@
       normalizeBookmarkCount,
       getBookmarkLimit,
       normalizeBookmarkColumns,
-      normalizeTabRankScoreDebugMode,
-      normalizeBookmarkCascadeDebugMode
+      normalizeTabRankScoreDebugMode
     };
   }
 

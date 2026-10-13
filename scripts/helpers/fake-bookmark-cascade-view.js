@@ -121,40 +121,6 @@ function createFakeBookmarkCascadeView() {
         items,
         destroy() {}
       };
-    },
-
-    createDebugOverlay(menu) {
-      const documentObj = menu.ownerDocument;
-      const svg = createElement(
-        documentObj,
-        'svg',
-        'x-nt-bookmark-cascade-debug-svg'
-      );
-      const polygon = createElement(documentObj, 'polygon', '');
-      const label = createElement(
-        documentObj,
-        'div',
-        'x-nt-bookmark-cascade-debug-label'
-      );
-      svg.appendChild(polygon);
-      menu.appendChild(svg);
-      menu.appendChild(label);
-      return { svg, polygon, label, destroy() {} };
-    },
-
-    createDebugControl(documentObj) {
-      const element = createElement(
-        documentObj,
-        'div',
-        'x-nt-bookmark-cascade-debug-control'
-      );
-      const button = createElement(
-        documentObj,
-        'button',
-        'x-nt-bookmark-cascade-debug-toggle'
-      );
-      element.appendChild(button);
-      return { element, button, destroy() {} };
     }
   };
 }
