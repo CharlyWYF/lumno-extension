@@ -1716,11 +1716,6 @@ body[data-nt-enter="run"] .x-nt-bookmark-cascade-debug-control {
 .x-nt-section-mode-select--heading[data-open="true"] ._x_extension_select_icon_2024_unique_ {
   transform: rotate(180deg);
 }
-body[data-theme="dark"]
-  .x-nt-section-mode-select--heading[data-open="true"]
-  ._x_extension_select_trigger_2024_unique_ {
-  box-shadow: none;
-}
 @media (hover: none) {
   .x-nt-section-mode-select--heading ._x_extension_select_icon_2024_unique_ {
     opacity: 0.6;
@@ -1734,6 +1729,11 @@ body[data-theme="dark"]
 .x-nt-section-mode-select:hover ._x_extension_select_trigger_2024_unique_,
 .x-nt-section-mode-select[data-open="true"] ._x_extension_select_trigger_2024_unique_ {
   background: var(--x-nt-bookmark-pager-hover-bg, rgba(17, 24, 39, 0.08));
+  box-shadow: none;
+}
+/* The shared select rings an open trigger in dark mode; section mode buttons stay flat
+   there too. */
+body[data-theme="dark"] .x-nt-section-mode-select[data-open="true"] ._x_extension_select_trigger_2024_unique_ {
   box-shadow: none;
 }
 .x-nt-section-mode-select ._x_extension_select_menu_2024_unique_,
