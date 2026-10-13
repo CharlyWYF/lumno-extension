@@ -450,6 +450,17 @@ async function testProviderStorageRuntime() {
     'the runtime should keep reading the Chrome Sync value'
   );
 
+  const providerStorage = settings.getProviderStorage(chromeApi);
+  assert.strictEqual(providerStorage.runtime, runtime, 'getProviderStorage should reuse the runtime');
+  assert.strictEqual(providerStorage.area, runtime.area);
+  assert.strictEqual(providerStorage.areaName, 'sync');
+  const localOnly = settings.getProviderStorage({ storage: { local: createArea({ [languageKey]: 'ja' }) } });
+  assert.strictEqual(localOnly.areaName, 'local', 'without Chrome Sync the provider area is local');
+  assert.deepStrictEqual(await localOnly.area.get([languageKey]), { [languageKey]: 'ja' });
+  const noStorage = settings.getProviderStorage(null);
+  assert.ok(noStorage.runtime && noStorage.area, 'a runtime exists even without storage');
+  assert.deepStrictEqual(await noStorage.area.get(['x']), {});
+
   let multiWriteCount = 0;
   let multiWritePayload = null;
   const writtenValues = await settings.writeStorageValues({

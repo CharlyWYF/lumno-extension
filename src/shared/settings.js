@@ -1036,6 +1036,20 @@
     return runtime;
   }
 
+  // The area provider-scoped settings live in, plus the runtime that tracks
+  // it. The runtime always exists (it falls back to local storage when sync
+  // is missing), so callers need no sync/local fallback chain of their own.
+  // areaName is the name at the time of the call; ask the runtime for the
+  // current one once local-primary mode may have been read.
+  function getProviderStorage(chromeApi) {
+    const runtime = createProviderStorageRuntime(chromeApi);
+    return Object.freeze({
+      runtime,
+      area: runtime.area,
+      areaName: runtime.name
+    });
+  }
+
   function addStorageChangeListener(chromeApi, listener) {
     const onChanged = chromeApi && chromeApi.storage && chromeApi.storage.onChanged;
     if (!onChanged || typeof onChanged.addListener !== 'function' ||
@@ -1183,6 +1197,7 @@
     createStorageReadBatch,
     prefetchStorageRead,
     createProviderStorageRuntime,
+    getProviderStorage,
     addStorageChangeListener
   });
 });
