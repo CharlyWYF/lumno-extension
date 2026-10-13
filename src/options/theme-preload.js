@@ -1,6 +1,7 @@
 (function() {
-  const THEME_STORAGE_KEY = '_x_extension_theme_mode_2024_unique_';
-  const THEME_CACHE_KEY = '_x_extension_options_theme_preload_2026_unique_';
+  const SETTINGS = globalThis.LumnoSettings;
+  const THEME_STORAGE_KEY = SETTINGS.THEME_STORAGE_KEY;
+  const THEME_CACHE_KEY = SETTINGS.OPTIONS_THEME_PRELOAD_STORAGE_KEY;
   const PRELOAD_THEME_ATTRIBUTE = 'data-options-preload-theme';
   const PRELOAD_THEME_MODE_ATTRIBUTE = 'data-options-theme-mode';
   const BACKGROUND_PRELOAD_ID = '_x_extension_options_background_preload_2026_unique_';
@@ -168,10 +169,7 @@
   }
 
   try {
-    const providerRuntime = globalThis.LumnoSettings.createProviderStorageRuntime(chrome);
-    const storage = providerRuntime ? providerRuntime.area : globalThis.chrome && chrome.storage
-      ? (chrome.storage.sync || chrome.storage.local)
-      : null;
+    const storage = SETTINGS.getProviderStorage(globalThis.chrome).area;
     if (storage && typeof storage.get === 'function') {
       storage.get([THEME_STORAGE_KEY], (result) => {
         const storedMode = normalizeThemeMode(result && result[THEME_STORAGE_KEY]);

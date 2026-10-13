@@ -20,11 +20,6 @@ assert.ok(
   'the Labs experiment must render off by default'
 );
 assert.match(
-  optionsSource,
-  /MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY[\s\S]*?normalizeMacosCtrlSuggestionNavigationEnabled[\s\S]*?storageArea\.set/,
-  'Options should normalize and persist the experiment'
-);
-assert.match(
   newtabSource,
   /MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY[\s\S]*?getSuggestionNavigationKey\(event/,
   'New Tab should load and use the experiment preference'

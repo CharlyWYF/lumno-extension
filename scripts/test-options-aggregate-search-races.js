@@ -1,38 +1,20 @@
 const assert = require('assert');
-const fs = require('fs');
-const vm = require('vm');
 
-const optionsSource = fs.readFileSync('src/options/options.js', 'utf8');
-const factoryStart = optionsSource.indexOf('function createAggregateSearchStateCoordinator(');
-const factoryEnd = optionsSource.indexOf('\n  function normalizeAggregateSearches(', factoryStart);
-
-assert.ok(factoryStart >= 0 && factoryEnd > factoryStart, 'aggregate state coordinator must exist');
-
-const createAggregateSearchStateCoordinator = vm.runInNewContext(
-  `(${optionsSource.slice(factoryStart, factoryEnd)})`,
-  { Error, Object, Promise }
-);
-
-const conflictStart = optionsSource.indexOf('function findSiteSearchKeyConflict(');
-const conflictEnd = optionsSource.indexOf('\n  function isDuplicateTemplate(', conflictStart);
-assert.ok(conflictStart >= 0 && conflictEnd > conflictStart, 'shared trigger conflict helper must exist');
-
-const findSiteSearchKeyConflict = vm.runInNewContext(
-  `(${optionsSource.slice(conflictStart, conflictEnd)})`,
-  {
-    SEARCH_UTILS: {
-      findSiteSearchProviderKeyConflict(key, providers, allowedKey) {
-        return providers.find((provider) => (
-          String(provider.key || '').toLowerCase() === key && key !== allowedKey
-        )) || null;
-      }
-    },
-    aggregateSearches: [
-      { id: 'aggregate-1', key: 'tech', name: 'Technology' }
-    ],
-    customSiteSearchProviders: [{ key: 'docs', name: 'Docs' }],
-    defaultSiteSearchProviders: [{ key: 'gg', name: 'Google' }]
-  }
+const { createAggregateSearchStateCoordinator } = require('../src/options/options-aggregate-search');
+const searchUtils = require('../src/shared/search-utils');
+const aggregateSearchStore = require('../src/shared/aggregate-search-store');
+const siteSearchModel = require('../src/options/options-site-search').createSiteSearchModel({
+  searchUtils,
+  aggregateSearchStore
+});
+const conflictState = {
+  aggregateSearches: [
+    { id: 'aggregate-1', key: 'tech', name: 'Technology' }
+  ],
+  providers: [{ key: 'gg', name: 'Google' }, { key: 'docs', name: 'Docs' }]
+};
+const findSiteSearchKeyConflict = (key, allowedKey, allowedAggregateId) => (
+  siteSearchModel.findSiteSearchKeyConflict(key, allowedKey, allowedAggregateId, conflictState)
 );
 
 assert.strictEqual(

@@ -99,10 +99,6 @@
     return path;
   }
 
-  function supportsDocumentPiP() {
-    return getDocumentPiPSupportState().supported;
-  }
-
   function isPictureInPictureAllowedByPolicy() {
     const policy = document.permissionsPolicy || document.featurePolicy;
     if (!policy || typeof policy.allowsFeature !== 'function') {

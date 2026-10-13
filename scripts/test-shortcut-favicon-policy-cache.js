@@ -2,27 +2,9 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const { readBackgroundSource } = require('./helpers/background-source');
+const { extractFunction: extractFunctionSource } = require('./helpers/extract-function');
 
 const backgroundSource = readBackgroundSource();
-
-function extractFunctionSource(source, name) {
-  const needle = `function ${name}(`;
-  const start = source.indexOf(needle);
-  assert.notStrictEqual(start, -1, `missing function ${name}`);
-  const openBrace = source.indexOf('{', start);
-  let depth = 0;
-  for (let index = openBrace; index < source.length; index += 1) {
-    if (source[index] === '{') {
-      depth += 1;
-    } else if (source[index] === '}') {
-      depth -= 1;
-      if (depth === 0) {
-        return source.slice(start, index + 1);
-      }
-    }
-  }
-  throw new Error(`unterminated function ${name}`);
-}
 
 const extractedFunctions = [
   'invalidateShortcutFaviconPolicyCache',

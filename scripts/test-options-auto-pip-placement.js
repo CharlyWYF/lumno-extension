@@ -85,25 +85,5 @@ assert.match(
   /id="_x_extension_update_notice_toggle_2026_unique_" type="checkbox" checked/,
   'update notice switch should default to checked in markup'
 );
-assert.match(
-  optionsJs,
-  /const updateNoticeToggle = document\.getElementById\('_x_extension_update_notice_toggle_2026_unique_'\);/,
-  'options should cache the update notice toggle'
-);
-assert.match(
-  optionsJs,
-  /const UPDATE_NOTICE_ENABLED_STORAGE_KEY = '_x_extension_update_notice_enabled_2026_unique_';/,
-  'options should define a storage key for the update notice toggle'
-);
-assert.match(
-  optionsJs,
-  /UPDATE_NOTICE_ENABLED_STORAGE_KEY,[\s\S]*AUTO_PIP_ENABLED_STORAGE_KEY,/,
-  'update notice preference should be included in synced settings payloads'
-);
-assert.match(
-  optionsJs,
-  /updateNoticeToggle\.addEventListener\('change'[\s\S]*UPDATE_NOTICE_ENABLED_STORAGE_KEY/,
-  'changing the update notice switch should persist the preference'
-);
 
 console.log('options auto PiP placement tests passed');

@@ -8,22 +8,11 @@ const searchUtils = require('../src/shared/search-utils.js');
 const faviconCache = require('../src/shared/favicon-cache.js');
 const { readNewtabRuntimeSource } = require('./helpers/newtab-source');
 const { readBackgroundSource } = require('./helpers/background-source');
+const { extractFunction } = require('./helpers/extract-function');
 
 const repoRoot = path.resolve(__dirname, '..');
 const backgroundSource = readBackgroundSource();
 const newtabSource = readNewtabRuntimeSource();
-
-function extractFunction(source, name) {
-  const start = source.search(new RegExp(`(?:async )?function ${name}\\(`));
-  assert.notStrictEqual(start, -1, `missing function ${name}`);
-  const openBrace = source.indexOf('{', start);
-  let depth = 0;
-  for (let index = openBrace; index < source.length; index += 1) {
-    if (source[index] === '{') depth += 1;
-    if (source[index] === '}' && --depth === 0) return source.slice(start, index + 1);
-  }
-  throw new Error(`unterminated function ${name}`);
-}
 
 function png(width, marker = 1) {
   const buffer = Buffer.alloc(25);

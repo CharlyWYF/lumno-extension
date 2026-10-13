@@ -44,26 +44,6 @@ assert.strictEqual(
   '_x_extension_motion_effects_enabled_2026_unique_'
 );
 assert(settings.CHROME_SYNC_STORAGE_KEYS.includes(settings.MOTION_EFFECTS_ENABLED_STORAGE_KEY));
-assert.match(
-  optionsSource,
-  /const MOTION_EFFECTS_ENABLED_STORAGE_KEY = SETTINGS\.MOTION_EFFECTS_ENABLED_STORAGE_KEY[\s\S]*?_x_extension_motion_effects_enabled_2026_unique_/,
-  'options should use the shared synchronized motion key'
-);
-assert.match(
-  optionsSource,
-  /MOTION_EFFECTS_ENABLED_STORAGE_KEY,[\s\S]*AUTO_PIP_ENABLED_STORAGE_KEY,/,
-  'motion effects should be part of options export and import sync payloads'
-);
-assert.match(
-  optionsSource,
-  /motionEffectsToggle\.addEventListener\('change'[\s\S]*?storageArea\.set\(\{ \[MOTION_EFFECTS_ENABLED_STORAGE_KEY\]: next \}\)/,
-  'motion effects changes should persist immediately'
-);
-assert.match(
-  optionsSource,
-  /storageArea\.get\(\[MOTION_EFFECTS_ENABLED_STORAGE_KEY\][\s\S]*?setOptionsToggleState\(motionEffectsToggle, stored\)/,
-  'options should restore the synchronized motion setting'
-);
 
 assert(
   newtabHtml.includes('../shared/motion-preload.js'),

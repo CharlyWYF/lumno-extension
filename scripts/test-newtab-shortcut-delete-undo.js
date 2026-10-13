@@ -3,18 +3,11 @@ const fs = require('fs');
 const vm = require('vm');
 const historyApi = require('../src/newtab/bookmark-move-history');
 const { readNewtabRuntimeSource } = require('./helpers/newtab-source');
+const { extractFunction: extractFunctionFrom } = require('./helpers/extract-function');
 
 const source = readNewtabRuntimeSource();
 function extractFunction(name) {
-  const start = source.indexOf(`function ${name}(`);
-  assert.ok(start >= 0, `Missing ${name}`);
-  const body = source.indexOf('{', start);
-  let depth = 0;
-  for (let index = body; index < source.length; index += 1) {
-    if (source[index] === '{') depth += 1;
-    if (source[index] === '}' && --depth === 0) return source.slice(start, index + 1);
-  }
-  throw new Error(`Unterminated ${name}`);
+  return extractFunctionFrom(source, name);
 }
 function createRuntime() {
   const history = historyApi.createBookmarkMoveHistory();

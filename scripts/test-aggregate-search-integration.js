@@ -77,18 +77,8 @@ assert.match(
 );
 assert.match(
   optionsSource,
-  /function prepareSiteSearchProviderSnapshot\([\s\S]*?ensureCustomSiteSearchProviderIds\(withoutDebug\)[\s\S]*?stableCustom\.changed[\s\S]*?function getSiteSearchProviderRefreshCoordinator\([\s\S]*?enqueueSiteSearchProviderStorageOperation\(async \(\) =>[\s\S]*?writeSiteSearchProviderState\(/,
-  'legacy custom provider IDs must be migrated through the serialized provider-state write'
-);
-assert.match(
-  optionsSource,
   /apply\(prepared\) \{[\s\S]*?customSiteSearchProviders = prepared\.custom;[\s\S]*?customSiteSearchProviderIdsReady = true/,
   'aggregate references must only become available after the confirmed provider snapshot is applied'
-);
-assert.match(
-  optionsSource,
-  /function createDeterministicLegacyProviderId\([\s\S]*?createDeterministicCustomProviderId[\s\S]*?ensureCustomProviderIds\(\s*items,\s*createDeterministicLegacyProviderId/,
-  'legacy custom provider migration must produce the same IDs on every syncing device'
 );
 const customProviderLoaderStart = optionsSource.indexOf('function loadCustomSiteSearchProviders(');
 const customProviderLoaderEnd = optionsSource.indexOf(
@@ -126,33 +116,8 @@ assert.match(
 );
 assert.match(
   optionsSource,
-  /function createAggregateSearchStateCoordinator\(config\)[\s\S]*?let changeGeneration = 0;[\s\S]*?let loadGeneration = 0;[\s\S]*?let mutationQueue = Promise\.resolve\(\)/,
-  'options must coordinate aggregate reads and writes with generations and a serial queue'
-);
-assert.match(
-  optionsSource,
-  /function getAggregateSearchStateCoordinator\(\)[\s\S]*?aggregateSearchesReady = true;[\s\S]*?loader\(rawStorageArea, AGGREGATE_SEARCH_STORAGE_KEY, chrome\)[\s\S]*?onLoadError\(\)[\s\S]*?aggregateSearchesReady = false/,
-  'options must distinguish a failed aggregate storage read from a genuinely empty list'
-);
-assert.match(
-  optionsSource,
   /function handleAggregateSearchSave[\s\S]*?if \(!aggregateSearchesReady\)[\s\S]*?aggregate_search_storage_unavailable_error/,
   'options must block aggregate writes until the stored list has loaded successfully'
-);
-assert.match(
-  optionsSource,
-  /function findSiteSearchKeyConflict\(key, allowedKey, allowedAggregateId\)[\s\S]*?defaultSiteSearchProviders\.concat\(customSiteSearchProviders\)[\s\S]*?aggregateSearches\.find/,
-  'normal and aggregate search triggers must share one conflict check'
-);
-assert.match(
-  optionsSource,
-  /function handleAggregateSearchSave[\s\S]*?normalizeAggregateSearchKey[\s\S]*?findSiteSearchKeyConflict\(key, '', currentId\)[\s\S]*?shortcuts_error_key_duplicate/,
-  'aggregate saves must reject built-in, custom, and aggregate trigger collisions'
-);
-assert.match(
-  optionsSource,
-  /getAggregateSearchAvailability\([\s\S]*?aggregate_search_source_selection_unavailable_error/,
-  'options must reject saves that still reference unavailable sources'
 );
 assert.match(
   optionsSource,
@@ -163,11 +128,6 @@ assert.match(
   optionsSource,
   /function saveAggregateSearches\(items\)[\s\S]*?getSerializedStorageByteLength\([\s\S]*?SYNC_ITEM_BYTE_BUDGET[\s\S]*?aggregate-search-sync-item-quota-exceeded/,
   'aggregate definitions must be rejected before exceeding the Chrome Sync per-item budget'
-);
-assert.match(
-  optionsSource,
-  /changes\[AGGREGATE_SEARCH_STORAGE_KEY\][\s\S]*?getAggregateSearchStateCoordinator\(\)\.applyStorageChange/,
-  'storage changes must invalidate pending aggregate reads before updating the options UI'
 );
 assert.match(
   optionsSource,

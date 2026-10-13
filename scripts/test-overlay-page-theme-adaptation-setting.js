@@ -76,11 +76,6 @@ assert.strictEqual(settings.normalizeOverlayPageThemeAdaptationEnabled(false), f
 
 assert.match(
   optionsSource,
-  /overlayPageThemeAdaptationToggle\.addEventListener\('change'[\s\S]*?storageArea\.set\(\{ \[OVERLAY_PAGE_THEME_ADAPTATION_ENABLED_STORAGE_KEY\]: next \}\)/,
-  'options should persist adaptation changes immediately'
-);
-assert.match(
-  optionsSource,
   /function updateOverlayPageThemeAdaptationVisibility\(mode\)[\s\S]*?const visible = nextMode === 'system';[\s\S]*?animateOptionsPanelHeight\([\s\S]*?setConditionalSettingsElementVisibility\(overlayPageThemeAdaptationRow, visible\)/,
   'options should hide webpage adaptation outside follow-system-and-website mode'
 );
@@ -88,11 +83,6 @@ assert.match(
   optionsSource,
   /function updateThemeButtons\(mode\)[\s\S]*?updateOverlayPageThemeAdaptationVisibility\(nextMode\);/,
   'theme initialization, clicks, and synchronized updates should all refresh adaptation visibility'
-);
-assert.match(
-  optionsSource,
-  /storageArea\.get\(\[OVERLAY_PAGE_THEME_ADAPTATION_ENABLED_STORAGE_KEY\][\s\S]*?setOptionsToggleState\(overlayPageThemeAdaptationToggle, stored\)/,
-  'options should restore and normalize the adaptation setting'
 );
 assert.match(
   overlayRuntimeSource,

@@ -5,6 +5,7 @@ const path = require('path');
 
 const settings = require('../src/shared/settings.js');
 const shortcutFavicon = require('../src/shared/shortcut-favicon.js');
+const { extractFunction: extractFunctionSource } = require('./helpers/extract-function');
 const repoRoot = path.join(__dirname, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'manifest.json'), 'utf8'));
 const expectedDevelopmentExtensionId = 'kkcjcneagmlhpeaafngjdlpcfjakejgb';
@@ -200,23 +201,6 @@ const migrationSurfaces = [
   'src/newtab/newtab.js',
   'src/options/options.js'
 ];
-function extractFunctionSource(source, name) {
-  const start = source.indexOf(`function ${name}(`);
-  assert.notStrictEqual(start, -1, `missing function ${name}`);
-  const openBrace = source.indexOf('{', start);
-  let depth = 0;
-  for (let index = openBrace; index < source.length; index += 1) {
-    if (source[index] === '{') {
-      depth += 1;
-    } else if (source[index] === '}') {
-      depth -= 1;
-      if (depth === 0) {
-        return source.slice(start, index + 1);
-      }
-    }
-  }
-  throw new Error(`unterminated function ${name}`);
-}
 migrationSurfaces.forEach((file) => {
   const source = fs.readFileSync(path.join(repoRoot, file), 'utf8');
   const block = extractFunctionSource(source, 'migrateStorageIfNeeded');

@@ -6,30 +6,10 @@ const blacklistUtils = require('../src/shared/blacklist-utils.js');
 const faviconUtils = require('../src/shared/favicon-utils.js');
 const settings = require('../src/shared/settings.js');
 const { readBackgroundSource } = require('./helpers/background-source');
+const { extractFunction: extractFunctionSource } = require('./helpers/extract-function');
 
 const repoRoot = path.resolve(__dirname, '..');
 const backgroundSource = readBackgroundSource();
-
-function extractFunctionSource(source, name) {
-  const needle = `function ${name}(`;
-  const start = source.indexOf(needle);
-  assert.notStrictEqual(start, -1, `missing function ${name}`);
-  const openBrace = source.indexOf('{', start);
-  assert.notStrictEqual(openBrace, -1, `missing opening brace for ${name}`);
-  let depth = 0;
-  for (let index = openBrace; index < source.length; index += 1) {
-    const char = source[index];
-    if (char === '{') {
-      depth += 1;
-    } else if (char === '}') {
-      depth -= 1;
-      if (depth === 0) {
-        return source.slice(start, index + 1);
-      }
-    }
-  }
-  throw new Error(`unterminated function ${name}`);
-}
 
 const extractedFunctions = [
   'normalizeFaviconRequestBlacklistItems',

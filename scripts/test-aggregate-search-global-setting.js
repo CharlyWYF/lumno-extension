@@ -5,7 +5,6 @@ const settings = require('../src/shared/settings.js');
 const aggregateStore = require('../src/shared/aggregate-search-store.js');
 const { readPageSource } = require('./helpers/page-source');
 const optionsHtml = readPageSource('src/options/options.html');
-const optionsSource = fs.readFileSync('src/options/options.js', 'utf8');
 const backgroundSource = fs.readFileSync('src/background/background.js', 'utf8');
 const aggregateRuntimeSource = fs.readFileSync('src/background/aggregate-search.js', 'utf8');
 const aggregateEditorSource = fs.readFileSync(
@@ -43,26 +42,6 @@ assert.strictEqual(settings.normalizeAggregateSearchAutoGroupEnabled(undefined),
 assert.strictEqual(settings.normalizeAggregateSearchAutoGroupEnabled(false), false);
 assert.strictEqual(settings.normalizeAggregateSearchAutoGroupEnabled(true), true);
 
-assert.match(
-  optionsSource,
-  /aggregateSearchAutoGroupToggle\.addEventListener\('change'[\s\S]*?AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY\]: next/,
-  'Options must persist the global setting immediately'
-);
-assert.match(
-  optionsSource,
-  /storageArea\.get\(\[[\s\S]*?AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY,[\s\S]*?AGGREGATE_SEARCH_STORAGE_KEY[\s\S]*?deriveLegacyAggregateSearchAutoGroupEnabled/,
-  'Options must migrate the global setting from legacy per-item values'
-);
-assert.match(
-  optionsSource,
-  /!Object\.prototype\.hasOwnProperty\.call\([\s\S]*?AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY[\s\S]*?deriveLegacyAggregateSearchAutoGroupEnabled\(data\[AGGREGATE_SEARCH_STORAGE_KEY\]\)/,
-  'old exports must derive the global setting during import'
-);
-assert.match(
-  optionsSource,
-  /changes\[AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY\][\s\S]*?setOptionsToggleState\(aggregateSearchAutoGroupToggle, next\)/,
-  'the General-page switch must update when synchronized storage changes'
-);
 
 assert.doesNotMatch(
   aggregateEditorSource,

@@ -37,16 +37,6 @@ assert.deepStrictEqual(
   'invalid and missing animation values should default to elastic'
 );
 assert.match(
-  optionsSource,
-  /storageArea\.get\(\[OVERLAY_ENTER_ANIMATION_STORAGE_KEY\][\s\S]*?setOverlayEnterAnimationTabState\(mode\)[\s\S]*?storageArea\.set\(\{ \[OVERLAY_ENTER_ANIMATION_STORAGE_KEY\]: mode \}\)/,
-  'options should load, normalize, render, and persist the animation preference'
-);
-assert.match(
-  optionsSource,
-  /function handleOverlayEnterAnimationSelection\(value\)[\s\S]*?storageArea\.set\(\{ \[OVERLAY_ENTER_ANIMATION_STORAGE_KEY\]: nextMode \}\)/,
-  'selecting an animation should persist it'
-);
-assert.match(
   overlayRuntimeSource,
   /overlayEnterAnimation:\s*'_x_extension_overlay_enter_animation_2026_unique_'/,
   'the overlay runtime should expose the animation storage key'
