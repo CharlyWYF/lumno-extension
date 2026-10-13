@@ -30,6 +30,7 @@ const injectedScriptFiles = [
   'src/background/pip-main-world.js',
   'src/background/favicon-service.js',
   'src/background/search-suggestions-service.js',
+  'src/background/pinned-tab-recovery.js',
   'src/shared/extension-routes.js',
   'src/shared/navigation-disposition.js',
   'src/shared/community-links.js',
