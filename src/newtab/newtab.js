@@ -2375,12 +2375,15 @@
         });
       });
     }
+    // A group's menu button and title placeholder fill with the header's solid tone
+    // while pointed at or open.
     shortcutGroupHeaders.forEach((header) => {
       shortcutToneTargets.push({
         element: header,
         sampleElement: header.querySelector('.x-nt-shortcut-group-title') || header,
         minWidth: 112,
-        minHeight: 32
+        minHeight: 32,
+        iconButton: true
       });
     });
     if (addShortcutButton) {
@@ -2418,11 +2421,13 @@
         minWidth: 160,
         minHeight: 32
       },
+      // The heading link and breadcrumbs fill with the title's solid tone while pointed at.
       {
         element: bookmarkTitleWrap,
         sampleElement: bookmarkTitleWrap,
         minWidth: 112,
-        minHeight: 44
+        minHeight: 44,
+        iconButton: true
       },
       // The display-mode trigger is appended to bookmarkPager in the regular
       // section layout. Keep it on the pager's shared tone target so one
@@ -2434,12 +2439,14 @@
         minHeight: 42,
         iconButton: true
       },
-      // The recent mode switch is the heading's text, so it takes the header's tone.
+      // The recent mode switch is the heading's text, so it takes the header's tone,
+      // including the solid fill it shows while pointed at or open.
       {
         element: recentHeader,
         sampleElement: recentHeader,
         minWidth: 112,
-        minHeight: 44
+        minHeight: 44,
+        iconButton: true
       },
       {
         element: feedbackButton,

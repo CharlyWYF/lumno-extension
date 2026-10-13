@@ -4695,6 +4695,48 @@ body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-wallpaper-icon-bg
   filter: none;
   text-shadow: none;
 }
+/* The recent heading switch still reads as its heading at rest; the solid fill shows only
+   while it is pointed at or open. */
+body[data-wallpaper-active="true"] [data-wallpaper-icon-bg="true"]
+  .x-nt-section-mode-select--heading:not(:hover):not([data-open="true"])
+  ._x_extension_select_trigger_2024_unique_ {
+  background: transparent;
+  color: var(--x-nt-wallpaper-adaptive-ink);
+  text-shadow: 0 1px 1px var(--x-nt-wallpaper-adaptive-shadow),
+    0 0 12px var(--x-nt-wallpaper-adaptive-halo);
+}
+/* Text controls on the wallpaper fill like the wallpaper and feedback buttons while pointed
+   at or open: with the wallpaper's own tone where it is busy, else with the ink's plain fill. */
+body[data-wallpaper-active="true"] [data-wallpaper-icon-bg]:not([data-wallpaper-overlay-cover="true"])
+  .x-nt-section-mode-select--heading:hover ._x_extension_select_trigger_2024_unique_,
+body[data-wallpaper-active="true"] [data-wallpaper-icon-bg]:not([data-wallpaper-overlay-cover="true"])
+  .x-nt-section-mode-select--heading[data-open="true"] ._x_extension_select_trigger_2024_unique_,
+body[data-wallpaper-active="true"] [data-wallpaper-icon-bg]:not([data-wallpaper-overlay-cover="true"])
+  .x-nt-shortcut-group-more:hover,
+body[data-wallpaper-active="true"] [data-wallpaper-icon-bg]:not([data-wallpaper-overlay-cover="true"])
+  .x-nt-shortcut-group-more[data-shortcut-context-menu-open="true"],
+body[data-wallpaper-active="true"] [data-wallpaper-icon-bg]:not([data-wallpaper-overlay-cover="true"])
+  .x-nt-bookmarks-heading--link:hover:not([data-bookmark-drop-target="true"]),
+body[data-wallpaper-active="true"] [data-wallpaper-icon-bg]:not([data-wallpaper-overlay-cover="true"])
+  .x-nt-bookmarks-crumb:hover:not([aria-current="page"]):not([data-bookmark-drop-target="true"]) {
+  background: var(--x-nt-wallpaper-icon-solid-bg-hover);
+  color: var(--x-nt-wallpaper-icon-solid-ink-hover);
+  filter: none;
+  text-shadow: none;
+}
+/* A group's title placeholder fades its text, not its fill, so the fill stays solid. */
+body[data-wallpaper-active="true"]:not([data-drag-source="shortcut"])
+  [data-wallpaper-icon-bg]:not([data-wallpaper-overlay-cover="true"])
+  .x-nt-shortcut-group-title--placeholder:hover {
+  opacity: 1;
+  background: var(--x-nt-wallpaper-icon-solid-bg-hover);
+  color: color-mix(
+    in srgb,
+    var(--x-nt-wallpaper-icon-solid-ink-hover) 50%,
+    var(--x-nt-wallpaper-icon-solid-bg-hover)
+  );
+  text-shadow: none;
+}
 body[data-wallpaper-active="true"] .x-nt-feedback-button[data-wallpaper-icon-bg="true"]:not([data-wallpaper-overlay-cover="true"]):hover,
 body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button[data-wallpaper-icon-bg="true"]:not([data-wallpaper-overlay-cover="true"]):hover,
 body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-wallpaper-icon-bg="true"]:not([data-wallpaper-overlay-cover="true"]):hover {
