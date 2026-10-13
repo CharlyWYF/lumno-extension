@@ -291,7 +291,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     ? chrome.storage.local
     : storageArea;
   const RI_CSS_URL = overlayRuntime.getRuntimeUrl(chrome, 'assets/remixicon/fonts/remixicon.css');
-  const OPEN_SANS_CSS_URL = overlayRuntime.getRuntimeUrl(chrome, 'assets/fonts/open-sans/open-sans.css');
   const SEARCH_INPUT_CSS_URL = overlayRuntime.getRuntimeUrl(chrome, 'src/shared/search-input.css');
   const FEATURE_HINTS_CSS_URL = overlayRuntime.getRuntimeUrl(chrome, 'src/shared/feature-hints.css');
   const TOOLTIP_CSS_URL = overlayRuntime.getRuntimeUrl(chrome, 'src/shared/tooltip.css');
@@ -591,38 +590,42 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
   };
   let overlaySearchEngineStateReady = Promise.resolve(overlaySearchEngineState);
 
-  function ensureRemixIconStyles() {
-    if (document.getElementById('_x_extension_remixicon_css_2024_unique_')) {
-      return;
-    }
+  // Chrome ignores @font-face rules inside shadow roots, so the overlay's
+  // fonts are declared on the host document. Only the faces live there, under
+  // Lumno-specific family names, so they can neither restyle host elements
+  // nor replace a page's own "Open Sans" or Remix Icon faces. The icon class
+  // rules load inside the overlay's shadow root (remixicon.css, re-pointed at
+  // the scoped face by suggestions-view.css).
+  function ensureOverlayFontFaces() {
+    const styleId = '_x_extension_overlay_font_faces_2026_unique_';
     const host = document.head || document.documentElement;
-    if (!host) {
+    if (!host || document.getElementById(styleId)) {
       return;
     }
-    const link = document.createElement('link');
-    link.id = '_x_extension_remixicon_css_2024_unique_';
-    link.rel = 'stylesheet';
-    link.href = RI_CSS_URL;
-    host.appendChild(link);
+    const toCssUrl = (assetPath) => {
+      const url = overlayRuntime.getRuntimeUrl(chrome, assetPath);
+      return `url("${String(url).replace(/["\\\n\r\f]/g, '\\$&')}")`;
+    };
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = [
+      '@font-face {',
+      '  font-family: "Lumno Open Sans";',
+      `  src: ${toCssUrl('assets/fonts/open-sans/OpenSans-VariableFont-wdth-wght.ttf')} format("truetype");`,
+      '  font-style: normal;',
+      '  font-weight: 300 800;',
+      '  font-display: swap;',
+      '}',
+      '@font-face {',
+      '  font-family: "lumno-remixicon";',
+      `  src: ${toCssUrl('assets/remixicon/fonts/remixicon.woff2')} format("woff2");`,
+      '  font-display: swap;',
+      '}'
+    ].join('\n');
+    host.appendChild(style);
   }
 
-  function ensureOpenSansStyles() {
-    if (document.getElementById('_x_extension_open_sans_css_2024_unique_')) {
-      return;
-    }
-    const host = document.head || document.documentElement;
-    if (!host) {
-      return;
-    }
-    const link = document.createElement('link');
-    link.id = '_x_extension_open_sans_css_2024_unique_';
-    link.rel = 'stylesheet';
-    link.href = OPEN_SANS_CSS_URL;
-    host.appendChild(link);
-  }
-
-  ensureOpenSansStyles();
-  ensureRemixIconStyles();
+  ensureOverlayFontFaces();
 
   function normalizeLocale(locale) {
     return SETTINGS.normalizeLocale(locale);
@@ -1616,7 +1619,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       id: OVERLAY_PANEL_ID,
       width: initialOverlaySizePreset.width,
       maxHeightVh: initialOverlaySizePreset.maxHeightVh,
-      openSansCssUrl: OPEN_SANS_CSS_URL,
       remixIconCssUrl: RI_CSS_URL,
       searchInputCssUrl: SEARCH_INPUT_CSS_URL,
       featureHintsCssUrl: FEATURE_HINTS_CSS_URL,
@@ -1712,7 +1714,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
 
     overlayShell.appendOverlayStyleNodes(document, {
       root: overlayStyleRoot,
-      openSansCssUrl: OPEN_SANS_CSS_URL,
       remixIconCssUrl: RI_CSS_URL,
       searchInputCssUrl: SEARCH_INPUT_CSS_URL,
       featureHintsCssUrl: FEATURE_HINTS_CSS_URL,

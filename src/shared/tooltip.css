@@ -24,7 +24,7 @@
   color: var(--x-extension-tooltip-text, #556070);
   border: 1px solid var(--x-extension-tooltip-border, rgba(214, 219, 227, 0.95));
   font-size: var(--x-extension-tooltip-font-size, 12px);
-  font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+  font-family: "Lumno Open Sans", "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   font-weight: 500;
   line-height: 1.35;
