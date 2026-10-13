@@ -21,8 +21,10 @@ function getBackgroundServiceFiles() {
     .filter((file) => /-service\.js$|^src\/background\/pinned-tab-recovery\.js$/.test(file));
 }
 
+// Service scripts first: they hold the function definitions that
+// background.js wires to browser events, matching how the worker loads them.
 function readBackgroundSource() {
-  return [BACKGROUND_ENTRY].concat(getBackgroundServiceFiles())
+  return getBackgroundServiceFiles().concat([BACKGROUND_ENTRY])
     .map((file) => fs.readFileSync(path.join(repoRoot, file), 'utf8'))
     .join('\n');
 }

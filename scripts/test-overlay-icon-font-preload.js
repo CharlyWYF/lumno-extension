@@ -3,11 +3,12 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const { readPageSource } = require('./helpers/page-source');
+const { readBackgroundSource } = require('./helpers/background-source');
 
 const repoRoot = path.resolve(__dirname, '..');
 const preloadPath = path.join(repoRoot, 'src/shared/icon-font-preload.js');
 const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'manifest.json'), 'utf8'));
-const backgroundSource = fs.readFileSync(path.join(repoRoot, 'src/background/background.js'), 'utf8');
+const backgroundSource = readBackgroundSource();
 const remixCss = fs.readFileSync(
   path.join(repoRoot, 'assets/remixicon/fonts/remixicon.css'),
   'utf8'

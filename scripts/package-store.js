@@ -31,6 +31,7 @@ const injectedScriptFiles = [
   'src/background/favicon-service.js',
   'src/background/search-suggestions-service.js',
   'src/background/pinned-tab-recovery.js',
+  'src/background/tab-switcher-service.js',
   'src/shared/extension-routes.js',
   'src/shared/navigation-disposition.js',
   'src/shared/community-links.js',
@@ -190,14 +191,31 @@ stagedBackground = replaceRequired(
   1,
   'conditional Overlay debug surface entry'
 );
-stagedBackground = replaceRequired(
-  stagedBackground,
-  /^[ \t]*'src\/shared\/codex-debug-surface\.js',\r?\n/gm,
-  '',
-  2,
-  'injected debug surface entry'
-);
 fs.writeFileSync(stagedBackgroundPath, stagedBackground);
+
+// background.js and the service scripts it imports share one global scope;
+// the injected Document PiP picker (background.js) and the tab switcher
+// (tab-switcher-service.js) each list the debug surface once.
+const stagedBackgroundScriptPaths = [stagedBackgroundPath].concat(
+  fs.readdirSync(stagedPath('src/background'))
+    .filter((file) => /-service\.js$|^pinned-tab-recovery\.js$/.test(file))
+    .map((file) => stagedPath(`src/background/${file}`))
+);
+let injectedDebugSurfaceEntryCount = 0;
+stagedBackgroundScriptPaths.forEach((file) => {
+  const source = fs.readFileSync(file, 'utf8').replace(
+    /^[ \t]*'src\/shared\/codex-debug-surface\.js',\r?\n/gm,
+    () => {
+      injectedDebugSurfaceEntryCount += 1;
+      return '';
+    }
+  );
+  fs.writeFileSync(file, source);
+});
+if (injectedDebugSurfaceEntryCount !== 2) {
+  throw new Error(`Store package transform expected 2 injected debug surface entry match(es), found ${injectedDebugSurfaceEntryCount}.`);
+}
+stagedBackground = fs.readFileSync(stagedBackgroundPath, 'utf8');
 
 developmentOnlyFiles.forEach((file) => {
   if (fs.existsSync(stagedPath(file))) {
@@ -210,9 +228,11 @@ stagedHtmlFiles.forEach((file) => {
     throw new Error(`Development-only surface reference remained in ${packagePathForFile(file)}.`);
   }
 });
-if (/codex-debug-(?:bridge|surface)\.js|LumnoCodexDebug|codexDebugBridge/.test(stagedBackground)) {
-  throw new Error('Development-only debug bridge reference remained in staged background.js.');
-}
+stagedBackgroundScriptPaths.forEach((file) => {
+  if (/codex-debug-(?:bridge|surface)\.js|LumnoCodexDebug|codexDebugBridge/.test(fs.readFileSync(file, 'utf8'))) {
+    throw new Error(`Development-only debug bridge reference remained in staged ${packagePathForFile(file)}.`);
+  }
+});
 
 let zipResult = null;
 const zipArgs = ['-r', '-D', zipPath, ...packageRoots, 'manifest.json'];
