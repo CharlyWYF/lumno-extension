@@ -1675,8 +1675,61 @@ body[data-nt-enter="run"] .x-nt-bookmark-cascade-debug-control {
 .x-nt-recent-header-bar .x-nt-section-mode-select ._x_extension_select_trigger_2024_unique_ {
   color: var(--x-nt-recent-heading-color, #000000);
 }
-.x-nt-recent-header-bar .x-nt-section-mode-select {
-  margin-left: auto;
+/* A heading mode switch reads like the bookmark heading at rest; its chevron and fill
+   appear only while it is pointed at, focused or open. */
+.x-nt-section-mode-select.x-nt-section-mode-select--heading {
+  width: auto;
+  min-width: 0;
+}
+.x-nt-section-mode-select--heading ._x_extension_select_trigger_2024_unique_ {
+  width: auto;
+  min-width: 0;
+  height: auto;
+  gap: 2px;
+  padding: 3px 5px;
+  margin: -3px -5px;
+  border-width: 0;
+  border-radius: var(--lumno-radius-sm);
+  font-family: "Open Sans", "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Helvetica Neue", Arial, sans-serif;
+  font-size: var(--x-nt-dock-heading-size, 14px);
+  font-weight: 500;
+  line-height: 1;
+}
+.x-nt-section-mode-select--heading ._x_extension_select_label_2024_unique_ {
+  padding-right: 0;
+}
+.x-nt-section-mode-select--heading ._x_extension_select_icon_2024_unique_ {
+  position: static;
+  flex: 0 0 auto;
+  transform: none;
+  opacity: 0;
+  transition: opacity var(--lumno-duration-sm) ease, transform var(--lumno-duration-md) ease;
+}
+.x-nt-section-mode-select--heading:hover ._x_extension_select_icon_2024_unique_,
+.x-nt-section-mode-select--heading[data-open="true"] ._x_extension_select_icon_2024_unique_,
+.x-nt-section-mode-select--heading
+  ._x_extension_select_trigger_2024_unique_:focus-visible
+  ._x_extension_select_icon_2024_unique_ {
+  opacity: 0.6;
+}
+.x-nt-section-mode-select--heading[data-open="true"] ._x_extension_select_icon_2024_unique_ {
+  transform: rotate(180deg);
+}
+body[data-theme="dark"]
+  .x-nt-section-mode-select--heading[data-open="true"]
+  ._x_extension_select_trigger_2024_unique_ {
+  box-shadow: none;
+}
+@media (hover: none) {
+  .x-nt-section-mode-select--heading ._x_extension_select_icon_2024_unique_ {
+    opacity: 0.6;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .x-nt-section-mode-select--heading ._x_extension_select_icon_2024_unique_ {
+    transition: none;
+  }
 }
 .x-nt-section-mode-select:hover ._x_extension_select_trigger_2024_unique_,
 .x-nt-section-mode-select[data-open="true"] ._x_extension_select_trigger_2024_unique_ {
