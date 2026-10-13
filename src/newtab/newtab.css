@@ -781,17 +781,26 @@ body[data-drag-source="shortcut"] .x-nt-shortcuts-section {
   color: var(--x-nt-bookmark-heading-color, #000000);
   font-family: "Open Sans", "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI",
     "Helvetica Neue", Arial, sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  line-height: 16px;
+  line-height: 18px;
 }
 .x-nt-shortcut-group-header:first-child {
+  margin-top: 0;
+}
+/* An untitled group only breaks the rows; its title row stays thin, and its
+   placeholder and menu button show over it while pointed at. */
+.x-nt-shortcut-group-header[data-shortcut-group-untitled="true"]:not([data-shortcut-group-editing="true"]) {
+  height: 12px;
+  margin-top: 4px;
+}
+.x-nt-shortcut-group-header[data-shortcut-group-untitled="true"]:first-child {
   margin-top: 0;
 }
 .x-nt-shortcut-group-title {
   all: unset;
   min-width: 0;
-  padding: 4px;
+  padding: 3px 4px;
   border-radius: var(--lumno-radius-sm);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -835,16 +844,32 @@ body[data-drag-source="shortcut"] .x-nt-shortcuts-section {
   outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
   outline-offset: 1px;
 }
+/* The title edits in place: same type and padding as the title, so the
+   text does not move, on a soft field that grows with what is typed. */
 .x-nt-shortcut-group-input {
   all: unset;
-  width: 15em;
-  max-width: 100%;
+  box-sizing: border-box;
+  width: 10em;
+  min-width: 6em;
+  max-width: min(16em, 100%);
   padding: 3px 4px;
   border-radius: var(--lumno-radius-sm);
-  box-shadow: inset 0 0 0 1px currentColor;
+  background: var(--x-nt-bookmark-pager-hover-bg, rgba(17, 24, 39, 0.08));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 18%, transparent);
   font: inherit;
   color: inherit;
+  caret-color: currentColor;
   cursor: text;
+  transition: box-shadow 120ms ease;
+}
+@supports (field-sizing: content) {
+  .x-nt-shortcut-group-input {
+    width: auto;
+    field-sizing: content;
+  }
+}
+.x-nt-shortcut-group-input:focus {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 40%, transparent);
 }
 .x-nt-shortcut-group-input::placeholder {
   color: inherit;
@@ -870,7 +895,7 @@ body[data-drag-source="shortcut"] .x-nt-shortcut-group-title--placeholder {
 .x-nt-shortcut-tile + .x-nt-shortcut-group-empty {
   display: none;
 }
-.x-nt-shortcut-group-empty .x-nt-shortcut-icon {
+.x-nt-shortcut-group-empty .x-nt-shortcut-icon.x-nt-shortcut-icon--add {
   cursor: inherit;
   pointer-events: none;
   background: transparent;
@@ -4582,6 +4607,10 @@ body[data-wallpaper-active="true"] .x-nt-shortcut-group-header {
   color: var(--x-nt-wallpaper-adaptive-ink);
   text-shadow: 0 1px 1px var(--x-nt-wallpaper-adaptive-shadow),
     0 0 12px var(--x-nt-wallpaper-adaptive-halo);
+}
+body[data-wallpaper-active="true"] .x-nt-shortcut-group-input {
+  background: var(--x-nt-wallpaper-adaptive-hover-bg);
+  text-shadow: none;
 }
 body[data-wallpaper-active="true"] .x-nt-shortcut-group-more:hover,
 body[data-wallpaper-active="true"] .x-nt-shortcut-group-more[data-shortcut-context-menu-open="true"],

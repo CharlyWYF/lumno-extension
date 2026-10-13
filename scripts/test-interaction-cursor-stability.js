@@ -22,7 +22,9 @@ const infoButtonCss = read('src/shared/info-button.css');
 
 function getRule(source, selector) {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = source.match(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`));
+  // The selector must open its rule, not end a longer selector such as
+  // `.x-nt-shortcut-group-empty .x-nt-shortcut-icon`.
+  const match = source.match(new RegExp(`(?:^|[\\n}])[ \\t]*${escapedSelector}\\s*\\{([^}]*)\\}`));
   assert.ok(match, `Expected CSS rule for ${selector}`);
   return match[1];
 }
