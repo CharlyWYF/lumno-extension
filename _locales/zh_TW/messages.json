@@ -3196,5 +3196,59 @@
   },
   "recent_progress_stop_tooltip": {
     "message": "正在追蹤觀看進度\n────────\n在同一部作品裡看到下一集或下一章時，這張卡片會自動更新。\n點按停止追蹤。"
+  },
+  "newtab_shortcuts_group_new": {
+    "message": "新增群組"
+  },
+  "newtab_shortcuts_group_title_placeholder": {
+    "message": "新增標題"
+  },
+  "newtab_shortcuts_group_title_label": {
+    "message": "群組標題"
+  },
+  "newtab_shortcuts_group_actions": {
+    "message": "{group}：操作"
+  },
+  "newtab_shortcuts_group_untitled_name": {
+    "message": "未命名群組"
+  },
+  "newtab_shortcuts_group_rename": {
+    "message": "重新命名"
+  },
+  "newtab_shortcuts_group_add_site": {
+    "message": "新增網站"
+  },
+  "newtab_shortcuts_group_move_up": {
+    "message": "上移"
+  },
+  "newtab_shortcuts_group_move_down": {
+    "message": "下移"
+  },
+  "newtab_shortcuts_group_delete": {
+    "message": "刪除群組"
+  },
+  "newtab_shortcuts_group_delete_with_sites": {
+    "message": "刪除群組和網站"
+  },
+  "newtab_shortcuts_group_delete_confirm_title": {
+    "message": "刪除「{group}」和其中的網站？"
+  },
+  "newtab_shortcuts_group_delete_confirm_description": {
+    "message": "群組和其中的 {count} 個網站都會被刪除。"
+  },
+  "newtab_shortcuts_group_delete_confirm_button": {
+    "message": "刪除"
+  },
+  "newtab_shortcuts_group_deleted_undo": {
+    "message": "已刪除群組 · 按 {shortcut} 復原"
+  },
+  "newtab_shortcuts_group_delete_undone": {
+    "message": "已還原群組 · 按 {shortcut} 重做"
+  },
+  "newtab_shortcuts_group_delete_redone": {
+    "message": "已重新刪除群組 · 按 {shortcut} 復原"
+  },
+  "newtab_shortcuts_group_limit_reached": {
+    "message": "最多可建立 {count} 個群組。"
   }
 }

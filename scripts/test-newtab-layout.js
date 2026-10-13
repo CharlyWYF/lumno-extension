@@ -1684,7 +1684,85 @@ function testNewtabWideModeUsesRecentGridMaximumWidth() {
   );
 }
 
+function attachShortcutGrid(section, gridHeight) {
+  const grid = new FakeElement();
+  grid.offsetHeight = gridHeight;
+  section.querySelector = (selector) => (selector === '.x-nt-shortcuts-grid' ? grid : null);
+  section.offsetWidth = 260;
+  section.clientWidth = 240;
+  section.scrollTop = 0;
+  section.clientHeight = 200;
+  section.scrollHeight = gridHeight;
+  return grid;
+}
+
+// Shortcuts taller than the room above the bottom dock scroll inside their
+// section instead of running under the dock, which takes their pointer events.
+function testTallShortcutsScrollAboveTheBottomDock() {
+  const { bottomDock, shortcutSection, controller } = createFixture({
+    shortcutRect: { top: 270, height: 600 },
+    shortcutVisible: true
+  });
+  const grid = attachShortcutGrid(shortcutSection, 600);
+  controller.updateBottomDockLayout();
+  assert.strictEqual(shortcutSection.getAttribute('data-shortcuts-scrollable'), 'true');
+  assert.strictEqual(shortcutSection.style.getPropertyValue('--x-nt-shortcuts-max-height'), '402px',
+    'the section stops a gap above the dock');
+  assert.strictEqual(shortcutSection.style.getPropertyValue('--x-nt-shortcuts-scrollbar-gutter'), '20px',
+    'a classic scrollbar widens the section instead of taking a column');
+  assert.strictEqual(shortcutSection.getAttribute('data-shortcuts-more-below'), 'true');
+  assert.strictEqual(shortcutSection.getAttribute('data-shortcuts-more-above'), 'false');
+
+  bottomDock.firstElementChild = new FakeElement({ rect: { top: 650, height: 250 } });
+  controller.updateBottomDockLayout();
+  assert.strictEqual(shortcutSection.style.getPropertyValue('--x-nt-shortcuts-max-height'), '372px',
+    'the dock scroller reaching above the dock counts as the dock');
+
+  grid.offsetHeight = 300;
+  shortcutSection.scrollHeight = 300;
+  controller.updateBottomDockLayout();
+  assert.strictEqual(shortcutSection.getAttribute('data-shortcuts-scrollable'), null,
+    'shortcuts that fit lose the limit and scroll as before');
+  assert.strictEqual(shortcutSection.style.getPropertyValue('--x-nt-shortcuts-max-height'), '');
+}
+
+function testShortcutAreaLeavesTheDockRoomOnShortScreens() {
+  const { shortcutSection, controller } = createFixture({
+    innerHeight: 600,
+    rootRect: { top: 93, height: 56 },
+    shortcutRect: { top: 161, height: 500 },
+    shortcutVisible: true,
+    constants: {
+      bottomDockTopReservePx: 240,
+      compactDockViewportMaxHeightPx: 800,
+      compactDockSearchGapPx: 30,
+      compactDockShortcutGapPx: 8,
+      compactDockMinTopReservePx: 168
+    }
+  });
+  attachShortcutGrid(shortcutSection, 500);
+  controller.updateBottomDockLayout();
+  assert.strictEqual(shortcutSection.style.getPropertyValue('--x-nt-shortcuts-max-height'), '219px',
+    'short screens keep the dock its minimum room and the shortcuts scroll above it');
+}
+
+function testMobileFlowShortcutsKeepTheirHeight() {
+  const { shortcutSection, controller } = createFixture({
+    innerWidth: 500,
+    shortcutRect: { top: 270, height: 900 },
+    shortcutVisible: true,
+    constants: { mobileFlowBreakpointPx: 640 }
+  });
+  attachShortcutGrid(shortcutSection, 900);
+  controller.updateBottomDockLayout();
+  assert.strictEqual(shortcutSection.getAttribute('data-shortcuts-scrollable'), null,
+    'on mobile the page scrolls, so the shortcuts keep their full height');
+}
+
 testWideRecentGridCanReachMaximumColumns();
 testNewtabWideModeUsesRecentGridMaximumWidth();
+testTallShortcutsScrollAboveTheBottomDock();
+testShortcutAreaLeavesTheDockRoomOnShortScreens();
+testMobileFlowShortcutsKeepTheirHeight();
 
 console.log('newtab layout tests passed');

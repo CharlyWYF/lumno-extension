@@ -4,6 +4,7 @@ import {
   createShortcutsView,
   createShortcutsViewApi,
   type ShortcutItem,
+  type ShortcutsLayout,
   type ShortcutsViewController,
   type ShortcutsViewOptions
 } from './shortcuts';
@@ -60,11 +61,12 @@ function createView(
 
 function renderItems(
   view: ShortcutsViewController,
-  items: ShortcutItem[]
+  items: ShortcutItem[],
+  layout?: ShortcutsLayout
 ): { count: number } {
   let result = { count: 0 };
   act(() => {
-    result = view.render(items);
+    result = view.render(items, layout);
   });
   return result;
 }
@@ -535,5 +537,126 @@ describe('Shortcuts React island', () => {
     expect(view.getTiles()).toEqual([secondTile, firstTile]);
     expect(view.getTiles()[0].dataset.shortcutId).toBe('second');
     expect(view.getTiles()[1].dataset.shortcutId).toBe('first');
+  });
+  describe('groups', () => {
+    const groups = [{ id: 'g0', title: '' }, { id: 'work', title: '工作' }];
+    const items = [
+      { id: 'a', title: 'A', url: 'https://a.example/', groupId: 'g0' },
+      { id: 'b', title: 'B', url: 'https://b.example/', groupId: 'work' },
+      { id: 'c', title: 'C', url: 'https://c.example/', groupId: 'work' }
+    ];
+    const childSummary = (grid: HTMLElement) => Array.from(grid.children).map((child) => (
+      child.classList.contains('x-nt-shortcut-group-header')
+        ? `#${child.getAttribute('data-shortcut-group-id')}`
+        : child.getAttribute('data-shortcut-id') || 'add'
+    ));
+
+    it('renders each group title before its tiles in one grid', () => {
+      const groupHeaders: HTMLElement[] = [];
+      const { view, options } = createView({
+        groupHeaders,
+        getGroupPlaceholder: () => 'Add a title'
+      });
+      const grid = options.grid as HTMLElement;
+      renderItems(view, items, { grouped: true, groups });
+
+      expect(grid.getAttribute('data-shortcut-grouped')).toBe('true');
+      expect(childSummary(grid)).toEqual(['#g0', 'a', '#work', 'b', 'c', 'add']);
+      expect(groupHeaders.map((header) => header.dataset.shortcutGroupId)).toEqual(['g0', 'work']);
+      expect(view.getTiles().map((tile) => tile.dataset.shortcutGroupId)).toEqual(['g0', 'work', 'work']);
+      expect(groupHeaders[0].dataset.shortcutGroupUntitled).toBe('true');
+      expect(groupHeaders[0].textContent).toContain('Add a title');
+      expect(groupHeaders[1].querySelector('.x-nt-shortcut-group-title')?.textContent).toBe('工作');
+
+      renderItems(view, items, { grouped: false, groups });
+      expect(grid.hasAttribute('data-shortcut-grouped')).toBe(false);
+      expect(childSummary(grid)).toEqual(['a', 'b', 'c', 'add']);
+      expect(groupHeaders).toEqual([]);
+    });
+
+    it('gives an empty group a slot that adds to it and stands in for an empty last group\'s add tile', () => {
+      const onGroupAdd = vi.fn();
+      const { view, options } = createView({ onGroupAdd, getGroupEmptyLabel: () => 'Add site' });
+      const grid = options.grid as HTMLElement;
+      const withEmpty = [...groups, { id: 'empty', title: 'Empty' }];
+      renderItems(view, items, { grouped: true, groups: withEmpty });
+
+      expect(childSummary(grid)).toEqual(['#g0', 'a', '#work', 'b', 'c', '#empty', 'add', 'add']);
+      const slot = grid.querySelector<HTMLButtonElement>('.x-nt-shortcut-group-empty')!;
+      expect(slot.dataset.shortcutGroupId).toBe('empty');
+      expect(slot.getAttribute('aria-label')).toBe('Add site');
+      expect(view.getAddButton()?.hidden).toBe(true);
+      act(() => { slot.click(); });
+      expect(onGroupAdd).toHaveBeenCalledWith('empty', slot);
+
+      renderItems(view, items, { grouped: true, groups: [withEmpty[0], withEmpty[2], withEmpty[1]] });
+      expect(view.getAddButton()?.hidden).toBe(false);
+      expect(grid.querySelectorAll('.x-nt-shortcut-group-empty')).toHaveLength(1);
+    });
+
+    it('keeps a tile node when it moves into another group', () => {
+      const { view } = createView();
+      renderItems(view, items, { grouped: true, groups });
+      const tile = view.getTiles()[0];
+      renderItems(view, [{ ...items[1] }, { ...items[0], groupId: 'work' }, items[2]], { grouped: true, groups });
+
+      expect(view.getTiles()[1]).toBe(tile);
+      expect(tile.dataset.shortcutGroupId).toBe('work');
+    });
+
+    it('opens the group menu from its button or a right click', () => {
+      const onGroupMenu = vi.fn();
+      const { view, options } = createView({ onGroupMenu, getGroupActionsLabel: (title) => `${title} actions` });
+      renderItems(view, items, { grouped: true, groups });
+      const header = (options.grid as HTMLElement).querySelector<HTMLElement>('[data-shortcut-group-id="work"]')!;
+      const more = header.querySelector<HTMLButtonElement>('.x-nt-shortcut-group-more')!;
+
+      expect(more.getAttribute('aria-label')).toBe('工作 actions');
+      act(() => { more.click(); });
+      act(() => {
+        header.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      });
+      expect(onGroupMenu).toHaveBeenNthCalledWith(1, 'work', more);
+      expect(onGroupMenu).toHaveBeenNthCalledWith(2, 'work', more);
+    });
+
+    it('edits a title in place: Enter saves, Escape cancels, an empty title starts editing on click', () => {
+      const onGroupRename = vi.fn();
+      const onGroupRenameCancel = vi.fn();
+      const onGroupRenameStart = vi.fn();
+      const { view, options } = createView({ onGroupRename, onGroupRenameCancel, onGroupRenameStart });
+      const grid = options.grid as HTMLElement;
+      renderItems(view, items, { grouped: true, groups, editingGroupId: 'work' });
+      const input = grid.querySelector<HTMLInputElement>('.x-nt-shortcut-group-input')!;
+
+      expect(document.activeElement).toBe(input);
+      expect(input.value).toBe('工作');
+      act(() => {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+        setter.call(input, '学习');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      act(() => {
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      });
+      act(() => { input.blur(); });
+      expect(onGroupRename).toHaveBeenCalledTimes(1);
+      expect(onGroupRename).toHaveBeenCalledWith('work', '学习');
+
+      renderItems(view, items, { grouped: true, groups });
+      renderItems(view, items, { grouped: true, groups, editingGroupId: 'work' });
+      const again = grid.querySelector<HTMLInputElement>('.x-nt-shortcut-group-input')!;
+      act(() => {
+        again.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      });
+      expect(onGroupRenameCancel).toHaveBeenCalledTimes(1);
+      expect(onGroupRename).toHaveBeenCalledTimes(1);
+
+      renderItems(view, items, { grouped: true, groups });
+      act(() => {
+        grid.querySelector<HTMLButtonElement>('.x-nt-shortcut-group-title--placeholder')!.click();
+      });
+      expect(onGroupRenameStart).toHaveBeenCalledWith('g0');
+    });
   });
 });

@@ -651,6 +651,32 @@ body:not([data-nt-ready="1"]) .x-nt-bookmark-cascade-debug-control {
 .x-nt-shortcuts-section[data-visible="false"] {
   display: none;
 }
+/* Shortcuts taller than the room above the bottom dock scroll inside their
+   section; the layout controller sets the limit only when it is needed. The
+   stable gutters keep the columns centered and as wide as without them. */
+.x-nt-shortcuts-section[data-shortcuts-scrollable="true"] {
+  width: calc(min(90vw, var(--x-nt-shortcuts-target-width, 692px)) + var(--x-nt-shortcuts-scrollbar-gutter, 0px));
+  max-height: var(--x-nt-shortcuts-max-height);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+  --x-nt-shortcuts-fade-top: 0px;
+  --x-nt-shortcuts-fade-bottom: 0px;
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--x-nt-shortcuts-fade-top),
+    #000 calc(100% - var(--x-nt-shortcuts-fade-bottom)), transparent 100%);
+}
+/* Rows continue past a faded edge. A drag drops the fade: the lifted tile
+   is drawn outside the section and must not be masked with it. */
+.x-nt-shortcuts-section[data-shortcuts-scrollable="true"][data-shortcuts-more-above="true"] {
+  --x-nt-shortcuts-fade-top: 16px;
+}
+.x-nt-shortcuts-section[data-shortcuts-scrollable="true"][data-shortcuts-more-below="true"] {
+  --x-nt-shortcuts-fade-bottom: 16px;
+}
+body[data-drag-source] .x-nt-shortcuts-section[data-shortcuts-scrollable="true"] {
+  mask-image: none;
+}
 body[data-zen-mode="true"] .x-nt-wallpaper-control,
 body[data-zen-mode="true"] .x-nt-feedback-control,
 body[data-zen-mode="true"] .x-lumno-feature-hint--update-notice-newtab {
@@ -721,6 +747,184 @@ body[data-drag-source="shortcut"] .x-nt-shortcuts-section {
 }
 .x-nt-shortcut-tile--add[hidden] {
   display: none;
+}
+/* Grouped shortcuts share one grid. A title row spans every column, so each
+   group starts on its own row and its rows line up under the title, while
+   the columns as a whole stay centered like the ungrouped rows. */
+.x-nt-shortcuts-grid[data-shortcut-grouped="true"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, var(--x-nt-shortcut-tile-size, 64px));
+  justify-content: center;
+  align-items: end;
+}
+.x-nt-shortcut-group-header {
+  grid-column: 1 / -1;
+  min-width: 0;
+  height: 24px;
+  margin-top: 8px;
+  /* The title's own 4px padding carries its hover background; together they
+     put the text on the icons' left edge. */
+  padding: 0 max(0px, calc(var(--x-nt-shortcut-tile-padding, 8px) - 4px));
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  box-sizing: border-box;
+  color: var(--x-nt-bookmark-heading-color, #000000);
+  font-family: "Open Sans", "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+}
+.x-nt-shortcut-group-header:first-child {
+  margin-top: 0;
+}
+.x-nt-shortcut-group-title {
+  all: unset;
+  min-width: 0;
+  padding: 4px;
+  border-radius: var(--lumno-radius-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+/* An untitled group shows where its title would go only while pointed at. */
+.x-nt-shortcut-group-title--placeholder {
+  cursor: text;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.x-nt-shortcut-group-header:hover .x-nt-shortcut-group-title--placeholder,
+.x-nt-shortcut-group-title--placeholder:focus-visible {
+  opacity: 0.5;
+}
+.x-nt-shortcut-group-more {
+  all: unset;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--lumno-radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.x-nt-shortcut-group-header:hover .x-nt-shortcut-group-more,
+.x-nt-shortcut-group-more:focus-visible,
+.x-nt-shortcut-group-more[data-shortcut-context-menu-open="true"] {
+  opacity: 1;
+}
+.x-nt-shortcut-group-more:hover,
+.x-nt-shortcut-group-more[data-shortcut-context-menu-open="true"],
+.x-nt-shortcut-group-title--placeholder:hover {
+  background: var(--x-nt-bookmark-pager-hover-bg, rgba(17, 24, 39, 0.08));
+}
+.x-nt-shortcut-group-title--placeholder:focus-visible,
+.x-nt-shortcut-group-more:focus-visible {
+  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline-offset: 1px;
+}
+.x-nt-shortcut-group-input {
+  all: unset;
+  width: 15em;
+  max-width: 100%;
+  padding: 3px 4px;
+  border-radius: var(--lumno-radius-sm);
+  box-shadow: inset 0 0 0 1px currentColor;
+  font: inherit;
+  color: inherit;
+  cursor: text;
+}
+.x-nt-shortcut-group-input::placeholder {
+  color: inherit;
+  opacity: 0.5;
+}
+body[data-drag-source="shortcut"] .x-nt-shortcut-group-more,
+body[data-drag-source="shortcut"] .x-nt-shortcut-group-title--placeholder {
+  opacity: 0;
+}
+/* An empty group keeps a dashed slot that adds a site to it and takes
+   drops. It hides while a dragged tile sits right before it. */
+.x-nt-shortcut-group-empty {
+  all: unset;
+  width: var(--x-nt-shortcut-tile-size, 64px);
+  min-height: var(--x-nt-shortcut-tile-size, 64px);
+  padding: var(--x-nt-shortcut-tile-padding, 8px);
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+.x-nt-shortcut-group-empty[hidden],
+.x-nt-shortcut-tile + .x-nt-shortcut-group-empty {
+  display: none;
+}
+.x-nt-shortcut-group-empty .x-nt-shortcut-icon {
+  cursor: inherit;
+  pointer-events: none;
+  background: transparent;
+  outline: 1.5px dashed currentColor;
+  outline-offset: -1.5px;
+  opacity: 0.4;
+  transition: opacity 120ms ease;
+}
+.x-nt-shortcut-group-empty:hover .x-nt-shortcut-icon,
+.x-nt-shortcut-group-empty:focus-visible .x-nt-shortcut-icon,
+body[data-drag-source] .x-nt-shortcut-group-empty .x-nt-shortcut-icon {
+  opacity: 0.75;
+}
+.x-nt-shortcut-group-empty:focus-visible {
+  outline: 2px solid var(--x-nt-bookmark-focus, rgba(0, 0, 0, 0.22));
+  outline-offset: 2px;
+  border-radius: var(--lumno-radius-lg);
+}
+/* A scrolling section would clip the dragged tile, so it is lifted out as a
+   fixed element while this placeholder keeps its slot. */
+.x-nt-shortcut-tile[data-shortcut-lifted="true"] {
+  position: fixed;
+  margin: 0;
+  z-index: 10002;
+}
+.x-nt-shortcut-drag-placeholder {
+  width: var(--x-nt-shortcut-tile-size, 64px);
+  min-height: var(--x-nt-shortcut-tile-size, 64px);
+  display: inline-block;
+  flex: 0 0 auto;
+}
+/* Dragging a group title: the title follows the pointer and a line marks
+   where the group will land. */
+body[data-drag-source="shortcut-group"] {
+  cursor: grabbing;
+  user-select: none;
+}
+.x-nt-shortcut-group-header[data-shortcut-group-dragging="true"] {
+  opacity: 0.35;
+}
+.x-nt-shortcut-group-ghost {
+  position: fixed;
+  z-index: 10050;
+  width: max-content;
+  margin: 0;
+  padding: 0 6px;
+  border-radius: var(--lumno-radius-sm);
+  background: rgb(255 255 255 / 0.82);
+  box-shadow: 0 6px 18px rgb(15 23 42 / 0.14);
+  pointer-events: none;
+}
+body[data-theme="dark"] .x-nt-shortcut-group-ghost {
+  background: rgb(30 41 59 / 0.86);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.32);
+}
+.x-nt-shortcut-group-drop-line {
+  position: fixed;
+  z-index: 10050;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--x-nt-bookmark-heading-color, #000000);
+  opacity: 0.55;
+  pointer-events: none;
 }
 .x-nt-shortcut-icon {
   --x-nt-shortcut-dock-scale: 1;
@@ -2746,10 +2950,12 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
   }
 }
 :root:not([data-lumno-scrollbars="overlay"]) .x-nt-bookmark-cascade-content::-webkit-scrollbar,
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-shortcuts-section[data-shortcuts-scrollable="true"]::-webkit-scrollbar,
 :root:not([data-lumno-scrollbars="overlay"]) #_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar {
   width: 10px;
 }
 :root:not([data-lumno-scrollbars="overlay"]) .x-nt-bookmark-cascade-content::-webkit-scrollbar-track,
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-shortcuts-section[data-shortcuts-scrollable="true"]::-webkit-scrollbar-track,
 :root:not([data-lumno-scrollbars="overlay"]) #_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-track {
   margin-block: 10px;
   background: transparent;
@@ -2760,6 +2966,7 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
   margin-bottom: max(10px, var(--x-nt-bottom-dock-scrollbar-end-inset, 0px));
 }
 :root:not([data-lumno-scrollbars="overlay"]) .x-nt-bookmark-cascade-content::-webkit-scrollbar-thumb,
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-shortcuts-section[data-shortcuts-scrollable="true"]::-webkit-scrollbar-thumb,
 :root:not([data-lumno-scrollbars="overlay"]) #_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-thumb {
   min-height: 34px;
   border: 3px solid transparent;
@@ -2768,10 +2975,12 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
   background-clip: padding-box;
 }
 :root:not([data-lumno-scrollbars="overlay"]) .x-nt-bookmark-cascade-content::-webkit-scrollbar-thumb:hover,
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-shortcuts-section[data-shortcuts-scrollable="true"]::-webkit-scrollbar-thumb:hover,
 :root:not([data-lumno-scrollbars="overlay"]) #_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-thumb:hover {
   background-color: rgba(100, 116, 139, 0.82);
 }
 :root:not([data-lumno-scrollbars="overlay"]) .x-nt-bookmark-cascade-content::-webkit-scrollbar-corner,
+:root:not([data-lumno-scrollbars="overlay"]) .x-nt-shortcuts-section[data-shortcuts-scrollable="true"]::-webkit-scrollbar-corner,
 :root:not([data-lumno-scrollbars="overlay"]) #_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-corner {
   background: transparent;
 }
@@ -3016,10 +3225,12 @@ body[data-theme="dark"] .x-nt-bookmark-cascade-level {
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 :root:not([data-lumno-scrollbars="overlay"]) body[data-theme="dark"] .x-nt-bookmark-cascade-content::-webkit-scrollbar-thumb,
+:root:not([data-lumno-scrollbars="overlay"]) body[data-theme="dark"] .x-nt-shortcuts-section[data-shortcuts-scrollable="true"]::-webkit-scrollbar-thumb,
 :root:not([data-lumno-scrollbars="overlay"]) body[data-theme="dark"] #_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-thumb {
   background-color: rgba(148, 163, 184, 0.58);
 }
 :root:not([data-lumno-scrollbars="overlay"]) body[data-theme="dark"] .x-nt-bookmark-cascade-content::-webkit-scrollbar-thumb:hover,
+:root:not([data-lumno-scrollbars="overlay"]) body[data-theme="dark"] .x-nt-shortcuts-section[data-shortcuts-scrollable="true"]::-webkit-scrollbar-thumb:hover,
 :root:not([data-lumno-scrollbars="overlay"]) body[data-theme="dark"] #_x_extension_newtab_bottom_dock_scroller_2024_unique_::-webkit-scrollbar-thumb:hover {
   background-color: rgba(203, 213, 225, 0.7);
 }
@@ -4357,6 +4568,16 @@ body[data-wallpaper-active="true"] .x-nt-wallpaper-button:not([data-wallpaper-ov
   color: var(--x-nt-wallpaper-adaptive-ink);
   text-shadow: 0 1px 1px var(--x-nt-wallpaper-adaptive-shadow),
     0 0 12px var(--x-nt-wallpaper-adaptive-halo);
+}
+body[data-wallpaper-active="true"] .x-nt-shortcut-group-header {
+  color: var(--x-nt-wallpaper-adaptive-ink);
+  text-shadow: 0 1px 1px var(--x-nt-wallpaper-adaptive-shadow),
+    0 0 12px var(--x-nt-wallpaper-adaptive-halo);
+}
+body[data-wallpaper-active="true"] .x-nt-shortcut-group-more:hover,
+body[data-wallpaper-active="true"] .x-nt-shortcut-group-more[data-shortcut-context-menu-open="true"],
+body[data-wallpaper-active="true"] .x-nt-shortcut-group-title--placeholder:hover {
+  background: var(--x-nt-wallpaper-adaptive-hover-bg);
 }
 body[data-wallpaper-active="true"] .x-nt-bookmarks-title-wrap .x-nt-bookmarks-crumb,
 body[data-wallpaper-active="true"] .x-nt-bookmarks-title-wrap .x-nt-bookmarks-crumb-sep {

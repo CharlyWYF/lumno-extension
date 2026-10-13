@@ -155,6 +155,9 @@
     if (record && record.kind === 'shortcut-delete') {
       return createShortcutDeleteRecord(record);
     }
+    if (record && record.kind === 'shortcut-group-delete') {
+      return createShortcutGroupDeleteRecord(record);
+    }
     if (record && record.kind === 'shortcut-stack') {
       return createShortcutStackRecord(record);
     }
@@ -225,7 +228,8 @@
       sources: Object.freeze(sources),
       folderShortcut: Object.freeze({
         id: folderShortcutId,
-        index: Math.max(0, Math.round(Number(config.folderShortcut.index) || 0))
+        index: Math.max(0, Math.round(Number(config.folderShortcut.index) || 0)),
+        groupId: String(config.folderShortcut.groupId || '')
       }),
       // The icon each stacked site keeps inside the folder, in child order.
       itemIcons: Object.freeze(snapshot.children.map((_child, index) => {
@@ -253,21 +257,59 @@
     return urls(expected).every((url, index) => url === actual[index]);
   }
 
+  // `fromGroups` and `toGroups` name each entry's group, in the same order as
+  // `fromOrder` and `toOrder`; a move into another group can keep the order.
   function createShortcutReorderRecord(options) {
     const config = options || {};
     const fromOrder = Array.isArray(config.fromOrder) ? config.fromOrder.map(String) : [];
     const toOrder = Array.isArray(config.toOrder) ? config.toOrder.map(String) : [];
     const fromIds = new Set(fromOrder);
-    if (fromOrder.length < 2 || fromOrder.length !== toOrder.length ||
+    const readGroups = (groups) => (Array.isArray(groups) && groups.length === fromOrder.length
+      ? groups.map((groupId) => String(groupId || '')) : null);
+    const fromGroups = readGroups(config.fromGroups);
+    const toGroups = readGroups(config.toGroups);
+    const groupOf = (order, groups) => new Map(groups ? order.map((id, index) => [id, groups[index]]) : []);
+    const fromGroupById = groupOf(fromOrder, fromGroups);
+    const toGroupById = groupOf(toOrder, toGroups);
+    const regrouped = Boolean(fromGroups && toGroups) &&
+      fromOrder.some((id) => fromGroupById.get(id) !== toGroupById.get(id));
+    if (fromOrder.length < 1 || (fromOrder.length < 2 && !regrouped) || fromOrder.length !== toOrder.length ||
         fromIds.size !== fromOrder.length || new Set(toOrder).size !== toOrder.length ||
         fromOrder.some((id) => !id) || toOrder.some((id) => !fromIds.has(id)) ||
-        fromOrder.every((id, index) => id === toOrder[index])) {
+        (fromOrder.every((id, index) => id === toOrder[index]) && !regrouped)) {
       return null;
     }
     return Object.freeze({
       kind: 'shortcut-reorder',
       fromOrder: Object.freeze(fromOrder),
-      toOrder: Object.freeze(toOrder)
+      toOrder: Object.freeze(toOrder),
+      ...(fromGroups && toGroups
+        ? { fromGroups: Object.freeze(fromGroups), toGroups: Object.freeze(toGroups) }
+        : {})
+    });
+  }
+
+  // Deleting a shortcut group either moves its sites into another group
+  // (`movedIds`, `targetGroupId`) or removes them with the group (`removed`).
+  function createShortcutGroupDeleteRecord(options) {
+    const config = options && typeof options === 'object' ? options : {};
+    const group = config.group && typeof config.group === 'object' ? config.group : null;
+    const groupId = String(group && group.id || '');
+    if (!groupId) {
+      return null;
+    }
+    const removed = (Array.isArray(config.removed) ? config.removed : [])
+      .map((entry) => entry && createShortcutDeleteRecord(entry));
+    if (removed.some((entry) => !entry)) {
+      return null;
+    }
+    return Object.freeze({
+      kind: 'shortcut-group-delete',
+      group: Object.freeze({ id: groupId, title: String(group.title || '') }),
+      groupIndex: Math.max(0, Math.round(Number(config.groupIndex) || 0)),
+      targetGroupId: String(config.targetGroupId || ''),
+      movedIds: Object.freeze((Array.isArray(config.movedIds) ? config.movedIds : []).map(String).filter(Boolean)),
+      removed: Object.freeze(removed)
     });
   }
 
@@ -373,6 +415,7 @@
     createShortcutStackRecord,
     createTransferRecord,
     createShortcutReorderRecord,
+    createShortcutGroupDeleteRecord,
     createBookmarkMoveHistory,
     createMoveRecord,
     getMoveApiDestinationIndex,

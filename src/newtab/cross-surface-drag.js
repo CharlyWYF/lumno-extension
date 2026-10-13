@@ -133,9 +133,12 @@
       return null;
     }
     const nextShortcuts = shortcuts.slice();
-    const shortcut = existingIndex < 0
+    const found = existingIndex < 0
       ? record
       : nextShortcuts.splice(existingIndex, 1)[0];
+    // The shortcut joins the group of the tile it was dropped beside.
+    const groupId = String(config.groupId || '');
+    const shortcut = groupId && found.groupId !== groupId ? { ...found, groupId } : found;
     const insertionIndex = existingIndex >= 0 && index > existingIndex ? index - 1 : index;
     nextShortcuts.splice(Math.max(0, Math.min(nextShortcuts.length, insertionIndex)), 0, shortcut);
     return {
@@ -206,7 +209,10 @@
       return null;
     }
     const next = shortcuts.filter((item) => !ids.has(item.id));
-    next.splice(Math.max(0, Math.min(Number(config.folder.index) || 0, next.length)), 0, folder);
+    // The folder takes the group of the site it was stacked onto.
+    const groupId = String(config.folder.groupId || '');
+    next.splice(Math.max(0, Math.min(Number(config.folder.index) || 0, next.length)), 0,
+      groupId ? { ...folder, groupId } : folder);
     return next;
   }
 
@@ -224,10 +230,17 @@
         currentOrder.some((id, index) => id !== config.sourceOrder[index]))) {
       return null;
     }
+    // A recorded group for each entry in `order` moves it back into that group.
+    const groups = Array.isArray(config.groups) && config.groups.length === order.length ? config.groups : null;
     let index = 0;
     // Reorder the recorded entries in their current slots, preserving newer
     // shortcuts and the latest titles, icons and folder bindings.
-    return shortcuts.map((item) => ids.has(item.id) ? byId.get(order[index++]) : item);
+    return shortcuts.map((item) => {
+      if (!ids.has(item.id)) return item;
+      const groupId = groups ? String(groups[index] || '') : '';
+      const entry = byId.get(order[index++]);
+      return groupId && entry.groupId !== groupId ? { ...entry, groupId } : entry;
+    });
   }
 
   return Object.freeze({

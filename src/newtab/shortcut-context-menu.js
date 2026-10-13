@@ -25,7 +25,14 @@
       getShortcutContextMenuOptions,
       closeRecentContextMenu,
       hideShortcutTooltip,
-      getShortcutTileId
+      getShortcutTileId,
+      SHORTCUT_GROUP_MENU_VALUES,
+      createShortcutGroup,
+      startShortcutGroupRename,
+      openShortcutAddDialog,
+      moveShortcutGroup,
+      deleteShortcutGroup,
+      confirmDeleteShortcutGroupWithSites
     } = deps;
 
     // Page state still owned by newtab.js; read and written through accessors.
@@ -95,8 +102,9 @@
       return Number.isFinite(centerX) ? centerX : null;
     }
 
+    // Only a shortcut tile magnifies; a group title's menu button does not.
     function applyShortcutContextMenuDockHover(tile) {
-      if (!tile) {
+      if (!tile || !tile.classList || !tile.classList.contains('x-nt-shortcut-tile')) {
         return;
       }
       setShortcutDockHover(tile, getShortcutContextMenuAnchorX(tile));
@@ -177,6 +185,14 @@
         hideShortcutAddFromContextMenu(sourceElement);
         return;
       }
+      if (action === SHORTCUT_GROUP_MENU_VALUES.create) {
+        createShortcutGroup();
+        return;
+      }
+      if (target.kind === 'group') {
+        handleShortcutGroupMenuAction(action, String(target.groupId || ''), sourceElement);
+        return;
+      }
       if (!shortcut) {
         return;
       }
@@ -207,6 +223,25 @@
       }
       if (action === SHORTCUT_CONTEXT_MENU_REMOVE_VALUE) {
         removeShortcutById(targetId);
+      }
+    }
+
+    function handleShortcutGroupMenuAction(action, groupId, sourceElement) {
+      if (!groupId) {
+        return;
+      }
+      if (action === SHORTCUT_GROUP_MENU_VALUES.rename) {
+        startShortcutGroupRename(groupId);
+      } else if (action === SHORTCUT_GROUP_MENU_VALUES.addSite) {
+        openShortcutAddDialog(sourceElement, groupId);
+      } else if (action === SHORTCUT_GROUP_MENU_VALUES.moveUp) {
+        moveShortcutGroup(groupId, -1);
+      } else if (action === SHORTCUT_GROUP_MENU_VALUES.moveDown) {
+        moveShortcutGroup(groupId, 1);
+      } else if (action === SHORTCUT_GROUP_MENU_VALUES.delete) {
+        deleteShortcutGroup(groupId, true);
+      } else if (action === SHORTCUT_GROUP_MENU_VALUES.deleteWithSites) {
+        confirmDeleteShortcutGroupWithSites(groupId, sourceElement);
       }
     }
 
@@ -310,7 +345,7 @@
       const shortcutId = target && target.kind === 'shortcut'
         ? String(target.shortcutId || '')
         : '';
-      if (!tile || (target.kind === 'shortcut' && !shortcutId)) {
+      if (!tile || (target.kind === 'shortcut' && !shortcutId) || (target.kind === 'group' && !target.groupId)) {
         return;
       }
       if (!pageState.shortcutContextMenu) {
@@ -328,7 +363,9 @@
       setShortcutContextMenuPosition(tile);
       const defaultValue = target.kind === 'add'
         ? SHORTCUT_CONTEXT_MENU_HIDE_ADD_VALUE
-        : NEWTAB_CONTEXT_MENU_OPEN_VALUE;
+        : target.kind === 'group'
+          ? SHORTCUT_GROUP_MENU_VALUES.rename
+          : NEWTAB_CONTEXT_MENU_OPEN_VALUE;
       if (typeof pageState.shortcutContextMenuSelectController.setOptions === 'function') {
         pageState.shortcutContextMenuSelectController.setOptions(
           pageState.shortcutContextMenu.control,
@@ -355,6 +392,17 @@
       });
     }
 
+    function openShortcutGroupMenu(groupId, anchor) {
+      if (!groupId || !anchor) {
+        return;
+      }
+      openShortcutContextMenu({
+        kind: 'group',
+        groupId: String(groupId),
+        tile: anchor
+      });
+    }
+
     function openShortcutAddContextMenu(sourceElement) {
       const tile = sourceElement || pageState.addShortcutButton;
       if (!tile || tile.hidden) {
@@ -373,7 +421,8 @@
       applyShortcutContextMenuDockHover,
       closeShortcutContextMenu,
       handleShortcutContextMenu,
-      openShortcutAddContextMenu
+      openShortcutAddContextMenu,
+      openShortcutGroupMenu
     };
   }
 

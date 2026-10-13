@@ -147,7 +147,11 @@ async function run() {
     const shortcutGrid = {}, shortcutsView = { render(items) { visible = items; }, getAddButton() {} };
     const shortcutSection = { setAttribute() {} }, document = { body: null };
     let addShortcutButton;
+    const shortcutGroups = store.getDefaultShortcutState().groups;
+    let shortcutGroupEditingId = '';
     function getShortcutStoreOptions() { return {}; }
+    function isShortcutGroupLayoutActive() { return false; }
+    function scheduleWallpaperAdaptiveToneUpdate() {}
     function hideShortcutTooltip() {} function closeShortcutContextMenu() {}
     function syncOpenBookmarkCascadeAnchorVisual() {} function applyNewtabShortcutsVisibility() {}
     function updateShortcutLanguageStrings() {} function updateBookmarkSectionPosition() {}

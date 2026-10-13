@@ -83,6 +83,11 @@
     const compactDockSearchGapPx = getOptionNumber(constants, 'compactDockSearchGapPx', 32);
     const compactDockShortcutGapPx = getOptionNumber(constants, 'compactDockShortcutGapPx', 8);
     const compactDockMinTopReservePx = getOptionNumber(constants, 'compactDockMinTopReservePx', 168);
+    // A tall shortcut area stops above the bottom dock, leaves the dock at
+    // least this much room, and scrolls inside.
+    const shortcutAreaDockGapPx = getOptionNumber(constants, 'shortcutAreaDockGapPx', 8);
+    const shortcutAreaMinHeightPx = getOptionNumber(constants, 'shortcutAreaMinHeightPx', 120);
+    const shortcutAreaMinDockHeightPx = getOptionNumber(constants, 'shortcutAreaMinDockHeightPx', 220);
     const mobileFlowBreakpointPx = getOptionNumber(constants, 'mobileFlowBreakpointPx', 0);
     const mobileMinTopPx = getOptionNumber(constants, 'mobileMinTopPx', 48);
     const mobileUpshiftRatio = getOptionNumber(constants, 'mobileUpshiftRatio', 0.04);
@@ -97,6 +102,7 @@
     const visibleAttribute = 'data-visible';
     const suggestionsOpenAttribute = 'data-nt-suggestions-open';
     let dockDensityPromotionLock = null;
+    let shortcutAreaRelayout = false;
     const getTopInsetPx = typeof options.getTopInsetPx === 'function'
       ? options.getTopInsetPx
       : function() {
@@ -531,7 +537,79 @@
       }
     }
 
+    // Marks the edges with rows beyond them, which the section fades out.
+    function updateShortcutAreaEdges(section) {
+      const scrollable = section.getAttribute('data-shortcuts-scrollable') === 'true';
+      const top = Number(section.scrollTop) || 0;
+      const rest = (Number(section.scrollHeight) || 0) - (Number(section.clientHeight) || 0) - top;
+      setBooleanAttribute(section, 'data-shortcuts-more-above', scrollable && top > 1);
+      setBooleanAttribute(section, 'data-shortcuts-more-below', scrollable && rest > 1);
+    }
+
+    // The section scrolls only when its grid is taller than the room above
+    // the dock. Mobile flow scrolls the page instead. Returns whether the
+    // limit changed, since the dock's own reserve can depend on it.
+    function updateShortcutAreaLimit() {
+      const section = getShortcutSection();
+      if (!section || !section.style || typeof section.getBoundingClientRect !== 'function') {
+        return false;
+      }
+      const grid = typeof section.querySelector === 'function'
+        ? section.querySelector('.x-nt-shortcuts-grid')
+        : null;
+      const bottomDock = getBottomDock();
+      const viewportHeight = Math.max(0, windowObj.innerHeight || 0);
+      let limit = 0;
+      if (grid && isSectionVisible(section) && !isMobileFlowViewport() && bottomDock &&
+          bottomDock.style.getPropertyValue('display') !== 'none' && viewportHeight > 0) {
+        const sectionTop = Number(section.getBoundingClientRect().top) || 0;
+        // The dock's scroller reaches above the dock itself, and drops count
+        // from where it starts.
+        const dockSurface = bottomDock.firstElementChild || null;
+        const dockTop = Math.min(
+          Number(bottomDock.getBoundingClientRect().top) || viewportHeight,
+          dockSurface ? Number(dockSurface.getBoundingClientRect().top) || viewportHeight : viewportHeight
+        );
+        const room = Math.min(
+          dockTop - shortcutAreaDockGapPx,
+          viewportHeight - shortcutAreaMinDockHeightPx
+        ) - sectionTop;
+        const gridHeight = Math.max(0, Number(grid.offsetHeight) || 0);
+        if (gridHeight > Math.max(shortcutAreaMinHeightPx, room)) {
+          limit = Math.floor(Math.max(shortcutAreaMinHeightPx, room));
+        }
+      }
+      if (!section._xShortcutAreaEdgesBound && typeof section.addEventListener === 'function') {
+        section._xShortcutAreaEdgesBound = true;
+        section.addEventListener('scroll', () => updateShortcutAreaEdges(section), { passive: true });
+      }
+      const previous = section.style.getPropertyValue('--x-nt-shortcuts-max-height');
+      const next = limit > 0 ? `${limit}px` : '';
+      if (previous === next) {
+        updateShortcutAreaEdges(section);
+        return false;
+      }
+      if (next) {
+        section.style.setProperty('--x-nt-shortcuts-max-height', next);
+        section.setAttribute('data-shortcuts-scrollable', 'true');
+        // Keep the columns' width when a classic scrollbar takes some of it.
+        const gutter = Math.max(0, (Number(section.offsetWidth) || 0) - (Number(section.clientWidth) || 0));
+        section.style.setProperty('--x-nt-shortcuts-scrollbar-gutter', `${gutter}px`);
+      } else {
+        section.style.removeProperty('--x-nt-shortcuts-max-height');
+        section.style.removeProperty('--x-nt-shortcuts-scrollbar-gutter');
+        section.removeAttribute('data-shortcuts-scrollable');
+      }
+      updateShortcutAreaEdges(section);
+      return true;
+    }
+
     function updateSearchEntryLayout(layoutOptions) {
+      positionSearchEntry(layoutOptions);
+      updateShortcutAreaLimit();
+    }
+
+    function positionSearchEntry(layoutOptions) {
       const body = documentObj && documentObj.body;
       const root = getRoot();
       if (!body || !root) {
@@ -742,9 +820,20 @@
       }
       bottomDock.style.setProperty('display', (bookmarkVisible || recentVisible) ? 'flex' : 'none', 'important');
       updateBottomDockScrollbarInsets(sectionSafeCorridor.parentElement, mobileFlow);
-      updateSearchEntryLayout({
+      positionSearchEntry({
         preserveCurrentTop: Boolean(callbacks && callbacks.preserveSearchEntryLayout)
       });
+      // On short screens the dock sits below the shortcuts, so a new limit
+      // moves the dock too; lay it out once more against the limited area.
+      if (updateShortcutAreaLimit() && !shortcutAreaRelayout) {
+        shortcutAreaRelayout = true;
+        try {
+          updateBottomDockLayout({ ...(callbacks || {}), preserveSearchEntryLayout: true });
+        } finally {
+          shortcutAreaRelayout = false;
+        }
+        return;
+      }
       updateSuggestionsFloatingLayout();
       if (previousDockDensity !== dockDensity && typeof windowObj.requestAnimationFrame === 'function') {
         windowObj.requestAnimationFrame(() => {

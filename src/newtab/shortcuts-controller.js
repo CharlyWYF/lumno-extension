@@ -71,6 +71,7 @@
       pageStructureRuntime,
       NEWTAB_SHORTCUTS_VIEW,
       shortcutTiles,
+      shortcutGroupHeaders,
       getFigmaFolderSvg,
       initFolderPathMorph,
       playFolderPathMorph,
@@ -94,7 +95,8 @@
       NEWTAB_SHORTCUT_DIALOG,
       bindShortcutDialogTooltip,
       hideShortcutDialogTooltip,
-      SHORTCUT_DIALOG_ITEM_BOOKMARK
+      SHORTCUT_DIALOG_ITEM_BOOKMARK,
+      handleShortcutGroupMenu
     } = deps;
 
     // Page state still owned by newtab.js; read and written through accessors.
@@ -107,6 +109,10 @@
     let shortcutGroups = NEWTAB_SHORTCUTS_STORE.getDefaultShortcutState().groups;
     let shortcutMigratedAt = 0;
     let shortcutStateTorn = false;
+    // The group whose title is being edited, and the group a site added from
+    // the dialog joins.
+    let shortcutGroupEditingId = '';
+    let shortcutAddTargetGroupId = '';
     let shortcutTornReloadCount = 0;
     const SHORTCUT_TORN_RELOAD_LIMIT = 3;
     const SHORTCUT_TORN_RELOAD_DELAY_MS = 1500;
@@ -629,7 +635,18 @@
       closeShortcutContextMenu();
       pageState.newtabShortcuts = NEWTAB_SHORTCUTS_STORE.normalizeShortcuts(pageState.newtabShortcuts, getShortcutStoreOptions());
       const items = getVisibleShortcuts();
-      shortcutsView.render(items);
+      const grouped = isShortcutGroupLayoutActive();
+      if (!shortcutGroups.some((group) => group.id === shortcutGroupEditingId)) {
+        shortcutGroupEditingId = '';
+      }
+      shortcutsView.render(items, {
+        grouped,
+        groups: shortcutGroups,
+        editingGroupId: shortcutGroupEditingId
+      });
+      if (grouped) {
+        scheduleWallpaperAdaptiveToneUpdate();
+      }
       shortcutFolderRuntime.flush().catch(() => {});
       syncOpenBookmarkCascadeAnchorVisual();
       pageState.addShortcutButton = shortcutsView.getAddButton();
@@ -953,6 +970,227 @@
         });
     }
 
+    function getShortcutGroups() {
+      return shortcutGroups;
+    }
+
+    // One untitled default group keeps the plain, centered shortcut rows.
+    function isShortcutGroupLayoutActive() {
+      return !NEWTAB_SHORTCUTS_STORE.isDefaultShortcutGroupLayout(shortcutGroups);
+    }
+
+    function getLastShortcutGroupId() {
+      return shortcutGroups.length ? shortcutGroups[shortcutGroups.length - 1].id : '';
+    }
+
+    function getShortcutGroupDisplayTitle(groupId) {
+      const group = shortcutGroups.find((item) => item.id === groupId);
+      return group && group.title
+        ? group.title
+        : t('newtab_shortcuts_group_untitled_name', 'Untitled group');
+    }
+
+    function openShortcutAddDialog(sourceElement, groupId) {
+      hideShortcutTooltip();
+      shortcutAddTargetGroupId = groupId || getLastShortcutGroupId();
+      openShortcutDialog({ sourceElement });
+    }
+
+    function createShortcutGroup() {
+      if (pageState.bookmarkMoveHistoryBusy) {
+        return Promise.resolve(false);
+      }
+      const maxGroups = NEWTAB_SHORTCUTS_STORE.DEFAULT_MAX_SHORTCUT_GROUPS;
+      if (shortcutGroups.length >= maxGroups) {
+        showToast(formatMessage(
+          'newtab_shortcuts_group_limit_reached',
+          'You can create up to {count} groups.',
+          { count: maxGroups }
+        ), true);
+        return Promise.resolve(false);
+      }
+      const group = { id: NEWTAB_SHORTCUTS_STORE.createShortcutGroupId(), title: '' };
+      shortcutGroupEditingId = group.id;
+      return persistShortcuts(pageState.newtabShortcuts, '', undefined, {
+        groups: shortcutGroups.concat(group)
+      }).then((saved) => {
+        if (!saved && shortcutGroupEditingId === group.id) {
+          shortcutGroupEditingId = '';
+        }
+        return saved;
+      });
+    }
+
+    function startShortcutGroupRename(groupId) {
+      if (!shortcutGroups.some((group) => group.id === groupId)) {
+        return;
+      }
+      shortcutGroupEditingId = groupId;
+      renderShortcuts();
+    }
+
+    function cancelShortcutGroupRename() {
+      if (!shortcutGroupEditingId) {
+        return;
+      }
+      shortcutGroupEditingId = '';
+      renderShortcuts();
+    }
+
+    function renameShortcutGroup(groupId, title) {
+      shortcutGroupEditingId = '';
+      const nextTitle = NEWTAB_SHORTCUTS_STORE.normalizeShortcutGroups([{ id: groupId, title }])[0].title;
+      const group = shortcutGroups.find((item) => item.id === groupId);
+      if (!group || group.title === nextTitle) {
+        renderShortcuts();
+        return Promise.resolve(Boolean(group));
+      }
+      return persistShortcuts(pageState.newtabShortcuts, '', undefined, {
+        groups: shortcutGroups.map((item) => (item.id === groupId ? { ...item, title: nextTitle } : item))
+      });
+    }
+
+    function moveShortcutGroup(groupId, offset) {
+      const index = shortcutGroups.findIndex((group) => group.id === groupId);
+      return moveShortcutGroupToIndex(groupId, index + offset);
+    }
+
+    // `targetIndex` is the group's place among the other groups.
+    function moveShortcutGroupToIndex(groupId, targetIndex) {
+      const index = shortcutGroups.findIndex((group) => group.id === groupId);
+      if (index < 0 || !Number.isInteger(targetIndex) || targetIndex < 0 ||
+          targetIndex >= shortcutGroups.length || targetIndex === index) {
+        return Promise.resolve(false);
+      }
+      const groups = shortcutGroups.slice();
+      const [group] = groups.splice(index, 1);
+      groups.splice(targetIndex, 0, group);
+      return persistShortcuts(pageState.newtabShortcuts, '', undefined, { groups });
+    }
+
+    // The sites of a deleted group join the group above it, or the one below
+    // when it was the first group.
+    function planShortcutGroupDelete(groups, items, groupId, keepSites, preferredTargetId) {
+      const index = groups.findIndex((group) => group.id === groupId);
+      if (index < 0 || groups.length <= 1) {
+        return null;
+      }
+      const remaining = groups.filter((group) => group.id !== groupId);
+      const members = items.filter((item) => item.groupId === groupId);
+      if (keepSites) {
+        const target = remaining.find((group) => group.id === preferredTargetId) ||
+          groups[index - 1] || groups[index + 1];
+        return {
+          index,
+          groups: remaining,
+          targetGroupId: target.id,
+          members,
+          items: items.map((item) => (item.groupId === groupId ? { ...item, groupId: target.id } : item))
+        };
+      }
+      return {
+        index,
+        groups: remaining,
+        targetGroupId: '',
+        members,
+        items: items.filter((item) => item.groupId !== groupId)
+      };
+    }
+
+    function deleteShortcutGroup(groupId, keepSites) {
+      if (pageState.bookmarkMoveHistoryBusy) {
+        return Promise.resolve(false);
+      }
+      const items = pageState.newtabShortcuts;
+      const plan = planShortcutGroupDelete(shortcutGroups, items, groupId, keepSites, '');
+      if (!plan) {
+        return Promise.resolve(false);
+      }
+      const group = shortcutGroups[plan.index];
+      const record = NEWTAB_BOOKMARK_MOVE_HISTORY.createShortcutGroupDeleteRecord({
+        group,
+        groupIndex: plan.index,
+        targetGroupId: plan.targetGroupId,
+        movedIds: keepSites ? plan.members.map((item) => item.id) : [],
+        removed: keepSites ? [] : plan.members.map((item) => ({
+          snapshot: item,
+          index: items.indexOf(item),
+          iconDataUrl: pageState.newtabShortcutIcons[item.id]
+        }))
+      });
+      pageState.bookmarkMoveHistoryBusy = true;
+      return persistShortcuts(plan.items, '', undefined, { groups: plan.groups }).then((saved) => {
+        if (saved && record) {
+          bookmarkMoveHistory.push(record);
+          showToast(formatMessage(
+            'newtab_shortcuts_group_deleted_undo',
+            'Group deleted · {shortcut} to undo',
+            { shortcut: getBookmarkUndoShortcutLabel() }
+          ));
+        }
+        return saved;
+      }).finally(() => { pageState.bookmarkMoveHistoryBusy = false; });
+    }
+
+    // Deleting a group with its sites removes them all at once, so it asks
+    // first; keeping the sites is a plain move and does not.
+    function confirmDeleteShortcutGroupWithSites(groupId, sourceElement) {
+      const count = pageState.newtabShortcuts.filter((item) => item.groupId === groupId).length;
+      if (!count) {
+        return deleteShortcutGroup(groupId, false);
+      }
+      openShortcutDialog({
+        sourceElement,
+        confirmationTitle: formatMessage(
+          'newtab_shortcuts_group_delete_confirm_title',
+          'Delete “{group}” and its sites?',
+          { group: getShortcutGroupDisplayTitle(groupId) }
+        ),
+        confirmationDescription: formatMessage(
+          'newtab_shortcuts_group_delete_confirm_description',
+          'The group and its {count} sites will be deleted.',
+          { count }
+        ),
+        confirmLabel: t('newtab_shortcuts_group_delete_confirm_button', 'Delete'),
+        onConfirm() {
+          return deleteShortcutGroup(groupId, false);
+        }
+      });
+      return Promise.resolve(true);
+    }
+
+    // Undo puts the group back where it was, returns its moved sites to it
+    // and restores the sites deleted with it; redo deletes it again.
+    function applyShortcutGroupDeleteRecord(record, isUndo) {
+      const items = pageState.newtabShortcuts;
+      if (!isUndo) {
+        const plan = planShortcutGroupDelete(shortcutGroups, items, record.group.id,
+          !record.removed.length, record.targetGroupId);
+        return plan
+          ? persistShortcuts(plan.items, '', undefined, { groups: plan.groups })
+          : Promise.resolve(false);
+      }
+      if (shortcutGroups.some((group) => group.id === record.group.id) ||
+          shortcutGroups.length >= NEWTAB_SHORTCUTS_STORE.DEFAULT_MAX_SHORTCUT_GROUPS ||
+          items.length + record.removed.length > MAX_NEWTAB_SHORTCUTS ||
+          record.removed.some(({ snapshot }) => items.some((item) => item.id === snapshot.id ||
+            (snapshot.url && item.url === snapshot.url)))) {
+        return Promise.resolve(false);
+      }
+      const groups = shortcutGroups.slice();
+      groups.splice(Math.min(record.groupIndex, groups.length), 0, record.group);
+      const moved = new Set(record.movedIds);
+      const next = items.map((item) => (moved.has(item.id) && item.groupId === record.targetGroupId
+        ? { ...item, groupId: record.group.id } : item));
+      record.removed.slice().sort((first, second) => first.index - second.index).forEach((entry) => {
+        next.splice(Math.min(entry.index, next.length), 0, entry.snapshot);
+      });
+      const iconChange = record.removed.filter((entry) => entry.iconDataUrl).map((entry) => ({
+        shortcutId: entry.snapshot.id, action: 'replace', dataUrl: entry.iconDataUrl
+      }));
+      return persistShortcuts(next, '', iconChange, { groups });
+    }
+
     function saveNewShortcutFromDialog(title, url, iconState) {
       const options = getShortcutStoreOptions();
       const nextShortcut = NEWTAB_SHORTCUTS_STORE.createShortcutRecord({ title, url,
@@ -970,7 +1208,12 @@
         ));
         return Promise.resolve(false);
       }
-      const nextShortcuts = withoutDuplicate.concat(nextShortcut);
+      // A site added from the dialog joins the group it was added from.
+      const groupId = shortcutGroups.some((group) => group.id === shortcutAddTargetGroupId)
+        ? shortcutAddTargetGroupId
+        : getLastShortcutGroupId();
+      shortcutAddTargetGroupId = '';
+      const nextShortcuts = withoutDuplicate.concat(groupId ? { ...nextShortcut, groupId } : nextShortcut);
       return persistShortcuts(
         nextShortcuts,
         t('newtab_shortcuts_added', 'Shortcut added'),
@@ -1015,8 +1258,9 @@
         ), true);
         return Promise.resolve(false);
       }
+      const groupId = getLastShortcutGroupId();
       return persistShortcuts(
-        pageState.newtabShortcuts.concat(nextShortcut),
+        pageState.newtabShortcuts.concat(groupId ? { ...nextShortcut, groupId } : nextShortcut),
         t('newtab_shortcuts_added', 'Shortcut added'),
         undefined,
         { syncOverflowShortcutId: nextShortcut.id }
@@ -1215,11 +1459,21 @@
         getAddLabel: () => t('newtab_shortcuts_add', 'Add shortcut'),
         getAddIconSvg: () => getRiSvg('ri-add-line', 'ri-size-28'),
         getAddVisible: () => pageState.newtabShortcutAddVisible && pageState.newtabShortcuts.length < MAX_NEWTAB_SHORTCUTS,
-        onAdd: (sourceElement) => {
-          hideShortcutTooltip();
-          openShortcutDialog({ sourceElement });
-        },
-        onAddContextMenu: openShortcutAddContextMenu
+        onAdd: (sourceElement) => openShortcutAddDialog(sourceElement, getLastShortcutGroupId()),
+        onAddContextMenu: openShortcutAddContextMenu,
+        groupHeaders: shortcutGroupHeaders,
+        getGroupPlaceholder: () => t('newtab_shortcuts_group_title_placeholder', 'Add a title'),
+        getGroupTitleLabel: () => t('newtab_shortcuts_group_title_label', 'Group title'),
+        getGroupActionsLabel: (title) => formatMessage('newtab_shortcuts_group_actions', '{group} actions', {
+          group: title || t('newtab_shortcuts_group_untitled_name', 'Untitled group')
+        }),
+        getGroupMoreIconSvg: () => getRiSvg('ri-more-fill', 'ri-size-16'),
+        onGroupMenu: handleShortcutGroupMenu,
+        onGroupRenameStart: startShortcutGroupRename,
+        onGroupRename: renameShortcutGroup,
+        onGroupRenameCancel: cancelShortcutGroupRename,
+        getGroupEmptyLabel: () => t('newtab_shortcuts_group_add_site', 'Add site'),
+        onGroupAdd: (groupId, sourceElement) => openShortcutAddDialog(sourceElement, groupId)
       });
       shortcutsView.render([]);
       pageState.addShortcutButton = shortcutsView.getAddButton();
@@ -1302,7 +1556,19 @@
       addSiteToShortcuts,
       hideShortcutAddFromContextMenu,
       createShortcutsSection,
-      createShortcutDialogComponent
+      createShortcutDialogComponent,
+      getShortcutGroups,
+      isShortcutGroupLayoutActive,
+      getShortcutGroupDisplayTitle,
+      openShortcutAddDialog,
+      createShortcutGroup,
+      startShortcutGroupRename,
+      renameShortcutGroup,
+      moveShortcutGroup,
+      moveShortcutGroupToIndex,
+      deleteShortcutGroup,
+      confirmDeleteShortcutGroupWithSites,
+      applyShortcutGroupDeleteRecord
     };
   }
 

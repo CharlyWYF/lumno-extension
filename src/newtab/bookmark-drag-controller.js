@@ -47,6 +47,8 @@
       closeBookmarkCascadeMenu,
       suppressCanceledDragClick,
       renderCurrentBookmarkPage,
+      applyShortcutGroupDeleteRecord,
+      autoScrollShortcutArea,
       closeBookmarkContextMenu
     } = deps;
 
@@ -589,12 +591,17 @@
       return folderTarget ? resolveExternalBookmarkDropTarget(state, folderTarget) : null;
     }
 
+    // A scrolling shortcut section shows only part of its grid; the rest,
+    // scrolled under the search box or the bottom dock, takes no drops.
     function isPointOverShortcutDropSurface(pointerX, pointerY) {
+      const section = pageState.shortcutSection;
       return Boolean(
         pageState.shortcutGrid &&
-        isContentSectionVisible(pageState.shortcutSection) &&
+        isContentSectionVisible(section) &&
         !isBookmarkCascadeSurfaceAtPoint(pointerX, pointerY) &&
-        NEWTAB_BOOKMARK_DRAG.isPointInsideElement(pageState.shortcutGrid, pointerX, pointerY)
+        NEWTAB_BOOKMARK_DRAG.isPointInsideElement(pageState.shortcutGrid, pointerX, pointerY) &&
+        (!section || section.getAttribute('data-shortcuts-scrollable') !== 'true' ||
+          NEWTAB_BOOKMARK_DRAG.isPointInsideElement(section, pointerX, pointerY))
       );
     }
 
@@ -616,6 +623,7 @@
         shortcuts: pageState.newtabShortcuts,
         record,
         index: slot.index,
+        groupId: slot.groupId,
         getFolderId: getShortcutFolderId,
         maxShortcuts: MAX_NEWTAB_SHORTCUTS
       }));
@@ -636,6 +644,7 @@
         index: slot.index < getShortcutReorderTiles().length
           ? pageState.newtabShortcuts.findIndex((item) => item.id === getShortcutTileId(getShortcutReorderTiles()[slot.index]))
           : pageState.newtabShortcuts.length,
+        groupId: slot.groupId || '',
         record,
         element: null,
         anchorElement: slot.anchorTile,
@@ -655,6 +664,7 @@
         shortcuts: pageState.newtabShortcuts,
         record: target.record,
         index: target.index,
+        groupId: target.groupId,
         getFolderId: getShortcutFolderId,
         maxShortcuts: MAX_NEWTAB_SHORTCUTS
       });
@@ -821,7 +831,7 @@
       const planShortcuts = (folderSnapshot) => NEWTAB_CROSS_SURFACE_DRAG.planShortcutStack({
         shortcuts: pageState.newtabShortcuts,
         sources: record.sources,
-        folder: { snapshot: folderSnapshot, index: record.folderShortcut.index },
+        folder: { snapshot: folderSnapshot, index: record.folderShortcut.index, groupId: record.folderShortcut.groupId },
         undo: isUndo,
         maxShortcuts: MAX_NEWTAB_SHORTCUTS
       });
@@ -1377,6 +1387,9 @@
         updateBookmarkDragLayoutCache(state);
         scheduleBookmarkDragMove(state, pointerX, pointerY);
       }
+      if (isPointOverShortcutDropSurface(pointerX, pointerY) && autoScrollShortcutArea(pointerX, pointerY)) {
+        scheduleBookmarkDragMove(state, pointerX, pointerY);
+      }
       setBookmarkDragCardTransform(state, pointerX, pointerY);
       const pageSwitchDirection = getBookmarkDragPageSwitchDirection(pointerX, pointerY);
       if (pageSwitchDirection) {
@@ -1712,7 +1725,8 @@
         const next = NEWTAB_CROSS_SURFACE_DRAG.planShortcutReorder({
           shortcuts: pageState.newtabShortcuts,
           sourceOrder: isUndo ? record.toOrder : record.fromOrder,
-          order: isUndo ? record.fromOrder : record.toOrder
+          order: isUndo ? record.fromOrder : record.toOrder,
+          groups: isUndo ? record.fromGroups : record.toGroups
         });
         if (!next) {
           pageState.bookmarkMoveHistoryBusy = false;
@@ -1761,6 +1775,22 @@
           pageState.bookmarkMoveHistoryBusy = false;
           if (pageState.newtabShortcuts.some((item) => item.type === 'folder')) return refreshShortcutFolderReferences();
         });
+        return true;
+      }
+      if (record.kind === 'shortcut-group-delete') {
+        applyShortcutGroupDeleteRecord(record, isUndo).then((saved) => {
+          if (!saved) {
+            showToast(t('toast_error', 'Operation failed. Please try again.'), true);
+            return;
+          }
+          if (isUndo) bookmarkMoveHistory.commitUndo();
+          else bookmarkMoveHistory.commitRedo();
+          showToast(formatMessage(
+            isUndo ? 'newtab_shortcuts_group_delete_undone' : 'newtab_shortcuts_group_delete_redone',
+            isUndo ? 'Group restored · {shortcut} to redo' : 'Group deleted · {shortcut} to undo',
+            { shortcut: isUndo ? getBookmarkRedoShortcutLabel() : getBookmarkUndoShortcutLabel() }
+          ));
+        }).finally(() => { pageState.bookmarkMoveHistoryBusy = false; });
         return true;
       }
       if (record.kind === 'shortcut-delete') {

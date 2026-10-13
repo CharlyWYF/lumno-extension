@@ -143,11 +143,12 @@ const assertWithinBudget = (actualBytes, budgetKiB, label) => {
 // New Tab moved to 390 KiB / 116 KiB gzip (the total to 780 KiB / 226 KiB gzip) at 1.0.0 for the help result passage card.
 // New Tab moved to 394 KiB / 117 KiB gzip (the total to 784 KiB / 227 KiB gzip) at 1.0.1 for the bookmarks bar's floating layout and liquid glass.
 // New Tab moved to 395 KiB / 118 KiB gzip, the Overlay to 274 KiB and the total to 788 KiB / 228 KiB gzip at 1.0.1 for the search input's close-other-tabs popconfirm.
+// New Tab moved to 399 KiB / 119 KiB gzip (the total to 792 KiB / 229 KiB gzip) at 1.0.1 for shortcut group titles.
 const bundleBudgets = {
-  newtab: { uncompressed: 395, gzip: 118 },
+  newtab: { uncompressed: 399, gzip: 119 },
   options: { uncompressed: 290, gzip: 85 },
   overlay: { uncompressed: 274, gzip: 82 },
-  total: { uncompressed: 788, gzip: 228 }
+  total: { uncompressed: 792, gzip: 229 }
 };
 
 const retiredNewtabRendererScripts = [

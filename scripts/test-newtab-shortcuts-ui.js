@@ -1383,8 +1383,8 @@ assertContains(
 
 assertContains(
   shortcutsReact,
-  'hidden={!options.getAddVisible() || items.length >= options.maxShortcuts}',
-  'the add tile should respect both the preference and shortcut capacity'
+  'hidden={!options.getAddVisible() || items.length >= options.maxShortcuts || lastGroupEmpty}',
+  'the add tile should respect the preference and shortcut capacity, and give way to an empty last group'
 );
 
 assertContains(
@@ -1419,7 +1419,7 @@ assertContains(
 
 assert.match(
   getFunctionSource(newtabJs, 'renderShortcuts'),
-  /shortcutsView\.render\(items\);[\s\S]*?updateBookmarkSectionPosition\(\{[\s\S]*?preserveSearchEntryLayout:\s*Boolean\([\s\S]*?data-nt-ready/,
+  /shortcutsView\.render\(items, \{[\s\S]*?\}\);[\s\S]*?updateBookmarkSectionPosition\(\{[\s\S]*?preserveSearchEntryLayout:\s*Boolean\([\s\S]*?data-nt-ready/,
   'settled shortcut rendering should refresh the dock without moving the logo/search entry'
 );
 
@@ -1597,7 +1597,7 @@ assertContains(
 
 assertContains(
   newtabJs,
-  'function getShortcutDragInsertionIndex(pointerX, pointerY) {',
+  'function getShortcutDragInsertionSlot(pointerX, pointerY) {',
   'shortcut drag reordering should use a logical insertion slot instead of animated hit areas'
 );
 
@@ -1609,13 +1609,13 @@ assertContains(
 
 assertContains(
   newtabJs,
-  'function moveShortcutItem(shortcutId, targetIndex) {',
+  'function moveShortcutItem(shortcutId, targetIndex, targetGroupId) {',
   'shortcut drag reordering should move the in-memory shortcut into the insertion slot'
 );
 
 assertContains(
   newtabJs,
-  'function moveShortcutTileElement(tile, targetIndex) {',
+  'function moveShortcutTileElement(tile, targetIndex, slot) {',
   'shortcut drag reordering should move DOM tiles without rerendering mid-gesture'
 );
 
@@ -1652,12 +1652,15 @@ assertContains(
     'setShortcutDragTileTransform',
     'updateShortcutDragBookmarkTarget',
     'isPointOverShortcutDropSurface',
-    'getShortcutDragInsertionIndex',
+    'getShortcutDragInsertionSlot',
     'getShortcutTileInsertionIndex',
     'getShortcutTileRectMap',
     'moveShortcutItem',
     'moveShortcutTileElement',
     'animateShortcutLayoutShift',
+    'getShortcutTileGroupId',
+    'getShortcutById',
+    'autoScrollShortcutArea',
     `let shortcutDragState = null;
     const document = { body: { removeAttribute() {} } };
     const isBookmarkTopbarMode = () => false;
@@ -1685,12 +1688,15 @@ assertContains(
     (_state, pointerX, pointerY) => transformCalls.push([pointerX, pointerY]),
     () => false,
     () => true,
-    () => 0,
+    () => ({ index: 0, anchorTile: null, markerPosition: 'before' }),
     () => 0,
     () => new Map(),
     () => false,
     () => false,
-    () => {}
+    () => {},
+    () => '',
+    () => null,
+    () => false
   );
   const state = {
     hasReordered: false,

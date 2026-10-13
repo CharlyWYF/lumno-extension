@@ -148,6 +148,7 @@ function rect(left, top, width = 60, height = 60) {
     };
     const renderShortcuts = () => {};
     const suppressCanceledDragClick = () => {};
+    ${getFunctionSource(newtabJs, 'getShortcutGroupHeader')}
     ${getFunctionSource(newtabJs, 'restoreShortcutDragOrder')}
     ${getFunctionSource(newtabJs, 'finishShortcutDrag')}
     finishShortcutDrag(null, { cancel: true });
@@ -212,6 +213,8 @@ function rect(left, top, width = 60, height = 60) {
     const getExternalBookmarkSurfacePoint = () => ({ x: 900, y: 30 });
     const setShortcutDragTileTransform = () => {};
     const updateShortcutDragBookmarkTarget = () => true;
+    const isPointOverShortcutDropSurface = () => false;
+    const autoScrollShortcutArea = () => false;
     ${getFunctionSource(newtabJs, 'cancelShortcutDragMoveFrame')}
     ${getFunctionSource(newtabJs, 'applyShortcutDragMove')}
     ${getFunctionSource(newtabJs, 'scheduleShortcutDragMove')}
@@ -491,12 +494,12 @@ const applyShortcutDragMoveSource = getFunctionSource(newtabJs, 'applyShortcutDr
 assertOrder(
   applyShortcutDragMoveSource,
   'if (updateShortcutDragBookmarkTarget(state, pointerX, pointerY)) {',
-  'getShortcutDragInsertionIndex(pointerX, pointerY)',
+  'getShortcutDragInsertionSlot(pointerX, pointerY)',
   'hovering the bookmarks surface should pause shortcut reordering'
 );
 assert.ok(
-  getFunctionSource(newtabJs, 'getShortcutDragInsertionIndex')
-    .includes('getShortcutInsertionSlotAt(pointerX, pointerY, shortcutDragState.tile).index'),
+  getFunctionSource(newtabJs, 'getShortcutDragInsertionSlot')
+    .includes('getShortcutInsertionSlotAt(pointerX, pointerY, shortcutDragState.tile)'),
   'shortcut reordering and bookmark drops should share one slot calculation'
 );
 
@@ -678,6 +681,103 @@ assert.ok(
   assert.strictEqual(second.getAttribute('data-drag-gap'), 'rest');
   assert.strictEqual(third.getAttribute('data-drag-gap'), 'rest');
   [first, second, third].forEach((element) => clearTimeout(element._xInsertionGapRestTimer));
+}
+
+// Shortcut groups: undo restores each entry's group, a move that only
+// changes the group is still a recorded move, and a stacked folder takes the
+// group of the site it was stacked onto.
+{
+  const crossSurface = require(path.join(repoRoot, 'src', 'newtab', 'cross-surface-drag.js'));
+  const history = require(path.join(repoRoot, 'src', 'newtab', 'bookmark-move-history.js'));
+  const shortcuts = [
+    { id: 'a', url: 'https://a.example/', groupId: 'g0' },
+    { id: 'b', url: 'https://b.example/', groupId: 'work' },
+    { id: 'c', url: 'https://c.example/', groupId: 'work' }
+  ];
+  const regrouped = crossSurface.planShortcutReorder({
+    shortcuts, order: ['a', 'b', 'c'], groups: ['work', 'work', 'g0']
+  });
+  assert.deepStrictEqual(regrouped.map((item) => [item.id, item.groupId]), [['a', 'work'], ['b', 'work'], ['c', 'g0']]);
+  assert.strictEqual(regrouped[1], shortcuts[1], 'entries already in their group keep their object');
+  assert.deepStrictEqual(crossSurface.planShortcutReorder({ shortcuts, order: ['c', 'a', 'b'] }).map((item) => item.groupId),
+    ['work', 'g0', 'work'], 'an order without groups leaves memberships alone');
+
+  const dropped = crossSurface.planBookmarkToShortcut({
+    shortcuts, record: { id: 'new', url: 'https://new.example/' }, index: 1, groupId: 'work', maxShortcuts: 10
+  });
+  assert.deepStrictEqual(dropped.shortcuts.map((item) => [item.id, item.groupId]),
+    [['a', 'g0'], ['new', 'work'], ['b', 'work'], ['c', 'work']], 'a dropped bookmark joins the group it was dropped in');
+  const movedIn = crossSurface.planBookmarkToShortcut({
+    shortcuts, record: { url: 'https://c.example/' }, index: 0, groupId: 'g0', maxShortcuts: 10
+  });
+  assert.deepStrictEqual(movedIn.shortcuts[0], { ...shortcuts[2], groupId: 'g0' },
+    'dropping an existing site moves it into the drop group');
+
+  const groupOnly = history.createShortcutReorderRecord({
+    fromOrder: ['a', 'b'], toOrder: ['a', 'b'], fromGroups: ['g0', 'work'], toGroups: ['work', 'work']
+  });
+  assert.ok(groupOnly, 'moving a site into the next group without changing the order is recorded');
+  assert.deepStrictEqual(groupOnly.fromGroups, ['g0', 'work']);
+  assert.deepStrictEqual(groupOnly.toGroups, ['work', 'work']);
+  assert.strictEqual(history.createShortcutReorderRecord({
+    fromOrder: ['a', 'b'], toOrder: ['a', 'b'], fromGroups: ['g0', 'work'], toGroups: ['g0', 'work']
+  }), null, 'nothing moved, nothing recorded');
+  assert.strictEqual(history.createShortcutReorderRecord({ fromOrder: ['a', 'b'], toOrder: ['b', 'a'] }).fromGroups, undefined);
+
+  const stacked = crossSurface.planShortcutStack({
+    shortcuts,
+    sources: [{ snapshot: shortcuts[1], index: 1 }, { snapshot: shortcuts[0], index: 0 }],
+    folder: { snapshot: { id: 'folder', type: 'folder' }, index: 0, groupId: 'work' }
+  });
+  assert.deepStrictEqual(stacked.map((item) => [item.id, item.groupId]), [['folder', 'work'], ['c', 'work']]);
+  const stackRecord = history.createShortcutStackRecord({
+    snapshot: { title: 'New folder', children: [{ title: 'A', url: 'https://a.example/' }, { title: 'B', url: 'https://b.example/' }] },
+    sources: [{ snapshot: shortcuts[1], index: 1 }, { snapshot: shortcuts[0], index: 0 }],
+    folderShortcut: { id: 'folder', index: 0, groupId: 'work' }
+  });
+  assert.strictEqual(stackRecord.folderShortcut.groupId, 'work');
+
+  const groupDelete = history.createShortcutGroupDeleteRecord({
+    group: { id: 'work', title: '工作' }, groupIndex: 1, targetGroupId: '', movedIds: [],
+    removed: [{ snapshot: shortcuts[1], index: 1, iconDataUrl: 'data:image/png;base64,AA==' }]
+  });
+  assert.strictEqual(groupDelete.kind, 'shortcut-group-delete');
+  assert.deepStrictEqual(groupDelete.removed[0].snapshot, shortcuts[1]);
+  assert.strictEqual(history.createShortcutGroupDeleteRecord({ group: { title: 'No id' } }), null);
+  assert.strictEqual(history.createShortcutGroupDeleteRecord({ group: { id: 'x' }, removed: [{}] }), null,
+    'a removed site without a snapshot cannot be restored');
+}
+
+// An empty group's slot is an insertion point like a tile: the index counts
+// only tiles, and the group comes from whatever the pointer is beside.
+{
+  const element = (attributes) => ({
+    getAttribute: (name) => (Object.hasOwn(attributes, name) ? attributes[name] : null),
+    hasAttribute: (name) => Object.hasOwn(attributes, name)
+  });
+  const a = element({ 'data-shortcut-id': 'a', 'data-shortcut-group-id': 'g0' });
+  const b = element({ 'data-shortcut-id': 'b', 'data-shortcut-group-id': 'g0' });
+  const empty = element({ 'data-shortcut-group-id': 'later' });
+  const c = element({ 'data-shortcut-id': 'c', 'data-shortcut-group-id': 'last' });
+  const box = (left, top) => ({ left, top, right: left + 64, bottom: top + 64, width: 64, height: 64,
+    centerX: left + 32, centerY: top + 32 });
+  const rects = new Map([[a, box(0, 0)], [b, box(70, 0)], [empty, box(0, 100)], [c, box(0, 200)]]);
+  const grid = { querySelectorAll: () => [a, b, empty, c] };
+  const slotAt = new Function('NEWTAB_CROSS_SURFACE_DRAG', 'shortcutGrid', 'rects', `
+    const SHORTCUT_SLOT_SELECTOR = '';
+    const getShortcutReorderTiles = () => [];
+    const getShortcutTileLayoutRect = (tile) => rects.get(tile);
+    ${getFunctionSource(newtabJs, 'getShortcutTileGroupId')}
+    ${getFunctionSource(newtabJs, 'getShortcutInsertionSlotAt')}
+    return getShortcutInsertionSlotAt;
+  `)(require('../src/newtab/cross-surface-drag.js'), grid, rects);
+  const afterB = slotAt(150, 30, null);
+  assert.deepStrictEqual([afterB.index, afterB.markerPosition, afterB.groupId], [2, 'after', 'g0']);
+  const intoEmpty = slotAt(10, 130, null);
+  assert.deepStrictEqual([intoEmpty.index, intoEmpty.anchorTile === empty, intoEmpty.groupId], [2, true, 'later'],
+    'the empty group takes the drop before the next group\'s first tile');
+  const beforeC = slotAt(10, 230, a);
+  assert.deepStrictEqual([beforeC.index, beforeC.groupId], [1, 'last'], 'the dragged tile is left out of the count');
 }
 
 console.log('New tab cross-surface drag tests passed.');

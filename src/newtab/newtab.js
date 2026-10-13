@@ -377,6 +377,15 @@
   const SHORTCUT_CONTEXT_MENU_EDIT_VALUE = 'edit';
   const SHORTCUT_CONTEXT_MENU_REMOVE_VALUE = 'remove';
   const SHORTCUT_CONTEXT_MENU_HIDE_ADD_VALUE = 'hide-add';
+  const SHORTCUT_GROUP_MENU_VALUES = Object.freeze({
+    create: 'group-create',
+    rename: 'group-rename',
+    addSite: 'group-add-site',
+    moveUp: 'group-move-up',
+    moveDown: 'group-move-down',
+    delete: 'group-delete',
+    deleteWithSites: 'group-delete-sites'
+  });
   const FOLDER_COLOR_CONTEXT_MENU_VALUE = 'folder-color';
   const BOOKMARK_CONTEXT_MENU_EDIT_VALUE = 'edit';
   const BOOKMARK_CONTEXT_MENU_OPEN_GROUP_VALUE = 'open-in-new-tab-group';
@@ -728,7 +737,8 @@
     applyShortcutContextMenuDockHover,
     closeShortcutContextMenu,
     handleShortcutContextMenu,
-    openShortcutAddContextMenu
+    openShortcutAddContextMenu,
+    openShortcutGroupMenu
   } = NEWTAB_SHORTCUT_CONTEXT_MENU.createShortcutContextMenu({
     getShortcutDockIcon: (...args) => getShortcutDockIcon(...args),
     setShortcutDockHover: (...args) => setShortcutDockHover(...args),
@@ -754,6 +764,13 @@
     closeRecentContextMenu: (...args) => closeRecentContextMenu(...args),
     hideShortcutTooltip: (...args) => hideShortcutTooltip(...args),
     getShortcutTileId,
+    SHORTCUT_GROUP_MENU_VALUES,
+    createShortcutGroup: (...args) => createShortcutGroup(...args),
+    startShortcutGroupRename: (...args) => startShortcutGroupRename(...args),
+    openShortcutAddDialog: (...args) => openShortcutAddDialog(...args),
+    moveShortcutGroup: (...args) => moveShortcutGroup(...args),
+    deleteShortcutGroup: (...args) => deleteShortcutGroup(...args),
+    confirmDeleteShortcutGroupWithSites: (...args) => confirmDeleteShortcutGroupWithSites(...args),
     pageState: {
       get shortcutContextMenu() {
         return shortcutContextMenu;
@@ -820,6 +837,7 @@
   let shortcutDockPendingPointerX = Number.NaN;
   let shortcutDragState = null;
   const shortcutTiles = [];
+  const shortcutGroupHeaders = [];
   const SHORTCUT_DIALOG_MODE_EDIT = NEWTAB_SHORTCUT_DIALOG.MODE_EDIT || 'edit';
   const SHORTCUT_DIALOG_ITEM_BOOKMARK = 'bookmark';
   const SHORTCUT_DIALOG_ITEM_FOLDER = 'folder';
@@ -2315,6 +2333,26 @@
       iconButton: true,
       forcedIconBackground: 'shortcut-fallback'
     }));
+    if (shortcutGrid) {
+      shortcutGrid.querySelectorAll('.x-nt-shortcut-group-empty').forEach((slot) => {
+        shortcutToneTargets.push({
+          element: slot,
+          sampleElement: getShortcutDockIcon(slot) || slot,
+          minWidth: 42,
+          minHeight: 42,
+          iconButton: true,
+          forcedIconBackground: 'shortcut-add'
+        });
+      });
+    }
+    shortcutGroupHeaders.forEach((header) => {
+      shortcutToneTargets.push({
+        element: header,
+        sampleElement: header.querySelector('.x-nt-shortcut-group-title, .x-nt-shortcut-group-input') || header,
+        minWidth: 112,
+        minHeight: 32
+      });
+    });
     if (addShortcutButton) {
       shortcutToneTargets.push({
         element: addShortcutButton,
@@ -4074,7 +4112,17 @@
     addSiteToShortcuts,
     hideShortcutAddFromContextMenu,
     createShortcutsSection,
-    createShortcutDialogComponent
+    createShortcutDialogComponent,
+    getShortcutGroups,
+    isShortcutGroupLayoutActive,
+    openShortcutAddDialog,
+    createShortcutGroup,
+    startShortcutGroupRename,
+    moveShortcutGroup,
+    moveShortcutGroupToIndex,
+    deleteShortcutGroup,
+    confirmDeleteShortcutGroupWithSites,
+    applyShortcutGroupDeleteRecord
   } = NEWTAB_SHORTCUTS_CONTROLLER.createShortcutsController({
     shortcutFolderRuntime,
     bookmarksRuntime,
@@ -4144,6 +4192,7 @@
     pageStructureRuntime,
     NEWTAB_SHORTCUTS_VIEW,
     shortcutTiles,
+    shortcutGroupHeaders,
     getFigmaFolderSvg,
     initFolderPathMorph,
     playFolderPathMorph,
@@ -4168,6 +4217,7 @@
     bindShortcutDialogTooltip,
     hideShortcutDialogTooltip,
     SHORTCUT_DIALOG_ITEM_BOOKMARK,
+    handleShortcutGroupMenu: openShortcutGroupMenu,
     pageState: {
       get newtabShortcuts() {
         return newtabShortcuts;
@@ -4349,6 +4399,8 @@
     closeBookmarkCascadeMenu,
     suppressCanceledDragClick: (...args) => suppressCanceledDragClick(...args),
     renderCurrentBookmarkPage: (...args) => renderCurrentBookmarkPage(...args),
+    applyShortcutGroupDeleteRecord,
+    autoScrollShortcutArea: (...args) => autoScrollShortcutArea(...args),
     closeBookmarkContextMenu,
     pageState: {
       get bookmarkGrid() {
@@ -4718,12 +4770,45 @@
   }
 
   function getShortcutContextMenuOptions(target) {
+    const createGroupOption = {
+      action: SHORTCUT_GROUP_MENU_VALUES.create,
+      value: SHORTCUT_GROUP_MENU_VALUES.create,
+      label: t('newtab_shortcuts_group_new', 'New group')
+    };
     if (target && target.kind === 'add') {
       return [
+        createGroupOption,
         {
           value: SHORTCUT_CONTEXT_MENU_HIDE_ADD_VALUE,
-          label: t('newtab_shortcuts_hide_add', 'Hide')
+          label: t('newtab_shortcuts_hide_add', 'Hide'),
+          dividerBefore: true
         }
+      ];
+    }
+    if (target && target.kind === 'group') {
+      const groups = getShortcutGroups();
+      const index = groups.findIndex((group) => group.id === target.groupId);
+      const hasSites = newtabShortcuts.some((item) => item.groupId === target.groupId);
+      const option = (value, label, extra) => ({ action: value, value, label, ...(extra || {}) });
+      return [
+        option(SHORTCUT_GROUP_MENU_VALUES.rename, t('newtab_shortcuts_group_rename', 'Rename')),
+        option(SHORTCUT_GROUP_MENU_VALUES.addSite, t('newtab_shortcuts_group_add_site', 'Add site'), {
+          disabled: newtabShortcuts.length >= MAX_NEWTAB_SHORTCUTS
+        }),
+        option(SHORTCUT_GROUP_MENU_VALUES.moveUp, t('newtab_shortcuts_group_move_up', 'Move up'), {
+          dividerBefore: true, disabled: index <= 0
+        }),
+        option(SHORTCUT_GROUP_MENU_VALUES.moveDown, t('newtab_shortcuts_group_move_down', 'Move down'), {
+          disabled: index < 0 || index >= groups.length - 1
+        }),
+        { ...createGroupOption, disabled: groups.length >= NEWTAB_SHORTCUTS_STORE.DEFAULT_MAX_SHORTCUT_GROUPS },
+        option(SHORTCUT_GROUP_MENU_VALUES.delete, t('newtab_shortcuts_group_delete', 'Delete group'), {
+          dividerBefore: true, disabled: groups.length <= 1
+        }),
+        ...(hasSites ? [option(SHORTCUT_GROUP_MENU_VALUES.deleteWithSites,
+          t('newtab_shortcuts_group_delete_with_sites', 'Delete group and sites'), {
+            disabled: groups.length <= 1
+          })] : [])
       ];
     }
     const shortcut = target && getShortcutById(target.shortcutId);
@@ -4776,7 +4861,9 @@
       shortcutContextMenuSelectController.setOptions(
         shortcutContextMenu.control,
         getShortcutContextMenuOptions(shortcutContextMenuTarget),
-        shortcutContextMenuTarget && shortcutContextMenuTarget.kind === 'add'
+        shortcutContextMenuTarget && shortcutContextMenuTarget.kind === 'group'
+          ? SHORTCUT_GROUP_MENU_VALUES.rename
+          : shortcutContextMenuTarget && shortcutContextMenuTarget.kind === 'add'
           ? SHORTCUT_CONTEXT_MENU_HIDE_ADD_VALUE
           : NEWTAB_CONTEXT_MENU_OPEN_VALUE
       );
@@ -5456,6 +5543,7 @@
     getShortcutTileLayoutRect,
     setShortcutDragTileTransform,
     getShortcutInsertionSlotAt,
+    autoScrollShortcutArea,
     scheduleShortcutDragMove,
     suppressCanceledDragClick,
     finishShortcutDrag,
@@ -5510,6 +5598,7 @@
     isShortcutContextMenuNode,
     getShortcutTileFromNode,
     closeShortcutContextMenu,
+    moveShortcutGroupToIndex,
     pageState: {
       get shortcutGrid() {
         return shortcutGrid;

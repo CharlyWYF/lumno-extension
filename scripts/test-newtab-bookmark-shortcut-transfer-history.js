@@ -157,7 +157,7 @@ function createRuntime() {
   };
   vm.runInContext(['refreshShortcutFolderReferences', 'applyBookmarkShortcutTransfer', 'moveBookmarkToShortcuts',
     'moveShortcutToBookmarks', 'performBookmarkMoveHistoryAction', 'removeShortcutById',
-    'restoreShortcutDragOrder', 'persistShortcutOrder', 'finishShortcutDrag']
+    'getShortcutGroupHeader', 'restoreShortcutDragOrder', 'persistShortcutOrder', 'finishShortcutDrag']
     .map(extractFunction).join('\n'), context);
   context.nodes = nodes;
   context.link = () => [...nodes.values()].find((node) => node.url === 'https://link.example/');

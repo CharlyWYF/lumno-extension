@@ -18,7 +18,20 @@ export interface ShortcutItem {
   url?: string;
   host?: string;
   title?: string;
+  groupId?: string;
   [key: string]: unknown;
+}
+
+export interface ShortcutGroup {
+  id: string;
+  title: string;
+}
+
+// Without `grouped`, shortcuts render as one centered run of tiles.
+export interface ShortcutsLayout {
+  grouped?: boolean;
+  groups?: ShortcutGroup[];
+  editingGroupId?: string;
 }
 
 interface ThemeSuggestion {
@@ -95,10 +108,21 @@ export interface ShortcutsViewOptions {
   getAddVisible?: () => boolean;
   onAdd?: (sourceElement: HTMLButtonElement) => void;
   onAddContextMenu?: (sourceElement: HTMLButtonElement) => void;
+  groupHeaders?: HTMLElement[];
+  getGroupPlaceholder?: () => string;
+  getGroupTitleLabel?: () => string;
+  getGroupActionsLabel?: (title: string) => string;
+  getGroupMoreIconSvg?: () => string;
+  onGroupMenu?: (groupId: string, anchor: HTMLElement) => void;
+  onGroupRenameStart?: (groupId: string) => void;
+  onGroupRename?: (groupId: string, title: string) => void;
+  onGroupRenameCancel?: () => void;
+  getGroupEmptyLabel?: () => string;
+  onGroupAdd?: (groupId: string, sourceElement: HTMLButtonElement) => void;
 }
 
 export interface ShortcutsViewController {
-  render(items: ShortcutItem[]): { count: number };
+  render(items: ShortcutItem[], layout?: ShortcutsLayout): { count: number };
   clear(): void;
   refreshElements(): void;
   getTiles(): ShortcutTileElement[];
@@ -165,6 +189,17 @@ interface NormalizedOptions {
   getAddVisible: () => boolean;
   onAdd: (sourceElement: HTMLButtonElement) => void;
   onAddContextMenu: (sourceElement: HTMLButtonElement) => void;
+  groupHeaders: HTMLElement[];
+  getGroupPlaceholder: () => string;
+  getGroupTitleLabel: () => string;
+  getGroupActionsLabel: (title: string) => string;
+  getGroupMoreIconSvg: () => string;
+  onGroupMenu: (groupId: string, anchor: HTMLElement) => void;
+  onGroupRenameStart: (groupId: string) => void;
+  onGroupRename: (groupId: string, title: string) => void;
+  onGroupRenameCancel: () => void;
+  getGroupEmptyLabel: () => string;
+  onGroupAdd: (groupId: string, sourceElement: HTMLButtonElement) => void;
 }
 
 function normalizeOptions(
@@ -215,7 +250,18 @@ function normalizeOptions(
     getAddIconSvg: options.getAddIconSvg || (() => ''),
     getAddVisible: options.getAddVisible || (() => true),
     onAdd: options.onAdd || (() => {}),
-    onAddContextMenu: options.onAddContextMenu || (() => {})
+    onAddContextMenu: options.onAddContextMenu || (() => {}),
+    groupHeaders: Array.isArray(options.groupHeaders) ? options.groupHeaders : [],
+    getGroupPlaceholder: options.getGroupPlaceholder || (() => ''),
+    getGroupTitleLabel: options.getGroupTitleLabel || (() => ''),
+    getGroupActionsLabel: options.getGroupActionsLabel || ((title) => title),
+    getGroupMoreIconSvg: options.getGroupMoreIconSvg || (() => ''),
+    onGroupMenu: options.onGroupMenu || (() => {}),
+    onGroupRenameStart: options.onGroupRenameStart || (() => {}),
+    onGroupRename: options.onGroupRename || (() => {}),
+    onGroupRenameCancel: options.onGroupRenameCancel || (() => {}),
+    getGroupEmptyLabel: options.getGroupEmptyLabel || (() => ''),
+    onGroupAdd: options.onGroupAdd || (() => {})
   };
 }
 
@@ -404,6 +450,7 @@ function ShortcutTile({
       className={`x-nt-shortcut-tile${isFolder ? ' x-nt-shortcut-tile--folder' : ''}`}
       draggable={false}
       data-shortcut-id={shortcutId}
+      data-shortcut-group-id={shortcut.groupId ? String(shortcut.groupId) : undefined}
       data-shortcut-url={url}
       data-shortcut-title={title}
       data-shortcut-draggable="true"
@@ -444,37 +491,201 @@ function ShortcutTile({
   );
 }
 
+// A group's title row spans the whole grid, so its tiles start on a new row
+// and every row holds tiles of one group. Its title edits in place.
+function ShortcutGroupHeader({
+  group,
+  editing,
+  options
+}: {
+  group: ShortcutGroup;
+  editing: boolean;
+  options: NormalizedOptions;
+}) {
+  const moreRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const finishedRef = useRef(false);
+  const [draft, setDraft] = useState(group.title);
+
+  useLayoutEffect(() => {
+    if (!editing) {
+      return;
+    }
+    finishedRef.current = false;
+    setDraft(group.title);
+    const input = inputRef.current;
+    if (input) {
+      input.focus();
+      input.select();
+    }
+    // The draft starts from the title the edit opened with.
+  }, [editing]);
+
+  function finish(save: boolean): void {
+    if (finishedRef.current) {
+      return;
+    }
+    finishedRef.current = true;
+    if (save) {
+      options.onGroupRename(group.id, draft);
+    } else {
+      options.onGroupRenameCancel();
+    }
+  }
+
+  function openMenu(): void {
+    options.hideTooltip();
+    options.onGroupMenu(group.id, moreRef.current as HTMLElement);
+  }
+
+  return (
+    <div
+      className="x-nt-shortcut-group-header"
+      data-shortcut-group-id={group.id}
+      data-shortcut-group-untitled={group.title ? undefined : 'true'}
+      data-shortcut-group-editing={editing ? 'true' : undefined}
+      onContextMenu={(event) => {
+        if (editing) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        openMenu();
+      }}
+    >
+      {editing ? (
+        <input
+          ref={inputRef}
+          className="x-nt-shortcut-group-input"
+          type="text"
+          value={draft}
+          maxLength={24}
+          spellCheck={false}
+          autoComplete="off"
+          aria-label={options.getGroupTitleLabel()}
+          placeholder={options.getGroupPlaceholder()}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.nativeEvent.isComposing) {
+              return;
+            }
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              finish(true);
+            } else if (event.key === 'Escape') {
+              event.preventDefault();
+              event.stopPropagation();
+              finish(false);
+            }
+          }}
+          onBlur={() => finish(true)}
+        />
+      ) : group.title ? (
+        <span
+          className="x-nt-shortcut-group-title"
+          onDoubleClick={() => options.onGroupRenameStart(group.id)}
+        >
+          {group.title}
+        </span>
+      ) : (
+        <button
+          type="button"
+          className="x-nt-shortcut-group-title x-nt-shortcut-group-title--placeholder"
+          onClick={() => options.onGroupRenameStart(group.id)}
+        >
+          {options.getGroupPlaceholder()}
+        </button>
+      )}
+      {editing ? null : (
+        <button
+          ref={moreRef}
+          type="button"
+          className="x-nt-shortcut-group-more"
+          aria-haspopup="menu"
+          aria-label={options.getGroupActionsLabel(group.title)}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            openMenu();
+          }}
+          dangerouslySetInnerHTML={{ __html: options.getGroupMoreIconSvg() }}
+        />
+      )}
+    </div>
+  );
+}
+
 function ShortcutsList({
   items,
+  layout,
   options,
   addButtonRef
 }: {
   items: ShortcutItem[];
+  layout: ShortcutsLayout;
   options: NormalizedOptions;
   addButtonRef: React.RefObject<HTMLButtonElement | null>;
 }) {
   const addLabel = options.getAddLabel();
   const keys = new Map<string, number>();
-
+  const renderTile = (shortcut: ShortcutItem) => {
+    const identity = String(shortcut.id || shortcut.url || 'shortcut');
+    const occurrence = keys.get(identity) || 0;
+    keys.set(identity, occurrence + 1);
+    return (
+      <ShortcutTile
+        key={`${identity}:${occurrence}`}
+        shortcut={shortcut}
+        options={options}
+      />
+    );
+  };
+  const groups = layout.grouped && Array.isArray(layout.groups) ? layout.groups : null;
+  const emptyLabel = options.getGroupEmptyLabel();
+  const isEmpty = (group: ShortcutGroup) => !items.some((shortcut) => shortcut.groupId === group.id);
+  // An empty group shows a slot that adds a site to it and takes drops;
+  // when the last group is empty, that slot stands in for the add tile.
+  const lastGroupEmpty = Boolean(groups && groups.length && isEmpty(groups[groups.length - 1]));
   return (
     <>
-      {items.map((shortcut) => {
-        const identity = String(shortcut.id || shortcut.url || 'shortcut');
-        const occurrence = keys.get(identity) || 0;
-        keys.set(identity, occurrence + 1);
-        return (
-          <ShortcutTile
-            key={`${identity}:${occurrence}`}
-            shortcut={shortcut}
+      {groups
+        ? groups.flatMap((group) => [
+          <ShortcutGroupHeader
+            key={`group:${group.id}`}
+            group={group}
+            editing={layout.editingGroupId === group.id}
             options={options}
-          />
-        );
-      })}
+          />,
+          ...(isEmpty(group)
+            ? [
+              <button
+                key={`group-empty:${group.id}`}
+                type="button"
+                className="x-nt-shortcut-group-empty"
+                data-shortcut-group-id={group.id}
+                aria-label={emptyLabel}
+                hidden={items.length >= options.maxShortcuts}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  options.hideTooltip();
+                  options.onGroupAdd(group.id, event.currentTarget);
+                }}
+              >
+                <span
+                  className="x-nt-shortcut-icon x-nt-shortcut-icon--add"
+                  dangerouslySetInnerHTML={{ __html: options.getAddIconSvg() }}
+                />
+              </button>
+            ]
+            : items.filter((shortcut) => shortcut.groupId === group.id).map(renderTile))
+        ])
+        : items.map(renderTile)}
       <button
         ref={addButtonRef}
         type="button"
         className="x-nt-shortcut-tile x-nt-shortcut-tile--add"
-        hidden={!options.getAddVisible() || items.length >= options.maxShortcuts}
+        hidden={!options.getAddVisible() || items.length >= options.maxShortcuts || lastGroupEmpty}
         data-tooltip={addLabel}
         aria-label={addLabel}
         onClick={(event) => {
@@ -547,15 +758,26 @@ export function createShortcutsView(
     addButtonRef.current = options.grid.querySelector<HTMLButtonElement>(
       '.x-nt-shortcut-tile--add'
     );
+    options.groupHeaders.length = 0;
+    options.grid
+      .querySelectorAll<HTMLElement>('.x-nt-shortcut-group-header')
+      .forEach((header) => options.groupHeaders.push(header));
   }
 
-  function render(items: ShortcutItem[]): { count: number } {
+  function render(items: ShortcutItem[], layout: ShortcutsLayout = {}): { count: number } {
     const normalizedItems = Array.isArray(items) ? items : [];
+    const grouped = Boolean(layout.grouped && Array.isArray(layout.groups) && layout.groups.length);
     options.hideTooltip();
+    if (grouped) {
+      options.grid.setAttribute('data-shortcut-grouped', 'true');
+    } else {
+      options.grid.removeAttribute('data-shortcut-grouped');
+    }
     flushSync(() => {
       reactRoot.render(
         <ShortcutsList
           items={normalizedItems}
+          layout={{ ...layout, grouped }}
           options={options}
           addButtonRef={addButtonRef}
         />
@@ -581,6 +803,7 @@ export function createShortcutsView(
         reactRoot.render(null);
       });
       options.tiles.length = 0;
+      options.groupHeaders.length = 0;
       addButtonRef.current = null;
     },
     refreshElements,

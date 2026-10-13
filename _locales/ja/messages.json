@@ -3196,5 +3196,59 @@
   },
   "recent_progress_stop_tooltip": {
     "message": "進捗を追跡中\n────────\n同じ作品の次の話や章に進むと、カードが自動で更新されます。\nクリックで追跡を停止します。"
+  },
+  "newtab_shortcuts_group_new": {
+    "message": "新しいグループ"
+  },
+  "newtab_shortcuts_group_title_placeholder": {
+    "message": "タイトルを追加"
+  },
+  "newtab_shortcuts_group_title_label": {
+    "message": "グループ名"
+  },
+  "newtab_shortcuts_group_actions": {
+    "message": "{group} の操作"
+  },
+  "newtab_shortcuts_group_untitled_name": {
+    "message": "名称未設定のグループ"
+  },
+  "newtab_shortcuts_group_rename": {
+    "message": "名前を変更"
+  },
+  "newtab_shortcuts_group_add_site": {
+    "message": "サイトを追加"
+  },
+  "newtab_shortcuts_group_move_up": {
+    "message": "上へ移動"
+  },
+  "newtab_shortcuts_group_move_down": {
+    "message": "下へ移動"
+  },
+  "newtab_shortcuts_group_delete": {
+    "message": "グループを削除"
+  },
+  "newtab_shortcuts_group_delete_with_sites": {
+    "message": "グループとサイトを削除"
+  },
+  "newtab_shortcuts_group_delete_confirm_title": {
+    "message": "「{group}」とそのサイトを削除しますか？"
+  },
+  "newtab_shortcuts_group_delete_confirm_description": {
+    "message": "グループと {count} 件のサイトが削除されます。"
+  },
+  "newtab_shortcuts_group_delete_confirm_button": {
+    "message": "削除"
+  },
+  "newtab_shortcuts_group_deleted_undo": {
+    "message": "グループを削除しました · {shortcut} で元に戻す"
+  },
+  "newtab_shortcuts_group_delete_undone": {
+    "message": "グループを復元しました · {shortcut} でやり直す"
+  },
+  "newtab_shortcuts_group_delete_redone": {
+    "message": "グループを再び削除しました · {shortcut} で元に戻す"
+  },
+  "newtab_shortcuts_group_limit_reached": {
+    "message": "グループは最大 {count} 個まで作成できます。"
   }
 }

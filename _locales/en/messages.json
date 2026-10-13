@@ -3196,5 +3196,59 @@
   },
   "recent_progress_stop_tooltip": {
     "message": "Tracking progress\n────────\nReaching the next episode or chapter of this work moves the card there.\nClick to stop tracking."
+  },
+  "newtab_shortcuts_group_new": {
+    "message": "New group"
+  },
+  "newtab_shortcuts_group_title_placeholder": {
+    "message": "Add a title"
+  },
+  "newtab_shortcuts_group_title_label": {
+    "message": "Group title"
+  },
+  "newtab_shortcuts_group_actions": {
+    "message": "{group} actions"
+  },
+  "newtab_shortcuts_group_untitled_name": {
+    "message": "Untitled group"
+  },
+  "newtab_shortcuts_group_rename": {
+    "message": "Rename"
+  },
+  "newtab_shortcuts_group_add_site": {
+    "message": "Add site"
+  },
+  "newtab_shortcuts_group_move_up": {
+    "message": "Move up"
+  },
+  "newtab_shortcuts_group_move_down": {
+    "message": "Move down"
+  },
+  "newtab_shortcuts_group_delete": {
+    "message": "Delete group"
+  },
+  "newtab_shortcuts_group_delete_with_sites": {
+    "message": "Delete group and sites"
+  },
+  "newtab_shortcuts_group_delete_confirm_title": {
+    "message": "Delete “{group}” and its sites?"
+  },
+  "newtab_shortcuts_group_delete_confirm_description": {
+    "message": "The group and its {count} sites will be deleted."
+  },
+  "newtab_shortcuts_group_delete_confirm_button": {
+    "message": "Delete"
+  },
+  "newtab_shortcuts_group_deleted_undo": {
+    "message": "Group deleted · {shortcut} to undo"
+  },
+  "newtab_shortcuts_group_delete_undone": {
+    "message": "Group restored · {shortcut} to redo"
+  },
+  "newtab_shortcuts_group_delete_redone": {
+    "message": "Group deleted · {shortcut} to undo"
+  },
+  "newtab_shortcuts_group_limit_reached": {
+    "message": "You can create up to {count} groups."
   }
 }

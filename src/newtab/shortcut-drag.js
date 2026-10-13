@@ -48,7 +48,8 @@
       refreshShortcutFolderReferences,
       isShortcutContextMenuNode,
       getShortcutTileFromNode,
-      closeShortcutContextMenu
+      closeShortcutContextMenu,
+      moveShortcutGroupToIndex
     } = deps;
 
     // Page state still owned by newtab.js; read and written through accessors.
@@ -58,6 +59,94 @@
     const SHORTCUT_REORDER_ANIMATION_MS = 180;
     const SHORTCUT_DROP_ANIMATION_MS = 210;
     const SHORTCUT_REORDER_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
+    const SHORTCUT_AREA_AUTO_SCROLL_EDGE_PX = 44;
+    const SHORTCUT_AREA_AUTO_SCROLL_MAX_STEP_PX = 16;
+    const SHORTCUT_AREA_AUTO_SCROLL_DELAY_MS = 220;
+    const SHORTCUT_SLOT_SELECTOR = '.x-nt-shortcut-tile[data-shortcut-id], .x-nt-shortcut-group-empty';
+
+    // The shortcut section scrolls only when it is taller than the room above
+    // the bottom dock.
+    function getShortcutScrollArea() {
+      const grid = pageState.shortcutGrid;
+      const area = grid && typeof grid.closest === 'function' ? grid.closest('.x-nt-shortcuts-section') : null;
+      return area && area.getAttribute('data-shortcuts-scrollable') === 'true' ? area : null;
+    }
+
+    // Scrolls a step while a drag holds the pointer near the area's top or
+    // bottom edge; the caller asks for another frame while it returns true.
+    // A drag coming in from the dock crosses the bottom edge, so scrolling
+    // waits until the pointer has stayed by an edge for a moment.
+    let shortcutAreaEdgeSince = 0;
+    let shortcutAreaEdgeCheckedAt = 0;
+    function autoScrollShortcutArea(pointerX, pointerY) {
+      const area = getShortcutScrollArea();
+      if (!area || !Number.isFinite(pointerX) || !Number.isFinite(pointerY)) {
+        return false;
+      }
+      const rect = area.getBoundingClientRect();
+      const edge = Math.min(SHORTCUT_AREA_AUTO_SCROLL_EDGE_PX, rect.height / 3);
+      const inside = pointerX >= rect.left && pointerX <= rect.right && pointerY >= rect.top && pointerY <= rect.bottom;
+      const depth = !inside ? 0 : pointerY < rect.top + edge
+        ? -(rect.top + edge - pointerY)
+        : pointerY > rect.bottom - edge ? pointerY - (rect.bottom - edge) : 0;
+      const now = window.performance && typeof window.performance.now === 'function'
+        ? window.performance.now() : Date.now();
+      const resumed = now - shortcutAreaEdgeCheckedAt < 120;
+      shortcutAreaEdgeCheckedAt = now;
+      if (!depth) {
+        shortcutAreaEdgeSince = 0;
+        return false;
+      }
+      if (!shortcutAreaEdgeSince || !resumed) {
+        shortcutAreaEdgeSince = now;
+      }
+      if (now - shortcutAreaEdgeSince < SHORTCUT_AREA_AUTO_SCROLL_DELAY_MS) {
+        return true;
+      }
+      const step = Math.sign(depth) * Math.max(1, Math.round(SHORTCUT_AREA_AUTO_SCROLL_MAX_STEP_PX * Math.min(1, Math.abs(depth) / edge)));
+      const before = area.scrollTop;
+      area.scrollTop = before + step;
+      return area.scrollTop !== before;
+    }
+
+    // A scrolling section would clip the dragged tile, so the tile leaves it
+    // as a fixed element while a placeholder keeps its slot.
+    function liftShortcutDragTile(tile) {
+      if (!tile || tile._xShortcutDragLift || !tile.parentNode || !getShortcutScrollArea() ||
+          typeof tile.getBoundingClientRect !== 'function') {
+        return;
+      }
+      const rect = tile.getBoundingClientRect();
+      const placeholder = document.createElement('span');
+      placeholder.className = 'x-nt-shortcut-drag-placeholder';
+      placeholder.setAttribute('aria-hidden', 'true');
+      tile.parentNode.insertBefore(placeholder, tile);
+      tile._xShortcutDragLift = { placeholder };
+      tile.setAttribute('data-shortcut-lifted', 'true');
+      tile.style.setProperty('left', `${rect.left}px`);
+      tile.style.setProperty('top', `${rect.top}px`);
+    }
+
+    function removeShortcutDragPlaceholder(tile) {
+      const lift = tile && tile._xShortcutDragLift;
+      if (lift && lift.placeholder && lift.placeholder.parentNode) {
+        lift.placeholder.parentNode.removeChild(lift.placeholder);
+      }
+      if (lift) {
+        lift.placeholder = null;
+      }
+    }
+
+    function unliftShortcutDragTile(tile) {
+      if (!tile || !tile._xShortcutDragLift) {
+        return;
+      }
+      removeShortcutDragPlaceholder(tile);
+      delete tile._xShortcutDragLift;
+      tile.removeAttribute('data-shortcut-lifted');
+      tile.style.removeProperty('left');
+      tile.style.removeProperty('top');
+    }
 
     function getShortcutTileRectMap() {
       const rects = new Map();
@@ -172,7 +261,14 @@
       tile.setAttribute('data-shortcut-dropping', 'true');
       tile.style.pointerEvents = '';
       tile.style.transition = `transform ${SHORTCUT_DROP_ANIMATION_MS}ms ${SHORTCUT_REORDER_EASING}`;
-      tile.style.transform = 'translate3d(0, 0, 0)';
+      // A lifted tile lands on its placeholder, wherever the area scrolled.
+      const lift = tile._xShortcutDragLift;
+      const slotRect = lift && lift.placeholder && lift.placeholder.isConnected
+        ? lift.placeholder.getBoundingClientRect()
+        : null;
+      tile.style.transform = slotRect
+        ? `translate3d(${slotRect.left - (Number.parseFloat(tile.style.left) || 0)}px, ${slotRect.top - (Number.parseFloat(tile.style.top) || 0)}px, 0)`
+        : 'translate3d(0, 0, 0)';
       if (tile._xShortcutDropTimer) {
         window.clearTimeout(tile._xShortcutDropTimer);
       }
@@ -180,6 +276,7 @@
         tile._xShortcutDropTimer = 0;
         tile.removeAttribute('data-shortcut-dragging');
         tile.removeAttribute('data-shortcut-dropping');
+        unliftShortcutDragTile(tile);
         tile.style.removeProperty('transition');
         tile.style.removeProperty('transform');
         tile.style.removeProperty('will-change');
@@ -194,8 +291,13 @@
       return getShortcutReorderTiles().indexOf(tile);
     }
 
+    // Empty groups show a slot that takes drops like a tile. `index` counts
+    // only the tiles before the insertion point; `groupId` is the group of the
+    // tile or slot the pointer is beside.
     function getShortcutInsertionSlotAt(pointerX, pointerY, excludedTile) {
-      const layoutItems = getShortcutReorderTiles()
+      const layoutItems = (pageState.shortcutGrid
+        ? Array.from(pageState.shortcutGrid.querySelectorAll(SHORTCUT_SLOT_SELECTOR))
+        : getShortcutReorderTiles())
         .filter((tile) => tile && tile !== excludedTile)
         .map((tile) => ({
           tile,
@@ -203,26 +305,66 @@
         }))
         .filter((item) => item.rect && item.rect.width > 0 && item.rect.height > 0);
       const slot = NEWTAB_CROSS_SURFACE_DRAG.getRowInsertionSlot(layoutItems, pointerX, pointerY);
+      const anchor = slot.anchorIndex >= 0 ? layoutItems[slot.anchorIndex] : null;
+      const insertionPoint = !anchor ? 0 : slot.markerPosition === 'after' ? slot.anchorIndex + 1 : slot.anchorIndex;
       return {
-        index: slot.index,
+        index: layoutItems.slice(0, insertionPoint)
+          .filter((item) => item.tile.hasAttribute('data-shortcut-id')).length,
         markerPosition: slot.markerPosition,
-        anchorRect: slot.anchorIndex >= 0 ? layoutItems[slot.anchorIndex].rect : null,
-        anchorTile: slot.anchorIndex >= 0 ? layoutItems[slot.anchorIndex].tile : null
+        anchorRect: anchor ? anchor.rect : null,
+        anchorTile: anchor ? anchor.tile : null,
+        groupId: anchor ? getShortcutTileGroupId(anchor.tile) : ''
       };
     }
 
-    function getShortcutDragInsertionIndex(pointerX, pointerY) {
+    function getShortcutDragInsertionSlot(pointerX, pointerY) {
       if (!pageState.shortcutGrid || !pageState.shortcutDragState || !Number.isFinite(pointerX) ||
           !Number.isFinite(pointerY)) {
-        return -1;
+        return null;
       }
-      return getShortcutInsertionSlotAt(pointerX, pointerY, pageState.shortcutDragState.tile).index;
+      return getShortcutInsertionSlotAt(pointerX, pointerY, pageState.shortcutDragState.tile);
     }
 
-    function moveShortcutTileElement(tile, targetIndex) {
+    function getShortcutGroupHeader(groupId) {
+      return pageState.shortcutGrid && groupId && typeof pageState.shortcutGrid.querySelector === 'function'
+        ? pageState.shortcutGrid.querySelector(`.x-nt-shortcut-group-header[data-shortcut-group-id="${groupId}"]`)
+        : null;
+    }
+
+    function getShortcutTileGroupId(tile) {
+      return tile && typeof tile.getAttribute === 'function'
+        ? String(tile.getAttribute('data-shortcut-group-id') || '')
+        : '';
+    }
+
+    // Group titles sit between the tiles of different groups, so a tile goes
+    // next to the tile the pointer is beside rather than before the next tile
+    // in the list, which could already belong to the next group.
+    function moveShortcutTileElement(tile, targetIndex, slot) {
       if (!pageState.shortcutGrid || !tile || tile.parentNode !== pageState.shortcutGrid ||
           !Number.isFinite(targetIndex)) {
         return false;
+      }
+      // A lifted tile keeps its placeholder right before it.
+      const placeholder = tile._xShortcutDragLift ? tile._xShortcutDragLift.placeholder : null;
+      const lead = placeholder && placeholder.parentNode === pageState.shortcutGrid ? placeholder : tile;
+      const place = (reference) => {
+        pageState.shortcutGrid.insertBefore(tile, reference);
+        if (lead !== tile) pageState.shortcutGrid.insertBefore(lead, tile);
+        refreshShortcutTileCacheFromDom();
+        return true;
+      };
+      const anchor = slot && slot.anchorTile && slot.anchorTile !== tile && slot.anchorTile !== lead &&
+        slot.anchorTile.parentNode === pageState.shortcutGrid ? slot.anchorTile : null;
+      if (anchor) {
+        // An empty group's slot stays after the tile that fills it.
+        const after = slot.markerPosition === 'after' && !anchor.classList.contains('x-nt-shortcut-group-empty');
+        const reference = after ? anchor.nextSibling : anchor;
+        if (reference === tile || reference === lead || (after ? lead.previousSibling === anchor
+          : tile.nextSibling === anchor)) {
+          return false;
+        }
+        return place(reference);
       }
       const currentIndex = getShortcutTileInsertionIndex(tile);
       const remainingTiles = getShortcutReorderTiles().filter((item) => item !== tile);
@@ -230,15 +372,12 @@
       if (currentIndex === boundedIndex) {
         return false;
       }
-      pageState.shortcutGrid.insertBefore(
-        tile,
-        remainingTiles[boundedIndex] || pageState.addShortcutButton || null
-      );
-      refreshShortcutTileCacheFromDom();
-      return true;
+      return place(remainingTiles[boundedIndex] || pageState.addShortcutButton || null);
     }
 
-    function moveShortcutItem(shortcutId, targetIndex) {
+    // Moves the shortcut to `targetIndex` among the other visible tiles and
+    // into `targetGroupId` when given. Either change counts as a move.
+    function moveShortcutItem(shortcutId, targetIndex, targetGroupId) {
       if (!shortcutId || !Number.isFinite(targetIndex)) {
         return false;
       }
@@ -246,18 +385,21 @@
       if (currentIndex < 0) {
         return false;
       }
+      const groupId = String(targetGroupId || '');
+      const regroup = Boolean(groupId) && pageState.newtabShortcuts[currentIndex].groupId !== groupId;
       const tiles = getShortcutReorderTiles();
       const visibleIds = tiles.filter((tile) => getShortcutTileId(tile) !== shortcutId).map(getShortcutTileId);
       const visibleTargetIndex = Math.max(0, Math.min(visibleIds.length, Math.floor(targetIndex)));
-      if (tiles.findIndex((tile) => getShortcutTileId(tile) === shortcutId) === visibleTargetIndex) {
+      if (!regroup && tiles.findIndex((tile) => getShortcutTileId(tile) === shortcutId) === visibleTargetIndex) {
         return false;
       }
       const nextShortcuts = pageState.newtabShortcuts.slice();
-      const shortcutItem = nextShortcuts.splice(currentIndex, 1)[0];
+      const removed = nextShortcuts.splice(currentIndex, 1)[0];
+      const shortcutItem = regroup ? { ...removed, groupId } : removed;
       const anchorId = visibleIds[visibleTargetIndex];
       const anchorIndex = anchorId ? nextShortcuts.findIndex((item) => item.id === anchorId) : nextShortcuts.length;
       const boundedIndex = Math.max(0, anchorIndex);
-      if (currentIndex === boundedIndex) {
+      if (!regroup && currentIndex === boundedIndex) {
         return false;
       }
       nextShortcuts.splice(boundedIndex, 0, shortcutItem);
@@ -266,16 +408,33 @@
     }
 
     function restoreShortcutDragOrder(state) {
+      if (state.tile && state.tile._xShortcutDragLift) {
+        // Back in the flow, the tile no longer aims at its fixed position.
+        unliftShortcutDragTile(state.tile);
+        state.tile.style.transition = 'none';
+        state.tile.style.transform = '';
+      }
       const originalOrder = state.originalShortcuts.map((item) => item.id);
       const restored = NEWTAB_CROSS_SURFACE_DRAG.planShortcutReorder({
-        shortcuts: pageState.newtabShortcuts, order: originalOrder
+        shortcuts: pageState.newtabShortcuts, order: originalOrder,
+        groups: state.originalShortcuts.map((item) => item.groupId)
       });
       if (restored) pageState.newtabShortcuts = restored;
       // React has not committed the manually moved DOM order during the drag.
+      // Each tile goes after the tile before it in its group, or after its
+      // group's title when it is the first one.
       let visibleIndex = 0;
+      let previousTile = null;
+      let previousGroupId = null;
       pageState.newtabShortcuts.forEach((shortcut) => {
         const tile = getShortcutTileById(shortcut.id);
-        if (tile) moveShortcutTileElement(tile, visibleIndex++);
+        if (!tile) return;
+        const anchor = previousTile && previousGroupId === shortcut.groupId
+          ? previousTile
+          : getShortcutGroupHeader(shortcut.groupId);
+        moveShortcutTileElement(tile, visibleIndex++, anchor ? { anchorTile: anchor, markerPosition: 'after' } : null);
+        previousTile = tile;
+        previousGroupId = shortcut.groupId;
       });
       renderShortcuts();
       resetShortcutDockHover();
@@ -284,7 +443,9 @@
     function persistShortcutOrder(state) {
       const record = state && NEWTAB_BOOKMARK_MOVE_HISTORY.createShortcutReorderRecord({
         fromOrder: state.originalShortcuts.map((item) => item.id),
-        toOrder: pageState.newtabShortcuts.map((item) => item.id)
+        toOrder: pageState.newtabShortcuts.map((item) => item.id),
+        fromGroups: state.originalShortcuts.map((item) => item.groupId),
+        toGroups: pageState.newtabShortcuts.map((item) => item.groupId)
       });
       if (state && !record) return Promise.resolve(pageState.newtabShortcuts);
       if (state) pageState.bookmarkMoveHistoryBusy = true;
@@ -318,6 +479,7 @@
       tile.setAttribute('aria-grabbed', 'true');
       tile.style.pointerEvents = 'none';
       tile.style.willChange = 'transform';
+      liftShortcutDragTile(tile);
       setShortcutDragTileTransform(pageState.shortcutDragState, Number(event.clientX), Number(event.clientY));
       if (typeof tile.setPointerCapture === 'function') {
         try {
@@ -349,22 +511,32 @@
       if (topbarPoint && pageState.bookmarkTopbarRuntime.autoScroll(topbarPoint.x, topbarPoint.y)) {
         scheduleShortcutDragMove(state, pointerX, pointerY);
       }
+      // Near the shortcut area's edges the area scrolls whatever is under the
+      // pointer, so a tile there does not hold the drag as a stack target.
+      if (isPointOverShortcutDropSurface(pointerX, pointerY) && autoScrollShortcutArea(pointerX, pointerY)) {
+        scheduleShortcutDragMove(state, pointerX, pointerY);
+      }
       if (updateShortcutDragBookmarkTarget(state, pointerX, pointerY)) {
         return;
       }
       if (!isPointOverShortcutDropSurface(pointerX, pointerY)) {
         return;
       }
-      const targetIndex = getShortcutDragInsertionIndex(pointerX, pointerY);
-      if (targetIndex < 0 || targetIndex === getShortcutTileInsertionIndex(state.tile)) {
+      const slot = getShortcutDragInsertionSlot(pointerX, pointerY);
+      const targetIndex = slot ? slot.index : -1;
+      const targetGroupId = slot ? slot.groupId : '';
+      const source = getShortcutById(state.shortcutId);
+      const regroup = Boolean(targetGroupId) && Boolean(source) && source.groupId !== targetGroupId;
+      if (targetIndex < 0 || (!regroup && targetIndex === getShortcutTileInsertionIndex(state.tile))) {
         return;
       }
       const beforeRects = getShortcutTileRectMap();
-      if (moveShortcutItem(state.shortcutId, targetIndex) &&
-          moveShortcutTileElement(state.tile, targetIndex)) {
-        animateShortcutLayoutShift(beforeRects, state.tile);
-        setShortcutDragTileTransform(state, pointerX, pointerY);
+      if (moveShortcutItem(state.shortcutId, targetIndex, targetGroupId)) {
         state.hasReordered = true;
+        if (moveShortcutTileElement(state.tile, targetIndex, slot)) {
+          animateShortcutLayoutShift(beforeRects, state.tile);
+          setShortcutDragTileTransform(state, pointerX, pointerY);
+        }
       }
     }
 
@@ -497,6 +669,8 @@
         }
       }
       if (bookmarkDropTarget) {
+        // React removes or re-renders the tile; only its placeholder is ours.
+        removeShortcutDragPlaceholder(tile);
         if (event && typeof event.preventDefault === 'function') {
           event.preventDefault();
         }
@@ -663,7 +837,8 @@
         folderShortcut: {
           id: FOLDER_REFERENCES.createEntryId(),
           index: pageState.newtabShortcuts.filter((item) => item.id !== source.id)
-            .findIndex((item) => item.id === destination.id)
+            .findIndex((item) => item.id === destination.id),
+          groupId: destination.groupId
         }
       });
       if (!record) {
@@ -755,11 +930,185 @@
       });
     }
 
+    // Dragging a group title moves the whole group among the others. Its
+    // tiles stay put while a line shows where the group will land.
+    const SHORTCUT_GROUP_DRAG_START_THRESHOLD_PX = 6;
+    let shortcutGroupDragState = null;
+
+    function getShortcutGroupHeaders() {
+      return pageState.shortcutGrid
+        ? Array.from(pageState.shortcutGrid.querySelectorAll('.x-nt-shortcut-group-header'))
+        : [];
+    }
+
+    function handleShortcutGroupDragPointerDown(event) {
+      const target = event.target;
+      const header = target && typeof target.closest === 'function'
+        ? target.closest('.x-nt-shortcut-group-header')
+        : null;
+      if (!header || shortcutGroupDragState || (event.pointerType === 'mouse' && event.button !== 0) ||
+          header.hasAttribute('data-shortcut-group-editing') ||
+          target.closest('.x-nt-shortcut-group-more, .x-nt-shortcut-group-input') ||
+          getShortcutGroupHeaders().length < 2) {
+        return;
+      }
+      const rect = header.getBoundingClientRect();
+      shortcutGroupDragState = {
+        pointerId: event.pointerId,
+        header,
+        groupId: String(header.getAttribute('data-shortcut-group-id') || ''),
+        startX: Number(event.clientX),
+        startY: Number(event.clientY),
+        grabOffsetX: Number(event.clientX) - rect.left,
+        grabOffsetY: Number(event.clientY) - rect.top,
+        isDragging: false,
+        targetIndex: -1,
+        ghost: null,
+        line: null,
+        frameId: 0
+      };
+      document.addEventListener('pointermove', handleShortcutGroupDragPointerMove, true);
+      document.addEventListener('pointerup', handleShortcutGroupDragPointerUp, true);
+      document.addEventListener('pointercancel', handleShortcutGroupDragPointerCancel, true);
+      document.addEventListener('keydown', handleShortcutGroupDragKeyDown, true);
+    }
+
+    function startShortcutGroupDrag(state) {
+      state.isDragging = true;
+      closeShortcutContextMenu();
+      hideShortcutTooltip();
+      resetShortcutDockHover();
+      document.body.setAttribute('data-drag-source', 'shortcut-group');
+      state.header.setAttribute('data-shortcut-group-dragging', 'true');
+      const rect = state.header.getBoundingClientRect();
+      const ghost = state.header.cloneNode(true);
+      ghost.querySelectorAll('button.x-nt-shortcut-group-more').forEach((button) => button.remove());
+      ghost.classList.add('x-nt-shortcut-group-ghost');
+      ghost.removeAttribute('data-shortcut-group-id');
+      ghost.removeAttribute('data-shortcut-group-dragging');
+      ghost.setAttribute('aria-hidden', 'true');
+      ghost.style.left = `${rect.left}px`;
+      ghost.style.top = `${rect.top}px`;
+      const line = document.createElement('div');
+      line.className = 'x-nt-shortcut-group-drop-line';
+      line.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(ghost);
+      document.body.appendChild(line);
+      state.ghost = ghost;
+      state.line = line;
+    }
+
+    // The group lands before the first other group whose middle is below
+    // the pointer; `targetIndex` is its index among the remaining groups.
+    function updateShortcutGroupDrag(state, pointerX, pointerY) {
+      const left = Number.parseFloat(state.ghost.style.left) || 0;
+      const top = Number.parseFloat(state.ghost.style.top) || 0;
+      state.ghost.style.transform = `translate3d(${pointerX - state.grabOffsetX - left}px, ${pointerY - state.grabOffsetY - top}px, 0)`;
+      if (autoScrollShortcutArea(pointerX, pointerY)) {
+        scheduleShortcutGroupDragMove(state, pointerX, pointerY);
+      }
+      const headers = getShortcutGroupHeaders();
+      const gridRect = pageState.shortcutGrid.getBoundingClientRect();
+      const blocks = headers.map((header, index) => {
+        const rect = header.getBoundingClientRect();
+        const next = headers[index + 1];
+        const bottom = next ? next.getBoundingClientRect().top : gridRect.bottom;
+        return { header, top: rect.top, bottom, left: rect.left, width: rect.width };
+      }).filter((block) => block.header !== state.header);
+      let targetIndex = blocks.findIndex((block) => pointerY < (block.top + block.bottom) / 2);
+      if (targetIndex < 0) targetIndex = blocks.length;
+      state.targetIndex = targetIndex;
+      const anchor = blocks[targetIndex] || blocks[blocks.length - 1];
+      if (!anchor) return;
+      const area = getShortcutScrollArea();
+      const areaRect = area ? area.getBoundingClientRect() : null;
+      let lineY = blocks[targetIndex] ? anchor.top - 4 : anchor.bottom - 4;
+      if (areaRect) lineY = Math.max(areaRect.top + 2, Math.min(areaRect.bottom - 2, lineY));
+      state.line.style.left = `${anchor.left}px`;
+      state.line.style.width = `${Math.max(0, gridRect.right - anchor.left - 8)}px`;
+      state.line.style.top = `${Math.round(lineY)}px`;
+    }
+
+    function scheduleShortcutGroupDragMove(state, pointerX, pointerY) {
+      state.pendingX = pointerX;
+      state.pendingY = pointerY;
+      if (state.frameId) return;
+      state.frameId = window.requestAnimationFrame(() => {
+        state.frameId = 0;
+        if (state === shortcutGroupDragState && state.isDragging) {
+          updateShortcutGroupDrag(state, state.pendingX, state.pendingY);
+        }
+      });
+    }
+
+    function handleShortcutGroupDragPointerMove(event) {
+      const state = shortcutGroupDragState;
+      if (!state || event.pointerId !== state.pointerId) return;
+      const pointerX = Number(event.clientX);
+      const pointerY = Number(event.clientY);
+      if (!state.isDragging) {
+        if (Math.hypot(pointerX - state.startX, pointerY - state.startY) < SHORTCUT_GROUP_DRAG_START_THRESHOLD_PX) return;
+        startShortcutGroupDrag(state);
+      }
+      event.preventDefault();
+      scheduleShortcutGroupDragMove(state, pointerX, pointerY);
+    }
+
+    function finishShortcutGroupDrag(commit) {
+      const state = shortcutGroupDragState;
+      if (!state) return;
+      shortcutGroupDragState = null;
+      document.removeEventListener('pointermove', handleShortcutGroupDragPointerMove, true);
+      document.removeEventListener('pointerup', handleShortcutGroupDragPointerUp, true);
+      document.removeEventListener('pointercancel', handleShortcutGroupDragPointerCancel, true);
+      document.removeEventListener('keydown', handleShortcutGroupDragKeyDown, true);
+      if (state.frameId) window.cancelAnimationFrame(state.frameId);
+      if (!state.isDragging) return;
+      if (state.ghost) state.ghost.remove();
+      if (state.line) state.line.remove();
+      state.header.removeAttribute('data-shortcut-group-dragging');
+      document.body.removeAttribute('data-drag-source');
+      // The release would otherwise click the untitled group's title.
+      const suppressClick = (clickEvent) => {
+        clickEvent.preventDefault();
+        clickEvent.stopPropagation();
+      };
+      document.addEventListener('click', suppressClick, true);
+      window.setTimeout(() => document.removeEventListener('click', suppressClick, true), 0);
+      if (commit && state.targetIndex >= 0) {
+        moveShortcutGroupToIndex(state.groupId, state.targetIndex);
+      }
+    }
+
+    function handleShortcutGroupDragPointerUp(event) {
+      if (shortcutGroupDragState && event.pointerId === shortcutGroupDragState.pointerId) {
+        finishShortcutGroupDrag(true);
+      }
+    }
+
+    function handleShortcutGroupDragPointerCancel(event) {
+      if (shortcutGroupDragState && event.pointerId === shortcutGroupDragState.pointerId) {
+        finishShortcutGroupDrag(false);
+      }
+    }
+
+    function handleShortcutGroupDragKeyDown(event) {
+      if (event.key === 'Escape' && shortcutGroupDragState && shortcutGroupDragState.isDragging) {
+        event.preventDefault();
+        event.stopPropagation();
+        finishShortcutGroupDrag(false);
+      }
+    }
+
     function handleShortcutDragPointerDown(event) {
       if (pageState.bookmarkMoveHistoryBusy || isShortcutContextMenuNode(event.target)) {
         return;
       }
       const tile = getShortcutTileFromNode(event.target);
+      if (!tile) {
+        handleShortcutGroupDragPointerDown(event);
+        return;
+      }
       const shortcutId = getShortcutTileId(tile);
       if (!tile || !shortcutId || (event.pointerType === 'mouse' && event.button !== 0)) {
         return;
@@ -839,6 +1188,7 @@
       getShortcutTileLayoutRect,
       setShortcutDragTileTransform,
       getShortcutInsertionSlotAt,
+      autoScrollShortcutArea,
       scheduleShortcutDragMove,
       suppressCanceledDragClick,
       finishShortcutDrag,
