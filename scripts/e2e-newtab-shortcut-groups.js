@@ -556,6 +556,37 @@ check('Alt+Arrow moves a focused tile one place', WIDE, async (page) => {
   return problems;
 });
 
+// Settings changed elsewhere (the options page, another tab) apply live,
+// and a shortcut list saved elsewhere replaces the one shown.
+check('settings and shortcuts saved elsewhere apply live', WIDE, async (page) => {
+  await page.seed(BASE_GROUPS, BASE_ITEMS);
+  const visibleKey = '_x_extension_newtab_shortcuts_visible_2026_unique_';
+  const set = (values) => page.evaluate(`new Promise((resolve) => chrome.storage.sync.set(${JSON.stringify(values)}, resolve))`);
+  const shown = () => page.evaluate(`(() => {
+    const section = document.querySelector('.x-nt-shortcuts-section');
+    return Boolean(section) && getComputedStyle(section).display !== 'none' && section.getBoundingClientRect().height > 0;
+  })()`);
+  const tileIds = () => page.evaluate(`Array.from(document.querySelectorAll('.x-nt-shortcut-tile[data-shortcut-id]'))
+    .map((tile) => tile.getAttribute('data-shortcut-id')).join(' ')`);
+  const problems = [];
+  await set({ [visibleKey]: false });
+  await page.settle();
+  if (await shown()) problems.push({ key: 'shortcuts still shown after hiding them elsewhere', dx: 0, dy: 0 });
+  await set({ [visibleKey]: true });
+  await page.settle();
+  if (!(await shown())) problems.push({ key: 'shortcuts not shown again', dx: 0, dy: 0 });
+  const payload = shortcutsStore.createShortcutStoragePlan({
+    groups: BASE_GROUPS,
+    items: BASE_ITEMS.filter((item) => item.id !== 'a3')
+  }).payload;
+  await set(payload);
+  await page.settle(900);
+  if ((await tileIds()).split(' ').includes('a3')) {
+    problems.push({ key: 'a shortcut removed elsewhere is still shown', dx: 0, dy: 0 });
+  }
+  return problems;
+});
+
 check('dock magnification leaves tile boxes in place', WIDE, async (page) => {
   await page.seed(BASE_GROUPS, BASE_ITEMS);
   const before = await page.snapshot();

@@ -542,12 +542,11 @@
     loadInitialBookmarkViewMode,
     getEffectiveBookmarkTopbarSurfaceMode,
     getBookmarkTopbarLayout,
-    handleBookmarkTopbarLayoutStorageChanges,
     syncBookmarkTopbarSurfaceAppearance,
     loadInitialBookmarkTopbarSurfaceMode,
     syncBookmarkTopbarSurfaceColorForTheme,
     loadInitialBookmarkTopbarSurfaceColors,
-    handleBookmarkTopbarSurfaceColorStorageChanges,
+    registerStorageChangeHandlers: registerBookmarkDisplayStorageChanges,
     handleBookmarkModeMenuAction
   } = NEWTAB_BOOKMARK_DISPLAY_SETTINGS.createBookmarkDisplaySettings({
     storageArea,
@@ -2854,347 +2853,339 @@
     }
   }
 
-  addStorageChangeListener((changes, areaName) => {
-    if (areaName === 'local' && changes[FOLDER_REFERENCES.BINDINGS_KEY]) {
-      shortcutFolderRuntime.accept(changes[FOLDER_REFERENCES.BINDINGS_KEY].newValue);
-      renderShortcuts();
+  // Every storage change the page reacts to goes through this registry;
+  // each part registers the keys it owns (see storage-change-registry.js).
+  const storageChanges = globalThis.LumnoNewtabStorageChangeRegistry.createStorageChangeRegistry({
+    isPrimaryArea: isPrimaryStorageAreaName
+  });
+  addStorageChangeListener(storageChanges.dispatch);
+
+  storageChanges.on(FOLDER_REFERENCES.BINDINGS_KEY, (changes) => {
+    shortcutFolderRuntime.accept(changes[FOLDER_REFERENCES.BINDINGS_KEY].newValue);
+    renderShortcuts();
+  }, { area: 'local' });
+  storageChanges.on(FOLDER_COLOR_REFS_STORAGE_KEY, (changes) => {
+    folderColorRefs = NEWTAB_BOOKMARK_FOLDER_ICON.normalizeFolderColorRefs(changes[FOLDER_COLOR_REFS_STORAGE_KEY].newValue);
+    syncFolderColorsWithBookmarks(false).catch(() => {});
+  });
+  storageChanges.on(NEWTAB_SHORTCUT_ICONS_STORAGE_KEY, (changes) => {
+    newtabShortcutIcons = NEWTAB_SHORTCUT_ICON_STORE.normalizeIconMap(
+      changes[NEWTAB_SHORTCUT_ICONS_STORAGE_KEY].newValue
+    );
+    renderShortcuts();
+  }, { area: 'local' });
+  storageChanges.on(NEWTAB_SHORTCUT_FAVICON_CACHE_STORAGE_KEY, (changes) => {
+    newtabShortcutFavicons = SHORTCUT_FAVICON.normalizeCacheMap({
+      ...(changes[NEWTAB_SHORTCUT_FAVICON_CACHE_STORAGE_KEY].newValue || {}),
+      ...shortcutFaviconPendingCacheEntries
+    });
+    renderShortcuts();
+  }, { area: 'local' });
+  storageChanges.on(SITE_SEARCH_ICON_CACHE_STORAGE_KEY, (changes) => {
+    siteSearchIconCache = SHORTCUT_FAVICON.normalizeCacheMap(
+      changes[SITE_SEARCH_ICON_CACHE_STORAGE_KEY].newValue,
+      Date.now(),
+      siteSearchIconCacheOptions
+    );
+    siteSearchIconCacheLoaded = true;
+    siteSearchIconCacheRevision += 1;
+    siteSearchIconCacheLoadPromise = Promise.resolve(siteSearchIconCache);
+    if (siteSearchState && inputModeController) {
+      const activeProvider = siteSearchState;
+      setSiteSearchPrefix(activeProvider, defaultTheme);
+      getThemeForProvider(activeProvider).then((theme) => {
+        if (siteSearchState === activeProvider) {
+          setSiteSearchPrefix(activeProvider, theme);
+        }
+      }).catch(() => {});
     }
-    if (isPrimaryStorageAreaName(areaName) && changes[FOLDER_COLOR_REFS_STORAGE_KEY]) {
-      folderColorRefs = NEWTAB_BOOKMARK_FOLDER_ICON.normalizeFolderColorRefs(changes[FOLDER_COLOR_REFS_STORAGE_KEY].newValue);
-      syncFolderColorsWithBookmarks(false).catch(() => {});
+    if (inputModeController && typeof inputModeController.refreshModeMenu === 'function') {
+      inputModeController.refreshModeMenu();
     }
-    if (areaName === 'local' && changes[NEWTAB_SHORTCUT_ICONS_STORAGE_KEY]) {
-      newtabShortcutIcons = NEWTAB_SHORTCUT_ICON_STORE.normalizeIconMap(
-        changes[NEWTAB_SHORTCUT_ICONS_STORAGE_KEY].newValue
-      );
-      renderShortcuts();
+    if (latestQuery) {
+      requestSuggestions(latestQuery, { immediate: true });
     }
-    if (areaName === 'local' && changes[NEWTAB_SHORTCUT_FAVICON_CACHE_STORAGE_KEY]) {
-      newtabShortcutFavicons = SHORTCUT_FAVICON.normalizeCacheMap({
-        ...(changes[NEWTAB_SHORTCUT_FAVICON_CACHE_STORAGE_KEY].newValue || {}),
-        ...shortcutFaviconPendingCacheEntries
-      });
-      renderShortcuts();
-    }
-    if (areaName === 'local' && changes[SITE_SEARCH_ICON_CACHE_STORAGE_KEY]) {
-      siteSearchIconCache = SHORTCUT_FAVICON.normalizeCacheMap(
-        changes[SITE_SEARCH_ICON_CACHE_STORAGE_KEY].newValue,
-        Date.now(),
-        siteSearchIconCacheOptions
-      );
-      siteSearchIconCacheLoaded = true;
-      siteSearchIconCacheRevision += 1;
-      siteSearchIconCacheLoadPromise = Promise.resolve(siteSearchIconCache);
-      if (siteSearchState && inputModeController) {
-        const activeProvider = siteSearchState;
-        setSiteSearchPrefix(activeProvider, defaultTheme);
-        getThemeForProvider(activeProvider).then((theme) => {
-          if (siteSearchState === activeProvider) {
-            setSiteSearchPrefix(activeProvider, theme);
-          }
-        }).catch(() => {});
-      }
-      if (inputModeController && typeof inputModeController.refreshModeMenu === 'function') {
-        inputModeController.refreshModeMenu();
-      }
-      if (latestQuery) {
-        requestSuggestions(latestQuery, { immediate: true });
-      }
-    }
-    if (areaName === 'local' &&
-        changes[NEWTAB_SHORTCUTS_LOCAL_OVERFLOW_STORAGE_KEY] &&
-        isShortcutSyncStorageActive() &&
-        shortcutPersistenceInFlightCount === 0) {
+  }, { area: 'local' });
+  storageChanges.on(NEWTAB_SHORTCUTS_LOCAL_OVERFLOW_STORAGE_KEY, () => {
+    if (isShortcutSyncStorageActive() && shortcutPersistenceInFlightCount === 0) {
       scheduleShortcutStorageReload();
     }
-    handleBookmarkTopbarSurfaceColorStorageChanges(changes, areaName);
-    handleBookmarkTopbarLayoutStorageChanges(changes, areaName);
-    if (areaName === 'local' && changes[PROGRESS_HISTORY.STORAGE_KEY]) {
-      progressHistoryMap = PROGRESS_HISTORY.normalizeHistoryMap(changes[PROGRESS_HISTORY.STORAGE_KEY].newValue);
-    }
-    const isPrimaryArea = isPrimaryStorageAreaName(areaName);
-    if (!isPrimaryArea) {
-      if (recentSitesStorageAreaName &&
-          isPrimaryStorageAreaName(areaName) &&
-          changes[PINNED_RECENT_SITES_STORAGE_KEY]) {
-        pinnedRecentSites = normalizePinnedRecentSites(changes[PINNED_RECENT_SITES_STORAGE_KEY].newValue);
-        recentRenderSignature = '';
-        renderRecentSites(recentSourceItems);
-      }
-      if (recentSitesStorageAreaName &&
-          isPrimaryStorageAreaName(areaName) &&
-          changes[HIDDEN_RECENT_SITES_STORAGE_KEY]) {
-        hiddenRecentSites = normalizeHiddenRecentSites(changes[HIDDEN_RECENT_SITES_STORAGE_KEY].newValue);
-        recentRenderSignature = '';
-        renderRecentSites(recentSourceItems);
-      }
-      if (areaName === 'local' &&
-          (changes[NEWTAB_LOCAL_WALLPAPER_STORAGE_KEY] || changes[settingsRuntimeApi.ASSET_REVISION_STORAGE_KEY] ||
-            (changes[globalThis.LumnoNewtabRemoteContent.BING_DAILY_CACHE_KEY])) &&
-          wallpaperRuntime) {
-        wallpaperRuntime.handleStorageChange(changes);
-      }
-      return;
-    }
-    if (changes[THEME_STORAGE_KEY]) {
-      globalThemeMode = normalizeThemeMode(changes[THEME_STORAGE_KEY].newValue);
-      if (isNewtabThemeFollowingGlobal()) {
-        applyScopedThemeMode();
-      } else {
-        updateWallpaperAppearanceSelectionUi();
-        updateModeCommandSuggestions();
-      }
-    }
-    if (changes[NEWTAB_THEME_MODE_STORAGE_KEY]) {
-      newtabThemeMode = normalizeNewtabThemeMode(changes[NEWTAB_THEME_MODE_STORAGE_KEY].newValue);
-      applyScopedThemeMode();
-    }
-    if (changes[NEWTAB_THEME_SCOPE_STORAGE_KEY]) {
-      newtabThemeScope = normalizeNewtabThemeScope(changes[NEWTAB_THEME_SCOPE_STORAGE_KEY].newValue);
-      updateWallpaperLanguageStrings();
-      updateModeCommandSuggestions();
-    }
+  }, { area: 'local' });
+  registerBookmarkDisplayStorageChanges(storageChanges);
+  storageChanges.on(PROGRESS_HISTORY.STORAGE_KEY, (changes) => {
+    progressHistoryMap = PROGRESS_HISTORY.normalizeHistoryMap(changes[PROGRESS_HISTORY.STORAGE_KEY].newValue);
+  }, { area: 'local' });
+  // With settings in sync, wallpaper files and caches still change in local.
+  storageChanges.on([
+    NEWTAB_LOCAL_WALLPAPER_STORAGE_KEY,
+    settingsRuntimeApi.ASSET_REVISION_STORAGE_KEY,
+    globalThis.LumnoNewtabRemoteContent.BING_DAILY_CACHE_KEY
+  ], (changes) => {
     if (wallpaperRuntime) {
       wallpaperRuntime.handleStorageChange(changes);
     }
-    if (changes[LANGUAGE_STORAGE_KEY]) {
-      applyLanguageMode(changes[LANGUAGE_STORAGE_KEY].newValue || 'system');
+  }, { area: (areaName) => areaName === 'local' && !isPrimaryStorageAreaName(areaName) });
+  storageChanges.on(THEME_STORAGE_KEY, (changes) => {
+    globalThemeMode = normalizeThemeMode(changes[THEME_STORAGE_KEY].newValue);
+    if (isNewtabThemeFollowingGlobal()) {
+      applyScopedThemeMode();
+    } else {
+      updateWallpaperAppearanceSelectionUi();
+      updateModeCommandSuggestions();
     }
-    if (changes[NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY]) {
-      const rawValue = changes[NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY].newValue;
-      newtabInputAutoFocusEnabled = normalizeNewtabInputAutoFocusEnabled(rawValue);
-      settingsRuntimeApi.cacheNewtabInputAutoFocusEnabled(newtabInputAutoFocusEnabled);
-      updateNewtabInputAutoFocusUi();
+  });
+  storageChanges.on(NEWTAB_THEME_MODE_STORAGE_KEY, (changes) => {
+    newtabThemeMode = normalizeNewtabThemeMode(changes[NEWTAB_THEME_MODE_STORAGE_KEY].newValue);
+    applyScopedThemeMode();
+  });
+  storageChanges.on(NEWTAB_THEME_SCOPE_STORAGE_KEY, (changes) => {
+    newtabThemeScope = normalizeNewtabThemeScope(changes[NEWTAB_THEME_SCOPE_STORAGE_KEY].newValue);
+    updateWallpaperLanguageStrings();
+    updateModeCommandSuggestions();
+  });
+  storageChanges.onAny((changes) => {
+    if (wallpaperRuntime) {
+    wallpaperRuntime.handleStorageChange(changes);
     }
-    if (changes[RECENT_COUNT_STORAGE_KEY]) {
-      applyRecentCountPreference(changes[RECENT_COUNT_STORAGE_KEY].newValue);
+  });
+  storageChanges.on(LANGUAGE_STORAGE_KEY, (changes) => {
+    applyLanguageMode(changes[LANGUAGE_STORAGE_KEY].newValue || 'system');
+  });
+  storageChanges.on(NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY, (changes) => {
+    const rawValue = changes[NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY].newValue;
+    newtabInputAutoFocusEnabled = normalizeNewtabInputAutoFocusEnabled(rawValue);
+    settingsRuntimeApi.cacheNewtabInputAutoFocusEnabled(newtabInputAutoFocusEnabled);
+    updateNewtabInputAutoFocusUi();
+  });
+  storageChanges.on(RECENT_COUNT_STORAGE_KEY, (changes) => {
+    applyRecentCountPreference(changes[RECENT_COUNT_STORAGE_KEY].newValue);
+  });
+  storageChanges.on(NEWTAB_WIDTH_MODE_STORAGE_KEY, (changes) => {
+    const previousBookmarkLimit = getBookmarkLimit();
+    const rawMode = changes[NEWTAB_WIDTH_MODE_STORAGE_KEY].newValue;
+    const nextMode = normalizeNewtabWidthMode(rawMode);
+    currentNewtabWidthMode = nextMode;
+    if (storageArea && rawMode !== nextMode) {
+      storageArea.set({ [NEWTAB_WIDTH_MODE_STORAGE_KEY]: nextMode });
     }
-    if (changes[NEWTAB_WIDTH_MODE_STORAGE_KEY]) {
-      const previousBookmarkLimit = getBookmarkLimit();
-      const rawMode = changes[NEWTAB_WIDTH_MODE_STORAGE_KEY].newValue;
-      const nextMode = normalizeNewtabWidthMode(rawMode);
-      currentNewtabWidthMode = nextMode;
-      if (storageArea && rawMode !== nextMode) {
-        storageArea.set({ [NEWTAB_WIDTH_MODE_STORAGE_KEY]: nextMode });
-      }
-      applyNewtabWidthMode();
-      if (wallpaperRuntime && typeof wallpaperRuntime.updateSearchWidthUi === 'function') {
-        wallpaperRuntime.updateSearchWidthUi();
-      }
-      const recentColumnsChanged = applyRecentGridColumns();
-      const bookmarkColumnsChanged = applyBookmarkGridColumns();
-      if (recentColumnsChanged) {
-        markRecentDataDirty();
-        loadRecentSites({ force: true });
-      }
-      if (bookmarkColumnsChanged) {
-        keepBookmarkPageAnchorAfterLimitChange(previousBookmarkLimit);
-        renderCurrentBookmarkPage();
-      }
-      updateBookmarkGridHeightLock();
-      updateBookmarkSectionPosition();
+    applyNewtabWidthMode();
+    if (wallpaperRuntime && typeof wallpaperRuntime.updateSearchWidthUi === 'function') {
+      wallpaperRuntime.updateSearchWidthUi();
     }
-    if (changes[NEWTAB_SEARCH_WIDTH_STORAGE_KEY]) {
-      const rawWidth = changes[NEWTAB_SEARCH_WIDTH_STORAGE_KEY].newValue;
-      currentNewtabSearchWidth = normalizeNewtabSearchWidth(rawWidth, { allowNull: true });
-      updateNewtabSearchWidthLayout();
-      if (wallpaperRuntime && typeof wallpaperRuntime.updateSearchWidthUi === 'function') {
-        wallpaperRuntime.updateSearchWidthUi();
-      }
+    const recentColumnsChanged = applyRecentGridColumns();
+    const bookmarkColumnsChanged = applyBookmarkGridColumns();
+    if (recentColumnsChanged) {
+      markRecentDataDirty();
+      loadRecentSites({ force: true });
     }
-    if (changes[NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabTopContentMode(raw);
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY]: nextValue });
-      }
-      setNewtabTopContentMode(nextValue);
+    if (bookmarkColumnsChanged) {
+      keepBookmarkPageAnchorAfterLimitChange(previousBookmarkLimit);
+      renderCurrentBookmarkPage();
     }
-    if (changes[NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabTimeFontWeight(raw);
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]: nextValue });
-      }
-      setNewtabTimeFontWeight(nextValue);
+    updateBookmarkGridHeightLock();
+    updateBookmarkSectionPosition();
+  });
+  storageChanges.on(NEWTAB_SEARCH_WIDTH_STORAGE_KEY, (changes) => {
+    const rawWidth = changes[NEWTAB_SEARCH_WIDTH_STORAGE_KEY].newValue;
+    currentNewtabSearchWidth = normalizeNewtabSearchWidth(rawWidth, { allowNull: true });
+    updateNewtabSearchWidthLayout();
+    if (wallpaperRuntime && typeof wallpaperRuntime.updateSearchWidthUi === 'function') {
+      wallpaperRuntime.updateSearchWidthUi();
     }
-    if (changes[NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabTimeSecondsVisible(raw);
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY]: nextValue });
-      }
-      setNewtabTimeSecondsVisible(nextValue);
+  });
+  storageChanges.on(NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabTopContentMode(raw);
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY]: nextValue });
     }
-    if (changes[NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY].newValue;
-      newtabFeedbackButtonVisible = normalizeNewtabFeedbackButtonVisible(raw);
-      if (storageArea && raw !== newtabFeedbackButtonVisible) {
-        storageArea.set({
-          [NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY]: newtabFeedbackButtonVisible
-        });
-      }
-      applyNewtabActionButtonVisibility();
+    setNewtabTopContentMode(nextValue);
+  });
+  storageChanges.on(NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabTimeFontWeight(raw);
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]: nextValue });
     }
-    if (changes[NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY].newValue;
-      newtabAppearanceButtonVisible = normalizeNewtabAppearanceButtonVisible(raw);
-      if (storageArea && raw !== newtabAppearanceButtonVisible) {
-        storageArea.set({
-          [NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY]: newtabAppearanceButtonVisible
-        });
-      }
-      applyNewtabActionButtonVisibility();
+    setNewtabTimeFontWeight(nextValue);
+  });
+  storageChanges.on(NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabTimeSecondsVisible(raw);
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY]: nextValue });
     }
-    if (changes[NEWTAB_ZEN_MODE_STORAGE_KEY]) {
-      zenModeEnabled = normalizeZenModeEnabled(changes[NEWTAB_ZEN_MODE_STORAGE_KEY].newValue);
-      applyZenMode();
-      updateZenCommandSuggestions();
-    }
-    if (changes[NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabShortcutsVisible(raw);
-      newtabShortcutsVisible = nextValue;
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY]: nextValue });
-      }
-      applyNewtabShortcutsVisibility();
-      updateNewtabShortcutPreferencesUi();
-    }
-    if (changes[NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabShortcutAddVisible(raw);
-      newtabShortcutAddVisible = nextValue;
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY]: nextValue });
-      }
-      renderShortcuts();
-      updateNewtabShortcutPreferencesUi();
-    }
-    if (changes[NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabShortcutDockMagnificationEnabled(raw);
-      newtabShortcutDockMagnificationEnabled = nextValue;
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY]: nextValue });
-      }
-      applyNewtabShortcutDockMagnification();
-      updateNewtabShortcutPreferencesUi();
-    }
-    if (changes[NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabShortcutColumns(raw);
-      newtabShortcutColumns = nextValue;
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY]: nextValue });
-      }
-      applyNewtabShortcutColumns();
-      updateBookmarkSectionPosition({
-        preserveSearchEntryLayout: true,
-        stabilizeDockDensity: true
+    setNewtabTimeSecondsVisible(nextValue);
+  });
+  storageChanges.on(NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY].newValue;
+    newtabFeedbackButtonVisible = normalizeNewtabFeedbackButtonVisible(raw);
+    if (storageArea && raw !== newtabFeedbackButtonVisible) {
+      storageArea.set({
+        [NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY]: newtabFeedbackButtonVisible
       });
-      updateNewtabShortcutPreferencesUi();
     }
-    if (changes[NEWTAB_SHORTCUT_SIZE_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_SHORTCUT_SIZE_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabShortcutSize(raw);
-      newtabShortcutSize = nextValue;
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_SHORTCUT_SIZE_STORAGE_KEY]: nextValue });
-      }
-      applyNewtabShortcutLayoutPreferences();
-      updateBookmarkSectionPosition({
-        preserveSearchEntryLayout: true,
-        stabilizeDockDensity: true
+    applyNewtabActionButtonVisibility();
+  });
+  storageChanges.on(NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY].newValue;
+    newtabAppearanceButtonVisible = normalizeNewtabAppearanceButtonVisible(raw);
+    if (storageArea && raw !== newtabAppearanceButtonVisible) {
+      storageArea.set({
+        [NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY]: newtabAppearanceButtonVisible
       });
-      updateNewtabShortcutPreferencesUi();
     }
-    if (changes[NEWTAB_SHORTCUT_GAP_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_SHORTCUT_GAP_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabShortcutGap(raw);
-      newtabShortcutGap = nextValue;
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_SHORTCUT_GAP_STORAGE_KEY]: nextValue });
-      }
-      applyNewtabShortcutLayoutPreferences();
-      updateBookmarkSectionPosition({
-        preserveSearchEntryLayout: true,
-        stabilizeDockDensity: true
-      });
-      updateNewtabShortcutPreferencesUi();
+    applyNewtabActionButtonVisibility();
+  });
+  storageChanges.on(NEWTAB_ZEN_MODE_STORAGE_KEY, (changes) => {
+    zenModeEnabled = normalizeZenModeEnabled(changes[NEWTAB_ZEN_MODE_STORAGE_KEY].newValue);
+    applyZenMode();
+    updateZenCommandSuggestions();
+  });
+  storageChanges.on(NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabShortcutsVisible(raw);
+    newtabShortcutsVisible = nextValue;
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY]: nextValue });
     }
-    if (changes[RECENT_MODE_STORAGE_KEY]) {
-      const nextMode = normalizeRecentMode(changes[RECENT_MODE_STORAGE_KEY].newValue, 'latest');
-      if (currentRecentMode === nextMode) {
-        updateRecentModeMenu();
-      } else {
-        currentRecentMode = nextMode;
-        updateRecentHeading();
-        updateRecentModeMenu();
-        markRecentDataDirty();
-        loadRecentSites({ force: true });
-      }
+    applyNewtabShortcutsVisibility();
+    updateNewtabShortcutPreferencesUi();
+  });
+  storageChanges.on(NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabShortcutAddVisible(raw);
+    newtabShortcutAddVisible = nextValue;
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY]: nextValue });
     }
-    if (changes[BOOKMARK_VIEW_MODE_STORAGE_KEY]) {
-      const rawMode = changes[BOOKMARK_VIEW_MODE_STORAGE_KEY].newValue;
-      const nextMode = normalizeBookmarkViewMode(rawMode);
-      if (shouldRepairBookmarkViewModeStorageValue(rawMode, nextMode)) {
-        persistBookmarkViewMode(nextMode);
-      }
-      applyBookmarkViewMode(nextMode, { force: true });
+    renderShortcuts();
+    updateNewtabShortcutPreferencesUi();
+  });
+  storageChanges.on(NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabShortcutDockMagnificationEnabled(raw);
+    newtabShortcutDockMagnificationEnabled = nextValue;
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY]: nextValue });
     }
-    if (changes[BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY]) {
-      const raw = changes[BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY].newValue;
-      const nextValue = normalizeBookmarkFolderIconsVisible(raw);
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY]: nextValue });
-      }
-      applyBookmarkFolderIconsVisiblePreference(nextValue);
+    applyNewtabShortcutDockMagnification();
+    updateNewtabShortcutPreferencesUi();
+  });
+  storageChanges.on(NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabShortcutColumns(raw);
+    newtabShortcutColumns = nextValue;
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY]: nextValue });
     }
-    if (changes[BOOKMARK_COUNT_STORAGE_KEY]) {
-      const raw = changes[BOOKMARK_COUNT_STORAGE_KEY].newValue;
-      const nextCount = normalizeBookmarkCount(raw);
-      if (storageArea && raw !== nextCount) {
-        storageArea.set({ [BOOKMARK_COUNT_STORAGE_KEY]: nextCount });
-      }
-      applyBookmarkCountPreference(nextCount);
+    applyNewtabShortcutColumns();
+    updateBookmarkSectionPosition({
+      preserveSearchEntryLayout: true,
+      stabilizeDockDensity: true
+    });
+    updateNewtabShortcutPreferencesUi();
+  });
+  storageChanges.on(NEWTAB_SHORTCUT_SIZE_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_SHORTCUT_SIZE_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabShortcutSize(raw);
+    newtabShortcutSize = nextValue;
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_SHORTCUT_SIZE_STORAGE_KEY]: nextValue });
     }
-    if (changes[BOOKMARK_COLUMNS_STORAGE_KEY]) {
-      const raw = changes[BOOKMARK_COLUMNS_STORAGE_KEY].newValue;
-      const nextColumns = normalizeBookmarkColumns(raw);
-      if (storageArea && raw !== nextColumns) {
-        storageArea.set({ [BOOKMARK_COLUMNS_STORAGE_KEY]: nextColumns });
-      }
-      applyBookmarkColumnsPreference(nextColumns);
+    applyNewtabShortcutLayoutPreferences();
+    updateBookmarkSectionPosition({
+      preserveSearchEntryLayout: true,
+      stabilizeDockDensity: true
+    });
+    updateNewtabShortcutPreferencesUi();
+  });
+  storageChanges.on(NEWTAB_SHORTCUT_GAP_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_SHORTCUT_GAP_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabShortcutGap(raw);
+    newtabShortcutGap = nextValue;
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_SHORTCUT_GAP_STORAGE_KEY]: nextValue });
     }
-    if (changes[TAB_RANK_SCORE_DEBUG_STORAGE_KEY]) {
-      tabRankScoreDebugEnabled = normalizeTabRankScoreDebugMode(changes[TAB_RANK_SCORE_DEBUG_STORAGE_KEY].newValue);
-      if (!latestQuery || !latestQuery.trim()) {
-        requestTabsAndRender();
-      }
+    applyNewtabShortcutLayoutPreferences();
+    updateBookmarkSectionPosition({
+      preserveSearchEntryLayout: true,
+      stabilizeDockDensity: true
+    });
+    updateNewtabShortcutPreferencesUi();
+  });
+  storageChanges.on(RECENT_MODE_STORAGE_KEY, (changes) => {
+    const nextMode = normalizeRecentMode(changes[RECENT_MODE_STORAGE_KEY].newValue, 'latest');
+    if (currentRecentMode === nextMode) {
+      updateRecentModeMenu();
+    } else {
+      currentRecentMode = nextMode;
+      updateRecentHeading();
+      updateRecentModeMenu();
+      markRecentDataDirty();
+      loadRecentSites({ force: true });
     }
-    if (changes[PINNED_RECENT_SITES_STORAGE_KEY]) {
-      pinnedRecentSites = normalizePinnedRecentSites(changes[PINNED_RECENT_SITES_STORAGE_KEY].newValue);
-      recentRenderSignature = '';
-      renderRecentSites(recentSourceItems);
+  });
+  storageChanges.on(BOOKMARK_VIEW_MODE_STORAGE_KEY, (changes) => {
+    const rawMode = changes[BOOKMARK_VIEW_MODE_STORAGE_KEY].newValue;
+    const nextMode = normalizeBookmarkViewMode(rawMode);
+    if (shouldRepairBookmarkViewModeStorageValue(rawMode, nextMode)) {
+      persistBookmarkViewMode(nextMode);
     }
-    if (changes[settingsRuntimeApi.PROGRESS_TRACKING_ENABLED_STORAGE_KEY]) {
-      progressTrackingEnabled = settingsRuntimeApi.normalizeProgressTrackingEnabled(
-        changes[settingsRuntimeApi.PROGRESS_TRACKING_ENABLED_STORAGE_KEY].newValue
-      );
-      if (!progressTrackingEnabled && recentHistoryDialogController) {
-        recentHistoryDialogController.close({ restoreFocus: false });
-      }
-      recentRenderSignature = '';
-      renderRecentSites(recentSourceItems);
+    applyBookmarkViewMode(nextMode, { force: true });
+  });
+  storageChanges.on(BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY, (changes) => {
+    const raw = changes[BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY].newValue;
+    const nextValue = normalizeBookmarkFolderIconsVisible(raw);
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY]: nextValue });
     }
-    if (changes[HIDDEN_RECENT_SITES_STORAGE_KEY]) {
-      hiddenRecentSites = normalizeHiddenRecentSites(changes[HIDDEN_RECENT_SITES_STORAGE_KEY].newValue);
-      recentRenderSignature = '';
-      renderRecentSites(recentSourceItems);
+    applyBookmarkFolderIconsVisiblePreference(nextValue);
+  });
+  storageChanges.on(BOOKMARK_COUNT_STORAGE_KEY, (changes) => {
+    const raw = changes[BOOKMARK_COUNT_STORAGE_KEY].newValue;
+    const nextCount = normalizeBookmarkCount(raw);
+    if (storageArea && raw !== nextCount) {
+      storageArea.set({ [BOOKMARK_COUNT_STORAGE_KEY]: nextCount });
     }
-    if (shortcutPersistenceInFlightCount === 0 &&
-        NEWTAB_SHORTCUTS_STORAGE_KEYS.some((key) => changes[key])) {
+    applyBookmarkCountPreference(nextCount);
+  });
+  storageChanges.on(BOOKMARK_COLUMNS_STORAGE_KEY, (changes) => {
+    const raw = changes[BOOKMARK_COLUMNS_STORAGE_KEY].newValue;
+    const nextColumns = normalizeBookmarkColumns(raw);
+    if (storageArea && raw !== nextColumns) {
+      storageArea.set({ [BOOKMARK_COLUMNS_STORAGE_KEY]: nextColumns });
+    }
+    applyBookmarkColumnsPreference(nextColumns);
+  });
+  storageChanges.on(TAB_RANK_SCORE_DEBUG_STORAGE_KEY, (changes) => {
+    tabRankScoreDebugEnabled = normalizeTabRankScoreDebugMode(changes[TAB_RANK_SCORE_DEBUG_STORAGE_KEY].newValue);
+    if (!latestQuery || !latestQuery.trim()) {
+      requestTabsAndRender();
+    }
+  });
+  storageChanges.on(PINNED_RECENT_SITES_STORAGE_KEY, (changes) => {
+    pinnedRecentSites = normalizePinnedRecentSites(changes[PINNED_RECENT_SITES_STORAGE_KEY].newValue);
+    recentRenderSignature = '';
+    renderRecentSites(recentSourceItems);
+  });
+  storageChanges.on(settingsRuntimeApi.PROGRESS_TRACKING_ENABLED_STORAGE_KEY, (changes) => {
+    progressTrackingEnabled = settingsRuntimeApi.normalizeProgressTrackingEnabled(
+      changes[settingsRuntimeApi.PROGRESS_TRACKING_ENABLED_STORAGE_KEY].newValue
+    );
+    if (!progressTrackingEnabled && recentHistoryDialogController) {
+      recentHistoryDialogController.close({ restoreFocus: false });
+    }
+    recentRenderSignature = '';
+    renderRecentSites(recentSourceItems);
+  });
+  storageChanges.on(HIDDEN_RECENT_SITES_STORAGE_KEY, (changes) => {
+    hiddenRecentSites = normalizeHiddenRecentSites(changes[HIDDEN_RECENT_SITES_STORAGE_KEY].newValue);
+    recentRenderSignature = '';
+    renderRecentSites(recentSourceItems);
+  });
+  storageChanges.on(NEWTAB_SHORTCUTS_STORAGE_KEYS, () => {
+    if (shortcutPersistenceInFlightCount === 0) {
       scheduleShortcutStorageReload();
     }
   });
@@ -3431,115 +3422,111 @@
   let faviconRequestBlacklistItems = [];
   let faviconEnhancedFetchEnabled = false;
   loadDefaultSearchEngineState();
-  if (chrome && chrome.storage && chrome.storage.onChanged) {
-    addStorageChangeListener((changes, areaName) => {
-      if (!isPrimaryStorageAreaName(areaName)) {
-        return;
+  storageChanges.on(DEFAULT_SEARCH_ENGINE_STORAGE_KEY, (changes) => {
+    const nextValue = changes[DEFAULT_SEARCH_ENGINE_STORAGE_KEY].newValue;
+    if (nextValue && nextValue.id &&
+        (!SEARCH_UTILS.isRetiredSearchEngineState(nextValue))) {
+      defaultSearchEngineState = nextValue;
+    }
+  });
+  storageChanges.on(SEARCH_RESULT_PRIORITY_STORAGE_KEY, (changes) => {
+    searchResultPriorityMode = normalizeSearchResultPriority(changes[SEARCH_RESULT_PRIORITY_STORAGE_KEY].newValue);
+  });
+  storageChanges.on(SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY, (changes) => {
+    enabledSearchResultSourceTypes = normalizeEnabledSearchResultSourceTypes(
+      changes[SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY].newValue
+    );
+    if (localSearchScopeState &&
+        !enabledSearchResultSourceTypes.includes(localSearchScopeState.sourceType)) {
+      clearLocalSearchScope();
+    }
+  });
+  storageChanges.on(SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY, (changes) => {
+    searchResultDisplayLimit = normalizeSearchResultDisplayLimit(
+      changes[SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY].newValue
+    );
+    if (latestQuery) {
+      renderSuggestions(lastSuggestionResponse, latestQuery);
+    }
+  });
+  storageChanges.on(NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY, (changes) => {
+    newtabOpenInNewTab = SETTINGS.normalizeNewtabOpenInNewTab(
+      changes[NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY].newValue
+    );
+  });
+  storageChanges.on(NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY, (changes) => {
+    numberShortcutInstantEnabled = normalizeNumberShortcutInstantEnabled(
+      changes[NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY].newValue
+    );
+    SUGGESTION_NAVIGATION.cancelNumberShortcuts(suggestionsContainer);
+  });
+  storageChanges.on(MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY, (changes) => {
+    macosCtrlSuggestionNavigationEnabled = normalizeMacosCtrlSuggestionNavigationEnabled(
+      changes[MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY].newValue
+    );
+  });
+  storageChanges.on(SIMPLE_MODE_ENABLED_STORAGE_KEY, (changes) => {
+    simpleModeEnabled = normalizeSimpleModeEnabled(
+      changes[SIMPLE_MODE_ENABLED_STORAGE_KEY].newValue
+    );
+    if (latestQuery) {
+      renderSuggestions(lastSuggestionResponse, latestQuery);
+    }
+  });
+  storageChanges.on(OVERLAY_TAB_PRIORITY_STORAGE_KEY, (changes) => {
+    openTabQuickSwitchEnabled = normalizeOverlayTabPriorityMode(changes[OVERLAY_TAB_PRIORITY_STORAGE_KEY].newValue);
+    if (latestQuery) {
+      requestSuggestions(latestQuery, { immediate: true });
+    }
+  });
+  storageChanges.on(SEARCH_BLACKLIST_STORAGE_KEY, (changes) => {
+    searchBlacklistItems = normalizeSearchBlacklistItems(changes[SEARCH_BLACKLIST_STORAGE_KEY].newValue);
+    markRecentDataDirty();
+    scheduleRecentReloadIfVisible();
+  });
+  storageChanges.on(FAVICON_REQUEST_BLACKLIST_STORAGE_KEY, (changes) => {
+    faviconRequestBlacklistItems = normalizeFaviconRequestBlacklistItems(changes[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY].newValue);
+    markRecentDataDirty();
+    scheduleRecentReloadIfVisible();
+    scheduleBookmarkReloadIfVisible();
+    if (typeof refreshThemeAwareFavicons === 'function') {
+      refreshThemeAwareFavicons();
+    }
+  });
+  storageChanges.on(FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY, (changes) => {
+    faviconEnhancedFetchEnabled = normalizeFaviconEnhancedFetchEnabled(
+      changes[FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY].newValue
+    );
+    markRecentDataDirty();
+    scheduleRecentReloadIfVisible();
+    scheduleBookmarkReloadIfVisible();
+    if (typeof refreshThemeAwareFavicons === 'function') {
+      refreshThemeAwareFavicons();
+    }
+  });
+  storageChanges.on([FAVICON_REQUEST_BLACKLIST_STORAGE_KEY, FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY], () => {
+    shortcutFaviconPolicyRevision += 1;
+    renderShortcuts();
+    if (inputModeController) {
+      if (siteSearchState) {
+        setSiteSearchPrefix(siteSearchState, getImmediateThemeForSuggestion({ provider: siteSearchState }), { animate: false });
       }
-      if (changes[DEFAULT_SEARCH_ENGINE_STORAGE_KEY]) {
-        const nextValue = changes[DEFAULT_SEARCH_ENGINE_STORAGE_KEY].newValue;
-        if (nextValue && nextValue.id &&
-            (!SEARCH_UTILS.isRetiredSearchEngineState(nextValue))) {
-          defaultSearchEngineState = nextValue;
-        }
-      }
-      if (changes[SEARCH_RESULT_PRIORITY_STORAGE_KEY]) {
-        searchResultPriorityMode = normalizeSearchResultPriority(changes[SEARCH_RESULT_PRIORITY_STORAGE_KEY].newValue);
-      }
-      if (changes[SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY]) {
-        enabledSearchResultSourceTypes = normalizeEnabledSearchResultSourceTypes(
-          changes[SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY].newValue
-        );
-        if (localSearchScopeState &&
-            !enabledSearchResultSourceTypes.includes(localSearchScopeState.sourceType)) {
-          clearLocalSearchScope();
-        }
-      }
-      if (changes[SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY]) {
-        searchResultDisplayLimit = normalizeSearchResultDisplayLimit(
-          changes[SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY].newValue
-        );
-        if (latestQuery) {
-          renderSuggestions(lastSuggestionResponse, latestQuery);
-        }
-      }
-      if (changes[NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY]) {
-        newtabOpenInNewTab = SETTINGS.normalizeNewtabOpenInNewTab(
-          changes[NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY].newValue
-        );
-      }
-      if (changes[NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY]) {
-        numberShortcutInstantEnabled = normalizeNumberShortcutInstantEnabled(
-          changes[NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY].newValue
-        );
-        SUGGESTION_NAVIGATION.cancelNumberShortcuts(suggestionsContainer);
-      }
-      if (changes[MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY]) {
-        macosCtrlSuggestionNavigationEnabled = normalizeMacosCtrlSuggestionNavigationEnabled(
-          changes[MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY].newValue
-        );
-      }
-      if (changes[SIMPLE_MODE_ENABLED_STORAGE_KEY]) {
-        simpleModeEnabled = normalizeSimpleModeEnabled(
-          changes[SIMPLE_MODE_ENABLED_STORAGE_KEY].newValue
-        );
-        if (latestQuery) {
-          renderSuggestions(lastSuggestionResponse, latestQuery);
-        }
-      }
-      if (changes[OVERLAY_TAB_PRIORITY_STORAGE_KEY]) {
-        openTabQuickSwitchEnabled = normalizeOverlayTabPriorityMode(changes[OVERLAY_TAB_PRIORITY_STORAGE_KEY].newValue);
-        if (latestQuery) {
-          requestSuggestions(latestQuery, { immediate: true });
-        }
-      }
-      if (changes[SEARCH_BLACKLIST_STORAGE_KEY]) {
-        searchBlacklistItems = normalizeSearchBlacklistItems(changes[SEARCH_BLACKLIST_STORAGE_KEY].newValue);
-        markRecentDataDirty();
-        scheduleRecentReloadIfVisible();
-      }
-      if (changes[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY]) {
-        faviconRequestBlacklistItems = normalizeFaviconRequestBlacklistItems(changes[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY].newValue);
-        markRecentDataDirty();
-        scheduleRecentReloadIfVisible();
-        scheduleBookmarkReloadIfVisible();
-        if (typeof refreshThemeAwareFavicons === 'function') {
-          refreshThemeAwareFavicons();
-        }
-      }
-      if (changes[FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY]) {
-        faviconEnhancedFetchEnabled = normalizeFaviconEnhancedFetchEnabled(
-          changes[FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY].newValue
-        );
-        markRecentDataDirty();
-        scheduleRecentReloadIfVisible();
-        scheduleBookmarkReloadIfVisible();
-        if (typeof refreshThemeAwareFavicons === 'function') {
-          refreshThemeAwareFavicons();
-        }
-      }
-      if (changes[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY] || changes[FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY]) {
-        shortcutFaviconPolicyRevision += 1;
-        renderShortcuts();
-        if (inputModeController) {
-          if (siteSearchState) {
-            setSiteSearchPrefix(siteSearchState, getImmediateThemeForSuggestion({ provider: siteSearchState }), { animate: false });
-          }
-          inputModeController.refreshModeMenu();
-        }
-      }
-      if (latestQuery && latestQuery.trim() && (
-        changes[DEFAULT_SEARCH_ENGINE_STORAGE_KEY] ||
-        changes[SEARCH_RESULT_PRIORITY_STORAGE_KEY] ||
-        changes[SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY] ||
-        changes[SEARCH_BLACKLIST_STORAGE_KEY] ||
-        changes[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY] ||
-        changes[FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY]
-      )) {
-        requestSuggestions(latestQuery, { immediate: true });
-      }
-    });
-  }
+      inputModeController.refreshModeMenu();
+    }
+  });
+  // These settings change which suggestions show, so they refresh at once.
+  storageChanges.on([
+    DEFAULT_SEARCH_ENGINE_STORAGE_KEY,
+    SEARCH_RESULT_PRIORITY_STORAGE_KEY,
+    SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY,
+    SEARCH_BLACKLIST_STORAGE_KEY,
+    FAVICON_REQUEST_BLACKLIST_STORAGE_KEY,
+    FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY
+  ], () => {
+    if (latestQuery && latestQuery.trim()) {
+      requestSuggestions(latestQuery, { immediate: true });
+    }
+  });
   const AGGREGATE_SEARCH_STORAGE_KEY = SETTINGS.AGGREGATE_SEARCH_STORAGE_KEY ||
     AGGREGATE_SEARCH_STORE.STORAGE_KEY ||
     '_x_extension_aggregate_searches_2026_unique_';
@@ -8366,14 +8353,11 @@
     }
   });
 
-  addStorageChangeListener((changes, areaName) => {
-    if (!isPrimaryStorageAreaName(areaName) || !(
-      changes[SITE_SEARCH_STORAGE_KEY] ||
-      changes[SITE_SEARCH_DISABLED_STORAGE_KEY] ||
-      changes[AGGREGATE_SEARCH_STORAGE_KEY]
-    )) {
-      return;
-    }
+  storageChanges.on([
+    SITE_SEARCH_STORAGE_KEY,
+    SITE_SEARCH_DISABLED_STORAGE_KEY,
+    AGGREGATE_SEARCH_STORAGE_KEY
+  ], (changes) => {
     if (changes[AGGREGATE_SEARCH_STORAGE_KEY]) {
       aggregateSearchesLoadVersion += 1;
       aggregateSearchesLoadPromise = null;
