@@ -220,7 +220,7 @@
     // Something that was hidden or not there has no place to slide from
     // (a hidden box measures at the page corner), so it fades in where it is.
     function enterShortcutLayoutElement(element) {
-      if (typeof element.animate !== 'function') {
+      if (typeof element.animate !== 'function' || NEWTAB_CROSS_SURFACE_DRAG.prefersReducedMotion(window)) {
         return;
       }
       element.animate([
@@ -233,7 +233,7 @@
     }
 
     function animateShortcutLayoutShift(beforeRects, draggedTile) {
-      if (!beforeRects || !pageState.shortcutGrid) {
+      if (!beforeRects || !pageState.shortcutGrid || NEWTAB_CROSS_SURFACE_DRAG.prefersReducedMotion(window)) {
         return;
       }
       getShortcutLayoutElements().forEach((tile) => {
@@ -308,7 +308,10 @@
       }
       tile.setAttribute('data-shortcut-dropping', 'true');
       tile.style.pointerEvents = '';
-      tile.style.transition = `transform ${SHORTCUT_DROP_ANIMATION_MS}ms ${SHORTCUT_REORDER_EASING}`;
+      const reducedMotion = NEWTAB_CROSS_SURFACE_DRAG.prefersReducedMotion(window);
+      tile.style.transition = reducedMotion
+        ? 'none'
+        : `transform ${SHORTCUT_DROP_ANIMATION_MS}ms ${SHORTCUT_REORDER_EASING}`;
       // A lifted tile lands on its placeholder, wherever the area scrolled.
       const lift = tile._xShortcutDragLift;
       const slotRect = lift && lift.placeholder && lift.placeholder.isConnected
@@ -329,7 +332,7 @@
         tile.style.removeProperty('transform');
         tile.style.removeProperty('will-change');
         tile.style.pointerEvents = '';
-      }, SHORTCUT_DROP_ANIMATION_MS + 90);
+      }, reducedMotion ? 0 : SHORTCUT_DROP_ANIMATION_MS + 90);
     }
 
     function getShortcutTileInsertionIndex(tile) {

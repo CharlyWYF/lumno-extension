@@ -15,6 +15,17 @@ const {
   setInsertionGap
 } = require(path.join(repoRoot, 'src', 'newtab', 'cross-surface-drag.js'));
 
+// Drag slides honor a reduced-motion preference.
+{
+  const { prefersReducedMotion } = require(path.join(repoRoot, 'src', 'newtab', 'cross-surface-drag.js'));
+  const windowWith = (reduce) => ({
+    matchMedia: (query) => ({ matches: reduce && query === '(prefers-reduced-motion: reduce)' })
+  });
+  assert.strictEqual(prefersReducedMotion(windowWith(true)), true);
+  assert.strictEqual(prefersReducedMotion(windowWith(false)), false);
+  assert.strictEqual(prefersReducedMotion({}), false, 'no matchMedia means full motion');
+}
+
 function getFunctionSource(source, name) {
   const marker = `function ${name}(`;
   const start = source.indexOf(marker);

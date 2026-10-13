@@ -161,7 +161,7 @@
     }
 
     function animateBookmarkLayoutShift(beforeRects, draggedCard) {
-      if (!beforeRects || !pageState.bookmarkGrid) {
+      if (!beforeRects || !pageState.bookmarkGrid || NEWTAB_CROSS_SURFACE_DRAG.prefersReducedMotion(window)) {
         return;
       }
       const cardsToAnimate = getBookmarkReorderCards().filter((card) =>
@@ -270,7 +270,8 @@
       bookmarkPendingLayoutAnimation = null;
       if (!pending || !pageState.bookmarkGrid ||
           pending.folderId !== String(pageState.bookmarkCurrentFolderId || '') ||
-          pending.page !== pageState.bookmarkCurrentPage) {
+          pending.page !== pageState.bookmarkCurrentPage ||
+          NEWTAB_CROSS_SURFACE_DRAG.prefersReducedMotion(window)) {
         return false;
       }
       const shifts = [];
@@ -389,7 +390,10 @@
       }
       card.setAttribute('data-bookmark-dropping', 'true');
       card.style.pointerEvents = '';
-      card.style.transition = `transform ${BOOKMARK_DROP_ANIMATION_MS}ms ${BOOKMARK_REORDER_EASING}`;
+      const reducedMotion = NEWTAB_CROSS_SURFACE_DRAG.prefersReducedMotion(window);
+      card.style.transition = reducedMotion
+        ? 'none'
+        : `transform ${BOOKMARK_DROP_ANIMATION_MS}ms ${BOOKMARK_REORDER_EASING}`;
       card.style.transform = 'translate3d(0, 0, 0)';
       if (card._xBookmarkDropTimer) {
         window.clearTimeout(card._xBookmarkDropTimer);
@@ -402,7 +406,7 @@
         card.style.removeProperty('transform');
         card.style.removeProperty('will-change');
         card.style.pointerEvents = '';
-      }, BOOKMARK_DROP_ANIMATION_MS + 90);
+      }, reducedMotion ? 0 : BOOKMARK_DROP_ANIMATION_MS + 90);
     }
 
     function isPointInsideBookmarkElement(element, pointerX, pointerY) {
