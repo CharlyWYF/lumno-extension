@@ -910,9 +910,7 @@ function armTabSwitcherShortcutReleaseObservers(tabs, windowId, shortcut, comman
       return;
     }
     try {
-      chrome.tabs.sendMessage(item.id, message, () => {
-        void (chrome.runtime && chrome.runtime.lastError);
-      });
+      chrome.tabs.sendMessage(item.id, message, ignoreExpectedChromeError);
     } catch (error) {
       // Restricted tabs simply cannot participate in the release relay.
     }
@@ -1346,6 +1344,22 @@ function logHotkeyDebug(stage, payload) {
   }
 }
 
+// Callback for chrome.* calls whose failure is routine for a background that
+// talks to arbitrary tabs and storage: a tab or frame that closed or navigated
+// ("No tab with id", "Frame was removed"), a restricted page, or a best-effort
+// cleanup. Reading lastError keeps Chrome from logging it as unchecked.
+function ignoreExpectedChromeError() {
+  void (chrome && chrome.runtime && chrome.runtime.lastError);
+}
+
+// Rejection handler for work that is not expected to fail (storage writes,
+// startup restores). Failures stay non-fatal but leave a trace with context.
+function warnBackgroundFailure(context) {
+  return (error) => {
+    console.warn(`[Lumno] ${context}`, error);
+  };
+}
+
 const providerStorageRuntime = globalThis.LumnoSettings.createProviderStorageRuntime(chrome);
 const storageArea = providerStorageRuntime
   ? providerStorageRuntime.area
@@ -1685,10 +1699,10 @@ function cleanupRemovedAiStorageKeys() {
   const syncArea = chrome.storage.sync;
   const localArea = chrome.storage.local;
   if (syncArea && typeof syncArea.remove === 'function') {
-    syncArea.remove(REMOVED_AI_SYNC_STORAGE_KEYS, () => {});
+    syncArea.remove(REMOVED_AI_SYNC_STORAGE_KEYS, ignoreExpectedChromeError);
   }
   if (localArea && typeof localArea.remove === 'function') {
-    localArea.remove(REMOVED_AI_LOCAL_STORAGE_KEYS, () => {});
+    localArea.remove(REMOVED_AI_LOCAL_STORAGE_KEYS, ignoreExpectedChromeError);
   }
 }
 
@@ -1698,9 +1712,7 @@ function cleanupLocalOnlyBookmarkTopbarSyncStorage() {
       BOOKMARK_TOPBAR_LOCAL_STORAGE_KEYS.length === 0) {
     return;
   }
-  chrome.storage.sync.remove(BOOKMARK_TOPBAR_LOCAL_STORAGE_KEYS, () => {
-    void (chrome.runtime && chrome.runtime.lastError);
-  });
+  chrome.storage.sync.remove(BOOKMARK_TOPBAR_LOCAL_STORAGE_KEYS, ignoreExpectedChromeError);
 }
 
 function getTabSwitchStorageArea() {
@@ -1795,7 +1807,7 @@ function schedulePersistTabSwitcherState() {
     clearTimeout(tabSwitcherStatePersistTimer);
   }
   tabSwitcherStatePersistTimer = setTimeout(() => {
-    persistTabSwitcherState().catch(() => {});
+    persistTabSwitcherState().catch(warnBackgroundFailure('Failed to save the recent-tab switcher state.'));
   }, TAB_SWITCHER_THUMBNAIL_PERSIST_DEBOUNCE_MS);
 }
 
@@ -1804,7 +1816,10 @@ function flushPendingTabSwitcherState() {
     return Promise.resolve(false);
   }
   clearTimeout(tabSwitcherStatePersistTimer);
-  return persistTabSwitcherState().catch(() => false);
+  return persistTabSwitcherState().catch((error) => {
+    warnBackgroundFailure('Failed to save the recent-tab switcher state.')(error);
+    return false;
+  });
 }
 
 function normalizeTabSwitchStatEntry(raw, now) {
@@ -2505,7 +2520,7 @@ function recordTabSwitchEvent(tabId, at) {
   stat.lastSwitchAt = now;
   tabSwitchEventDebugTotal += 1;
   pruneTabSwitchStat(stat, now);
-  persistTabSwitchStatsNow().catch(() => {});
+  persistTabSwitchStatsNow().catch(warnBackgroundFailure('Failed to save tab switch stats.'));
 }
 
 function clearTabSwitchStat(tabId) {
@@ -2514,7 +2529,7 @@ function clearTabSwitchStat(tabId) {
   }
   tabLastAccessedByTabId.delete(tabId);
   if (tabSwitchEventsByTabId.delete(tabId)) {
-    persistTabSwitchStatsNow().catch(() => {});
+    persistTabSwitchStatsNow().catch(warnBackgroundFailure('Failed to save tab switch stats.'));
   }
 }
 
@@ -3570,6 +3585,7 @@ function captureSwitcherThumbnailForTab(tab, reason) {
           if (didSet) {
             schedulePersistTabSwitcherState();
             if (isSwitcherCommandCaptureReason(reason)) {
+              // The switcher may have closed or its tab navigated meanwhile.
               postTabSwitcherThumbnailUpdate(resolvedTab, {
                 tabId: resolvedTab.id,
                 url: getResolvedTabUrl(resolvedTab),
@@ -3619,6 +3635,7 @@ function captureSwitcherThumbnailNow(request) {
   if (typeof tabId !== 'number' || typeof windowId !== 'number') {
     return;
   }
+  // Capture failures are already logged by captureSwitcherThumbnailForTab.
   captureSwitcherThumbnailForTab({
     id: tabId,
     windowId
@@ -3648,6 +3665,7 @@ function scheduleSwitcherThumbnailCapture(tab, reason) {
   };
   const timer = setTimeout(() => {
     tabSwitcherThumbnailTimersByTabId.delete(tab.id);
+    // Capture failures are already logged by captureSwitcherThumbnailForTab.
     enqueueSwitcherThumbnailCapture({
       id: request.tabId,
       windowId: request.windowId
@@ -3850,9 +3868,7 @@ function setOverlayNavigationState(state) {
   try {
     sessionArea.set({
       [getOverlayNavigationStateStorageKey(state.tabId)]: state
-    }, () => {
-      void chrome.runtime.lastError;
-    });
+    }, ignoreExpectedChromeError);
   } catch (error) {
     // The in-memory state still covers the current service-worker lifetime.
   }
@@ -3868,9 +3884,7 @@ function clearOverlayNavigationState(tabId) {
     return;
   }
   try {
-    sessionArea.remove(getOverlayNavigationStateStorageKey(tabId), () => {
-      void chrome.runtime.lastError;
-    });
+    sessionArea.remove(getOverlayNavigationStateStorageKey(tabId), ignoreExpectedChromeError);
   } catch (error) {
     // Ignore session-storage cleanup failures.
   }
@@ -4008,9 +4022,7 @@ function setOverlayLoadingRecord(record) {
   try {
     sessionArea.set({
       [getOverlayLoadingRecordStorageKey(record.tabId)]: nextRecord
-    }, () => {
-      void chrome.runtime.lastError;
-    });
+    }, ignoreExpectedChromeError);
   } catch (error) {
     // The in-memory record still covers ordinary loading lifetimes.
   }
@@ -4028,9 +4040,7 @@ function clearOverlayLoadingRecord(tabId) {
     return;
   }
   try {
-    sessionArea.remove(getOverlayLoadingRecordStorageKey(tabId), () => {
-      void chrome.runtime.lastError;
-    });
+    sessionArea.remove(getOverlayLoadingRecordStorageKey(tabId), ignoreExpectedChromeError);
   } catch (error) {
     // Ignore session-storage cleanup failures.
   }
@@ -4735,6 +4745,7 @@ function openOverlayOnTab(activeTab, tabs, source, options) {
       const prefillQuery = getOverlayPrefillQueryForSource(activeTab, source);
       const prioritizeCurrentPageMatch = source === 'page-hotkey-prefill';
       const siteSearchProviders = Array.isArray(siteSearchCache) ? siteSearchCache : [];
+      // Icon warmup is best effort; the overlay falls back to bundled icons.
       loadSiteSearchProviders()
         .then((providers) => {
           scheduleSiteSearchProviderIconWarmup(providers, '');
@@ -5255,7 +5266,7 @@ function triggerTabSwitcherForTab(tab, source, commandObservedAt) {
       ensureTabSwitcherStateLoaded(),
       loadFaviconRequestBlacklistItems(),
       loadFaviconEnhancedFetchEnabled()
-    ]).catch(() => {});
+    ]).catch(() => {}); // Each loader falls back to its default; open regardless.
     const shortcutReady = new Promise((resolve) => {
       getConfiguredTabSwitcherShortcut(resolve);
     });
@@ -5689,7 +5700,7 @@ function publishExtensionUpdateNotice(details) {
     version,
     previousVersion: details && details.previousVersion ? details.previousVersion : '',
     reason: 'update'
-  }).catch(() => {});
+  }).catch(warnBackgroundFailure('Failed to publish the extension update notice.'));
 }
 
 chrome.commands.onCommand.addListener(function(command) {
@@ -5766,7 +5777,7 @@ chrome.runtime.onInstalled.addListener((details) => {
     }
   }
   if (reason === 'update' || reason === 'chrome_update') {
-    restorePinnedTabsFromSnapshotOnStartup().catch(() => {}).finally(() => {
+    restorePinnedTabsFromSnapshotOnStartup().catch(warnBackgroundFailure('Failed to restore pinned tabs.')).finally(() => {
       schedulePersistPinnedTabSnapshot({ skipEmptyWhenNoNormalWindows: true });
     });
     return;
@@ -5775,7 +5786,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 function restoreBackgroundStateOnStartup() {
-  return restorePinnedTabsFromSnapshotOnStartup().catch(() => {}).finally(() => {
+  return restorePinnedTabsFromSnapshotOnStartup().catch(warnBackgroundFailure('Failed to restore pinned tabs.')).finally(() => {
     schedulePersistPinnedTabSnapshot({ skipEmptyWhenNoNormalWindows: true });
   });
 }
@@ -5786,6 +5797,8 @@ if (chrome && chrome.runtime && chrome.runtime.onStartup) {
     restoreBackgroundStateOnStartup();
   });
 }
+// Both loaders settle even when storage is unreadable; the catch only keeps
+// an unforeseen rejection from surfacing as unhandled during startup.
 ensureTabSwitchStatsLoaded().catch(() => {});
 ensureTabSwitcherStateLoaded().catch(() => {});
 // Chrome keeps a worker alive for its short debounce timers, but Firefox's
@@ -5955,7 +5968,7 @@ if (chrome && chrome.windows && chrome.windows.onCreated) {
     if (windowInfo && windowInfo.type && windowInfo.type !== 'normal') {
       return;
     }
-    restorePinnedTabsFromSnapshotOnStartup().catch(() => {}).finally(() => {
+    restorePinnedTabsFromSnapshotOnStartup().catch(warnBackgroundFailure('Failed to restore pinned tabs.')).finally(() => {
       schedulePersistPinnedTabSnapshot({ skipEmptyWhenNoNormalWindows: true });
     });
   });
@@ -6106,6 +6119,7 @@ function loadSelectionQuickActionGroupTitle(locale) {
 }
 
 function queueSelectionTargetOpen(options) {
+  // The previous open reported its own failure to its caller; only order matters here.
   const task = selectionTargetOpenQueue
     .catch(() => {})
     .then(() => new Promise((resolve) => {
@@ -6436,7 +6450,7 @@ const TAB_MESSAGE_HANDLERS = Object.freeze({
   },
   getTabsForOverlay(request, sender, sendResponse) {
     ensureTabSwitchStatsLoaded()
-      .catch(() => {})
+      .catch(() => {}) // Settles even when storage fails; list tabs regardless.
       .finally(() => {
         const requestedCurrentTabId = Number.isFinite(Number(request && request.currentTabId))
           ? Number(request.currentTabId)
@@ -7314,9 +7328,7 @@ if (providerStorageRuntime) {
 }
 if (chrome && chrome.storage && chrome.storage.sync &&
     typeof chrome.storage.sync.remove === 'function') {
-  chrome.storage.sync.remove(LANGUAGE_MESSAGES_STORAGE_KEY, () => {
-    void (chrome.runtime && chrome.runtime.lastError);
-  });
+  chrome.storage.sync.remove(LANGUAGE_MESSAGES_STORAGE_KEY, ignoreExpectedChromeError);
 }
 const FAVICON_PROXY_SIZE = 128;
 let backgroundFaviconUrlResolver = null;
@@ -7383,7 +7395,8 @@ function getBackgroundFaviconCacheRuntime() {
     });
     if (backgroundFaviconCacheRuntime &&
         typeof backgroundFaviconCacheRuntime.ensureCachesReady === 'function') {
-      backgroundFaviconCacheRuntime.ensureCachesReady().catch(() => {});
+      backgroundFaviconCacheRuntime.ensureCachesReady()
+        .catch(warnBackgroundFailure('Failed to load the favicon caches.'));
     }
   }
   return backgroundFaviconCacheRuntime;
@@ -8205,6 +8218,7 @@ function readShortcutFaviconResponsePrefix(response, maxLength) {
     }
     text += decoder.decode(result.value, { stream: true });
     if (text.length >= limit) {
+      // A failed cancel only means the stream already ended or errored.
       return Promise.resolve(reader.cancel()).catch(() => {}).then(() => text.slice(0, limit));
     }
     return readNext();
@@ -8489,9 +8503,7 @@ function removeLegacySiteSearchIconCaches() {
   if (legacyKeys.length === 0 || !localArea || typeof localArea.remove !== 'function') {
     return;
   }
-  localArea.remove(legacyKeys, () => {
-    void (chrome.runtime && chrome.runtime.lastError);
-  });
+  localArea.remove(legacyKeys, ignoreExpectedChromeError);
 }
 
 function loadSiteSearchIconCache() {
@@ -8550,7 +8562,7 @@ function scheduleSiteSearchIconCacheWrite() {
         return;
       }
       scheduleSiteSearchIconCacheWrite();
-    }).catch(() => {});
+    }).catch(warnBackgroundFailure('Failed to save the site search icon cache.'));
   }, 700);
 }
 
@@ -8620,7 +8632,7 @@ function drainSiteSearchIconWarmQueue() {
       .then((result) => {
         cacheSiteSearchProviderIcon(item.pageUrl, result);
       })
-      .catch(() => {})
+      .catch(() => {}) // Unreachable sites keep their bundled icon.
       .finally(() => {
         siteSearchIconWarmActiveCount = Math.max(0, siteSearchIconWarmActiveCount - 1);
         siteSearchIconWarmPending.delete(item.pageUrl);
@@ -8655,7 +8667,7 @@ function scheduleSiteSearchProviderIconWarmup(providers, preferredTheme) {
       });
     });
     drainSiteSearchIconWarmQueue();
-  }).catch(() => {});
+  }).catch(warnBackgroundFailure('Failed to warm site search icons.'));
 }
 
 function escapeRegExp(text) {
@@ -9082,7 +9094,7 @@ function recordSearchSuggestionSelectionFromSuggestion(suggestion, query, source
     title: suggestion.title || '',
     type: suggestion.type || 'history',
     source: source || 'overlay'
-  }).catch(() => {});
+  }).catch(warnBackgroundFailure('Failed to record a search suggestion selection.'));
 }
 
 function getSearchSelectionBoost(item, context, stats, options) {
