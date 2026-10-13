@@ -2511,7 +2511,7 @@
     "message": "すでにショートカットにあります"
   },
   "newtab_shortcuts_sync_limit_reached": {
-    "message": "ショートカットが同期上限に達したため、新しい項目は同期されません。"
+    "message": "ショートカットがブラウザーの同期容量を超えたため、新しいものはこの端末にのみ保存されます。設定で WebDAV をオンにすると同期できます。"
   },
   "newtab_shortcuts_edited": {
     "message": "ショートカットを更新しました"
@@ -3250,5 +3250,26 @@
   },
   "newtab_shortcuts_group_limit_reached": {
     "message": "グループは最大 {count} 個まで作成できます。"
+  },
+  "options_shortcut_sync_all": {
+    "message": "ショートカット：{count} 件すべてがブラウザーと同期されます。"
+  },
+  "options_shortcut_sync_split_webdav": {
+    "message": "ショートカット：{synced} 件はブラウザーと、残りの {local} 件は WebDAV で同期されます。"
+  },
+  "options_shortcut_sync_split_local": {
+    "message": "ショートカット：{synced} 件はブラウザーと同期され、{local} 件は同期容量を超えたためこの端末にのみ保存されています。WebDAV をオンにすると同期できます。"
+  },
+  "options_shortcut_sync_failed_local": {
+    "message": "ショートカットをブラウザーの同期に保存できませんでした。現在 {count} 件すべてがこの端末にのみ保存されています。"
+  },
+  "options_shortcut_sync_failed_webdav": {
+    "message": "ショートカットをブラウザーの同期に保存できませんでした。現在 {count} 件すべてが WebDAV で同期されています。"
+  },
+  "options_shortcut_sync_none_local": {
+    "message": "ショートカット：ブラウザーの同期容量がいっぱいのため、{count} 件すべてがこの端末にのみ保存されています。WebDAV をオンにすると同期できます。"
+  },
+  "options_shortcut_sync_none_webdav": {
+    "message": "ショートカット：ブラウザーの同期容量がいっぱいのため、{count} 件すべてが WebDAV で同期されています。"
   }
 }

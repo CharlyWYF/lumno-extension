@@ -2777,8 +2777,8 @@ assertContains(
 assert.strictEqual(
   locales.find(({ locale }) => locale === 'zh_CN')
     .messages.newtab_shortcuts_sync_limit_reached.message,
-  '快捷方式已达同步上限，新增项将无法同步。',
-  'the sync-limit toast should preserve the approved Simplified Chinese copy'
+  '快捷方式超出了浏览器同步空间，新加的只保存在本机。在设置中开启 WebDAV 后可以同步到其他设备。',
+  'the sync-limit toast should say where new shortcuts stay and how WebDAV syncs them'
 );
 
 Promise.all([

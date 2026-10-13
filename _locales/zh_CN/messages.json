@@ -2511,7 +2511,7 @@
     "message": "已在快捷方式中"
   },
   "newtab_shortcuts_sync_limit_reached": {
-    "message": "快捷方式已达同步上限，新增项将无法同步。"
+    "message": "快捷方式超出了浏览器同步空间，新加的只保存在本机。在设置中开启 WebDAV 后可以同步到其他设备。"
   },
   "newtab_shortcuts_edited": {
     "message": "已更新快捷方式"
@@ -3250,5 +3250,26 @@
   },
   "newtab_shortcuts_group_limit_reached": {
     "message": "最多可创建 {count} 个分组。"
+  },
+  "options_shortcut_sync_all": {
+    "message": "快捷方式：{count} 个都随浏览器同步。"
+  },
+  "options_shortcut_sync_split_webdav": {
+    "message": "快捷方式：{synced} 个随浏览器同步，其余 {local} 个通过 WebDAV 同步。"
+  },
+  "options_shortcut_sync_split_local": {
+    "message": "快捷方式：{synced} 个随浏览器同步，{local} 个超出浏览器同步空间，只保存在本机。开启 WebDAV 后可以同步到其他设备。"
+  },
+  "options_shortcut_sync_failed_local": {
+    "message": "快捷方式没能写入浏览器同步，目前 {count} 个都只保存在本机。"
+  },
+  "options_shortcut_sync_failed_webdav": {
+    "message": "快捷方式没能写入浏览器同步，目前 {count} 个都通过 WebDAV 同步。"
+  },
+  "options_shortcut_sync_none_local": {
+    "message": "快捷方式：浏览器同步空间已满，{count} 个都只保存在本机。开启 WebDAV 后可以同步到其他设备。"
+  },
+  "options_shortcut_sync_none_webdav": {
+    "message": "快捷方式：浏览器同步空间已满，{count} 个都通过 WebDAV 同步。"
   }
 }

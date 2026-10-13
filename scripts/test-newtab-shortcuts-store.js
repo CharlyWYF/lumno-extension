@@ -473,6 +473,28 @@ async function testPersistSplitsSyncAndOverflowAndFallsBack() {
   assert.strictEqual(unlimited.data[SYNC_KEYS[0]].s.length, 40);
 }
 
+function testSummarizesWhereShortcutsSync() {
+  const items = createShortcutInputs(30, { path: `?q=${'z'.repeat(200)}` });
+  const split = shortcutsStore.createShortcutStoragePlan({ items }, { maxTotalBytes: 3000 });
+  assert.deepStrictEqual(shortcutsStore.summarizeShortcutSync(split.payload, split.overflowRecord),
+    { total: 30, synced: split.syncedItems.length, localOnly: split.overflowItems.length, syncFailed: false });
+  assert(split.overflowItems.length > 0 && split.syncedItems.length > 0);
+
+  const fits = shortcutsStore.createShortcutStoragePlan({ items: items.slice(0, 3) });
+  assert.deepStrictEqual(shortcutsStore.summarizeShortcutSync(fits.payload, fits.overflowRecord),
+    { total: 3, synced: 3, localOnly: 0, syncFailed: false });
+
+  assert.deepStrictEqual(shortcutsStore.summarizeShortcutSync(fits.payload,
+    { version: 2, authoritative: true, items: items.slice(0, 4) }),
+  { total: 4, synced: 0, localOnly: 4, syncFailed: true }, 'after a failed sync write every shortcut is local');
+
+  assert.deepStrictEqual(shortcutsStore.summarizeShortcutSync({}, null),
+    { total: 1, synced: 1, localOnly: 0, syncFailed: false },
+    'the default shortcut every device starts with does not count as local-only');
+  assert.strictEqual(shortcutsStore.summarizeShortcutSync({ [LEGACY_KEYS[0]]: items.slice(0, 2) },
+    [items[5]]).localOnly, 1, 'the legacy list counts as synced and its old overflow array as local');
+}
+
 async function testQuotaOverflowAndStorageFailuresAreObservable() {
   const oversized = [{
     id: 'oversized',
@@ -560,6 +582,7 @@ async function run() {
   await testLegacyListMigratesWithoutTouchingLegacyKeys();
   testSyncBudgetLeavesRoomForOtherSettings();
   await testPersistSplitsSyncAndOverflowAndFallsBack();
+  testSummarizesWhereShortcutsSync();
   await testQuotaOverflowAndStorageFailuresAreObservable();
   console.log('shortcut store tests passed: groups, compact sync, overflow, torn saves, legacy migration and budgets');
 }

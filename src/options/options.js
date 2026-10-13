@@ -112,6 +112,7 @@
   const syncStatus = document.getElementById('_x_extension_sync_status_2024_unique_');
   const syncStatusText = document.getElementById('_x_extension_sync_status_text_2024_unique_');
   const syncNowButton = document.getElementById('_x_extension_sync_now_2024_unique_');
+  const shortcutSyncSummary = document.getElementById('_x_extension_shortcut_sync_summary_2026_unique_');
   const syncExportButton = document.getElementById('_x_extension_sync_export_2024_unique_');
   const syncImportButton = document.getElementById('_x_extension_sync_import_2024_unique_');
   const syncImportInput = document.getElementById('_x_extension_sync_import_input_2024_unique_');
@@ -3131,7 +3132,54 @@
     }
   }
 
+  // Says how many New Tab shortcuts browser sync carries and where the
+  // rest are kept, since what does not fit stays on this device or goes
+  // through WebDAV.
+  let shortcutSyncSummaryRevision = 0;
+  function refreshShortcutSyncSummary() {
+    const store = globalThis.LumnoNewtabShortcutsStore;
+    if (!shortcutSyncSummary || !store || !storageArea || getActivePrimaryAreaName() !== 'sync' ||
+        !chrome.storage || !chrome.storage.local) {
+      if (shortcutSyncSummary) shortcutSyncSummary.hidden = true;
+      return;
+    }
+    const revision = ++shortcutSyncSummaryRevision;
+    storageArea.get(store.SHORTCUT_STORAGE_KEYS.slice(), (values) => {
+      chrome.storage.local.get([store.SHORTCUTS_LOCAL_OVERFLOW_KEY, SETTINGS.WEBDAV_STATUS_STORAGE_KEY], (local) => {
+        if (revision !== shortcutSyncSummaryRevision) return;
+        const summary = store.summarizeShortcutSync(values || {}, local && local[store.SHORTCUTS_LOCAL_OVERFLOW_KEY]);
+        const webdavStatus = local && local[SETTINGS.WEBDAV_STATUS_STORAGE_KEY];
+        const webdav = Boolean(webdavStatus && webdavStatus.enabled === true);
+        let text = '';
+        if (summary.total <= 0) {
+          text = '';
+        } else if (summary.syncFailed) {
+          text = formatTemplate(webdav
+            ? getMessage('options_shortcut_sync_failed_webdav', 'Shortcuts couldn’t be saved to browser sync; all {count} sync through WebDAV for now.')
+            : getMessage('options_shortcut_sync_failed_local', 'Shortcuts couldn’t be saved to browser sync; all {count} stay on this device for now.'),
+          { count: summary.total });
+        } else if (!summary.synced) {
+          text = formatTemplate(webdav
+            ? getMessage('options_shortcut_sync_none_webdav', 'Shortcuts: browser sync is full, so all {count} sync through WebDAV.')
+            : getMessage('options_shortcut_sync_none_local', 'Shortcuts: browser sync is full, so all {count} stay on this device. Turn on WebDAV to sync them.'),
+          { count: summary.total });
+        } else if (!summary.localOnly) {
+          text = formatTemplate(getMessage('options_shortcut_sync_all', 'Shortcuts: all {count} sync with the browser.'),
+            { count: summary.total });
+        } else {
+          text = formatTemplate(webdav
+            ? getMessage('options_shortcut_sync_split_webdav', 'Shortcuts: {synced} sync with the browser; the other {local} sync through WebDAV.')
+            : getMessage('options_shortcut_sync_split_local', 'Shortcuts: {synced} sync with the browser; {local} exceed its sync space and stay on this device. Turn on WebDAV to sync them too.'),
+          { synced: summary.synced, local: summary.localOnly });
+        }
+        shortcutSyncSummary.textContent = text;
+        shortcutSyncSummary.hidden = !text;
+      });
+    });
+  }
+
   function refreshSyncStatus() {
+    refreshShortcutSyncSummary();
     if (!syncStatus) {
       return;
     }
@@ -7625,6 +7673,10 @@
 
   addStorageChangeListener((changes, areaName) => {
     if (areaName === 'local' && changes[SETTINGS.WEBDAV_STATUS_STORAGE_KEY]) refreshSyncStatus();
+    const shortcutsStore = globalThis.LumnoNewtabShortcutsStore;
+    if (areaName === 'local' && shortcutsStore && changes[shortcutsStore.SHORTCUTS_LOCAL_OVERFLOW_KEY]) {
+      refreshShortcutSyncSummary();
+    }
     const isPrimaryArea = isPrimaryStorageAreaName(areaName);
     if (!isPrimaryArea) {
       return;

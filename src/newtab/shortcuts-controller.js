@@ -96,7 +96,8 @@
       bindShortcutDialogTooltip,
       hideShortcutDialogTooltip,
       SHORTCUT_DIALOG_ITEM_BOOKMARK,
-      handleShortcutGroupMenu
+      handleShortcutGroupMenu,
+      WEBDAV_STATUS_STORAGE_KEY
     } = deps;
 
     // Page state still owned by newtab.js; read and written through accessors.
@@ -937,15 +938,19 @@
             Array.isArray(result.localOnlyIds) &&
             result.localOnlyIds.includes(overflowShortcutId)
           );
-          if (shouldWarnAboutSyncLimit) {
-            showToast(t(
-              'newtab_shortcuts_sync_limit_reached',
-              'Shortcuts have reached the sync limit. New items will not sync.'
-            ), false, { duration: 3600 });
-          } else if (toastMessage) {
-            showToast(toastMessage);
-          }
-          return true;
+          // With WebDAV on, a shortcut past the browser's sync space still
+          // reaches other devices, so there is nothing to warn about.
+          return (shouldWarnAboutSyncLimit ? isWebDavSyncEnabled() : Promise.resolve(true)).then((webdav) => {
+            if (!webdav) {
+              showToast(t(
+                'newtab_shortcuts_sync_limit_reached',
+                'Shortcuts exceed the browser’s sync space, so new ones stay on this device. Turn on WebDAV in Settings to sync them too.'
+              ), false, { duration: 5200 });
+            } else if (toastMessage) {
+              showToast(toastMessage);
+            }
+            return true;
+          });
         })
         .catch(async (error) => {
           if (didWriteIcons) {
@@ -968,6 +973,23 @@
           }
           return false;
         });
+    }
+
+    function isWebDavSyncEnabled() {
+      const localArea = chrome && chrome.storage ? chrome.storage.local : null;
+      if (!localArea || !WEBDAV_STATUS_STORAGE_KEY) {
+        return Promise.resolve(false);
+      }
+      return new Promise((resolve) => {
+        try {
+          localArea.get([WEBDAV_STATUS_STORAGE_KEY], (result) => {
+            const status = result && result[WEBDAV_STATUS_STORAGE_KEY];
+            resolve(Boolean(!getShortcutStorageLastError() && status && status.enabled === true));
+          });
+        } catch (error) {
+          resolve(false);
+        }
+      });
     }
 
     function getShortcutGroups() {

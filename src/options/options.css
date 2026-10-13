@@ -3070,6 +3070,15 @@ button[aria-busy="true"]:disabled,
 ._x_extension_browser_sync_row_2026_unique_ ._x_extension_sync_status_2024_unique_ {
   white-space: nowrap;
 }
+/* The shortcut sync summary wraps under the title instead of pushing the
+   buttons onto two rows. */
+._x_extension_browser_sync_row_2026_unique_ > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+._x_extension_browser_sync_row_2026_unique_ > ._x_extension_sync_actions_2024_unique_ {
+  flex-shrink: 0;
+}
 ._x_extension_setting_divider_2024_unique_ {
   height: 0.5px;
   width: calc(100% - 2 * var(--settings-content-edge-space));

@@ -4218,6 +4218,7 @@
     hideShortcutDialogTooltip,
     SHORTCUT_DIALOG_ITEM_BOOKMARK,
     handleShortcutGroupMenu: openShortcutGroupMenu,
+    WEBDAV_STATUS_STORAGE_KEY: SETTINGS.WEBDAV_STATUS_STORAGE_KEY,
     pageState: {
       get newtabShortcuts() {
         return newtabShortcuts;

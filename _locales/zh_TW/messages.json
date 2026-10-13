@@ -2511,7 +2511,7 @@
     "message": "已在捷徑中"
   },
   "newtab_shortcuts_sync_limit_reached": {
-    "message": "捷徑已達同步上限，新增項目將無法同步。"
+    "message": "捷徑超出了瀏覽器同步空間，新增的只保存在本機。在設定中開啟 WebDAV 後可以同步到其他裝置。"
   },
   "newtab_shortcuts_edited": {
     "message": "已更新捷徑"
@@ -3250,5 +3250,26 @@
   },
   "newtab_shortcuts_group_limit_reached": {
     "message": "最多可建立 {count} 個群組。"
+  },
+  "options_shortcut_sync_all": {
+    "message": "捷徑：{count} 個都隨瀏覽器同步。"
+  },
+  "options_shortcut_sync_split_webdav": {
+    "message": "捷徑：{synced} 個隨瀏覽器同步，其餘 {local} 個透過 WebDAV 同步。"
+  },
+  "options_shortcut_sync_split_local": {
+    "message": "捷徑：{synced} 個隨瀏覽器同步，{local} 個超出瀏覽器同步空間，只保存在本機。開啟 WebDAV 後可以同步到其他裝置。"
+  },
+  "options_shortcut_sync_failed_local": {
+    "message": "捷徑沒能寫入瀏覽器同步，目前 {count} 個都只保存在本機。"
+  },
+  "options_shortcut_sync_failed_webdav": {
+    "message": "捷徑沒能寫入瀏覽器同步，目前 {count} 個都透過 WebDAV 同步。"
+  },
+  "options_shortcut_sync_none_local": {
+    "message": "捷徑：瀏覽器同步空間已滿，{count} 個都只保存在本機。開啟 WebDAV 後可以同步到其他裝置。"
+  },
+  "options_shortcut_sync_none_webdav": {
+    "message": "捷徑：瀏覽器同步空間已滿，{count} 個都透過 WebDAV 同步。"
   }
 }

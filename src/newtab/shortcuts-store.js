@@ -493,6 +493,24 @@
     };
   }
 
+  // How many shortcuts browser sync carries and how many only this device
+  // keeps. After a failed sync write the local record holds them all.
+  function summarizeShortcutSync(values, overflowValue, options) {
+    const state = readShortcutState(values, overflowValue, options);
+    const total = state.items.length;
+    if (normalizeOverflowRecord(overflowValue).authoritative) {
+      return { total, synced: 0, localOnly: total, syncFailed: true };
+    }
+    const synced = readShortcutSyncValues(values, options);
+    // Nothing saved yet: every device starts from the same default shortcuts.
+    if (synced.source === 'none' && !normalizeOverflowRecord(overflowValue).items.length) {
+      return { total, synced: total, localOnly: 0, syncFailed: false };
+    }
+    const syncedIds = new Set(normalizeShortcuts(synced.items, options).map((item) => item.id));
+    const syncedCount = state.items.filter((item) => syncedIds.has(item.id)).length;
+    return { total, synced: syncedCount, localOnly: total - syncedCount, syncFailed: false };
+  }
+
   // Sync bytes available to the new copy: the shortcut ceiling, never past
   // the space reserved for other settings, minus what the legacy copy holds.
   function getShortcutSyncBudget(usage) {
@@ -791,6 +809,7 @@
     getDefaultShortcutState,
     readShortcutSyncValues,
     readShortcutState,
+    summarizeShortcutSync,
     getShortcutSyncBudget,
     measureShortcutSyncUsage,
     createShortcutStoragePlan,

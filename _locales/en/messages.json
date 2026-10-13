@@ -2511,7 +2511,7 @@
     "message": "Already in shortcuts"
   },
   "newtab_shortcuts_sync_limit_reached": {
-    "message": "Shortcuts have reached the sync limit. New items will not sync."
+    "message": "Shortcuts exceed the browser’s sync space, so new ones stay on this device. Turn on WebDAV in Settings to sync them too."
   },
   "newtab_shortcuts_edited": {
     "message": "Shortcut updated"
@@ -3250,5 +3250,26 @@
   },
   "newtab_shortcuts_group_limit_reached": {
     "message": "You can create up to {count} groups."
+  },
+  "options_shortcut_sync_all": {
+    "message": "Shortcuts: all {count} sync with the browser."
+  },
+  "options_shortcut_sync_split_webdav": {
+    "message": "Shortcuts: {synced} sync with the browser; the other {local} sync through WebDAV."
+  },
+  "options_shortcut_sync_split_local": {
+    "message": "Shortcuts: {synced} sync with the browser; {local} exceed its sync space and stay on this device. Turn on WebDAV to sync them too."
+  },
+  "options_shortcut_sync_failed_local": {
+    "message": "Shortcuts couldn’t be saved to browser sync; all {count} stay on this device for now."
+  },
+  "options_shortcut_sync_failed_webdav": {
+    "message": "Shortcuts couldn’t be saved to browser sync; all {count} sync through WebDAV for now."
+  },
+  "options_shortcut_sync_none_local": {
+    "message": "Shortcuts: browser sync is full, so all {count} stay on this device. Turn on WebDAV to sync them."
+  },
+  "options_shortcut_sync_none_webdav": {
+    "message": "Shortcuts: browser sync is full, so all {count} sync through WebDAV."
   }
 }
