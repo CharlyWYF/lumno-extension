@@ -50,6 +50,11 @@
   ];
   const WORDMARK_MIN_CONTRAST = 3.25;
   const WORDMARK_TEXTURED_MIN_CONTRAST = 4.5;
+  // WCAG AA for small text, and for the secondary text set in the muted ink.
+  const ADAPTIVE_INK_MIN_CONTRAST = 4.5;
+  const ADAPTIVE_INK_MUTED_MIN_CONTRAST = 3;
+  const TONE_LIGHT_TARGET = { red: 248, green: 250, blue: 252 };
+  const TONE_DARK_TARGET = { red: 15, green: 23, blue: 42 };
   const TOPBAR_MASK_POLARITY_MIN_ALPHA = 0.36;
 
   function mixNumber(start, end, amount) {
@@ -506,6 +511,103 @@
       formatRgb(248, 250, 252, mixNumber(0, 46, protection)));
   }
 
+  // A translucent tone is seen blended with the wallpaper behind it, so its contrast
+  // is measured on that blend rather than on the tone's own color.
+  function getTranslucentToneContrast(tone, backgroundColor) {
+    return getContrastRatio(
+      mixColor(backgroundColor, tone.color, clampNumber(tone.alpha, 0, 1)),
+      backgroundColor
+    );
+  }
+
+  // Headings and breadcrumbs are small text: their ink must reach 4.5:1 and the
+  // muted ink 3:1 against the sampled background. A tone that falls short moves
+  // toward the opaque extreme of its ink family; it only changes family when that
+  // extreme cannot reach the floor and the other one reads better, as the
+  // wordmark does.
+  function ensureTranslucentToneReadable(tone, backgroundColor, ink, minimumContrast) {
+    const background = getValidToneColor(backgroundColor);
+    const start = {
+      color: getValidToneColor(tone && tone.color),
+      alpha: clampNumber(tone && tone.alpha, 0, 1)
+    };
+    if (getTranslucentToneContrast(start, background) >= minimumContrast) {
+      return start;
+    }
+    const preferredTarget = ink === 'dark' ? TONE_DARK_TARGET : TONE_LIGHT_TARGET;
+    const alternateTarget = ink === 'dark' ? TONE_LIGHT_TARGET : TONE_DARK_TARGET;
+    const preferredContrast = getContrastRatio(preferredTarget, background);
+    const keepFamily = preferredContrast >= minimumContrast ||
+      preferredContrast >= getContrastRatio(alternateTarget, background);
+    const target = keepFamily ? preferredTarget : alternateTarget;
+    // Within the family both the color and its opacity move toward the extreme;
+    // across families the new ink only fades in, so contrast grows monotonically.
+    const candidateAt = keepFamily
+      ? (amount) => ({ color: mixColor(start.color, target, amount), alpha: mixNumber(start.alpha, 1, amount) })
+      : (amount) => ({ color: target, alpha: amount });
+    let low = 0;
+    let high = 1;
+    let best = { color: target, alpha: 1 };
+    for (let index = 0; index < 12; index += 1) {
+      const amount = (low + high) / 2;
+      const candidate = candidateAt(amount);
+      if (getTranslucentToneContrast(candidate, background) >= minimumContrast) {
+        best = candidate;
+        high = amount;
+      } else {
+        low = amount;
+      }
+    }
+    return best;
+  }
+
+  // Ink and muted ink for adaptive text, before the contrast floor. Filters
+  // repaint the wallpaper, so their luminance stands in for the sampled color.
+  function getAdaptiveInkTones(luminance, ink, color, effectType) {
+    const background = effectType && effectType !== 'none'
+      ? {
+          red: clampNumber(luminance, 0, 1) * 255,
+          green: clampNumber(luminance, 0, 1) * 255,
+          blue: clampNumber(luminance, 0, 1) * 255
+        }
+      : getValidToneColor(color);
+    let inkTone;
+    let mutedTone;
+    let amount;
+    if (ink === 'dark') {
+      amount = clampNumber((luminance - 0.52) / 0.42, 0, 1);
+      inkTone = {
+        color: { red: mixChannel(78, 15, amount), green: mixChannel(90, 23, amount), blue: mixChannel(106, 42, amount) },
+        alpha: mixNumber(72, 88, amount) / 100
+      };
+      mutedTone = {
+        color: { red: mixChannel(100, 30, amount), green: mixChannel(116, 41, amount), blue: mixChannel(139, 59, amount) },
+        alpha: mixNumber(52, 66, amount) / 100
+      };
+    } else {
+      amount = clampNumber((0.54 - luminance) / 0.42, 0, 1);
+      inkTone = {
+        color: { red: mixChannel(226, 253, amount), green: mixChannel(232, 254, amount), blue: mixChannel(240, 255, amount) },
+        alpha: mixNumber(78, 92, amount) / 100
+      };
+      mutedTone = {
+        color: { red: mixChannel(203, 248, amount), green: mixChannel(213, 250, amount), blue: mixChannel(225, 252, amount) },
+        alpha: mixNumber(58, 76, amount) / 100
+      };
+    }
+    return {
+      amount,
+      background,
+      hoverColor: ink === 'dark' ? inkTone.color : TONE_LIGHT_TARGET,
+      ink: ensureTranslucentToneReadable(inkTone, background, ink, ADAPTIVE_INK_MIN_CONTRAST),
+      muted: ensureTranslucentToneReadable(mutedTone, background, ink, ADAPTIVE_INK_MUTED_MIN_CONTRAST)
+    };
+  }
+
+  function formatToneRgb(tone) {
+    return formatRgb(tone.color.red, tone.color.green, tone.color.blue, tone.alpha * 100);
+  }
+
   function applyAdaptiveToneStyles(element, luminance, ink, color, overlayAlpha, overlayLuminance, textureContrast, effectType) {
     if (!element || !Number.isFinite(luminance)) {
       return;
@@ -522,44 +624,29 @@
     );
     setStyleProperty(element, '--x-nt-wallpaper-wordmark-ink', formatSolidRgb(wordmarkInk));
     applyWordmarkToneStyles(element, luminance, wordmarkInk, protection);
-    if (ink === 'dark') {
-      const amount = clampNumber((luminance - 0.52) / 0.42, 0, 1);
-      const red = mixChannel(78, 15, amount);
-      const green = mixChannel(90, 23, amount);
-      const blue = mixChannel(106, 42, amount);
-      const mutedRed = mixChannel(100, 30, amount);
-      const mutedGreen = mixChannel(116, 41, amount);
-      const mutedBlue = mixChannel(139, 59, amount);
-      setStyleProperty(element, '--x-nt-wallpaper-adaptive-ink',
-        formatRgb(red, green, blue, mixNumber(72, 88, amount)));
-      setStyleProperty(element, '--x-nt-wallpaper-adaptive-ink-muted',
-        formatRgb(mutedRed, mutedGreen, mutedBlue, mixNumber(52, 66, amount)));
-      setStyleProperty(element, '--x-nt-wallpaper-adaptive-hover-bg',
-        formatRgb(red, green, blue, mixNumber(7, 12, amount)));
+    const tones = getAdaptiveInkTones(luminance, ink, color, effectType);
+    const amount = tones.amount;
+    const hover = tones.hoverColor;
+    setStyleProperty(element, '--x-nt-wallpaper-adaptive-ink', formatToneRgb(tones.ink));
+    setStyleProperty(element, '--x-nt-wallpaper-adaptive-ink-muted', formatToneRgb(tones.muted));
+    setStyleProperty(element, '--x-nt-wallpaper-adaptive-hover-bg', ink === 'dark'
+      ? formatRgb(hover.red, hover.green, hover.blue, mixNumber(7, 12, amount))
+      : formatRgb(hover.red, hover.green, hover.blue, mixNumber(10, 18, amount)));
+    // The dark shadow only backs light text; ink that had to turn dark to stay
+    // readable drops it like dark ink does.
+    const inkIsLighter = getRelativeLuminance(tones.ink.color) > getRelativeLuminance(tones.background);
+    if (!inkIsLighter) {
       setStyleProperty(element, '--x-nt-wallpaper-adaptive-shadow', 'transparent');
       setStyleProperty(element, '--x-nt-wallpaper-adaptive-halo', 'transparent');
       return;
     }
-
-    const amount = clampNumber((0.54 - luminance) / 0.42, 0, 1);
-    const red = mixChannel(226, 253, amount);
-    const green = mixChannel(232, 254, amount);
-    const blue = mixChannel(240, 255, amount);
-    const mutedRed = mixChannel(203, 248, amount);
-    const mutedGreen = mixChannel(213, 250, amount);
-    const mutedBlue = mixChannel(225, 252, amount);
-    setStyleProperty(element, '--x-nt-wallpaper-adaptive-ink',
-      formatRgb(red, green, blue, mixNumber(78, 92, amount)));
-    setStyleProperty(element, '--x-nt-wallpaper-adaptive-ink-muted',
-      formatRgb(mutedRed, mutedGreen, mutedBlue, mixNumber(58, 76, amount)));
-    setStyleProperty(element, '--x-nt-wallpaper-adaptive-hover-bg',
-      formatRgb(248, 250, 252, mixNumber(10, 18, amount)));
     // Light ink is palest right at the threshold, so the shadow must not fade
     // there; protection keeps mid tones and busy textures at full strength.
+    const shadowAmount = ink === 'dark' ? 1 : amount;
     setStyleProperty(element, '--x-nt-wallpaper-adaptive-shadow',
-      formatRgb(15, 23, 42, Math.max(mixNumber(26, 42, amount), mixNumber(26, 42, protection))));
+      formatRgb(15, 23, 42, Math.max(mixNumber(26, 42, shadowAmount), mixNumber(26, 42, protection))));
     setStyleProperty(element, '--x-nt-wallpaper-adaptive-halo',
-      formatRgb(15, 23, 42, Math.max(mixNumber(12, 22, amount), mixNumber(12, 26, protection))));
+      formatRgb(15, 23, 42, Math.max(mixNumber(12, 22, shadowAmount), mixNumber(12, 26, protection))));
   }
 
   function applySurfaceToneStyles(element, luminance, ink, color, textureContrast, effectType) {
@@ -1079,6 +1166,9 @@
   }
 
   root.LumnoNewtabWallpaperAdaptiveTone = {
-    createWallpaperAdaptiveTone
+    createWallpaperAdaptiveTone,
+    getAdaptiveInkTones,
+    getContrastRatio,
+    getTranslucentToneContrast
   };
 })(globalThis);
