@@ -51,6 +51,15 @@
     return Math.round((Math.max(0, Math.min(100, number)) / 100) * physicalMax * 1000) / 1000;
   }
 
+  // For failures nothing on the page can recover from but that should not happen,
+  // such as IndexedDB refusing a read; expected ones (offline photo requests) are
+  // caught where they occur, with the reason.
+  function warnWallpaperFailure(message) {
+    return (error) => {
+      console.warn(`[Lumno] ${message}`, error);
+    };
+  }
+
   function normalizeSingleWallpaperEffectPrefs(value, inheritedVersion) {
     return WALLPAPER_EFFECTS.normalizePrefs(value, inheritedVersion);
   }
@@ -252,6 +261,16 @@
     const wallpaperImageCache = typeof WALLPAPER_LOCAL_STORE.createWallpaperImageCache === 'function'
       ? WALLPAPER_LOCAL_STORE.createWallpaperImageCache({ windowObj })
       : null;
+    // Pages without IndexedDB (some private windows) simply have no local copies;
+    // any other failure of the stores is unexpected and worth a warning.
+    function warnWallpaperStoreFailure(message) {
+      const warn = warnWallpaperFailure(message);
+      return (error) => {
+        if (windowObj && windowObj.indexedDB) {
+          warn(error);
+        }
+      };
+    }
     const remoteClient = REMOTE_CONTENT.createClient({
       storageArea: localWallpaperStorageArea,
       fetch: options.fetchRemoteContent,
@@ -2820,7 +2839,9 @@
           if (isWallpaperPanelOpen()) {
             scheduleWallpaperPanelTabIndicatorsRefresh();
           }
-        }).catch(() => {});
+        }).catch(() => {
+          // Fonts that never load leave the indicators measured with fallback fonts.
+        });
       }
     }
 
@@ -4589,7 +4610,7 @@
         const customWallpaperPromise = customWallpaperIds.length > 0
           ? readCustomWallpaperRecordsByIds(customWallpaperIds).then((records) => {
             mergeCustomWallpaperRecords(records);
-          }).catch(() => {})
+          }).catch(warnWallpaperStoreFailure('Could not read local wallpapers; showing the default.'))
           : Promise.resolve();
         const remoteIds = getWallpaperStorageRawIds(results[0].value)
           .map((id) => normalizeNewtabWallpaperId(id))
@@ -4618,7 +4639,9 @@
                 applyResolvedNewtabWallpaper();
               }
               renderBingTiles();
-            }).catch(() => {});
+            }).catch(() => {
+              // Offline or Bing is down: the built-in stand-in stays until the next visit.
+            });
           }
           return true;
         });
@@ -5003,7 +5026,9 @@
         if (record && record.id && record.imageDataUrl && !cachedWallpaperImages.has(record.id)) {
           cachedWallpaperImages.set(record.id, record);
         }
-      }, () => {});
+      }, () => {
+        // The preload found no copy; the runtime reads the cache itself next.
+      });
     }
 
     function readCachedWallpaperImages(ids) {
@@ -5017,14 +5042,16 @@
         records.forEach((record) => {
           if (record && record.imageDataUrl) cachedWallpaperImages.set(record.id, record);
         });
-      }).catch(() => {});
+      }).catch(warnWallpaperStoreFailure('Could not read cached wallpaper images.'));
     }
 
     function rememberCachedWallpaperImage(id, url, record) {
       const image = { id, url, imageDataUrl: record.imageDataUrl, thumbnailDataUrl: record.thumbnailDataUrl,
         cachedAt: Date.now() };
       cachedWallpaperImages.set(id, image);
-      if (wallpaperImageCache) wallpaperImageCache.write(image).catch(() => {});
+      if (wallpaperImageCache) {
+        wallpaperImageCache.write(image).catch(warnWallpaperStoreFailure('Could not cache a wallpaper image.'));
+      }
     }
 
     // A link names a single image. Each device downloads it, or a curated photo or print, once and
@@ -5083,8 +5110,8 @@
         .concat(NEWTAB_WALLPAPER_MODES.map(getEffectiveWallpaperPhotoId)));
       wallpaperImageCache.keys().then((keys) => keys.filter((key) => !keep.has(key)).forEach((key) => {
         cachedWallpaperImages.delete(key);
-        wallpaperImageCache.remove(key).catch(() => {});
-      })).catch(() => {});
+        wallpaperImageCache.remove(key).catch(warnWallpaperStoreFailure('Could not prune a cached wallpaper image.'));
+      })).catch(warnWallpaperStoreFailure('Could not list cached wallpaper images.'));
     }
 
     function cacheListedLinkWallpapers() {
@@ -5107,7 +5134,9 @@
       selected.forEach((mode) => { prefs[mode] = NEWTAB_WALLPAPER_DEFAULT_ID; });
       writeLinkWallpapers(linkWallpapers.filter((item) => item.id !== id));
       cachedWallpaperImages.delete(id);
-      if (wallpaperImageCache) wallpaperImageCache.remove(id).catch(() => {});
+      if (wallpaperImageCache) {
+        wallpaperImageCache.remove(id).catch(warnWallpaperStoreFailure('Could not remove a cached link wallpaper.'));
+      }
       if (selected.length) {
         setWallpaperPrefs(prefs, getWritableLocalWallpaperOverrides());
         applyResolvedNewtabWallpaper();
@@ -5771,8 +5800,9 @@
         bingItems = items;
         bingStatus = '';
         if (NEWTAB_WALLPAPER_MODES.some((mode) => getEffectiveWallpaperIdForMode(mode) === REMOTE_CONTENT.BING_DAILY_ID)) {
-          // The list loaded; if the daily photo still fails, the current wallpaper simply stays.
-          await remoteClient.ensureWallpaper(REMOTE_CONTENT.BING_DAILY_ID).catch(() => {});
+          await remoteClient.ensureWallpaper(REMOTE_CONTENT.BING_DAILY_ID).catch(() => {
+            // The list loaded; if the daily photo still fails, the current wallpaper simply stays.
+          });
           if (seq !== bingCatalogSeq) return;
           if (getEffectiveWallpaperIdForMode(getResolvedWallpaperMode()) === REMOTE_CONTENT.BING_DAILY_ID) {
             applyResolvedNewtabWallpaper();
@@ -5819,7 +5849,9 @@
           applyResolvedNewtabWallpaper();
         }
         renderBingTiles();
-      }).catch(() => {});
+      }).catch(() => {
+        // Offline at midnight: yesterday's photo stays until the next check.
+      });
     }
 
     // A background tab can miss the effect redraw for a photo that changed while it was hidden.
@@ -6911,7 +6943,7 @@
             applyResolvedNewtabWallpaper();
           }
           renderBingTiles();
-        }).catch(() => {});
+        }).catch(warnWallpaperFailure('Could not restore the daily Bing wallpaper another tab saved.'));
         handled = true;
       }
       if (changes[SETTINGS.ASSET_REVISION_STORAGE_KEY]) {
