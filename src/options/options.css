@@ -720,9 +720,6 @@ body[data-theme="dark"] ._x_extension_feedback_support_link_2026_unique_ {
   --feedback-support-link-icon-color: var(--panel-subtext);
 }
 @media (prefers-reduced-motion: reduce) {
-  ._x_extension_feedback_support_link_2026_unique_ > i:last-child {
-    transition: none;
-  }
   ._x_extension_feedback_support_link_2026_unique_:hover > .ri-external-link-line {
     transform: none;
   }
@@ -1074,13 +1071,8 @@ body[data-theme="dark"] ._x_extension_help_ask_demo_chip_2026_unique_ {
 @keyframes x-help-ask-chip-in {
   from { opacity: 0; transform: scale(0.85); }
 }
+/* Reduced motion: the demo's caret, chips and skeleton hold still instead of looping. */
 @media (prefers-reduced-motion: reduce) {
-  ._x_extension_help_ask_popover_2026_unique_,
-  ._x_extension_help_ask_demo_key_2026_unique_,
-  ._x_extension_help_ask_demo_skeleton_2026_unique_,
-  ._x_extension_help_ask_demo_list_2026_unique_ > li {
-    transition: none;
-  }
   ._x_extension_help_ask_demo_caret_2026_unique_,
   ._x_extension_help_ask_demo_chip_2026_unique_,
   ._x_extension_help_ask_demo_skeleton_2026_unique_ > li > span::before {

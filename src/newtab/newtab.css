@@ -528,14 +528,6 @@ body[data-wallpaper-active="true"][data-wallpaper-effect="halftone"]::after,
 body[data-wallpaper-active="true"][data-wallpaper-effect="ascii"]::after {
   opacity: 0;
 }
-@media (prefers-reduced-motion: reduce) {
-  .x-nt-wallpaper-transition-layer,
-  .x-nt-wallpaper-effect-canvas,
-  body::before,
-  body::after {
-    transition: none;
-  }
-}
 body:not([data-nt-enter="done"]) .x-nt-wallpaper-effect-canvas,
 body:not([data-nt-enter="done"])::after {
   transition: none;
@@ -1216,15 +1208,15 @@ body[data-theme="dark"] .x-nt-shortcut-context-menu-portal {
     corner-shape: superellipse(1.25);
   }
 }
+/* Reduced motion: icons stay their size instead of magnifying, and the drop backdrop
+   appears without growing. */
 @media (prefers-reduced-motion: reduce) {
   .x-nt-shortcut-icon {
     transform: translate3d(0, 0, 0) scale(1);
-    transition: none;
     will-change: auto;
   }
   .x-nt-shortcut-tile::before {
     transform: translate(-50%, -50%);
-    transition: opacity var(--lumno-duration-sm) ease;
   }
 }
 #_x_extension_newtab_wordmark_2026_unique_ > .x-nt-wordmark-content {
@@ -1302,14 +1294,8 @@ body[data-nt-ready="1"] #_x_extension_newtab_wordmark_2026_unique_[data-enter="d
     transform: scale(1);
   }
 }
+/* Reduced motion: the wordmark is simply there once the page is ready. */
 @media (prefers-reduced-motion: reduce) {
-  #_x_extension_newtab_wordmark_2026_unique_ .x-nt-time-seconds-digit {
-    animation: none;
-    opacity: 1;
-    filter: none;
-    transform: none;
-    will-change: auto;
-  }
   body[data-nt-ready="1"] #_x_extension_newtab_wordmark_2026_unique_ > .x-nt-wordmark-content,
   body[data-nt-ready="1"] #_x_extension_newtab_wordmark_2026_unique_[data-enter="run"] > .x-nt-wordmark-content {
     animation: none;
@@ -1597,6 +1583,7 @@ body[data-nt-enter="run"] .x-nt-bookmark-cascade-debug-control {
     scale: 1;
   }
 }
+/* Reduced motion: no staged entry; everything is in place at once. */
 @media (prefers-reduced-motion: reduce) {
   body[data-nt-enter="run"][data-nt-ready="1"] .x-nt-bookmarks-topbar[data-visible="true"],
   body[data-nt-enter="run"][data-nt-ready="1"] .x-nt-bookmarks-topbar[data-visible="true"] > * {
@@ -1726,11 +1713,6 @@ body[data-nt-enter="run"] .x-nt-bookmark-cascade-debug-control {
 @media (hover: none) {
   .x-nt-section-mode-select--heading ._x_extension_select_icon_2024_unique_ {
     opacity: 0.6;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .x-nt-section-mode-select--heading ._x_extension_select_icon_2024_unique_ {
-    transition: none;
   }
 }
 .x-nt-section-mode-select:hover ._x_extension_select_trigger_2024_unique_,
@@ -1971,13 +1953,6 @@ body[data-theme="dark"] .x-nt-section-mode-select[data-open="true"] ._x_extensio
 .x-nt-bookmark-cascade-row[data-drag-gap="after"] {
   translate: 0 var(--x-nt-drag-gap-shift-y, 3px);
 }
-@media (prefers-reduced-motion: reduce) {
-  .x-nt-shortcut-tile[data-drag-gap],
-  .x-nt-bookmark-cascade-row[data-drag-gap],
-  #_x_extension_newtab_bookmarks_grid_2024_unique_ .x-nt-bookmark-card[data-drag-gap] {
-    transition: none;
-  }
-}
 body[data-drag-source],
 body[data-drag-source] * {
   cursor: var(--x-nt-drag-cursor, grabbing) !important;
@@ -2042,13 +2017,6 @@ body[data-theme="dark"] .x-nt-bookmark-card--folder[data-bookmark-drop-target="t
   to {
     opacity: 1;
     transform: scaleY(1);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  [data-insert-line-position]::after {
-    opacity: 1;
-    transform: scaleY(1);
-    animation: none;
   }
 }
 #_x_extension_newtab_bookmarks_grid_2024_unique_[data-bookmark-dragging="true"] .x-nt-bookmark-card.x-nt-bookmark-card--hover:not([aria-expanded="true"]):not([data-bookmark-dragging="true"]):not([data-bookmark-dropping="true"]) {
@@ -4566,19 +4534,6 @@ body[data-theme="dark"] .x-nt-feedback-detail-action:active {
 body[data-theme="dark"] .x-nt-feedback-qr-image {
   background: #18181b;
 }
-@media (prefers-reduced-motion: reduce) {
-  .x-nt-bookmark-copy-action,
-  .x-nt-bookmark-cascade-copy-trigger,
-  .x-nt-feedback-popover,
-  .x-nt-feedback-action,
-  .x-nt-feedback-detail-action,
-  .x-nt-feedback-menu,
-  .x-nt-feedback-detail,
-  .x-nt-section-mode-select ._x_extension_select_trigger_2024_unique_ {
-    transition: none;
-    transform: none;
-  }
-}
 body[data-wallpaper-active="true"] {
   --x-nt-wallpaper-adaptive-ink: rgb(248 250 252 / 88%);
   --x-nt-wallpaper-adaptive-ink-muted: rgb(248 250 252 / 70%);
@@ -4930,13 +4885,6 @@ body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-open="true"]:not(
 }
 body[data-theme="dark"] .x-nt-wallpaper-panel {
   background: rgb(20 20 20);
-}
-@media (prefers-reduced-motion: reduce) {
-  .x-nt-wallpaper-panel {
-    transform: scale(1);
-    transition: opacity var(--lumno-duration-2xs) ease, visibility var(--lumno-duration-2xs) ease;
-    will-change: auto;
-  }
 }
 .x-nt-wallpaper-panel-scroll {
   min-width: 0;
@@ -5329,15 +5277,6 @@ body[data-theme="dark"] .x-nt-appearance-header {
 .x-nt-wallpaper-grid[data-motion="enter"] {
   opacity: 0;
 }
-@media (prefers-reduced-motion: reduce) {
-  .x-nt-wallpaper-tabs-indicator,
-  .x-nt-wallpaper-mode-row,
-  .x-nt-wallpaper-body,
-  .x-nt-wallpaper-grid {
-    transition: none;
-    transform: none;
-  }
-}
 .x-nt-appearance-options {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -5529,19 +5468,6 @@ body[data-theme="dark"] .x-nt-range-slider-row .x-range-slider {
   pointer-events: none;
   transform: translateY(-50%);
 }
-@media (prefers-reduced-motion: reduce) {
-  .x-nt-section-chevron {
-    transition: none;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .x-nt-search-width-control,
-  .x-nt-search-width-control[data-visible="false"] {
-    transition: none;
-    transform: none;
-    will-change: auto;
-  }
-}
 .x-nt-overlay-control {
   min-width: 0;
   display: flex;
@@ -5702,14 +5628,6 @@ body[data-theme="dark"] .x-nt-row-select {
 .x-nt-effect-slider-control[data-motion="enter"] {
   opacity: 0;
 }
-@media (prefers-reduced-motion: reduce) {
-  .x-nt-effect-slider-control,
-  .x-nt-effect-slider-control[data-visible="false"] {
-    transition: none;
-    transform: none;
-    will-change: auto;
-  }
-}
 .x-nt-effect-slider-wrap[data-disabled="true"] {
   opacity: 0.46;
 }
@@ -5855,11 +5773,6 @@ body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
 }
 .x-nt-shortcuts-accordion-details.x-nt-panel-collapsible {
   --x-nt-collapsible-gap: 0px;
-}
-@media (prefers-reduced-motion: reduce) {
-  .x-nt-panel-collapsible {
-    transition: none;
-  }
 }
 .x-nt-wallpaper-grid {
   display: grid;

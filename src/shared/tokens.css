@@ -139,6 +139,26 @@
   outline-offset: 2px;
 }
 
+/*
+ * Reduced motion. Transitions are dropped, delays included, so a changed value applies
+ * at once and code that measures right after a change sees the final size (a very
+ * short transition would still show the old value for a frame). Animations finish at
+ * once but still run, so animationend fires for code that waits on it, and loops stop
+ * after one pass. Components only add rules here when they need a different resting
+ * state, for example no magnification or no staged entry.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Dark values. Kept as one block so both selectors stay in sync. */
 body[data-theme="dark"] {
   --lumno-color-text: #e5e7eb;

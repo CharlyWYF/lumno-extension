@@ -314,11 +314,6 @@ assert.ok(
   'each newly targeted grid boundary should restart the insertion-line extension'
 );
 assert.ok(
-  /@media \(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?\[data-insert-line-position\]::after\s*\{[^}]*animation:\s*none;/s
-    .test(newtabHtml),
-  'the grid insertion-line motion should respect reduced-motion preferences'
-);
-assert.ok(
   bookmarkDragJs.includes('DEFAULT_GRID_INSERTION_HIT_ZONE_PX = 8') &&
     bookmarkDragJs.includes('pointerY >= item.rect.top && pointerY <= item.rect.bottom') &&
     bookmarkDragJs.includes('nearestBoundaryDistance > hitZonePx'),

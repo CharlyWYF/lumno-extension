@@ -43,6 +43,19 @@ stylesheets.forEach((file) => {
   assert.deepStrictEqual(bare, [], `${file} is injected into web pages; give every token a fallback`);
 });
 
+// Every page loads tokens.css first, so its page-wide rules reach every component:
+// reduced motion drops transitions and finishes animations at once (they still end,
+// so animationend fires), and keyboard focus always shows a ring.
+const tokensCss = read('src/shared/tokens.css');
+const reducedMotion = tokensCss.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/);
+assert.ok(reducedMotion, 'tokens.css should hold the page-wide reduced-motion rule');
+assert.match(reducedMotion[1], /\*[^{]*\{[^}]*animation-duration:\s*0\.01ms !important/,
+  'reduced motion should finish every animation at once without removing it');
+assert.match(reducedMotion[1], /\*[^{]*\{[^}]*transition-duration:\s*0s !important/,
+  'reduced motion should drop every transition');
+assert.match(tokensCss, /:focus-visible \{[^}]*outline: 2px solid var\(--lumno-color-focus-ring\)/,
+  'tokens.css should give every control the shared focus ring');
+
 // Shared components are defined once; pages only resize them.
 const optionsCss = read('src/options/options.css');
 const newtabCss = read('src/newtab/newtab.css');
