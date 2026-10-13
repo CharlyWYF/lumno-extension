@@ -107,6 +107,11 @@
     });
     const onItemPointerDown = getFunction(config, 'onItemPointerDown');
     const onItemContextMenu = getFunction(config, 'onItemContextMenu');
+    // True right after a press on an open context menu, so it does not open
+    // the item underneath.
+    const isActivationSuppressed = getFunction(config, 'isActivationSuppressed', function() {
+      return false;
+    });
     const shouldKeepOpenForExternalNode = getFunction(config, 'shouldKeepOpenForExternalNode', function() {
       return false;
     });
@@ -1590,7 +1595,7 @@
             activateLeafItem();
           });
           itemButton.addEventListener('click', (event) => {
-            if (consumeBookmarkDragClickSuppression(itemButton)) {
+            if (consumeBookmarkDragClickSuppression(itemButton) || isActivationSuppressed()) {
               event.preventDefault();
               event.stopPropagation();
               return;
@@ -1603,6 +1608,9 @@
             }
             event.preventDefault();
             event.stopPropagation();
+            if (isActivationSuppressed()) {
+              return;
+            }
             navigateLeafItem(event);
           });
           itemButton.addEventListener('keydown', (event) => {

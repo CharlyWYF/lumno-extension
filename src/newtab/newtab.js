@@ -1122,12 +1122,35 @@
     }
   });
 
+  // A press made while a card context menu is open belongs to the menu:
+  // choosing an item, or dismissing it. So do presses shortly after it, the
+  // rest of a double-click or one through the fading menu. Cards ignore the
+  // press and the click it ends in, so none opens the card underneath.
+  const CONTEXT_MENU_CLICK_THROUGH_GUARD_MS = 500;
+  const CONTEXT_MENU_PRESS_CLICK_MAX_MS = 1000;
+  let contextMenuPressedAt = 0;
+  let lastPressAt = 0;
+  let lastPressBelongsToMenu = false;
+  document.addEventListener('pointerdown', () => {
+    const now = Date.now();
+    lastPressAt = now;
+    lastPressBelongsToMenu = now - contextMenuPressedAt < CONTEXT_MENU_CLICK_THROUGH_GUARD_MS;
+    if (document.querySelector('.x-nt-shortcut-context-menu-portal[data-open="true"]')) {
+      contextMenuPressedAt = now;
+      lastPressBelongsToMenu = true;
+    }
+  }, true);
+
+  function isCardActivationSuppressed() {
+    return lastPressBelongsToMenu &&
+      Date.now() - lastPressAt < CONTEXT_MENU_PRESS_CLICK_MAX_MS;
+  }
+
   const NEWTAB_RECENT_SITES_CONTROLLER = globalThis.LumnoNewtabRecentSitesController;
   const {
     getRecentContextMenuOptions,
     closeRecentContextMenu,
     handleRecentCardContextMenu,
-    isRecentCardActivationSuppressed,
     getRecentStoreOptions,
     getRecentSiteUrlKey,
     normalizeHiddenRecentSites,
@@ -4298,6 +4321,7 @@
     bindShortcutTooltip,
     isMiddleClick,
     openShortcutUrl,
+    isCardActivationSuppressed,
     handleShortcutContextMenu,
     handleShortcutNativeDragStart,
     getRiSvg,
@@ -5336,6 +5360,7 @@
     openFolderMenu: openBookmarkCascadeMenu,
     copyUrl: copyBookmarkUrl,
     onItemContextMenu: handleBookmarkItemContextMenu,
+    isActivationSuppressed: isCardActivationSuppressed,
     navigateToUrl,
     openUrl: (url, options) => openUrlFromNewtabCard(url, { ...options, surface: 'bookmarks' })
   });
@@ -5381,6 +5406,7 @@
     hideTopActionTooltip,
     onItemPointerDown: handleBookmarkCascadeItemPointerDown,
     onItemContextMenu: handleBookmarkItemContextMenu,
+    isActivationSuppressed: isCardActivationSuppressed,
     shouldKeepOpenForExternalNode: isBookmarkContextMenuNode,
     getViewportTopPadding: getBookmarkCascadeViewportTopPaddingPx,
     view: NEWTAB_BOOKMARK_CASCADE_VIEW
@@ -5479,7 +5505,7 @@
     openUrl: (url, options) => openUrlFromNewtabCard(url, { ...options, surface: 'recentSites' }),
     togglePinned: togglePinnedRecentSite,
     onItemContextMenu: handleRecentCardContextMenu,
-    isActivationSuppressed: isRecentCardActivationSuppressed,
+    isActivationSuppressed: isCardActivationSuppressed,
     getProgressState: getRecentProgressState,
     toggleProgressTracking: toggleRecentProgressTracking
   });

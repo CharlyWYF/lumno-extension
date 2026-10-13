@@ -2166,8 +2166,16 @@
       }
     }
 
+    // On macOS a Control-click is a right-click. Starting a drag on it would
+    // make the context menu that follows ignore the press.
+    function isMacContextClick(event) {
+      return Boolean(event && event.ctrlKey) &&
+        /Mac|iPhone|iPad|iPod/i.test(String(navigator.platform || navigator.userAgent || ''));
+    }
+
     function beginBookmarkDragPointerTracking(event, card, bookmarkItem, sourceKind) {
-      if (!event || !card || pageState.bookmarkDragState || pageState.bookmarkMoveHistoryBusy) {
+      if (!event || !card || pageState.bookmarkDragState || pageState.bookmarkMoveHistoryBusy ||
+          isMacContextClick(event)) {
         return false;
       }
       const bookmarkId = getBookmarkCardId(card);

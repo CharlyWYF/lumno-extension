@@ -256,6 +256,37 @@ describe('Shortcuts React island', () => {
     expect(onAddContextMenu).toHaveBeenCalledWith(view.getAddButton());
   });
 
+  it('does not open a tile for presses meant for a context menu', () => {
+    const openShortcut = vi.fn();
+    let suppressed = true;
+    const { view } = createView({
+      openShortcut,
+      isActivationSuppressed: () => suppressed
+    });
+    renderItems(view, [{
+      id: 'docs',
+      title: 'Docs',
+      url: 'https://example.com/docs'
+    }]);
+    const tile = view.getTiles()[0];
+    const press = () => {
+      act(() => {
+        tile.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0 }));
+        tile.dispatchEvent(new MouseEvent('auxclick', { bubbles: true, button: 1 }));
+      });
+    };
+
+    press();
+    act(() => {
+      tile.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+    });
+    expect(openShortcut).toHaveBeenCalledTimes(1);
+
+    suppressed = false;
+    press();
+    expect(openShortcut).toHaveBeenCalledTimes(3);
+  });
+
   it('hides the add tile when the preference is off and restores it live', () => {
     let addVisible = false;
     const { view } = createView({

@@ -443,6 +443,37 @@ describe('Bookmarks React island', () => {
     expect(copied).toEqual(['https://example.com/docs']);
   });
 
+  it('does not open a card for presses meant for a context menu', () => {
+    const openUrl = vi.fn();
+    let suppressed = true;
+    const { view } = createView({
+      openUrl,
+      isActivationSuppressed: () => suppressed
+    });
+    renderItems(view, [{
+      id: 'docs',
+      parentId: '1',
+      index: 0,
+      type: 'bookmark',
+      title: 'Docs',
+      url: 'https://example.com/docs'
+    }]);
+    const card = view.getCards()[0];
+    const press = () => {
+      act(() => {
+        card.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0 }));
+        card.dispatchEvent(new MouseEvent('auxclick', { bubbles: true, button: 1 }));
+      });
+    };
+
+    press();
+    expect(openUrl).not.toHaveBeenCalled();
+
+    suppressed = false;
+    press();
+    expect(openUrl).toHaveBeenCalledTimes(2);
+  });
+
   it('clears stale drag click suppression when a folder card is reused', () => {
     const openedFolders: string[] = [];
     const { view } = createView({

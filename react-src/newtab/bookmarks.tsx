@@ -150,6 +150,9 @@ export interface BookmarksViewOptions {
     element: BookmarkCardElement;
     sourceKind: 'card';
   }) => void;
+  // True right after a press on an open context menu, so it does not open
+  // the card underneath.
+  isActivationSuppressed?: () => boolean;
 }
 
 interface NormalizedBookmarksOptions {
@@ -219,6 +222,9 @@ interface NormalizedBookmarksOptions {
   openUrl: NonNullable<BookmarksViewOptions['openUrl']>;
   onItemContextMenu: NonNullable<
     BookmarksViewOptions['onItemContextMenu']
+  >;
+  isActivationSuppressed: NonNullable<
+    BookmarksViewOptions['isActivationSuppressed']
   >;
 }
 
@@ -438,7 +444,11 @@ function normalizeOptions(
     onItemContextMenu:
       typeof rawOptions.onItemContextMenu === 'function'
         ? rawOptions.onItemContextMenu
-        : () => {}
+        : () => {},
+    isActivationSuppressed:
+      typeof rawOptions.isActivationSuppressed === 'function'
+        ? rawOptions.isActivationSuppressed
+        : () => false
   };
 }
 
@@ -789,6 +799,11 @@ function BookmarkCard({
       event.stopPropagation();
       return;
     }
+    if (event.type === 'click' && options.isActivationSuppressed()) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     options.hideCursorTooltip();
     if (isFolder) {
       if (menuMode) {
@@ -991,6 +1006,9 @@ function BookmarkCard({
         }
         event.preventDefault();
         event.stopPropagation();
+        if (options.isActivationSuppressed()) {
+          return;
+        }
         options.hideCursorTooltip();
         openBookmarkUrl(event);
       }}

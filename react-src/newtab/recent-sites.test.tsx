@@ -324,6 +324,40 @@ describe('Recent Sites React island', () => {
     expect(opened).toHaveBeenCalledTimes(1);
   });
 
+  it('treats a macOS Control-press as a right-click, not a background open', () => {
+    const platform = vi.spyOn(window.navigator, 'platform', 'get')
+      .mockReturnValue('MacIntel');
+    const opened = vi.fn();
+    const { view } = createView({ openUrl: opened });
+    renderItems(view, [{
+      title: 'Example',
+      url: 'https://example.com/'
+    }]);
+    const card = view.getCards()[0];
+
+    act(() => {
+      card.dispatchEvent(new MouseEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        ctrlKey: true
+      }));
+    });
+    expect(opened).not.toHaveBeenCalled();
+
+    platform.mockReturnValue('Win32');
+    act(() => {
+      card.dispatchEvent(new MouseEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        ctrlKey: true
+      }));
+    });
+    expect(opened).toHaveBeenCalledWith('https://example.com/', {
+      openInBackgroundTab: true
+    });
+    platform.mockRestore();
+  });
+
   it('offers a progress tracking switch on pinned cards', async () => {
     const states: Record<string, 'tracking' | 'available' | ''> = {
       'https://www.bilibili.com/video/BV11LEA6eEuj?p=2': 'tracking',

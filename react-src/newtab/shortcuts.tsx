@@ -100,6 +100,9 @@ export interface ShortcutsViewOptions {
     shortcut: ShortcutItem,
     event: ReactMouseEvent<HTMLElement> | ReactKeyboardEvent<HTMLElement>
   ) => void;
+  // True right after a press on an open context menu, so it does not open
+  // the tile underneath.
+  isActivationSuppressed?: () => boolean;
   onContextMenu?: (event: ReactMouseEvent<HTMLButtonElement>) => void;
   onNativeDragStart?: (event: ReactDragEvent<HTMLButtonElement>) => void;
   getAddLabel?: () => string;
@@ -179,6 +182,7 @@ interface NormalizedOptions {
     shortcut: ShortcutItem,
     event: ReactMouseEvent<HTMLElement> | ReactKeyboardEvent<HTMLElement>
   ) => void;
+  isActivationSuppressed: () => boolean;
   onContextMenu: (event: ReactMouseEvent<HTMLButtonElement>) => void;
   onNativeDragStart: (event: ReactDragEvent<HTMLButtonElement>) => void;
   getAddLabel: () => string;
@@ -236,6 +240,7 @@ function normalizeOptions(
       options.isMiddleClick ||
       ((event) => Number(event.button) === 1),
     openShortcut: options.openShortcut || (() => {}),
+    isActivationSuppressed: options.isActivationSuppressed || (() => false),
     onContextMenu: options.onContextMenu || (() => {}),
     onNativeDragStart: options.onNativeDragStart || ((event) => {
       event.preventDefault();
@@ -408,7 +413,10 @@ function ShortcutTile({
       ReactKeyboardEvent<HTMLButtonElement>
   ): void {
     const tile = tileRef.current;
-    if (tile?._xShortcutSuppressClick) {
+    if (
+      tile?._xShortcutSuppressClick ||
+      (event.type === 'click' && options.isActivationSuppressed())
+    ) {
       event.preventDefault();
       event.stopPropagation();
       return;
@@ -423,6 +431,9 @@ function ShortcutTile({
     }
     event.preventDefault();
     event.stopPropagation();
+    if (options.isActivationSuppressed()) {
+      return;
+    }
     options.openShortcut(shortcut, event);
   }
 

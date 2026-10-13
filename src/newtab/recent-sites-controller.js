@@ -46,9 +46,6 @@
     const RECENT_CONTEXT_MENU_MAX_WIDTH_PX = 200;
     const RECENT_CONTEXT_MENU_PORTAL_Z_INDEX = 10050;
     const RECENT_CONTEXT_MENU_PORTAL_OFFSET_PX = -6;
-    // Covers the menu's fade-out and the second press of a double-click.
-    const RECENT_CONTEXT_MENU_CLICK_THROUGH_GUARD_MS = 400;
-    let recentContextMenuClosedAt = 0;
 
     function getRecentShortcutSite(item) {
       const normalizedItem = normalizeRecentSiteRecord(item) || item;
@@ -114,22 +111,11 @@
     }
 
     function closeRecentContextMenu() {
-      if (isRecentContextMenuOpen()) {
-        recentContextMenuClosedAt = Date.now();
-      }
       clearRecentContextMenuTargetVisual();
       if (pageState.recentContextMenu && pageState.recentContextMenuSelectController) {
         pageState.recentContextMenuSelectController.setOpen(pageState.recentContextMenu.control, false);
       }
       pageState.recentContextMenuTarget = null;
-    }
-
-    // Cards open on pointerdown, so a press meant for the menu (dismissing it,
-    // the rest of a double-click on an item, or one through the fading menu)
-    // must not open the card underneath.
-    function isRecentCardActivationSuppressed() {
-      return isRecentContextMenuOpen() ||
-        Date.now() - recentContextMenuClosedAt < RECENT_CONTEXT_MENU_CLICK_THROUGH_GUARD_MS;
     }
 
     function getRecentContextMenuPoint(target, event) {
@@ -758,7 +744,6 @@
       getRecentContextMenuOptions,
       closeRecentContextMenu,
       handleRecentCardContextMenu,
-      isRecentCardActivationSuppressed,
       getRecentStoreOptions,
       getRecentSiteUrlKey,
       normalizeHiddenRecentSites,

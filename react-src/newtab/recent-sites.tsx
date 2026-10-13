@@ -276,6 +276,18 @@ function shouldOpenUrlInBackground(event: ActivationEvent | null): boolean {
   );
 }
 
+// On macOS a Control-click is a right-click: it opens the context menu, not
+// the card in a background tab.
+function isMacContextClick(
+  event: ReactPointerEvent<RecentCardElement>,
+  windowObj: Window
+): boolean {
+  const navigatorObj = windowObj.navigator;
+  return event.ctrlKey && /Mac|iPhone|iPad|iPod/i.test(
+    String(navigatorObj?.platform || navigatorObj?.userAgent || '')
+  );
+}
+
 function isRecentTitleTruncated(
   titleElement: HTMLDivElement | null
 ): boolean {
@@ -774,7 +786,7 @@ function RecentSiteCard({
   function handlePointerDown(
     event: ReactPointerEvent<RecentCardElement>
   ): void {
-    if (event.button !== 0) {
+    if (event.button !== 0 || isMacContextClick(event, options.windowObj)) {
       return;
     }
     if (options.isActivationSuppressed()) {
