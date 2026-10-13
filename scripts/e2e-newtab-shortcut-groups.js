@@ -194,7 +194,8 @@ async function openPage(cdp, viewport) {
       })()`);
     },
     async key(key, modifiers = 0) {
-      const codes = { Enter: ['Enter', 13], Escape: ['Escape', 27], Backspace: ['Backspace', 8], z: ['KeyZ', 90] };
+      const codes = { Enter: ['Enter', 13], Escape: ['Escape', 27], Backspace: ['Backspace', 8], z: ['KeyZ', 90],
+        ArrowLeft: ['ArrowLeft', 37], ArrowRight: ['ArrowRight', 39] };
       const [code, keyCode] = codes[key];
       // Enter carries its character, or a form would not submit.
       const text = key === 'Enter' ? { type: 'keyDown', text: '\r', unmodifiedText: '\r' } : { type: 'rawKeyDown' };
@@ -519,6 +520,39 @@ check('a group menu button hides once its menu closes', WIDE, async (page) => {
     await page.settle(300);
     if (await shown()) problems.push({ key: `button still shown after ${how}`, dx: 0, dy: 0 });
   }
+  return problems;
+});
+
+// Alt+Arrow moves the focused tile one place, across a group's edge too,
+// keeps focus on it and does not send the page back in history.
+check('Alt+Arrow moves a focused tile one place', WIDE, async (page) => {
+  await page.seed(BASE_GROUPS, BASE_ITEMS);
+  const ALT = 1;
+  const read = () => page.evaluate(`(() => ({
+    order: Array.from(document.querySelectorAll('.x-nt-shortcut-tile[data-shortcut-id]'))
+      .map((tile) => tile.getAttribute('data-shortcut-group-id') + ':' + tile.getAttribute('data-shortcut-id'))
+      .join(' '),
+    focused: document.activeElement && document.activeElement.getAttribute('data-shortcut-id'),
+    href: location.href
+  }))()`);
+  const start = await read();
+  const problems = [];
+  const expect = async (label, order, focused) => {
+    await page.settle();
+    const now = await read();
+    if (now.order !== order) problems.push({ key: `${label}: ${now.order}`, dx: 0, dy: 0 });
+    if (now.focused !== focused) problems.push({ key: `${label}: focus on ${now.focused}`, dx: 0, dy: 0 });
+    if (now.href !== start.href) problems.push({ key: `${label}: navigated to ${now.href}`, dx: 0, dy: 0 });
+  };
+  const rest = 'work:w1 work:w2 work:w3 work:w4 read:r1 read:r2';
+  await page.evaluate(`document.querySelector('[data-shortcut-id="a1"]').focus()`);
+  await page.key('ArrowRight', ALT);
+  await expect('a1 right', `g0:a2 g0:a1 g0:a3 g0:a4 g0:a5 ${rest}`, 'a1');
+  await page.evaluate(`document.querySelector('[data-shortcut-id="a5"]').focus()`);
+  await page.key('ArrowRight', ALT);
+  await expect('a5 into work', `g0:a2 g0:a1 g0:a3 g0:a4 work:a5 ${rest}`, 'a5');
+  await page.key('ArrowLeft', ALT);
+  await expect('a5 back', `g0:a2 g0:a1 g0:a3 g0:a4 g0:a5 ${rest}`, 'a5');
   return problems;
 });
 
