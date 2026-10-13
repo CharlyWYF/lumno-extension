@@ -407,6 +407,33 @@ check('many shortcuts stay clickable above the dock', { width: 1440, height: 900
   return problems;
 });
 
+// On a 13-inch screen two full rows push the add tile onto a row of its own.
+// A dock holding only the recent cards needs less than its usual floor, so
+// that row fits whole instead of scrolling out under the area's edge.
+check('the add tile on its own row shows whole on a short screen', { width: 1180, height: 650 }, async (page) => {
+  await page.load();
+  await page.evaluate(`(async () => {
+    for (const title of ['网站', '工具', '科技', '文章']) {
+      const folder = await chrome.bookmarks.create({ parentId: '1', title });
+      await chrome.bookmarks.create({ parentId: folder.id, title, url: 'https://' + folder.id + '.example.com/' });
+    }
+  })()`);
+  await page.seed([{ id: 'g0', title: '' }], Array.from({ length: 20 }, (_, index) => link(`m${index}`, 'g0')),
+    { _x_extension_bookmark_view_mode_2026_unique_: 'top' });
+  const state = await page.evaluate(`(() => {
+    const area = document.querySelector('.x-nt-shortcuts-section').getBoundingClientRect();
+    const add = document.querySelector('.x-nt-shortcut-tile--add:not([hidden])');
+    if (!add) return { missing: true };
+    const r = add.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return { clipped: Math.round(Math.max(0, r.bottom - area.bottom)), clickable: add.contains(hit),
+      dock: Boolean(document.querySelector('#_x_extension_newtab_recent_sites_2024_unique_:not([hidden])')) };
+  })()`);
+  return state.missing || state.clipped > 0 || !state.clickable || !state.dock
+    ? [{ key: `add tile ${JSON.stringify(state)}`, dx: 0, dy: 0 }]
+    : [];
+});
+
 // The add tile asks what to add on a click and has no right-click menu.
 check('the add tile offers a site, a group or hiding it', WIDE, async (page) => {
   await page.seed(BASE_GROUPS, BASE_ITEMS);

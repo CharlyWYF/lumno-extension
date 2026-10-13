@@ -570,9 +570,18 @@
           Number(bottomDock.getBoundingClientRect().top) || viewportHeight,
           dockSurface ? Number(dockSurface.getBoundingClientRect().top) || viewportHeight : viewportHeight
         );
+        // The dock keeps what its content needs, up to the usual floor: on
+        // short screens recent cards alone need less, and that room is
+        // where a last row of shortcuts or the add tile fits.
+        const dockOverflow = dockSurface
+          ? Math.max(0, (Number(dockSurface.scrollHeight) || 0) - (Number(dockSurface.clientHeight) || 0))
+          : 0;
+        const dockNeed = dockSurface && Number(dockSurface.scrollHeight) > 0
+          ? Math.min(shortcutAreaMinDockHeightPx, viewportHeight - dockTop + dockOverflow)
+          : shortcutAreaMinDockHeightPx;
         const room = Math.min(
           dockTop - shortcutAreaDockGapPx,
-          viewportHeight - shortcutAreaMinDockHeightPx
+          viewportHeight - dockNeed
         ) - sectionTop;
         const gridHeight = Math.max(0, Number(grid.offsetHeight) || 0);
         if (gridHeight > Math.max(shortcutAreaMinHeightPx, room)) {
