@@ -1,13 +1,14 @@
 const assert = require('assert');
 const fs = require('fs');
 const { readPageSource } = require('./helpers/page-source');
+const { readBackgroundSource } = require('./helpers/background-source');
 
 const contentHotkeySource = fs.readFileSync('src/content/hotkey-listener.js', 'utf8');
 const shortcutReleaseRelaySource = fs.readFileSync(
   'src/content/shortcut-key-observer.js',
   'utf8'
 );
-const backgroundSource = fs.readFileSync('src/background/background.js', 'utf8');
+const backgroundSource = readBackgroundSource();
 const switcherSource = fs.readFileSync('src/overlay/tab-switcher.js', 'utf8');
 const switcherViewReactSource = fs.readFileSync(
   'react-src/overlay/tab-switcher.tsx',

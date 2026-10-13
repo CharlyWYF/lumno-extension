@@ -28,6 +28,7 @@ const injectedScriptFiles = [
   'src/background/shortcut-rules.js',
   'src/background/pip-ownership.js',
   'src/background/pip-main-world.js',
+  'src/background/search-suggestions-service.js',
   'src/shared/extension-routes.js',
   'src/shared/navigation-disposition.js',
   'src/shared/community-links.js',

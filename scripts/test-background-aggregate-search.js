@@ -4,11 +4,9 @@ const path = require('path');
 const vm = require('vm');
 const aggregateSearch = require('../src/background/aggregate-search.js');
 const aggregateStore = require('../src/shared/aggregate-search-store.js');
+const { readBackgroundSource } = require('./helpers/background-source');
 
-const backgroundSource = fs.readFileSync(
-  path.join(__dirname, '..', 'src/background/background.js'),
-  'utf8'
-);
+const backgroundSource = readBackgroundSource();
 const aggregateSearchSource = fs.readFileSync(
   path.join(__dirname, '..', 'src/background/aggregate-search.js'),
   'utf8'

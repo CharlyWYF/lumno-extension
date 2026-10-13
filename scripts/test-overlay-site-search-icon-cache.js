@@ -3,8 +3,9 @@ const fs = require('fs');
 const shortcutFavicon = require('../src/shared/shortcut-favicon.js');
 const searchUtils = require('../src/shared/search-utils.js');
 const { readNewtabRuntimeSource } = require('./helpers/newtab-source');
+const { readBackgroundSource } = require('./helpers/background-source');
 
-const backgroundSource = fs.readFileSync('src/background/background.js', 'utf8');
+const backgroundSource = readBackgroundSource();
 const newtabSource = readNewtabRuntimeSource();
 const overlaySource = fs.readFileSync('src/overlay/search-panel.js', 'utf8');
 const overlayRuntimeSource = fs.readFileSync('src/overlay/runtime.js', 'utf8');
@@ -153,11 +154,6 @@ assert.match(
   'fixed proxy icon requests should reject redirects and revalidate the response URL'
 );
 
-assert.match(
-  backgroundSource,
-  /function warmSiteSearchProviderIcons\(\)[\s\S]*?scheduleSiteSearchProviderIconWarmup\(providers, ''\)[\s\S]*?warmSiteSearchProviderIcons\(\);/,
-  'provider icons should warm as soon as the background runtime starts'
-);
 
 assert.match(
   backgroundSource,
@@ -273,4 +269,27 @@ assert.doesNotMatch(
   'the stylesheet should not start a second uncoordinated current-label animation'
 );
 
-console.log('overlay site-search icon cache tests passed');
+(async () => {
+  // Provider icons should warm as soon as the background runtime starts: the
+  // warmup reads the canonical provider icon cache before fetching icons.
+  const { loadBackground, wait } = require('./helpers/background-harness');
+  const harness = loadBackground({
+    fetch: async (url) => {
+      if (String(url).endsWith('assets/data/site-search.json')) {
+        return { ok: true, json: async () => JSON.parse(siteSearchSource) };
+      }
+      throw new Error('offline');
+    }
+  });
+  await wait(80);
+  const readKeys = harness.storage.local.reads.flatMap((keys) => (Array.isArray(keys) ? keys : [keys]));
+  assert.ok(
+    readKeys.includes(shortcutFavicon.SITE_SEARCH_STORAGE_KEY),
+    'provider icons should warm as soon as the background runtime starts'
+  );
+  console.log('overlay site-search icon cache tests passed');
+  process.exit(0);
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

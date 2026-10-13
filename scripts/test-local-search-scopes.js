@@ -3,12 +3,13 @@ const fs = require('fs');
 const path = require('path');
 const { readPageSource } = require('./helpers/page-source');
 const { readNewtabRuntimeSource } = require('./helpers/newtab-source');
+const { readBackgroundSource } = require('./helpers/background-source');
 
 const repoRoot = path.resolve(__dirname, '..');
 const readSource = (relativePath) => fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
 const newtabSource = readNewtabRuntimeSource();
 const overlaySource = readSource('src/overlay/search-panel.js');
-const backgroundSource = readSource('src/background/background.js');
+const backgroundSource = readBackgroundSource();
 const inputModeSource = readSource('src/shared/search-input-mode.js');
 const inputModeCss = readSource('src/shared/search-input.css');
 const newtabHtml = readPageSource('newtab.html');

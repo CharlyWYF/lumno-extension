@@ -37,9 +37,11 @@ function createStorageArea(name, initialData, options) {
   const data = Object.assign({}, initialData || {});
   const config = options || {};
   const writes = [];
+  const reads = [];
   const area = {
     data,
     writes,
+    reads,
     // While held, get() callbacks queue up as they would while the browser
     // is still reading storage for a freshly woken worker.
     held: config.hold === true,
@@ -50,6 +52,7 @@ function createStorageArea(name, initialData, options) {
       pending.forEach((run) => run());
     },
     get(keys, callback) {
+      reads.push(keys);
       const run = () => {
         const result = {};
         const keyList = keys === null || keys === undefined
@@ -360,19 +363,36 @@ function loadBackground(options) {
   });
   context.globalThis = context;
   context.self = context;
-  context.importScripts = (...urls) => {
-    urls.forEach((url) => {
-      vm.runInContext(fs.readFileSync(String(url), 'utf8'), context, {
-        filename: String(url)
-      });
+  const runFile = (file) => {
+    vm.runInContext(fs.readFileSync(String(file), 'utf8'), context, {
+      filename: String(file)
     });
   };
+  const backgroundPath = path.join(repoRoot, 'src/background/background.js');
+  const backgroundSource = fs.readFileSync(backgroundPath, 'utf8');
+  if (config.firefoxOrder === true) {
+    // Mirrors scripts/build-firefox.js: Firefox event pages have no
+    // importScripts, so the first import block (plus the development debug
+    // bridge and lazily imported vendor scripts) loads as separate scripts
+    // before background.js, which then runs with a no-op importScripts.
+    const importBlock = backgroundSource.match(/importScripts\(([\s\S]*?)\);/);
+    const deps = [...importBlock[1].matchAll(/getURL\('([^']+)'\)/g)].map((match) => match[1]);
+    const lazyDeps = [...backgroundSource.matchAll(/^const \w+_SCRIPT_PATH = '([^']+)';$/gm)]
+      .map((match) => match[1]);
+    deps.concat(['src/background/codex-debug-bridge.js'], lazyDeps)
+      .forEach((dep) => runFile(path.join(repoRoot, dep)));
+    context.importScripts = () => {};
+  } else {
+    context.importScripts = (...urls) => {
+      urls.forEach(runFile);
+    };
+  }
   const exposed = Array.isArray(config.expose) ? config.expose : [];
   const exposeSource = exposed.map((name) => (
     `\nglobalThis.__test_${name} = typeof ${name} === 'undefined' ? undefined : ${name};`
   )).join('');
   vm.runInContext(
-    fs.readFileSync(path.join(repoRoot, 'src/background/background.js'), 'utf8') + exposeSource,
+    backgroundSource + exposeSource,
     context,
     { filename: 'src/background/background.js' }
   );
