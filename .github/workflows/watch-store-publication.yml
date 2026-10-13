@@ -25,9 +25,11 @@ permissions:
   contents: read
 
 concurrency:
-  # A newer release replaces the watch for an older one.
+  # A newer release replaces the watch for an older one. A handover run (it
+  # carries started_at) queues behind the run that dispatched it instead, so
+  # that run finishes as a success rather than showing as cancelled.
   group: watch-store-publication
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'release' || inputs.started_at == '' }}
 
 jobs:
   watch:
