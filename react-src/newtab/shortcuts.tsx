@@ -119,6 +119,7 @@ export interface ShortcutsViewOptions {
 
 export interface ShortcutsViewController {
   render(items: ShortcutItem[], layout?: ShortcutsLayout): { count: number };
+  widenGroupedColumns(items: ShortcutItem[], groups: ShortcutGroup[]): boolean;
   clear(): void;
   refreshElements(): void;
   getTiles(): ShortcutTileElement[];
@@ -644,6 +645,9 @@ function createNoopController(
       tiles.length = 0;
       return { count: 0 };
     },
+    widenGroupedColumns() {
+      return false;
+    },
     clear() {
       tiles.length = 0;
     },
@@ -748,8 +752,27 @@ export function createShortcutsView(
     return { count: normalizedItems.length };
   }
 
+  // A drag moves tiles between groups without a render. A group the tile
+  // joins can outgrow the row the grid hugs and would wrap, so the grid
+  // widens to fit it; it never narrows under the pointer, and the render
+  // after the drop settles it. Returns whether the grid widened.
+  function widenGroupedColumns(items: ShortcutItem[], groups: ShortcutGroup[]): boolean {
+    if (options.grid.getAttribute('data-shortcut-grouped') !== 'true' ||
+        !Array.isArray(items) || !Array.isArray(groups) || !groups.length) {
+      return false;
+    }
+    const current = Number(options.grid.style.getPropertyValue('--x-nt-shortcut-grouped-columns')) || 0;
+    const next = getGroupedColumnCount(items, groups);
+    if (next <= current) {
+      return false;
+    }
+    options.grid.style.setProperty('--x-nt-shortcut-grouped-columns', String(next));
+    return true;
+  }
+
   return {
     render,
+    widenGroupedColumns,
     clear() {
       options.hideTooltip();
       flushSync(() => {

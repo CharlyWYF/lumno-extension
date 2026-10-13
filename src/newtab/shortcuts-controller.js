@@ -660,6 +660,13 @@
       });
     }
 
+    // A drag moves tiles between groups without rendering; the grid widens
+    // when the group a tile joins outgrows its longest row.
+    function widenShortcutGroupColumns() {
+      return Boolean(shortcutsView && isShortcutGroupLayoutActive() &&
+        shortcutsView.widenGroupedColumns(getVisibleShortcuts(), shortcutGroups));
+    }
+
     function applyShortcutState(state) {
       pageState.newtabShortcuts = state.items;
       shortcutGroups = state.groups;
@@ -1609,6 +1616,7 @@
       createShortcutDialogComponent,
       getShortcutGroups,
       isShortcutGroupLayoutActive,
+      widenShortcutGroupColumns,
       getShortcutGroupDisplayTitle,
       openShortcutAddDialog,
       openShortcutGroupDialog,

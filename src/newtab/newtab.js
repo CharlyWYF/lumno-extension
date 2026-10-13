@@ -4209,6 +4209,7 @@
     createShortcutDialogComponent,
     getShortcutGroups,
     isShortcutGroupLayoutActive,
+    widenShortcutGroupColumns,
     openShortcutAddDialog,
     openShortcutGroupDialog,
     moveShortcutGroup,
@@ -5700,6 +5701,7 @@
     getShortcutTileFromNode,
     closeShortcutContextMenu,
     moveShortcutGroupToIndex,
+    widenShortcutGroupColumns,
     pageState: {
       get shortcutGrid() {
         return shortcutGrid;

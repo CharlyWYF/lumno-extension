@@ -532,6 +532,25 @@ check('moving a tile into another group keeps the other groups in place', WIDE, 
   return movedBetween(before, await page.snapshot(), ['tile:w4', 'add']);
 });
 
+// The grid hugs its longest row; a tile joining that row widens the grid
+// during the drag instead of wrapping the row until the drop.
+check('a tile dragged into the longest row keeps it on one line', WIDE, async (page) => {
+  await page.seed(BASE_GROUPS, BASE_ITEMS);
+  const target = await page.rect('[data-shortcut-id="a2"]');
+  let during = null;
+  await page.drag('[data-shortcut-id="w1"]', { x: target.x - 10, y: target.y }, {
+    before: async () => {
+      await page.settle(250);
+      during = await page.snapshot();
+    }
+  });
+  await page.settle(900);
+  const rows = new Set(['a1', 'a2', 'a3', 'a4', 'a5'].map((id) => Math.round(during[`tile:${id}`].top)));
+  const problems = rows.size > 1 ? [{ key: `first group took ${rows.size} rows during the drag`, dx: 0, dy: 0 }] : [];
+  // What the drag showed is where the drop leaves it.
+  return [...problems, ...movedBetween(during, await page.snapshot(), ['tile:w1'])];
+});
+
 check('emptying the longest row re-centers the grid as a whole', WIDE, async (page) => {
   await page.seed(BASE_GROUPS, BASE_ITEMS);
   const before = await page.snapshot();

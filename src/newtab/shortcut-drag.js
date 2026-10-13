@@ -49,7 +49,8 @@
       isShortcutContextMenuNode,
       getShortcutTileFromNode,
       closeShortcutContextMenu,
-      moveShortcutGroupToIndex
+      moveShortcutGroupToIndex,
+      widenShortcutGroupColumns
     } = deps;
 
     // Page state still owned by newtab.js; read and written through accessors.
@@ -586,6 +587,8 @@
       if (moveShortcutItem(state.shortcutId, targetIndex, targetGroupId)) {
         state.hasReordered = true;
         if (moveShortcutTileElement(state.tile, targetIndex, slot)) {
+          // Before measuring, so a row that would have wrapped slides wider.
+          widenShortcutGroupColumns();
           animateShortcutLayoutShift(beforeRects, state.tile);
           setShortcutDragTileTransform(state, pointerX, pointerY);
         }
