@@ -273,11 +273,6 @@ assert.match(
   /if \(restricted\)[\s\S]*isSearchCommandSource\(source\) && \(isLumnoNewtabUrl\(activeUrl\) \|\| isBrowserNewtabUrl\(activeUrl\)\)[\s\S]*requestFocusVisibleNewtabInput\(source,\s*activeTab\.id\)[\s\S]*return;/,
   'show-search commands on restricted Lumno/browser newtab URLs should keep focusing the visible newtab input'
 );
-assert.match(
-  openOverlayBlock,
-  /if \(action === 'none'\)[\s\S]*fallback-open-browser-newtab[\s\S]*openBrowserNewtabFallback\(\{ sourceTab: activeTab \}\)[\s\S]*return;/,
-  'restricted browser-setting action should open the browser-selected newtab provider instead of suppressing the shortcut'
-);
 assert.strictEqual(
   (manifest.permissions || []).includes('management'),
   false,

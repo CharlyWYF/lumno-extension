@@ -1083,6 +1083,14 @@ function setRestrictedActionFromBrowserNewtabProvider(providerType, tab, stage) 
   if (providerType !== 'other-extension') {
     return;
   }
+  if (!backgroundSettingsLoaded) {
+    // The one-time auto choice must not overwrite a later manual choice just
+    // because the done flag has not been read yet on this wake.
+    whenBackgroundSettingsReady(() => {
+      setRestrictedActionFromBrowserNewtabProvider(providerType, tab, stage);
+    });
+    return;
+  }
   if (restrictedActionAutoBrowserSettingDoneCache) {
     return;
   }
@@ -1445,10 +1453,13 @@ const TAB_SWITCHER_EXTENSION_PAGE_PORT_NAME = 'lumno-tab-switcher-extension-page
 const TAB_SWITCHER_EXTENSION_PAGE_PORT_WAIT_MS = 650;
 const TAB_SWITCHER_EXTENSION_PAGE_PORT_RETRY_MS = 50;
 const TAB_SWITCHER_HOST_ID = '_x_extension_tab_switcher_host_2026_unique_';
+// Ports close when the worker suspends, so this registry dies with them.
 const tabSwitcherExtensionPagePortsByTabId = new Map();
 const TAB_SWITCHER_OPENING_GUARD_MS = 2000;
+// Short-lived opening guard; losing it only allows a fresh open.
 const tabSwitcherOpeningByWindowKey = new Map();
 const TAB_SWITCHER_HOST_STATE_TIMEOUT_MS = 400;
+// Hint only: findOpenTabSwitcherHostInWindow scans the window when it is missing.
 const tabSwitcherHostTabIdByWindowId = new Map();
 const HOTKEY_DUP_GUARD_MS = 180;
 const OVERLAY_OPENING_GUARD_MS = 5000;
@@ -1492,6 +1503,12 @@ const TAB_SWITCH_EVENT_HISTORY_LIMIT = 60;
 const TAB_SWITCH_STATS_STORAGE_KEY = '_x_extension_tab_switch_stats_2026_unique_';
 const PINNED_TAB_SNAPSHOT_DEBOUNCE_MS = 600;
 const PINNED_TAB_RESTORE_MAX_TABS = 24;
+// Service-worker lifetime: everything below is lost when the worker suspends
+// and is re-created on the next wake. Each group says how it survives that.
+//
+// Settings mirrors, re-read from storage on every wake (see the storageArea.get
+// below). Until that read lands they hold defaults, so event paths that act on
+// them wait for backgroundSettingsReady (see whenBackgroundSettingsReady).
 let restrictedActionCache = 'default';
 let restrictedActionAutoBrowserSettingDoneCache = false;
 let documentPipEnabledCache = false;
@@ -1503,29 +1520,46 @@ const documentPipEnabledReady = new Promise((resolve) => {
 });
 let tabSwitcherEnabledCache = true;
 let pinnedTabRecoveryEnabledCache = false;
+let backgroundSettingsLoaded = false;
+let resolveBackgroundSettingsReady = () => {};
+const backgroundSettingsReady = new Promise((resolve) => {
+  resolveBackgroundSettingsReady = resolve;
+});
+// Short-lived guards (<= a few seconds) that may be lost: a fresh worker simply
+// treats the next hotkey/open as new.
 const hotkeyInvokeAtByTabId = new Map();
 const overlayOpeningByTabId = new Map();
-const overlayNavigationStateByTabId = new Map();
-const overlayLoadingRecordsByTabId = new Map();
 const overlayLoadingRecoveryInFlightByTabId = new Set();
 const overlayLoadingPendingUpdateByTabId = new Map();
 const browserNewtabProviderCandidateTabIds = new Map();
 let lastPageHotkeyContext = null;
+// Write-through caches of chrome.storage.session records, re-read on a miss.
+const overlayNavigationStateByTabId = new Map();
+const overlayLoadingRecordsByTabId = new Map();
+// Tab switch stats: persisted on every change to session storage and merged
+// back by ensureTabSwitchStatsLoaded on wake.
 const tabSwitchEventsByTabId = new Map();
+// Rebuilt from tab.lastAccessed on the next tab listing.
 const tabLastAccessedByTabId = new Map();
+// Debug counter and request sequence numbers; restarting them is harmless.
 let tabSwitchEventDebugTotal = 0;
 let tabOverlayFetchSeq = 0;
 let tabSwitchStatsLoaded = false;
 let tabSwitchStatsLoadPromise = null;
+// Pinned-tab snapshot: debounced write, flushed on runtime.onSuspend.
 let pinnedTabSnapshotTimer = null;
 let pinnedTabSnapshotPersistOptions = null;
 let pinnedTabRecoverySettingLoaded = false;
 let pinnedTabRecoverySettingLoadPromise = null;
 let pinnedTabRestorePromise = null;
+// Thumbnail capture scheduling; pending captures are simply retried on the
+// next activation.
 const tabSwitcherThumbnailTimersByTabId = new Map();
 const tabSwitcherThumbnailPriorityByTabId = new Map();
 let tabSwitcherThumbnailCaptureChain = Promise.resolve(false);
 let tabSwitcherLastCaptureAt = 0;
+// Recent-tab switcher state: hydrated from storage on wake, debounced write
+// flushed on runtime.onSuspend.
 let tabSwitcherStateLoaded = false;
 let tabSwitcherStateLoadPromise = null;
 let tabSwitcherStatePersistTimer = null;
@@ -1539,6 +1573,7 @@ const recentTabTracker = RECENT_TAB_SWITCHER.createRecentTabTracker({
 });
 const faviconVisitDirtyWriteDebounceMs = 400;
 const faviconVisitDirtyMarkThrottleMs = 2 * 60 * 1000;
+// Pending dirty marks; losing them only delays a favicon refresh.
 const faviconVisitDirtyMarkCache = new Map();
 let faviconVisitDirtyPersistTimer = null;
 
@@ -1764,6 +1799,14 @@ function schedulePersistTabSwitcherState() {
   }, TAB_SWITCHER_THUMBNAIL_PERSIST_DEBOUNCE_MS);
 }
 
+function flushPendingTabSwitcherState() {
+  if (tabSwitcherStatePersistTimer === null || !tabSwitcherStateLoaded) {
+    return Promise.resolve(false);
+  }
+  clearTimeout(tabSwitcherStatePersistTimer);
+  return persistTabSwitcherState().catch(() => false);
+}
+
 function normalizeTabSwitchStatEntry(raw, now) {
   if (!raw || typeof raw !== 'object') {
     return null;
@@ -1845,6 +1888,11 @@ function persistTabSwitchStatsNow() {
   const area = getTabSwitchStorageArea();
   if (!area) {
     return Promise.resolve(false);
+  }
+  if (!tabSwitchStatsLoaded) {
+    // A tab activation can wake the worker; writing before the stored stats
+    // are merged back would replace them with just this one event.
+    return ensureTabSwitchStatsLoaded().then(() => persistTabSwitchStatsNow());
   }
   const snapshot = exportTabSwitchStatsSnapshot();
   return new Promise((resolve) => {
@@ -2329,6 +2377,16 @@ function mergePinnedTabSnapshotPersistOptions(options) {
 }
 
 function schedulePersistPinnedTabSnapshot(options) {
+  if (!pinnedTabRecoverySettingLoaded) {
+    // A worker woken by a pin, move or close sees that event before the
+    // recovery setting is read; dropping it would leave the snapshot stale.
+    ensurePinnedTabRecoverySettingLoaded().then(() => {
+      if (pinnedTabRecoverySettingLoaded) {
+        schedulePersistPinnedTabSnapshot(options);
+      }
+    });
+    return;
+  }
   if (!pinnedTabRecoveryEnabledCache) {
     if (pinnedTabSnapshotTimer !== null) {
       clearTimeout(pinnedTabSnapshotTimer);
@@ -2341,12 +2399,20 @@ function schedulePersistPinnedTabSnapshot(options) {
   if (pinnedTabSnapshotTimer !== null) {
     clearTimeout(pinnedTabSnapshotTimer);
   }
-  pinnedTabSnapshotTimer = setTimeout(() => {
-    const persistOptions = pinnedTabSnapshotPersistOptions;
-    pinnedTabSnapshotPersistOptions = null;
-    pinnedTabSnapshotTimer = null;
-    persistPinnedTabSnapshotNow(persistOptions).catch(() => {});
-  }, PINNED_TAB_SNAPSHOT_DEBOUNCE_MS);
+  pinnedTabSnapshotTimer = setTimeout(flushPendingPinnedTabSnapshot, PINNED_TAB_SNAPSHOT_DEBOUNCE_MS);
+}
+
+function flushPendingPinnedTabSnapshot() {
+  if (pinnedTabSnapshotTimer === null) {
+    return Promise.resolve();
+  }
+  clearTimeout(pinnedTabSnapshotTimer);
+  const persistOptions = pinnedTabSnapshotPersistOptions;
+  pinnedTabSnapshotPersistOptions = null;
+  pinnedTabSnapshotTimer = null;
+  return persistPinnedTabSnapshotNow(persistOptions).catch((error) => {
+    console.warn('[Lumno] Failed to save the pinned-tab snapshot.', error);
+  });
 }
 
 async function restorePinnedTabsFromSnapshotNow() {
@@ -2607,7 +2673,8 @@ if (storageArea) {
     DOCUMENT_PIP_ENABLED_STORAGE_KEY,
     TAB_SWITCHER_ENABLED_STORAGE_KEY,
     PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY
-  ], (result) => {
+  ], (storedResult) => {
+    const result = storedResult || {};
     const stored = result[RESTRICTED_ACTION_STORAGE_KEY];
     const normalized = stored === 'none' ? 'none' : 'default';
     if (normalized !== stored) {
@@ -2630,9 +2697,27 @@ if (storageArea) {
     tabSwitcherEnabledCache = normalizedTabSwitcher;
     const pinnedTabRecoveryStored = result[PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY];
     applyPinnedTabRecoverySetting(pinnedTabRecoveryStored);
+    markBackgroundSettingsLoaded();
   });
 } else {
   resolveDocumentPipEnabledReady();
+  markBackgroundSettingsLoaded();
+}
+
+function markBackgroundSettingsLoaded() {
+  backgroundSettingsLoaded = true;
+  resolveBackgroundSettingsReady();
+}
+
+// A worker woken by a command, a tab event or a page hotkey runs that handler
+// before its stored settings arrive. Run the callback now when they are known,
+// otherwise as soon as they are, so a disabled feature stays disabled.
+function whenBackgroundSettingsReady(callback) {
+  if (backgroundSettingsLoaded) {
+    callback();
+    return;
+  }
+  backgroundSettingsReady.then(callback);
 }
 
 function migrateStorageIfNeeded(keys) {
@@ -4495,6 +4580,27 @@ function recoverOverlayAfterTopFrameDocumentStart(request, sender) {
   return true;
 }
 
+function openRestrictedOverlayFallback(activeTab, activeUrl, source) {
+  const action = restrictedActionCache || 'default';
+  logHotkeyDebug('restricted-url', {
+    action: action,
+    url: activeUrl,
+    source: source || ''
+  });
+  if (action === 'none') {
+    logHotkeyDebug('fallback-open-browser-newtab', { reason: 'restricted_url', source: source || '' });
+    openBrowserNewtabFallback({ sourceTab: activeTab });
+    return;
+  }
+  if (action === 'default') {
+    logHotkeyDebug('fallback-open-create-newtab', { reason: 'restricted_url', source: source || '' });
+    openNewtabFallbackForUrl(activeUrl, { sourceTab: activeTab });
+    return;
+  }
+  logHotkeyDebug('fallback-open-lumno-newtab', { reason: 'restricted_url', source: source || '' });
+  openNewtabFallbackForUrl(activeUrl, { sourceTab: activeTab });
+}
+
 function openOverlayOnTab(activeTab, tabs, source, options) {
   const openOptions = options && typeof options === 'object' ? options : {};
   const overlayOpenStartedAt = Date.now();
@@ -4571,24 +4677,9 @@ function openOverlayOnTab(activeTab, tabs, source, options) {
     if (recoverOverlayTargetFromCommandNewtab(activeTab, tabs, source)) {
       return;
     }
-    const action = restrictedActionCache || 'default';
-    logHotkeyDebug('restricted-url', {
-      action: action,
-      url: activeUrl,
-      source: source || ''
+    whenBackgroundSettingsReady(() => {
+      openRestrictedOverlayFallback(activeTab, activeUrl, source);
     });
-    if (action === 'none') {
-      logHotkeyDebug('fallback-open-browser-newtab', { reason: 'restricted_url', source: source || '' });
-      openBrowserNewtabFallback({ sourceTab: activeTab });
-      return;
-    }
-    if (action === 'default') {
-      logHotkeyDebug('fallback-open-create-newtab', { reason: 'restricted_url', source: source || '' });
-      openNewtabFallbackForUrl(activeUrl, { sourceTab: activeTab });
-      return;
-    }
-    logHotkeyDebug('fallback-open-lumno-newtab', { reason: 'restricted_url', source: source || '' });
-    openNewtabFallbackForUrl(activeUrl, { sourceTab: activeTab });
     return;
   }
   overlayOpening = beginOverlayOpening(activeTab, source);
@@ -5090,6 +5181,12 @@ function advanceExistingTabSwitcherOnTab(tab, source, callback) {
 }
 
 function triggerTabSwitcherForTab(tab, source, commandObservedAt) {
+  if (!backgroundSettingsLoaded) {
+    whenBackgroundSettingsReady(() => {
+      triggerTabSwitcherForTab(tab, source, commandObservedAt);
+    });
+    return;
+  }
   const observedAt = Number(commandObservedAt);
   const commandStartedAt = Number.isFinite(observedAt) && observedAt > 0
     ? observedAt
@@ -5691,6 +5788,14 @@ if (chrome && chrome.runtime && chrome.runtime.onStartup) {
 }
 ensureTabSwitchStatsLoaded().catch(() => {});
 ensureTabSwitcherStateLoaded().catch(() => {});
+// Chrome keeps a worker alive for its short debounce timers, but Firefox's
+// event page can be unloaded with one pending; write it out first.
+if (chrome && chrome.runtime && chrome.runtime.onSuspend) {
+  chrome.runtime.onSuspend.addListener(() => {
+    flushPendingPinnedTabSnapshot();
+    flushPendingTabSwitcherState();
+  });
+}
 cleanupRemovedAiStorageKeys();
 cleanupLocalOnlyBookmarkTopbarSyncStorage();
 
