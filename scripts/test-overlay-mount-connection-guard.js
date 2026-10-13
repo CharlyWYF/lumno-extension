@@ -1,11 +1,9 @@
 const assert = require('assert');
-const fs = require('fs');
 
 delete globalThis.LumnoOverlayLifecycle;
 require('../src/overlay/lifecycle.js');
 
 const lifecycle = globalThis.LumnoOverlayLifecycle;
-const searchPanelSource = fs.readFileSync('src/overlay/search-panel.js', 'utf8');
 
 function createHarness() {
   let nextTimerId = 1;
@@ -156,16 +154,5 @@ assert.ok(
   assert.strictEqual(harness.timers.size, 0, 'intentional teardown must not reattach the host');
   assert.strictEqual(harness.listeners.has('fullscreenchange'), false);
 }
-
-assert.match(
-  searchPanelSource,
-  /createMountConnectionGuard\(window,[\s\S]*?_lumnoMountConnectionGuard = mountConnectionGuard;[\s\S]*?mountConnectionGuard\.start\(overlayHost\)/,
-  'the Overlay should guard its real closed-shadow mount host'
-);
-assert.match(
-  searchPanelSource,
-  /const mountConnectionGuard = mountHost && mountHost\._lumnoMountConnectionGuard;[\s\S]*?mountConnectionGuard\.stop\(\);[\s\S]*?mountHost\.remove\(\);/,
-  'intentional close should stop reconnection before removing the mount host'
-);
 
 console.log('overlay mount connection guard tests passed');

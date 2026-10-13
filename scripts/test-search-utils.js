@@ -60,33 +60,13 @@ function assertKeywordOnlySuggestionsKeepSearchActionFirst(relativePath) {
   );
   assert.match(
     source,
-    /!strongNavigationMatch && preferAutocompleteFirst && !onlyKeywordSuggestions/,
-    `${relativePath} should not promote search-engine suggestions ahead of the explicit search action`
-  );
-  assert.match(
-    source,
     /if \(onlyKeywordSuggestions\) \{\s*clearAutocomplete\(\);\s*\} else \{\s*applyAutocomplete\(allSuggestions,\s*primarySuggestion,\s*primaryHighlightReason\);\s*\}/,
     `${relativePath} should disable autocomplete when the only available results are keyword search suggestions`
   );
   assert.match(
     source,
-    /if \(preferAutocompleteFirst &&\s*!siteSearchState && query && !onlyKeywordSuggestions &&/,
-    `${relativePath} should only let open-tab quick switch replace the first row in autocomplete-first mode`
-  );
-  assert.match(
-    source,
     /const autocompleteSuggestions = getKeywordSearchSuggestionState\(allSuggestions\)\.autocompleteSuggestions;[\s\S]*?getDomainPrefixCandidate\(autocompleteSuggestions,/,
     `${relativePath} should use shared autocomplete filtering for inline autocomplete`
-  );
-  assert.match(
-    source,
-    /getAutocompleteCandidate\(keywordSuggestionState\.autocompleteSuggestions,/,
-    `${relativePath} should use shared autocomplete filtering before primary highlight promotion`
-  );
-  assert.match(
-    source,
-    /if \(preferAutocompleteFirst &&[\s\S]*?SEARCH_UTILS\.pinExactSearchActionSecond\(allSuggestions\)/,
-    `${relativePath} should keep an exact-query search action in the second row after primary-result promotion`
   );
 }
 
@@ -1257,5 +1237,19 @@ assert.strictEqual(
   null,
   'local scopes should require an exact keyword so normal searches are not hijacked'
 );
+
+assert.strictEqual(search.normalizeHost('WWW.Example.COM'), 'example.com');
+assert.strictEqual(search.normalizeHost('my.feishu.cn'), 'feishu.cn',
+  'the Feishu account portal should share feishu.cn host identity on every surface');
+assert.strictEqual(search.normalizeHost('www.my.feishu.cn'), 'feishu.cn');
+assert.strictEqual(search.normalizeHost('docs.feishu.cn'), 'docs.feishu.cn');
+assert.strictEqual(search.normalizeHost(''), '');
+assert.strictEqual(search.normalizeHost(null), '');
+assert.strictEqual(
+  search.sanitizeDisplayText('A\u0000B\u200BC\uFEFF\uE000D\uD800 \uD83D\uDE00'),
+  'AB\u200BCD \uD83D\uDE00',
+  'display text should drop control, BOM, private-use and lone-surrogate code points'
+);
+assert.strictEqual(search.sanitizeDisplayText(undefined), '');
 
 console.log('search utils tests passed');

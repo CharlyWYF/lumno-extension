@@ -391,34 +391,9 @@ function flushMicrotasks() {
     false,
     'overlay update notice should not be appended inside the overlay panel'
   );
-  const overlayNoticeAppendIndex = overlaySource.indexOf('overlayStyleRoot.insertBefore(noticeElement, overlay)');
-  const overlayInputAppendIndex = overlaySource.indexOf('overlay.appendChild(inputContainer)');
-  const overlayRevealIndex = overlaySource.indexOf('const revealOverlay = (options) =>');
-  const overlayScheduledMountIndex = overlaySource.indexOf('scheduleOverlayUpdateNoticeMount(360)');
-  const overlayMountingSetIndex = overlaySource.indexOf("noticeElement.setAttribute('data-overlay-mounting', 'true')");
-  const overlayMountingFinishIndex = overlaySource.indexOf('finishOverlayUpdateNoticeMountAnimation(noticeElement)');
   assert(
-    overlayNoticeAppendIndex !== -1 &&
-      overlayInputAppendIndex !== -1 &&
-      overlayNoticeAppendIndex < overlayInputAppendIndex,
-    'overlay update notice should be mounted outside and above the overlay panel'
-  );
-  assert(
-    overlayRevealIndex !== -1 &&
-      overlayScheduledMountIndex !== -1 &&
-      overlayRevealIndex < overlayScheduledMountIndex,
-    'overlay update notice should be mounted after the overlay enter animation starts'
-  );
-  assert(
-    overlayMountingSetIndex !== -1 &&
-      overlayMountingFinishIndex !== -1 &&
-      overlayMountingSetIndex < overlayNoticeAppendIndex,
-    'overlay update notice should enter with a temporary mount animation state before insertion'
-  );
-  assert(
-    newtabSource.includes('updateNoticeController.recordExposure()') &&
-      overlaySource.includes('overlayUpdateNoticeController.recordExposure()'),
-    'newtab and overlay should count an exposure only when the notice is mounted'
+    newtabSource.includes('updateNoticeController.recordExposure()'),
+    'newtab should count an exposure only when the notice is mounted'
   );
   const updateNoticeCss = readStylesheet('src/shared/feature-hints.css');
   assert(

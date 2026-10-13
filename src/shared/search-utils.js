@@ -270,8 +270,23 @@
     }
   };
 
+  // Host identity used across search, favicons and site search. my.feishu.cn
+  // is Feishu's account portal and shares feishu.cn's identity.
+  const HOST_ALIASES = Object.freeze({
+    'my.feishu.cn': 'feishu.cn'
+  });
+
   function normalizeHost(hostname) {
-    return String(hostname || '').toLowerCase().replace(/^www\./, '');
+    const host = String(hostname || '').toLowerCase().replace(/^www\./, '');
+    return Object.prototype.hasOwnProperty.call(HOST_ALIASES, host) ? HOST_ALIASES[host] : host;
+  }
+
+  // Strips control, format, private-use and lone-surrogate code points so
+  // page titles cannot inject invisible or broken characters into the UI.
+  function sanitizeDisplayText(text) {
+    const raw = String(text || '');
+    const withoutSpecial = raw.replace(/[\u0000-\u001F\u007F-\u009F\uFEFF\uFFF9-\uFFFD]|\p{Co}/gu, '');
+    return withoutSpecial.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '');
   }
 
   function getSearchSuggestionFamilyKey(urlOrHost) {
@@ -1162,6 +1177,126 @@
       index !== primaryResultIndex && index !== searchActionIndex
     ));
     return [primaryResult, searchAction, ...remainingSuggestions];
+  }
+
+  function findAutocompleteCandidateSuggestionIndex(list, candidate, getUrlDisplay) {
+    const completion = String(candidate && candidate.completion || '').toLowerCase();
+    return list.findIndex((suggestion) => {
+      if (!suggestion || suggestion.type === 'newtab') {
+        return false;
+      }
+      if (candidate.url && suggestion.url === candidate.url) {
+        return true;
+      }
+      const suggestionUrlText = getUrlDisplay(suggestion.url);
+      if (suggestionUrlText && suggestionUrlText.toLowerCase() === completion) {
+        return true;
+      }
+      return Boolean(suggestion.title && suggestion.title.toLowerCase().startsWith(completion));
+    });
+  }
+
+  function moveSuggestionToFront(list, index) {
+    if (index > 0) {
+      const [suggestion] = list.splice(index, 1);
+      list.unshift(suggestion);
+    }
+  }
+
+  // Orders a default-mode suggestion slate (no slash command, scope or
+  // site-search tag active) and decides which row the input highlights first:
+  // a strong navigation match, the autocomplete target, an inline site search,
+  // a top site, a matching open tab, or else the first row. Shared by the
+  // Overlay and the New Tab search box, which supply their own matchers.
+  // Returns a new list; `suggestions` itself is not reordered.
+  function rankSearchSuggestionSlate(suggestions, options) {
+    const config = options && typeof options === 'object' ? options : {};
+    const matchers = config.matchers || {};
+    const identity = (items) => items;
+    const filterSuggestions = typeof matchers.filterSuggestions === 'function'
+      ? matchers.filterSuggestions
+      : identity;
+    const rawQuery = String(config.rawQuery || '');
+    const trimmedRawQuery = rawQuery.trim();
+    const inlineSuggestion = config.inlineSuggestion || null;
+    const siteSearchActive = Boolean(config.siteSearchActive);
+    const preferAutocompleteFirst = config.preferAutocompleteFirst !== false;
+    const onlyKeywordSuggestions = Boolean(config.onlyKeywordSuggestions);
+    const canPromoteLocalMatches = !siteSearchActive && !inlineSuggestion && preferAutocompleteFirst;
+    let list = Array.isArray(suggestions) ? suggestions.slice() : [];
+    let primaryHighlightIndex = -1;
+    let primaryHighlightReason = 'none';
+    let strongNavigationMatch = null;
+    let topSiteMatch = null;
+
+    if (canPromoteLocalMatches) {
+      strongNavigationMatch = matchers.promoteStrongNavigationMatch(list, trimmedRawQuery);
+      if (strongNavigationMatch) {
+        primaryHighlightIndex = 0;
+        primaryHighlightReason = 'navigation';
+      }
+      topSiteMatch = matchers.promoteTopSiteMatch(list, trimmedRawQuery);
+    }
+    const siteSearchTrigger = !siteSearchActive && !inlineSuggestion
+      ? matchers.getSiteSearchTriggerCandidate(config.triggerInput, config.providers, topSiteMatch)
+      : null;
+    if (canPromoteLocalMatches && !strongNavigationMatch && !onlyKeywordSuggestions) {
+      const autocompleteCandidate = matchers.getAutocompleteCandidate(
+        config.autocompleteSuggestions,
+        rawQuery
+      );
+      if (autocompleteCandidate) {
+        moveSuggestionToFront(list, findAutocompleteCandidateSuggestionIndex(
+          list,
+          autocompleteCandidate,
+          matchers.getUrlDisplay
+        ));
+        primaryHighlightIndex = 0;
+        primaryHighlightReason = 'autocomplete';
+      }
+    }
+    if (inlineSuggestion) {
+      list.unshift(inlineSuggestion);
+      list = filterSuggestions(list);
+      primaryHighlightIndex = 0;
+      primaryHighlightReason = 'inline';
+    } else if (!strongNavigationMatch && topSiteMatch && preferAutocompleteFirst) {
+      primaryHighlightIndex = 0;
+      primaryHighlightReason = 'topSite';
+    }
+    if (preferAutocompleteFirst && !siteSearchActive && config.query &&
+        !onlyKeywordSuggestions && config.openTabMatch) {
+      const openTabMatch = findSearchOpenTabMatchIndex(list, Object.assign({}, config.openTabMatch, {
+        rawQuery: trimmedRawQuery,
+        primaryHighlightIndex
+      }));
+      if (openTabMatch.index >= 0) {
+        moveSuggestionToFront(list, openTabMatch.index);
+        primaryHighlightIndex = 0;
+        primaryHighlightReason = openTabMatch.reason || 'openTab';
+      }
+    }
+    if (preferAutocompleteFirst) {
+      list = pinExactSearchActionSecond(list);
+    }
+    if (config.query && primaryHighlightIndex < 0 && list.length > 0) {
+      primaryHighlightIndex = 0;
+      primaryHighlightReason = 'default';
+    }
+    const primarySuggestion = primaryHighlightIndex >= 0
+      ? (list[primaryHighlightIndex] || null)
+      : null;
+    const mergedProvider = primaryHighlightIndex >= 0
+      ? findProviderForSiteSearchSuggestion(primarySuggestion, config.providers)
+      : null;
+    return {
+      suggestions: list,
+      primaryHighlightIndex,
+      primaryHighlightReason,
+      primarySuggestion,
+      mergedProvider,
+      siteSearchTrigger
+    };
   }
 
   function hasLocalResultSuggestion(list) {
@@ -3381,6 +3516,7 @@
     getSearchSuggestionFamilyKey,
     groupSearchSuggestionsByKind,
     pinExactSearchActionSecond,
+    rankSearchSuggestionSlate,
     isSearchOpenTabSuggestion,
     getSearchSuggestionSourceRank,
     getSearchSelectionBoost,
@@ -3434,6 +3570,7 @@
     providerMatchesSiteSearchSuggestion,
     promoteStrongNavigationMatch,
     recordSearchSelectionInStats,
+    sanitizeDisplayText,
     sanitizeSiteSearchProviders,
     shouldAllowLooseTextContains,
     siteSearchHostsMatch,

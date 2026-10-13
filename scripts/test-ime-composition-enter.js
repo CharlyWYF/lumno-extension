@@ -127,11 +127,6 @@ assert.match(
   'New Tab should end the IME commit window when the commit key is released'
 );
 
-assert.match(
-  overlayJs,
-  /if \(e\.type === 'keyup'\) \{\s*imeKeyGuard\.markKeyUp\(\);\s*\}/,
-  'overlay should end the IME commit window when the commit key is released'
-);
 
 const newtabCss = fs.readFileSync(path.join(repoRoot, 'src/newtab/newtab.css'), 'utf8');
 const newtabRootRule = newtabCss.match(/\n#_x_extension_newtab_root_2024_unique_ \{[^}]*\}/);

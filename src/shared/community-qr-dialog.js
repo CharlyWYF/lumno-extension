@@ -22,7 +22,7 @@
       z-index: 2147483647;
       display: block;
       color-scheme: light;
-      font-family: "Open Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+      font-family: "Lumno Open Sans", "Open Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
       -webkit-font-smoothing: antialiased;
     }
     :host([data-theme="dark"]) {

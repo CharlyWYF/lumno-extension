@@ -354,16 +354,6 @@ assert(
 );
 assert(
   overlaySource.includes(
-    'overlay._lumnoSuggestionsView = overlaySuggestionsView'
-  ) &&
-    overlaySource.includes(
-      'const mountedSuggestionsView = overlayElement._lumnoSuggestionsView ||'
-    ) &&
-    overlaySource.includes('mountedSuggestionsView.destroy()'),
-  'the Overlay panel should retain and destroy the React suggestions owner across toggle invocations'
-);
-assert(
-  overlaySource.includes(
     'const overlayMountParent = document.fullscreenElement ||\n' +
       '      document.documentElement ||\n' +
       '      document.body;'

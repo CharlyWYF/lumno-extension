@@ -1,5 +1,7 @@
 const assert = require('assert');
 const fs = require('fs');
+const { JSDOM } = require('jsdom');
+const { createOverlayKeyRouter } = require('../src/overlay/keyboard.js');
 
 const shellSource = fs.readFileSync('react-src/overlay/shell.tsx', 'utf8');
 const overlaySource = fs.readFileSync('src/overlay/search-panel.js', 'utf8');
@@ -45,38 +47,64 @@ assert.match(
   'close-other-tabs must reject synthetic clicks before the privileged runtime action'
 );
 
-const overlayKeyCaptureBlock = getFunctionBlock(
-  overlaySource,
-  'overlayKeyCaptureHandler = function(e)',
-  "window.addEventListener('keydown', overlayKeyCaptureHandler, true)"
-);
-assert.match(
-  overlayKeyCaptureBlock,
-  /e\.isTrusted !== true[\s\S]*return;/,
-  'the page-facing overlay keyboard capture must reject synthetic events'
-);
+// Synthetic (untrusted) key events must never drive the overlay: the capture
+// router swallows them before the page sees them, and the Tab capture and
+// document fallbacks ignore them. JSDOM events are always untrusted, so the
+// router's default trust predicate is exercised directly.
+{
+  const dom = new JSDOM('<!doctype html><html><body></body></html>');
+  const { window } = dom;
+  const { document } = window;
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  const shadowRoot = host.attachShadow({ mode: 'closed' });
+  const input = document.createElement('input');
+  shadowRoot.appendChild(input);
+  input.focus();
+  const calls = [];
+  const record = (name) => (event) => {
+    calls.push(`${name}:${event && event.key}`);
+    return true;
+  };
+  const router = createOverlayKeyRouter(window, {
+    getMount: () => ({ document, host, panel: input }),
+    isOverlayConnected: () => true,
+    isSearchInputActive: () => true,
+    handleInputKeydown: record('input'),
+    handleTab: record('tab'),
+    handleOverlayKeydown: record('overlay-keydown'),
+    handleOverlayKeyup: record('overlay-keyup'),
+    handleNumberShortcut: () => false,
+    onEscapeOutside: record('escape')
+  });
+  router.start();
+  const pageKeys = [];
+  document.addEventListener('keydown', (event) => pageKeys.push(event.key));
+  ['Enter', 'Tab', 'ArrowDown', 'Escape'].forEach((key) => {
+    input.dispatchEvent(new window.KeyboardEvent('keydown', { key, bubbles: true, composed: true }));
+    document.body.dispatchEvent(new window.KeyboardEvent('keydown', { key, bubbles: true }));
+    document.body.dispatchEvent(new window.KeyboardEvent('keyup', { key, bubbles: true }));
+  });
+  assert.deepStrictEqual(calls, [], 'synthetic keys must not reach any overlay key handler');
+  assert.deepStrictEqual(pageKeys, [],
+    'the page-facing capture should swallow synthetic keys instead of acting on them');
+  router.stop();
 
-const overlayDocumentKeydownBlock = getFunctionBlock(
-  overlaySource,
-  'keydownHandler = function(e)',
-  'keyupHandler = function(e)'
-);
-assert.match(
-  overlayDocumentKeydownBlock,
-  /e\.isTrusted !== true[\s\S]*return;/,
-  'the document-level overlay keydown fallback must reject synthetic events'
-);
-
-const overlayTabCaptureBlock = getFunctionBlock(
-  overlaySource,
-  'captureTabHandler = function(e)',
-  "document.addEventListener('keydown', captureTabHandler, true)"
-);
-assert.match(
-  overlayTabCaptureBlock,
-  /e\.isTrusted !== true[\s\S]*return;/,
-  'the document-level Tab capture must reject synthetic events'
-);
+  // Control: the same router acts on trusted keys, so the check above is not vacuous.
+  const trustedRouter = createOverlayKeyRouter(window, {
+    isTrustedEvent: () => true,
+    getMount: () => ({ document, host, panel: input }),
+    isOverlayConnected: () => true,
+    isSearchInputActive: () => true,
+    handleInputKeydown: record('input'),
+    handleNumberShortcut: () => false
+  });
+  trustedRouter.start();
+  input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
+  trustedRouter.stop();
+  assert.deepStrictEqual(calls, ['input:Enter']);
+  window.close();
+}
 
 const switcherActivateBlock = getFunctionBlock(
   switcherSource,

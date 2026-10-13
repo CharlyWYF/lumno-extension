@@ -4637,6 +4637,8 @@ function openOverlayOnTab(activeTab, tabs, source, options) {
     'src/overlay/lifecycle.js',
     'src/overlay/site-fixes.js',
     'src/overlay/page-theme.js',
+    'src/overlay/notices.js',
+    'src/overlay/keyboard.js',
     'src/react/overlay-islands.js',
     'src/overlay/search-panel.js'
   ];

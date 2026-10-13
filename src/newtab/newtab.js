@@ -2300,9 +2300,7 @@
   }
 
   function sanitizeDisplayText(text) {
-    const raw = String(text || '');
-    const withoutSpecial = raw.replace(/[\u0000-\u001F\u007F-\u009F\uFEFF\uFFF9-\uFFFD]|\p{Co}/gu, '');
-    return withoutSpecial.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '');
+    return SEARCH_UTILS.sanitizeDisplayText(text);
   }
 
   function loadLocaleMessages(locale) {

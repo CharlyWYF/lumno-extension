@@ -7,7 +7,6 @@ type OverlayShellOptions = Record<string, unknown> & {
   hostId?: string;
   id?: string;
   maxHeightVh?: number;
-  openSansCssUrl?: string;
   overlaySuggestionsCssUrl?: string;
   remixBrush2IconSvgUrl?: string;
   remixIconCssUrl?: string;
@@ -124,12 +123,6 @@ function appendOverlayStyleNodes(
   appendStylesheet(
     doc,
     styleRoot,
-    '_x_extension_open_sans_shadow_css_2026_unique_',
-    options.openSansCssUrl
-  );
-  appendStylesheet(
-    doc,
-    styleRoot,
     '_x_extension_remixicon_shadow_css_2026_unique_',
     options.remixIconCssUrl
   );
@@ -225,7 +218,7 @@ function appendOverlayStyleNodes(
       color: var(--x-ext-input-text, #1F2937);
       caret-color: var(--x-ext-input-caret, #7DB7FF);
       cursor: text;
-      font: 500 16px/1.3 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font: 500 16px/1.3 'Lumno Open Sans', 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       text-align: left;
     }
     :where(#_x_extension_overlay_2024_unique_) :where(.x-lumno-search-input__icon) {
@@ -466,7 +459,7 @@ function getPanelStyle(options: OverlayShellOptions): string {
     border-radius: var(--x-ov-panel-radius) !important;
     box-shadow: var(--x-ov-shadow, inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 2px 5px -2px rgba(15, 23, 42, 0.11), 0 16px 42px -12px rgba(15, 23, 42, 0.17), 0 48px 112px -30px rgba(15, 23, 42, 0.19)) !important;
     z-index: 2147483647 !important;
-    font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+    font-family: 'Lumno Open Sans', 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
@@ -533,7 +526,7 @@ function createOverlayHost(
     border: 0 !important;
     box-sizing: border-box !important;
     color: initial !important;
-    font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+    font-family: 'Lumno Open Sans', 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
     font-size: 16px !important;
     font-style: normal !important;
     font-variant: normal !important;

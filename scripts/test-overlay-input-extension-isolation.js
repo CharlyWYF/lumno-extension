@@ -2,75 +2,21 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
+const { createOverlayKeyRouter } = require('../src/overlay/keyboard.js');
 
 const searchPanelSource = fs.readFileSync(
   path.join(__dirname, '../src/overlay/search-panel.js'),
   'utf8'
 );
 
-const handlerStart = searchPanelSource.indexOf('overlayKeyCaptureHandler = function(e) {');
-const handlerEnd = searchPanelSource.indexOf(
-  "window.addEventListener('keydown', overlayKeyCaptureHandler, true);",
-  handlerStart
-);
-assert.ok(handlerStart > 0 && handlerEnd > handlerStart, 'overlay should define an early key capture handler');
-
-const handlerSource = searchPanelSource.slice(handlerStart, handlerEnd);
-// JSDOM cannot construct an Event with isTrusted=true. The behavioral harness
-// below exercises the browser-generated input branch after the source-level
-// security contract has verified that untrusted events are rejected.
-const trustedHandlerSource = handlerSource.replace(
-  'e.isTrusted !== true',
-  'false'
-);
-assert.match(
-  handlerSource,
-  /if \(isImeCompositionEvent\(e\)\) \{\s*e\.stopImmediatePropagation\(\);\s*return;\s*\}/,
-  'input isolation should keep IME keys away from the host page without running Lumno key handling'
-);
-assert.ok(
-  handlerSource.includes('if (e.metaKey || e.ctrlKey || e.altKey)'),
-  'input isolation should leave browser and system modifier shortcuts untouched'
-);
-assert.match(
-  handlerSource,
-  /e\.type === 'keydown' && searchInputActive && getSuggestionNavigationKey\(e\)[\s\S]*?handleSearchInputKeydown\(e\);[\s\S]*?e\.stopImmediatePropagation\(\);[\s\S]*?return;/,
-  'enabled macOS Ctrl navigation should be consumed once before modifier keys reach the host page'
-);
-assert.ok(
-  !handlerSource.includes('e.shiftKey'),
-  'Shift-modified text should remain isolated from page and extension shortcuts'
-);
-assert.ok(
-  handlerSource.includes("if (e.type === 'keydown')") &&
-    handlerSource.includes('handleSearchInputKeydown(e);') &&
-    handlerSource.includes('inputModeController.handleModeMenuKeyEvent(e);'),
-  'captured keydown events should still run Lumno input and scope-panel behavior'
-);
-assert.ok(
-  handlerSource.includes('e.stopImmediatePropagation();'),
-  'captured text keys should not reach document-level extension shortcuts'
-);
+// The real overlay key router runs here. JSDOM cannot create trusted events,
+// so the router's trust predicate is swapped for one that accepts them; the
+// security test covers the untrusted path with the default predicate.
 assert.match(
   searchPanelSource,
   /if \(e\.key === 'Tab'\) \{\s*handleTabKey\(e\);\s*return;\s*\}/,
   'the double-Tab scope shortcut should run inside the isolated input key handler'
 );
-
-['keydown', 'keypress', 'keyup'].forEach((eventName) => {
-  assert.ok(
-    searchPanelSource.includes(
-      `window.addEventListener('${eventName}', overlayKeyCaptureHandler, true);`
-    ),
-    `overlay should isolate ${eventName} during capture`
-  );
-  assert.ok(
-    searchPanelSource.includes(
-      `window.removeEventListener('${eventName}', overlayKeyCaptureHandler, true);`
-    ),
-    `overlay should remove the ${eventName} isolation listener on close`
-  );
-});
 
 const dom = new JSDOM('<!doctype html><div id="overlay"></div><div id="lumno-host"></div>');
 const { window } = dom;
@@ -95,76 +41,59 @@ const suggestionItems = Array.from({ length: 3 }, (_, index) => ({
     activatedSuggestionIndexes.push(index);
   }
 }));
-const createHandler = new Function(
-  'overlay',
-  'searchInput',
-  'inputModeController',
-  'document',
-  'isImeCompositionEvent',
-  'handleSearchInputKeydown',
-  'syncSuggestionActionModifiersFromEvent',
-  'SUGGESTION_NAVIGATION',
-  'suggestionItems',
-  'suggestionsContainer',
-  'numberShortcutOptions',
-  'getSuggestionNavigationKey',
-  'imeKeyGuard',
-  `let overlayKeyCaptureHandler;\n${trustedHandlerSource}\nreturn overlayKeyCaptureHandler;`
-);
 const numberShortcutSignals = [];
 let imeKeyUpCount = 0;
 let macosCtrlNavigationEnabled = false;
-const overlayKeyCaptureHandler = createHandler(
-  overlay,
-  searchInput,
-  {
-    handleModeMenuKeyEvent(event) {
-      handledModeMenuKeys.push(event.key);
-      event.preventDefault();
-      if (event.key === 'Tab') {
-        searchInput.focus();
-      }
-      return true;
-    },
-    shouldHandleModeMenuKeyEvent() {
-      return shadowRoot.activeElement === modeMenu;
-    }
+const SUGGESTION_NAVIGATION = require('../src/shared/suggestion-navigation.js');
+const numberShortcutOptions = {
+  primaryModifier: 'meta',
+  holdDurationMs: 5,
+  timeoutMs: 50,
+  onHoldStart() {
+    numberShortcutSignals.push('toast-show');
   },
-  document,
-  (event) => Boolean(event && event.isComposing),
-  (event) => {
+  onHoldEnd() {
+    numberShortcutSignals.push('toast-hide');
+  }
+};
+const keyRouter = createOverlayKeyRouter(window, {
+  isTrustedEvent: (event) => Boolean(event),
+  getMount: () => ({ document, host, panel: overlay }),
+  isOverlayConnected: () => overlay.isConnected,
+  isSearchInputActive: () => document.activeElement === searchInput ||
+    shadowRoot.activeElement === searchInput,
+  shouldHandleModeMenuKey: () => shadowRoot.activeElement === modeMenu,
+  handleModeMenuKey(event) {
+    handledModeMenuKeys.push(event.key);
+    event.preventDefault();
+    if (event.key === 'Tab') {
+      searchInput.focus();
+    }
+    return true;
+  },
+  isImeComposition: (event) => Boolean(event && event.isComposing),
+  handleInputKeydown(event) {
     handledInputKeys.push(event.key);
     if (event.key === 'Tab') {
       event.preventDefault();
     }
   },
-  () => {},
-  require('../src/shared/suggestion-navigation.js'),
-  suggestionItems,
-  suggestionsContainer,
-  {
-    primaryModifier: 'meta',
-    holdDurationMs: 5,
-    timeoutMs: 50,
-    onHoldStart() {
-      numberShortcutSignals.push('toast-show');
-    },
-    onHoldEnd() {
-      numberShortcutSignals.push('toast-hide');
-    }
-  },
-  (event) => macosCtrlNavigationEnabled && event.ctrlKey && event.key.toLowerCase() === 'n'
-    ? 'ArrowDown'
-    : '',
-  {
-    markKeyUp() {
-      imeKeyUpCount += 1;
-    }
+  syncModifiers: () => {},
+  handleNumberShortcut: (event) => SUGGESTION_NAVIGATION.handleNumberShortcutKeyEvent(
+    event,
+    suggestionItems,
+    suggestionsContainer,
+    numberShortcutOptions
+  ),
+  getSuggestionNavigationKey: (event) =>
+    macosCtrlNavigationEnabled && event.ctrlKey && event.key.toLowerCase() === 'n'
+      ? 'ArrowDown'
+      : '',
+  onKeyUp() {
+    imeKeyUpCount += 1;
   }
-);
-
-window.addEventListener('keydown', overlayKeyCaptureHandler, true);
-window.addEventListener('keyup', overlayKeyCaptureHandler, true);
+});
+keyRouter.start();
 document.addEventListener('keydown', (event) => {
   hostPageKeys.push({ key: event.key, targetTag: event.target.tagName });
 });
@@ -403,6 +332,17 @@ assert.ok(
   imeKeyUpCount > 0,
   'overlay keyups should end the IME commit-Enter window'
 );
+
+keyRouter.stop();
+const afterStopKeydown = new window.KeyboardEvent('keydown', {
+  bubbles: true,
+  composed: true,
+  key: 'y'
+});
+searchInput.focus();
+searchInput.dispatchEvent(afterStopKeydown);
+assert.deepStrictEqual(hostPageKeys, [{ key: 'y', targetTag: 'DIV' }],
+  'a stopped router no longer isolates input keys');
 
 console.log('overlay input extension isolation tests passed');
 }
