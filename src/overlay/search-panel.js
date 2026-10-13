@@ -9,7 +9,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
   let captureTabHandler = null;
   let overlayThemeMediaListener = null;
   let overlayPageThemeObserver = null;
-  let overlayPageThemeSyncRaf = null;
   let keydownHandler = null;
   let keyupHandler = null;
   let overlayKeyCaptureHandler = null;
@@ -497,13 +496,8 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
   }
 
   function stopOverlayPageThemeObserver() {
-    if (overlayPageThemeSyncRaf !== null) {
-      cancelAnimationFrame(overlayPageThemeSyncRaf);
-      overlayPageThemeSyncRaf = null;
-    }
     if (overlayPageThemeObserver) {
-      overlayPageThemeObserver.disconnect();
-      overlayPageThemeObserver = null;
+      overlayPageThemeObserver.stop();
     }
   }
 
@@ -2968,7 +2962,6 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
 
     const rgbToCss = FAVICON_THEME.rgbToCss;
     const parseCssColor = FAVICON_THEME.parseCssColor;
-    const getLuminance = FAVICON_THEME.getLuminance;
     const buildTheme = FAVICON_THEME.buildTheme;
 
     function getHighlightColors(theme) {
@@ -3044,284 +3037,11 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       });
     }
 
-    function pushThemeCandidate(candidates, element) {
-      if (!element || candidates.includes(element)) {
-        return;
-      }
-      candidates.push(element);
-    }
-
-    function getFirstElementByTagName(tagName) {
-      if (typeof document.getElementsByTagName !== 'function') {
-        return null;
-      }
-      const elements = document.getElementsByTagName(tagName);
-      return elements && elements.length > 0 ? elements[0] : null;
-    }
-
-    function getPageThemeCandidateElements(docEl, body) {
-      const candidates = [];
-      pushThemeCandidate(candidates, docEl);
-      pushThemeCandidate(candidates, body);
-      ['app', 'root', '__next', '__nuxt'].forEach((id) => {
-        if (typeof document.getElementById === 'function') {
-          pushThemeCandidate(candidates, document.getElementById(id));
-        }
-      });
-      pushThemeCandidate(candidates, getFirstElementByTagName('ytd-app'));
-      pushThemeCandidate(candidates, getFirstElementByTagName('ytm-app'));
-      if (body && body.children && body.children.length) {
-        const candidateLimit = Math.min(body.children.length, 8);
-        for (let i = 0; i < candidateLimit; i += 1) {
-          pushThemeCandidate(candidates, body.children[i]);
-        }
-      }
-      return candidates;
-    }
-
-    function classifyThemeToken(value) {
-      const normalized = String(value || '').toLowerCase();
-      if (!normalized) {
-        return null;
-      }
-      if (
-        normalized.includes('dark') ||
-        normalized.includes('night') ||
-        normalized === '1' ||
-        normalized === 'true' ||
-        normalized === 'on'
-      ) {
-        return 'dark';
-      }
-      if (
-        normalized.includes('light') ||
-        normalized.includes('day') ||
-        normalized === '0' ||
-        normalized === 'false' ||
-        normalized === 'off'
-      ) {
-        return 'light';
-      }
-      return null;
-    }
-
-    function getElementClassTheme(element) {
-      if (!element) {
-        return null;
-      }
-      const className = typeof element.className === 'string'
-        ? element.className
-        : (typeof element.getAttribute === 'function' ? element.getAttribute('class') : '');
-      const classText = String(className || '').toLowerCase();
-      if (!classText) {
-        return null;
-      }
-      const tokenList = classText.split(/\s+/);
-      for (let i = 0; i < tokenList.length; i += 1) {
-        const theme = getThemeClassTokenTheme(tokenList[i]);
-        if (theme) {
-          return theme;
-        }
-      }
-      return null;
-    }
-
-    function getThemeClassTokenTheme(token) {
-      const normalized = String(token || '').toLowerCase().trim();
-      if (!normalized) {
-        return null;
-      }
-      if (normalized === 'dark' || normalized === 'darkmode' || normalized === 'night') {
-        return 'dark';
-      }
-      if (normalized === 'light' || normalized === 'lightmode' || normalized === 'day') {
-        return 'light';
-      }
-      if (/^(theme|mode|scheme|color-scheme|appearance|is|has)-(dark|night)$/.test(normalized) ||
-          /^(dark|night)-(theme|mode|scheme|color-scheme|appearance)$/.test(normalized)) {
-        return 'dark';
-      }
-      if (/^(theme|mode|scheme|color-scheme|appearance|is|has)-(light|day)$/.test(normalized) ||
-          /^(light|day)-(theme|mode|scheme|color-scheme|appearance)$/.test(normalized)) {
-        return 'light';
-      }
-      return null;
-    }
-
-    function getElementAttributeTheme(element) {
-      if (!element || typeof element.hasAttribute !== 'function') {
-        return null;
-      }
-      if (element.hasAttribute('dark') ||
-          element.hasAttribute('data-dark') ||
-          element.hasAttribute('dark-mode')) {
-        return 'dark';
-      }
-      if (element.hasAttribute('light')) {
-        return 'light';
-      }
-      const attrNames = [
-        'data-theme',
-        'data-color-scheme',
-        'data-color-mode',
-        'data-mode',
-        'data-appearance',
-        'color-scheme',
-        'theme',
-        'data-bs-theme'
-      ];
-      for (let i = 0; i < attrNames.length; i += 1) {
-        const value = typeof element.getAttribute === 'function'
-          ? element.getAttribute(attrNames[i])
-          : '';
-        const theme = classifyThemeToken(value);
-        if (theme) {
-          return theme;
-        }
-      }
-      return getElementClassTheme(element);
-    }
-
-    function getHeadMetaContent(name) {
-      const head = document.head;
-      if (!head || typeof head.querySelector !== 'function') {
-        return '';
-      }
-      const meta = head.querySelector(`meta[name="${name}"]`);
-      return meta ? String(meta.getAttribute('content') || '') : '';
-    }
-
-    function detectPageVisualThemeSignal() {
-      return overlayPageTheme.detectPageVisualThemeSignal({
-        document,
-        window
-      });
-    }
-
-    function clampThemeConfidence(value) {
-      const number = Number(value);
-      if (!Number.isFinite(number)) {
-        return 0;
-      }
-      return Math.min(1, Math.max(0, number));
-    }
-
-    function getThemeSignalFromRgb(rgb, weight) {
-      if (!rgb || rgb.length !== 3) {
-        return null;
-      }
-      const luminance = getLuminance(rgb);
-      if (luminance < 0.42) {
-        return {
-          theme: 'dark',
-          confidence: clampThemeConfidence((0.42 - luminance) / 0.42),
-          weight: Number.isFinite(Number(weight)) ? Math.max(0, Number(weight)) : 1
-        };
-      }
-      if (luminance > 0.58) {
-        return {
-          theme: 'light',
-          confidence: clampThemeConfidence((luminance - 0.58) / 0.42),
-          weight: Number.isFinite(Number(weight)) ? Math.max(0, Number(weight)) : 1
-        };
-      }
-      return null;
-    }
-
-
-    function getThemeSignalFromTheme(theme, weight, confidence) {
-      if (theme !== 'dark' && theme !== 'light') {
-        return null;
-      }
-      return {
-        theme,
-        confidence: clampThemeConfidence(
-          Number.isFinite(Number(confidence)) ? Number(confidence) : 0.7
-        ),
-        weight: Number.isFinite(Number(weight)) ? Math.max(0, Number(weight)) : 1
-      };
-    }
-
-    function getThemeSignalFromSchemeValue(value, weight) {
-      const normalized = String(value || '').toLowerCase();
-      if (!normalized) {
-        return null;
-      }
-      const hasDark = normalized.includes('dark');
-      const hasLight = normalized.includes('light');
-      if (hasDark && !hasLight) {
-        return getThemeSignalFromTheme('dark', weight, 0.62);
-      }
-      if (hasLight && !hasDark) {
-        return getThemeSignalFromTheme('light', weight, 0.62);
-      }
-      return null;
-    }
-
-    function normalizeThemeSignal(signal, defaultWeight) {
-      if (!signal || (signal.theme !== 'dark' && signal.theme !== 'light')) {
-        return null;
-      }
-      return {
-        theme: signal.theme,
-        confidence: clampThemeConfidence(signal.confidence),
-        weight: Number.isFinite(Number(signal.weight))
-          ? Math.max(0, Number(signal.weight))
-          : (Number.isFinite(Number(defaultWeight)) ? Math.max(0, Number(defaultWeight)) : 1)
-      };
-    }
-
-    function resolvePageThemeSignals(signals) {
-      return overlayPageTheme.resolvePageThemeSignals(signals);
-    }
-
     function detectPageTheme() {
-      const docEl = document.documentElement;
-      const body = document.body;
-      if (!docEl) {
-        return null;
-      }
-      const candidateTheme = getPageThemeCandidateElements(docEl, body)
-        .map(getElementAttributeTheme)
-        .find(Boolean);
-      const colorSchemeMeta = getHeadMetaContent('color-scheme').toLowerCase();
-      const schemeValue = (window.getComputedStyle(docEl).colorScheme || '').toLowerCase();
-      const themeColor = getHeadMetaContent('theme-color').trim();
-      const themeColorRgb = parseCssColor(themeColor);
-      const docStyleForSignals = window.getComputedStyle(docEl);
-      const bodyStyleForSignals = body ? window.getComputedStyle(body) : null;
-      const visualSignal = detectPageVisualThemeSignal();
-      const fusedTheme = resolvePageThemeSignals([
-        getThemeSignalFromTheme(candidateTheme, 0.48, 0.74),
-        getThemeSignalFromSchemeValue(colorSchemeMeta, 0.4),
-        getThemeSignalFromSchemeValue(schemeValue, 0.26),
-        getThemeSignalFromRgb(themeColorRgb, 0.72),
-        overlayPageTheme.getCssColorThemeSignal(docStyleForSignals.backgroundColor, 0.78),
-        overlayPageTheme.getCssColorThemeSignal(bodyStyleForSignals && bodyStyleForSignals.backgroundColor, 0.58),
-        normalizeThemeSignal(visualSignal, 1.05)
-      ]);
-      if (fusedTheme) {
-        return fusedTheme;
-      }
-      const bodyStyle = body ? window.getComputedStyle(body) : null;
-      const docStyle = window.getComputedStyle(docEl);
-      const bgColor = (bodyStyle && bodyStyle.backgroundColor && bodyStyle.backgroundColor !== 'transparent')
-        ? bodyStyle.backgroundColor
-        : docStyle.backgroundColor;
-      const backgroundSignal = overlayPageTheme.getCssColorThemeSignal(bgColor, 1);
-      return backgroundSignal ? backgroundSignal.theme : null;
-    }
-
-    function scheduleOverlayPageThemeSync() {
-      if (overlayPageThemeSyncRaf !== null) {
-        return;
-      }
-      overlayPageThemeSyncRaf = requestAnimationFrame(() => {
-        overlayPageThemeSyncRaf = null;
-        if (!overlay || !overlay.isConnected || !shouldObserveOverlayPageTheme()) {
-          return;
-        }
-        applyOverlayTheme(overlayThemeMode);
+      return overlayPageTheme.detectPageTheme({
+        document,
+        window,
+        parseThemeColorRgb: parseCssColor
       });
     }
 
@@ -3344,50 +3064,18 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     }
 
     function startOverlayPageThemeObserver() {
-      if (overlayPageThemeObserver || !shouldObserveOverlayPageTheme()) {
+      if (!shouldObserveOverlayPageTheme()) {
         return;
       }
-      const themeAttrFilter = [
-        'class',
-        'style',
-        'data-theme',
-        'data-color-scheme',
-        'data-color-mode',
-        'data-mode',
-        'data-appearance',
-        'theme',
-        'color-scheme',
-        'dark',
-        'light',
-        'data-bs-theme'
-      ];
-      overlayPageThemeObserver = new MutationObserver(() => {
-        scheduleOverlayPageThemeSync();
-      });
-      const docEl = document.documentElement;
-      if (docEl) {
-        overlayPageThemeObserver.observe(docEl, {
-          attributes: true,
-          attributeFilter: themeAttrFilter
+      if (!overlayPageThemeObserver) {
+        overlayPageThemeObserver = overlayPageTheme.createPageThemeObserver(window, () => {
+          if (!overlay || !overlay.isConnected || !shouldObserveOverlayPageTheme()) {
+            return;
+          }
+          applyOverlayTheme(overlayThemeMode);
         });
       }
-      const body = document.body;
-      if (body) {
-        overlayPageThemeObserver.observe(body, {
-          attributes: true,
-          attributeFilter: themeAttrFilter
-        });
-      }
-      const head = document.head;
-      if (head) {
-        overlayPageThemeObserver.observe(head, {
-          childList: true,
-          subtree: true,
-          attributes: true,
-          attributeFilter: ['name', 'content', 'media']
-        });
-      }
-      scheduleOverlayPageThemeSync();
+      overlayPageThemeObserver.start();
     }
 
     function applyOverlayThemeVariables(target, mode) {
