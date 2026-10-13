@@ -2135,12 +2135,6 @@ body[data-theme="dark"] .x-nt-bookmark-card--folder.x-nt-bookmark-card--hover {
   border-radius: 0;
   overflow: visible;
 }
-.x-nt-bookmark-icon--glyph {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--x-nt-bookmark-title, #111827);
-}
 .x-nt-bookmark-icon--figma svg {
   width: 100%;
   height: 100%;
@@ -5583,11 +5577,6 @@ body[data-theme="dark"] .x-nt-row-select {
   font-family: "Open Sans", "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI",
     "Helvetica Neue", Arial, sans-serif;
 }
-.x-nt-overlay-value {
-  color: var(--x-nt-text, #111827);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
 .x-nt-effect-options {
   min-width: 0;
   display: flex;
@@ -5704,9 +5693,6 @@ body[data-theme="dark"] .x-nt-row-select {
 }
 body[data-theme="dark"] .x-nt-overlay-control-header {
   color: #a3a3a3;
-}
-body[data-theme="dark"] .x-nt-overlay-value {
-  color: var(--x-nt-text, #e5e7eb);
 }
 body[data-theme="dark"] .x-nt-wallpaper-mode-sync-title {
   color: var(--x-nt-text, #e5e7eb);
@@ -6031,9 +6017,6 @@ body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
 .x-nt-wallpaper-upload-tile:focus-visible .x-nt-wallpaper-upload-placeholder {
   color: color-mix(in srgb, var(--x-nt-text, #111827) 72%, transparent);
   background: transparent;
-}
-.x-nt-wallpaper-name {
-  display: none;
 }
 .x-nt-wallpaper-check {
   position: absolute;
@@ -6570,10 +6553,6 @@ body[data-theme="dark"] .x-nt-suggestion-number-shortcut {
 .x-nt-suggestion-favicon[data-object-fit="contain"] {
   object-fit: contain;
 }
-.x-nt-suggestion-favicon[data-fallback-size="true"] {
-  width: 18px;
-  height: 18px;
-}
 .x-nt-suggestion-icon-slot[data-emphasis="true"][data-favicon="false"] {
   background-color: #FFFFFF;
 }
@@ -6896,13 +6875,6 @@ body[data-theme="dark"] .x-nt-suggestion-icon-slot[data-emphasis="true"][data-fa
   max-width: 0;
   padding-left: 0;
   opacity: 0;
-}
-.x-nt-recent-empty {
-  width: 100%;
-  text-align: center;
-  font-size: var(--lumno-font-size-md);
-  color: var(--x-nt-subtext, #6b7280);
-  padding: 16px 0 8px;
 }
 .x-nt-bookmark-empty {
   grid-column: 1 / -1;
