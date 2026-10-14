@@ -52,7 +52,7 @@ assert.match(
 );
 assert.match(
   newtabHtml,
-  /\.x-nt-appearance-header\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?position:\s*relative;[\s\S]*?z-index:\s*6;[\s\S]*?background:\s*rgb\(255 255 255\);/,
+  /\.x-nt-appearance-header\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?position:\s*relative;[\s\S]*?z-index:\s*6;[\s\S]*?background:\s*var\(--x-nt-panel-surface\);/,
   'the appearance heading should remain outside the panel scroll body'
 );
 assert.match(
