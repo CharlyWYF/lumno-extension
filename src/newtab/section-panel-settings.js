@@ -258,8 +258,10 @@
         bookmarkExpanded = !bookmarkExpanded;
         update();
       });
+      // Switching a section on opens its settings, like every other section.
       refs.bookmarkSettingsToggle.addEventListener('change', () => {
         rememberCounts();
+        if (refs.bookmarkSettingsToggle.checked) bookmarkExpanded = true;
         call(
           'setBookmarkCount',
           refs.bookmarkSettingsToggle.checked ? lastBookmarkCount || BOOKMARK_COUNT_DEFAULT : 0,
@@ -286,6 +288,7 @@
       });
       refs.recentSettingsToggle.addEventListener('change', () => {
         rememberCounts();
+        if (refs.recentSettingsToggle.checked) recentExpanded = true;
         call(
           'setRecentCount',
           refs.recentSettingsToggle.checked ? lastRecentCount || RECENT_COUNT_DEFAULT : 0,

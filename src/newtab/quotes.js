@@ -369,7 +369,10 @@
       refs = nextRefs;
       view = nextView || null;
       if (!refs.quoteCategory) return;
-      refs.quoteEnabledToggle.addEventListener('change', () => persist({ enabled: refs.quoteEnabledToggle.checked }));
+      refs.quoteEnabledToggle.addEventListener('change', () => {
+        if (refs.quoteEnabledToggle.checked) settingsExpanded = true;
+        persist({ enabled: refs.quoteEnabledToggle.checked });
+      });
       if (refs.quoteAccordionTrigger) {
         refs.quoteAccordionTrigger.addEventListener('click', () => {
           if (!prefs.enabled) return;

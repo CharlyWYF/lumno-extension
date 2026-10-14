@@ -269,7 +269,6 @@ body[data-quote-position="bottom"].x-nt-mobile-flow {
   align-items: center;
   gap: var(--x-nt-panel-field-gap);
 }
-.x-nt-wallpaper-url-form[hidden] { display: none; }
 .x-nt-wallpaper-url-input {
   flex: 1 1 auto;
   min-width: 0;

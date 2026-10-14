@@ -605,7 +605,6 @@
     let curatedPage = 0;
     const WALLPAPER_SOURCE_TABS = ['built-in', 'local', 'bing', 'curated'];
     const WALLPAPER_APPEARANCE_MODES = ['system', 'light', 'dark'];
-    const WALLPAPER_EFFECT_SLIDER_KEYS = ['strength', 'size', 'spacing', 'texture', 'crtBloom', 'crtRgbOffset', 'crtCurvature'];
     const BING_DAILY_HINT = 'A new Bing photo every day. A photo you pick while this is on stays for the rest of the day.';
     const CURATED_DAILY_HINT = 'A new photo every day from the category shown when you turn this on, ' +
       'the same on every synced device. A photo you pick stays for the rest of the day.';
@@ -4271,33 +4270,8 @@
         wallpaper.activeTab,
         wallpaper.mode.visible ? wallpaper.mode.tabs.active : '',
         wallpaper.local.tiles.length,
-        wallpaper.local.url.open,
-        wallpaper.curated.category.tabs.active,
-        wallpaper.effect.inkTone.visible,
-        WALLPAPER_EFFECT_SLIDER_KEYS.map((key) => wallpaper.effect.sliders[key].visible)
+        wallpaper.curated.category.tabs.active
       ]);
-    }
-
-    // Controls that slide in when they appear, by data-wallpaper-ref name.
-    const WALLPAPER_PANEL_REVEALS = [
-      ['modeRow', (state) => state.wallpaper.mode.visible],
-      ['effectInkToneControl', (state) => state.wallpaper.effect.inkTone.visible]
-    ].concat(WALLPAPER_EFFECT_SLIDER_KEYS.map((key) => [
-      `effect${key.charAt(0).toUpperCase()}${key.slice(1)}Control`,
-      (state) => state.wallpaper.effect.sliders[key].visible
-    ]));
-
-    function playWallpaperPanelRevealMotions(previous, next) {
-      if (!previous) {
-        return;
-      }
-      let refs = null;
-      WALLPAPER_PANEL_REVEALS.forEach(([name, isVisible]) => {
-        if (!isVisible(previous) && isVisible(next)) {
-          refs = refs || wallpaperViewController.getRefs();
-          playWallpaperEnterMotion(refs[name], 'enter');
-        }
-      });
     }
 
     // Rebuilds the panel state and renders it; the DOM is current when this returns.
@@ -4311,10 +4285,9 @@
       const layoutChanged = Boolean(previous) && layoutKey !== wallpaperPanelLayoutKey;
       wallpaperPanelState = state;
       wallpaperPanelLayoutKey = layoutKey;
-      const apply = () => {
-        wallpaperViewController.render(state);
-        playWallpaperPanelRevealMotions(previous, state);
-      };
+      // Rows that show or hide (mode, link form, effect controls) animate their own height
+      // through .x-nt-panel-collapsible.
+      const apply = () => wallpaperViewController.render(state);
       if (layoutChanged) {
         animateWallpaperPanelResize(apply);
         return;

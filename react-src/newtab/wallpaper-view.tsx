@@ -871,7 +871,8 @@ function WallpaperPanel({
   const shortcutControlsDisabled = !shortcutsOpen;
   const wallpaperOpen = wallpaperExpanded && wallpaper.enabled;
 
-  // Turning shortcuts off folds their details; turning them back on keeps them folded.
+  // Turning shortcuts off folds their details. Switching a section on here opens its
+  // settings, like every other section; a change made elsewhere leaves them folded.
   useEffect(() => {
     if (!shortcuts.enabled) setShortcutsExpanded(false);
   }, [shortcuts.enabled]);
@@ -1130,7 +1131,14 @@ function WallpaperPanel({
                   titleRef="shortcutsTitle"
                   triggerRef="shortcutsAccordionTrigger"
                 />
-                <Switch name="shortcutsToggle" onChange={actions.setShortcutsVisible} toggle={shortcuts.toggle} />
+                <Switch
+                  name="shortcutsToggle"
+                  onChange={(checked) => {
+                    if (checked) setShortcutsExpanded(true);
+                    actions.setShortcutsVisible(checked);
+                  }}
+                  toggle={shortcuts.toggle}
+                />
               </div>
               <div
                 {...ref('shortcutsDetails')}
@@ -1362,7 +1370,14 @@ function WallpaperPanel({
                 titleRef="panelTitle"
                 triggerRef="wallpaperAccordionTrigger"
               />
-              <Switch name="enabledToggle" onChange={actions.setWallpaperEnabled} toggle={wallpaper.toggle} />
+              <Switch
+                name="enabledToggle"
+                onChange={(checked) => {
+                  if (checked) setWallpaperExpanded(true);
+                  actions.setWallpaperEnabled(checked);
+                }}
+                toggle={wallpaper.toggle}
+              />
             </div>
             <input
               {...ref('customInput')}
@@ -1394,8 +1409,8 @@ function WallpaperPanel({
               <div className="x-nt-wallpaper-tab-group">
                 <div
                   {...ref('modeRow')}
-                  {...controlVisibility(wallpaper.mode.visible)}
-                  className="x-nt-appearance-setting-row x-nt-wallpaper-mode-row"
+                  {...collapsible(wallpaper.mode.visible)}
+                  className="x-nt-appearance-setting-row x-nt-wallpaper-mode-row x-nt-panel-collapsible"
                 >
                   <span {...ref('modeLabel')} className="x-nt-appearance-setting-title">{wallpaper.mode.label}</span>
                   <SegmentedChoice
@@ -1520,7 +1535,7 @@ function WallpaperPanel({
               </div>
               <form
                 {...ref('urlForm')}
-                className="x-nt-wallpaper-url-form"
+                className="x-nt-wallpaper-url-form x-nt-panel-collapsible"
                 hidden={!local.url.open}
                 id="_x_extension_newtab_wallpaper_url_form_2026_unique_"
                 noValidate
@@ -1694,8 +1709,8 @@ function WallpaperPanel({
                 </div>
                 <div
                   {...ref('effectInkToneControl')}
-                  {...controlVisibility(effect.inkTone.visible)}
-                  className="x-nt-effect-slider-control x-nt-effect-ink-tone-control"
+                  {...collapsible(effect.inkTone.visible)}
+                  className="x-nt-effect-slider-control x-nt-effect-ink-tone-control x-nt-panel-collapsible"
                 >
                   <div className="x-nt-appearance-setting-row">
                     <span {...ref('effectInkToneLabel')} className="x-nt-appearance-setting-title">
@@ -1721,8 +1736,8 @@ function WallpaperPanel({
                   return (
                     <div
                       {...ref(`${refName}Control`)}
-                      {...controlVisibility(entry.visible)}
-                      className="x-nt-effect-slider-control"
+                      {...collapsible(entry.visible)}
+                      className="x-nt-effect-slider-control x-nt-panel-collapsible"
                       key={key}
                     >
                       <PanelSlider

@@ -202,12 +202,12 @@ async function main() {
   assert.deepEqual(calls.pop(), ['pickColor']);
   assert.equal(selects.surface.options.find((option) => option.value === 'custom').trailingIconClass, 'ri-dropper-line');
 
-  // Site cards: on restores one row, and rows and mode save at once.
+  // Site cards: on restores one row and opens its settings; rows and mode save at once.
   refs.recentSettingsToggle.click();
   assert.deepEqual(calls.pop(), ['recentCount', 4, true]);
   assert.equal(refs.recentSettingsTrigger.disabled, false);
-  refs.recentSettingsTrigger.click();
   assert.equal(refs.recentSettingsBody.hidden, false);
+  assert.equal(refs.recentSettingsTrigger.getAttribute('aria-expanded'), 'true');
   assert.equal(refs.recentRowsTabs.querySelector('[data-active="true"]').getAttribute('data-recent-rows'), '1');
   refs.recentRowsTabs.querySelector('[data-recent-rows="2"]').click();
   assert.deepEqual(calls.pop(), ['recentCount', 8, true]);

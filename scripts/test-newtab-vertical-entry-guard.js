@@ -66,7 +66,7 @@ const verticalTranslationPattern = /\btranslate(?:Y|3d)?\s*\(|\btranslate\s*:/;
   '.x-nt-section-mode-portal',
   '.x-nt-wallpaper-panel',
   '.x-nt-wallpaper-body',
-  '.x-nt-wallpaper-mode-row',
+  '.x-nt-panel-collapsible',
   '.x-nt-wallpaper-grid[data-motion="enter"]',
   '.x-nt-search-width-control',
   '.x-nt-effect-slider-control',

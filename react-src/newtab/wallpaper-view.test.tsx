@@ -560,6 +560,34 @@ describe('New Tab React wallpaper view', () => {
     expect(actions.resetShortcutSize).toHaveBeenCalled();
   });
 
+  it('opens a section when its switch turns it on', () => {
+    const { actions, state } = createState((draft) => {
+      draft.shortcuts.enabled = false;
+      draft.shortcuts.toggle = { checked: false, label: 'Shortcuts' };
+    });
+    mount(state);
+    act(() => (refs().shortcutsToggle as HTMLInputElement).click());
+    expect(actions.setShortcutsVisible).toHaveBeenCalledWith(true);
+    const { state: shortcutsOn } = createState();
+    shortcutsOn.actions = actions;
+    rerender(shortcutsOn);
+    expect(refs().shortcutsAccordionTrigger.getAttribute('aria-expanded')).toBe('true');
+    expect(refs().shortcutsDetails.hidden).toBe(false);
+
+    act(() => refs().wallpaperAccordionTrigger.click());
+    expect(refs().body.getAttribute('data-visible')).toBe('false');
+    const { state: wallpaperOff } = createState((draft) => {
+      draft.wallpaper.enabled = false;
+      draft.wallpaper.toggle = { ...draft.wallpaper.toggle, checked: false };
+    });
+    wallpaperOff.actions = actions;
+    rerender(wallpaperOff);
+    act(() => (refs().enabledToggle as HTMLInputElement).click());
+    expect(actions.setWallpaperEnabled).toHaveBeenCalledWith(true);
+    rerender(shortcutsOn);
+    expect(refs().body.getAttribute('data-visible')).toBe('true');
+  });
+
   it('folds and unfolds the sections without switches', () => {
     const { state } = createState();
     mount(state);

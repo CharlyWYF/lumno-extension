@@ -5326,21 +5326,6 @@ body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-open="true"]:not(
   font-family: "Open Sans", "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI",
     "Helvetica Neue", Arial, sans-serif;
 }
-.x-nt-wallpaper-mode-row {
-  opacity: 1;
-  visibility: visible;
-  transition: opacity var(--x-nt-wallpaper-transition-short) ease;
-  will-change: opacity;
-}
-.x-nt-wallpaper-mode-row[data-visible="false"] {
-  display: none;
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
-}
-.x-nt-wallpaper-mode-row[data-motion="enter"] {
-  opacity: 0;
-}
 .x-nt-wallpaper-body[data-active-tab="built-in"] .x-nt-wallpaper-grid--local,
 .x-nt-wallpaper-body[data-active-tab="local"] .x-nt-wallpaper-grid--built-in {
   display: none;
@@ -5690,10 +5675,10 @@ body[data-theme="dark"] .x-nt-row-select {
   flex-direction: column;
   gap: var(--x-nt-panel-field-gap);
   margin-top: var(--x-nt-effect-block-gap);
-  opacity: 1;
-  visibility: visible;
-  transition: opacity var(--lumno-duration-sm) ease;
-  will-change: opacity;
+}
+/* Spaced by its own margin, so a collapsed control just drops that margin. */
+.x-nt-effect-slider-control.x-nt-panel-collapsible {
+  --x-nt-collapsible-gap: 0px;
 }
 .x-nt-effect-ink-tone-control {
   margin-top: var(--x-nt-effect-control-gap);
@@ -5703,15 +5688,6 @@ body[data-theme="dark"] .x-nt-row-select {
 }
 .x-nt-effect-ink-tone-options {
   margin-top: 0;
-}
-.x-nt-effect-slider-control[data-visible="false"] {
-  display: none;
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
-}
-.x-nt-effect-slider-control[data-motion="enter"] {
-  opacity: 0;
 }
 .x-nt-effect-slider-wrap[data-disabled="true"] {
   opacity: 0.46;
@@ -5803,6 +5779,8 @@ body[data-theme="dark"] .x-nt-row-select {
     display var(--x-nt-panel-motion-duration) allow-discrete;
 }
 .x-nt-panel-collapsible:is([hidden], [data-visible="false"]) {
+  /* Out of the tab order once collapsed; `display` stays animatable via allow-discrete. */
+  display: none;
   height: 0;
   margin-top: calc(-1 * var(--x-nt-collapsible-gap));
   opacity: 0;
