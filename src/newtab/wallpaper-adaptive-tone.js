@@ -522,9 +522,8 @@
 
   // Headings and breadcrumbs are small text: their ink must reach 4.5:1 and the
   // muted ink 3:1 against the sampled background. A tone that falls short moves
-  // toward the opaque extreme of its ink family; it only changes family when that
-  // extreme cannot reach the floor and the other one reads better, as the
-  // wordmark does.
+  // toward the opaque extreme of its ink family. The family itself is settled
+  // beforehand by chooseReadableInk, so every adaptive style stays in one family.
   function ensureTranslucentToneReadable(tone, backgroundColor, ink, minimumContrast) {
     const background = getValidToneColor(backgroundColor);
     const start = {
@@ -534,17 +533,13 @@
     if (getTranslucentToneContrast(start, background) >= minimumContrast) {
       return start;
     }
-    const preferredTarget = ink === 'dark' ? TONE_DARK_TARGET : TONE_LIGHT_TARGET;
-    const alternateTarget = ink === 'dark' ? TONE_LIGHT_TARGET : TONE_DARK_TARGET;
-    const preferredContrast = getContrastRatio(preferredTarget, background);
-    const keepFamily = preferredContrast >= minimumContrast ||
-      preferredContrast >= getContrastRatio(alternateTarget, background);
-    const target = keepFamily ? preferredTarget : alternateTarget;
-    // Within the family both the color and its opacity move toward the extreme;
-    // across families the new ink only fades in, so contrast grows monotonically.
-    const candidateAt = keepFamily
-      ? (amount) => ({ color: mixColor(start.color, target, amount), alpha: mixNumber(start.alpha, 1, amount) })
-      : (amount) => ({ color: target, alpha: amount });
+    const target = ink === 'dark' ? TONE_DARK_TARGET : TONE_LIGHT_TARGET;
+    // Both the color and its opacity move toward the extreme, so contrast grows
+    // monotonically and a binary search finds the gentlest tone that reads.
+    const candidateAt = (amount) => ({
+      color: mixColor(start.color, target, amount),
+      alpha: mixNumber(start.alpha, 1, amount)
+    });
     let low = 0;
     let high = 1;
     let best = { color: target, alpha: 1 };
@@ -561,16 +556,34 @@
     return best;
   }
 
-  // Ink and muted ink for adaptive text, before the contrast floor. Filters
-  // repaint the wallpaper, so their luminance stands in for the sampled color.
-  function getAdaptiveInkTones(luminance, ink, color, effectType) {
-    const background = effectType && effectType !== 'none'
+  // Filters repaint the wallpaper, so their luminance stands in for the sampled color.
+  function getAdaptiveToneBackground(luminance, color, effectType) {
+    return effectType && effectType !== 'none'
       ? {
           red: clampNumber(luminance, 0, 1) * 255,
           green: clampNumber(luminance, 0, 1) * 255,
           blue: clampNumber(luminance, 0, 1) * 255
         }
       : getValidToneColor(color);
+  }
+
+  // The luminance thresholds pick an ink family with some hysteresis. On mid
+  // tones the family they keep may be unable to reach the small-text floor even
+  // fully opaque; then the other family is used when it reads better, and
+  // data-wallpaper-ink, hover and shadow styles all follow that choice.
+  function chooseReadableInk(ink, luminance, color, effectType) {
+    const background = getAdaptiveToneBackground(luminance, color, effectType);
+    const own = getContrastRatio(ink === 'dark' ? TONE_DARK_TARGET : TONE_LIGHT_TARGET, background);
+    if (own >= ADAPTIVE_INK_MIN_CONTRAST) {
+      return ink;
+    }
+    const other = getContrastRatio(ink === 'dark' ? TONE_LIGHT_TARGET : TONE_DARK_TARGET, background);
+    return other > own ? (ink === 'dark' ? 'light' : 'dark') : ink;
+  }
+
+  // Ink and muted ink for adaptive text, with the contrast floor applied.
+  function getAdaptiveInkTones(luminance, ink, color, effectType) {
+    const background = getAdaptiveToneBackground(luminance, color, effectType);
     let inkTone;
     let mutedTone;
     let amount;
@@ -632,21 +645,17 @@
     setStyleProperty(element, '--x-nt-wallpaper-adaptive-hover-bg', ink === 'dark'
       ? formatRgb(hover.red, hover.green, hover.blue, mixNumber(7, 12, amount))
       : formatRgb(hover.red, hover.green, hover.blue, mixNumber(10, 18, amount)));
-    // The dark shadow only backs light text; ink that had to turn dark to stay
-    // readable drops it like dark ink does.
-    const inkIsLighter = getRelativeLuminance(tones.ink.color) > getRelativeLuminance(tones.background);
-    if (!inkIsLighter) {
+    if (ink === 'dark') {
       setStyleProperty(element, '--x-nt-wallpaper-adaptive-shadow', 'transparent');
       setStyleProperty(element, '--x-nt-wallpaper-adaptive-halo', 'transparent');
       return;
     }
     // Light ink is palest right at the threshold, so the shadow must not fade
     // there; protection keeps mid tones and busy textures at full strength.
-    const shadowAmount = ink === 'dark' ? 1 : amount;
     setStyleProperty(element, '--x-nt-wallpaper-adaptive-shadow',
-      formatRgb(15, 23, 42, Math.max(mixNumber(26, 42, shadowAmount), mixNumber(26, 42, protection))));
+      formatRgb(15, 23, 42, Math.max(mixNumber(26, 42, amount), mixNumber(26, 42, protection))));
     setStyleProperty(element, '--x-nt-wallpaper-adaptive-halo',
-      formatRgb(15, 23, 42, Math.max(mixNumber(12, 22, shadowAmount), mixNumber(12, 26, protection))));
+      formatRgb(15, 23, 42, Math.max(mixNumber(12, 22, amount), mixNumber(12, 26, protection))));
   }
 
   function applySurfaceToneStyles(element, luminance, ink, color, textureContrast, effectType) {
@@ -1047,7 +1056,7 @@
               overlayLuminance,
               chooseInk(luminance, currentInk)
             )
-          : chooseInk(luminance, currentInk);
+          : chooseReadableInk(chooseInk(luminance, currentInk), luminance, sample.color, effectType);
         const overlayCovered = isWallpaperOverlayCovered(sample.overlayAlpha);
         target.element.setAttribute('data-wallpaper-ink', nextInk);
         target.element.setAttribute('data-wallpaper-overlay-cover', overlayCovered ? 'true' : 'false');
@@ -1167,6 +1176,7 @@
 
   root.LumnoNewtabWallpaperAdaptiveTone = {
     createWallpaperAdaptiveTone,
+    chooseReadableInk,
     getAdaptiveInkTones,
     getContrastRatio,
     getTranslucentToneContrast

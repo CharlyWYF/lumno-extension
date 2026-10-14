@@ -3,6 +3,7 @@ const assert = require('assert');
 require('../src/newtab/wallpaper-adaptive-tone.js');
 
 const {
+  chooseReadableInk,
   getAdaptiveInkTones,
   getContrastRatio,
   getTranslucentToneContrast
@@ -22,12 +23,14 @@ function blendedContrast(tone, background) {
   return getTranslucentToneContrast(tone, background);
 }
 
-// Both ink families are possible in the hysteresis band (0.5 to 0.62), so check each.
+// Either family can come out of the hysteresis band (0.5 to 0.62), so start
+// from each; chooseReadableInk settles the family the tones are drawn in.
 const midGrays = [102, 115, 128, 140, 150, 158, 166];
 midGrays.forEach((level) => {
   const background = gray(level);
   const luminance = sampledLuminance(background);
-  ['light', 'dark'].forEach((ink) => {
+  ['light', 'dark'].forEach((startInk) => {
+    const ink = chooseReadableInk(startInk, luminance, background, 'none');
     const tones = getAdaptiveInkTones(luminance, ink, background, 'none');
     const inkContrast = blendedContrast(tones.ink, background);
     const mutedContrast = blendedContrast(tones.muted, background);
@@ -47,15 +50,21 @@ midGrays.forEach((level) => {
 });
 
 // The old fixed interpolation gave light ink on a 0.6 gray roughly 1.6:1.
+// Light ink cannot reach the floor there even opaque, so the whole family turns
+// dark; tones never leave the family they are given.
 {
   const background = gray(150);
-  const tones = getAdaptiveInkTones(sampledLuminance(background), 'light', background, 'none');
+  const luminance = sampledLuminance(background);
+  assert.strictEqual(chooseReadableInk('light', luminance, background, 'none'), 'dark');
+  const tones = getAdaptiveInkTones(luminance, 'dark', background, 'none');
   assert.ok(blendedContrast(tones.ink, background) >= 4.45);
-  assert.ok(
-    tones.ink.color.red < 100,
-    'light ink that cannot reach the floor on a mid gray should turn dark, where it can'
-  );
+  const lightTones = getAdaptiveInkTones(luminance, 'light', background, 'none');
+  assert.ok(lightTones.ink.color.red > 200, 'light ink stays light even when it falls short');
 }
+
+// A family that already reads is kept, so clearly light or dark wallpapers do not change.
+assert.strictEqual(chooseReadableInk('light', sampledLuminance(gray(30)), gray(30), 'none'), 'light');
+assert.strictEqual(chooseReadableInk('dark', sampledLuminance(gray(230)), gray(230), 'none'), 'dark');
 
 // Tones that already read keep their color and translucency.
 {
@@ -83,7 +92,8 @@ midGrays.forEach((level) => {
 // A filter repaints the wallpaper, so its luminance, not the sampled hue, is the background.
 {
   const saturated = { red: 220, green: 40, blue: 40 };
-  const tones = getAdaptiveInkTones(0.5, 'dark', saturated, 'dither');
+  const ink = chooseReadableInk('dark', 0.5, saturated, 'dither');
+  const tones = getAdaptiveInkTones(0.5, ink, saturated, 'dither');
   assert.ok(blendedContrast(tones.ink, gray(Math.round(0.5 * 255))) >= 4.45);
 }
 
