@@ -157,7 +157,7 @@ Lumno is built for Chromium browsers and also ships a Firefox build. Browsers bu
 
 ## Privacy
 
-Lumno is local-first. Bookmarks, history and tabs are read on your device to power search and are never sent to Lumno or developer servers. There is no Lumno account, analytics or ad tracking. Optional features that contact third parties (site icons, daily quotes, online wallpapers and WebDAV) only do so after you turn them on. Read the full [privacy policy](https://lumno.kubai.design/privacy/).
+Lumno is local-first. Bookmarks, history and tabs are read on your device to power search and are never sent to Lumno or developer servers. There is no Lumno account, analytics or ad tracking. Two features contact third parties by default: search suggestions send what you type to your default search engine's suggestion service (never URLs, host names, file paths or the prefilled page address), and site icons the browser has not cached come from Google's icon service (Gstatic), which learns only the site's origin, never the page. Daily quotes, online wallpapers and WebDAV only connect after you turn them on. Read the full [privacy policy](https://lumno.kubai.design/privacy/).
 
 ## FAQ
 
