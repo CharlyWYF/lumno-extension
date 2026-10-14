@@ -87,6 +87,16 @@ jobs:
               | jq -r '.current_version.version // empty'
           }
 
+          # GitHub's API sometimes times out (HTTP 504), so try a few times.
+          with_retries() {
+            local delay
+            for delay in 0 20 60 120; do
+              sleep "$delay"
+              "$@" && return 0
+            done
+            return 1
+          }
+
           is_live() {
             case "$live" in *",$1,"*) return 0 ;; esac
             return 1
@@ -105,15 +115,21 @@ jobs:
               store_version="$("${store}_version" 2>/dev/null || true)"
               echo "$(date -u +%H:%M:%S) $store serves ${store_version:-unknown}"
               if serves_version "$store_version"; then
-                live="$live$store,"
                 newly_live="$newly_live $store"
               fi
             done
 
+            # A store only counts as live once the website deploy is dispatched,
+            # so a failed dispatch is tried again at the next check.
             if [ -n "$newly_live" ]; then
               echo "Now live:$newly_live. Redeploying the website."
-              GH_TOKEN="$WEB_TOKEN" gh workflow run deploy-pages.yml --repo kubai087/lumno-web --ref main \
-                || echo "::warning::Could not dispatch the website deploy."
+              if with_retries env GH_TOKEN="$WEB_TOKEN" gh workflow run deploy-pages.yml --repo kubai087/lumno-web --ref main; then
+                for store in $newly_live; do
+                  live="$live$store,"
+                done
+              else
+                echo "::warning::Could not dispatch the website deploy; trying again at the next check."
+              fi
             fi
 
             all_live=true
@@ -133,8 +149,11 @@ jobs:
             if [ "$now" -ge "$run_deadline" ]; then
               live_input="$(echo "$live" | sed -E 's/^,+//; s/,+$//')"
               echo "Handing the watch on to a new run."
-              gh workflow run watch-store-publication.yml --repo "$GITHUB_REPOSITORY" --ref "${DEFAULT_BRANCH:-main}" \
-                -f version="$version" -f started_at="$started_at" -f live="$live_input"
+              if ! with_retries gh workflow run watch-store-publication.yml --repo "$GITHUB_REPOSITORY" --ref "${DEFAULT_BRANCH:-main}" \
+                -f version="$version" -f started_at="$started_at" -f live="$live_input"; then
+                echo "::error::Could not hand the watch on; dispatch this workflow with version=$version to resume."
+                exit 1
+              fi
               exit 0
             fi
 
