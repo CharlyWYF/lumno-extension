@@ -14,6 +14,8 @@
   // Synced connection hints stay far below chrome.storage.sync's 8 KB item quota.
   const MAX_HINTS = 10;
   const MAX_HINT_BYTES = 600;
+  // Server snapshots of replaced remote states kept per device and connection.
+  const SNAPSHOT_SLOTS = 10;
   // Contract failures in this device's own data; capture reports them as
   // local-<code> so the settings card never blames the remote copy.
   const LOCAL_DATA_CODES = ['invalid-state', 'state-too-large', 'invalid-shortcuts', 'invalid-icon', 'invalid-wallpaper',
@@ -98,21 +100,33 @@
     const contentionDelays = opts.contentionDelays || [3000, 10000, 30000];
     let contention = 0;
     const fail = (code) => { throw clientApi.error(code); };
+    const logger = opts.logger || root.console;
+    function report(context, cause) {
+      try { logger.warn(`[Lumno] ${context}`, cause); } catch (_error) { /* Logging never fails a sync. */ }
+    }
     const watchedKeys = [...settings.CHROME_SYNC_STORAGE_KEYS, contract.ICONS_KEY, ...contract.LOCAL_PREFERENCE_KEYS,
       contract.OVERFLOW_KEY, settings.ASSET_REVISION_STORAGE_KEY];
-    function storage(area, method, value) {
+    const storageRetryDelayMs = opts.storageRetryDelayMs ?? 2500;
+    // A write refused by the browser sync write quota is retried once, after
+    // the quota has had time to refill.
+    function storage(area, method, value, retried = false) {
       return new Promise((resolve, reject) => {
         if (!area) { resolve(method === 'get' ? {} : undefined); return; }
         let finished = false;
-        const done = (result) => {
+        const done = (result, failure) => {
           if (finished) return;
           finished = true;
-          const lastError = chromeApi.runtime && chromeApi.runtime.lastError;
-          if (lastError) reject(new Error('local-storage-failed')); else resolve(result);
+          const lastError = failure || (chromeApi.runtime && chromeApi.runtime.lastError);
+          if (!lastError) { resolve(result); return; }
+          if (method !== 'get' && !retried && settings.isStorageRateLimitError && settings.isStorageRateLimitError(lastError)) {
+            setTimeout(() => storage(area, method, value, true).then(resolve, reject), storageRetryDelayMs);
+            return;
+          }
+          reject(Object.assign(clientApi.error('local-storage-failed'), { reason: String(lastError.message || lastError) }));
         };
         try {
-          const pending = area[method](value, done);
-          if (pending && typeof pending.then === 'function') pending.then(done).catch(reject);
+          const pending = area[method](value, (result) => done(result));
+          if (pending && typeof pending.then === 'function') pending.then((result) => done(result)).catch((error) => done(undefined, error || new Error('storage-failed')));
         } catch (error) { reject(error); }
       });
     }
@@ -214,6 +228,9 @@
     }
     async function captureInternal() {
       await runtime.ready;
+      // Unknown mode means the settings could be read from the wrong area;
+      // uploading that copy would replace the real ones on other devices.
+      if (runtime.isModeKnown && !runtime.isModeKnown()) fail('local-storage-failed');
       const capturedGeneration = generation;
       const local = await storage(localPrefsArea, 'get', watchedKeys);
       const values = runtime.isActiveAreaName('local') ? local : await storage(chromeFallbackArea, 'get', settings.CHROME_SYNC_STORAGE_KEYS);
@@ -285,6 +302,10 @@
         if (knownAssets && contract.equal(knownAssets[digest], asset)) continue;
         const bytes = await getAsset(digest, asset, client);
         const existing = await client.request(assetPath(digest, asset.mime), 'HEAD', undefined, {}, 65536);
+        // Asset files are named by the SHA-256 of their content and only ever
+        // written whole, so a file of the expected size needs no download.
+        // Without a size, or with another one, its content is checked.
+        if (existing.status === 200 && existing.size === asset.size) continue;
         if (existing.status === 200) {
           const downloaded = await client.request(assetPath(digest, asset.mime), 'GET', undefined, {}, asset.size);
           if (downloaded.status !== 200 || downloaded.bytes.byteLength !== asset.size || await hash(downloaded.bytes) !== digest) fail('asset-integrity');
@@ -334,6 +355,37 @@
           entries.reduce((sum, [key, value]) => sum + size(key, value), 0) > (chromeFallbackArea.QUOTA_BYTES || 102400))) fail('chrome-capacity');
       return { payload, synced, remove };
     }
+    // The values apply() writes, so their change events are not taken for new
+    // local edits that would start another full round. Expectations left
+    // unmatched expire shortly after the apply.
+    const ownWrites = new Map();
+    let ownWritesTimer = null;
+    const ownWriteKey = (areaName, key) => `${areaName}\n${key}`;
+    // Only values that really change fire an event; an expectation for an
+    // unchanged one would swallow a later identical edit by the person.
+    async function expectOwnWrites(area, areaName, values) {
+      if (ownWritesTimer) { clearTimeout(ownWritesTimer); ownWritesTimer = null; }
+      const current = await storage(area, 'get', Object.keys(values));
+      Object.entries(values).forEach(([key, value]) => {
+        if (contract.canonical(value) !== contract.canonical(current[key])) ownWrites.set(ownWriteKey(areaName, key), contract.canonical(value));
+      });
+    }
+    // Events may arrive after the write's callback; nothing written means
+    // nothing to wait for.
+    function expireOwnWrites(wrote) {
+      if (ownWritesTimer) clearTimeout(ownWritesTimer);
+      ownWritesTimer = null;
+      if (!wrote) { ownWrites.clear(); return; }
+      ownWritesTimer = setTimeout(() => { ownWrites.clear(); ownWritesTimer = null; }, 2000);
+      if (ownWritesTimer && typeof ownWritesTimer.unref === 'function') ownWritesTimer.unref();
+    }
+    function isOwnWrite(areaName, key, change) {
+      const id = ownWriteKey(areaName, key);
+      if (!ownWrites.has(id)) return false;
+      const expected = ownWrites.get(id) === contract.canonical(change.newValue);
+      ownWrites.delete(id);
+      return expected;
+    }
     async function apply(state, captured, client, activate, nextSession) {
       const { payload, synced, remove } = await prepareChrome(state, captured);
       const icons = {};
@@ -352,19 +404,28 @@
         if (captured.generation !== generation) fail('local-changed');
         const removed = contract.LOCAL_PREFERENCE_KEYS.filter((key) =>
           Object.prototype.hasOwnProperty.call(captured.local, key) && !Object.prototype.hasOwnProperty.call(state.data, key));
-        // Stage the complete operation before changing either local store. Chrome
-        // may terminate the worker between the media transaction and preferences.
-        await privateStore.put('pendingApply', { state, captured, activate, nextSession });
-        await wallpaperStore.replaceAll(wallpapers);
-        if (captured.generation !== generation) fail('local-changed');
-        if (remove.length) await storage(chromeFallbackArea || localPrefsArea, 'remove', remove);
-        await storage(chromeFallbackArea || localPrefsArea, 'set', synced);
-        if (removed.length) await storage(localPrefsArea, 'remove', removed);
-        await storage(localPrefsArea, 'set', {
+        const localValues = {
           ...pickLocalPreferences(payload),
           [contract.OVERFLOW_KEY]: payload[contract.OVERFLOW_KEY], [contract.ICONS_KEY]: icons,
           [settings.ASSET_REVISION_STORAGE_KEY]: cryptoApi.randomUUID(),
-          ...(runtime.isActiveAreaName('local') && chromeFallbackArea ? { [settings.LOCAL_PRIMARY_STORAGE_KEY]: false } : {}) });
+          ...(runtime.isActiveAreaName('local') && chromeFallbackArea ? { [settings.LOCAL_PRIMARY_STORAGE_KEY]: false } : {}) };
+        let wrote = false;
+        try {
+          await expectOwnWrites(chromeFallbackArea || localPrefsArea, chromeFallbackArea ? 'sync' : 'local',
+            { ...Object.fromEntries(remove.map((key) => [key, undefined])), ...synced });
+          await expectOwnWrites(localPrefsArea, 'local', { ...Object.fromEntries(removed.map((key) => [key, undefined])), ...localValues });
+          if (captured.generation !== generation) fail('local-changed');
+          // Stage the complete operation before changing either local store. Chrome
+          // may terminate the worker between the media transaction and preferences.
+          await privateStore.put('pendingApply', { state, captured, activate, nextSession });
+          await wallpaperStore.replaceAll(wallpapers);
+          if (captured.generation !== generation) fail('local-changed');
+          wrote = true;
+          if (remove.length) await storage(chromeFallbackArea || localPrefsArea, 'remove', remove);
+          await storage(chromeFallbackArea || localPrefsArea, 'set', synced);
+          if (removed.length) await storage(localPrefsArea, 'remove', removed);
+          await storage(localPrefsArea, 'set', localValues);
+        } finally { expireOwnWrites(wrote); }
         // Credentials and the merge baseline belong to the same server and must
         // commit atomically; separate records could pair a new server with an old base.
         await privateStore.put('session', nextSession);
@@ -404,35 +465,81 @@
         itemQuota: chromeFallbackArea.QUOTA_BYTES_PER_ITEM, maxItems: chromeFallbackArea.MAX_ITEMS });
       // Only migrate an older local-primary installation when its full
       // preferences fit. Never replace Chrome with a partial WebDAV backup.
-      if (!plan.complete) fail('chrome-capacity');
+      // The card names the condition; it persists until the settings shrink.
+      if (!plan.complete) {
+        await setStatus({ chromeBackup: 'incomplete', chromeSkipped: plan.skipped.length });
+        throw Object.assign(clientApi.error('chrome-capacity'), { recorded: true });
+      }
       try {
         if (plan.remove.length) await storage(chromeFallbackArea, 'remove', plan.remove);
         if (Object.keys(plan.payload).length) await storage(chromeFallbackArea, 'set', plan.payload);
         await storage(localPrefsArea, 'set', { [settings.LOCAL_PRIMARY_STORAGE_KEY]: false });
         await setStatus({ chromeBackup: 'complete', chromeSkipped: 0 });
-      } catch (_error) {
+      } catch (cause) {
+        report('Could not write the browser sync backup.', cause);
         await setStatus({ chromeBackup: 'failed' });
-        throw clientApi.error('chrome-capacity');
+        throw Object.assign(clientApi.error('chrome-capacity'), { recorded: true });
       }
       return plan;
+    }
+    // The browser-sync backup of an older local-primary installation is a
+    // standing condition of this device, not part of a WebDAV round: its
+    // failure is recorded for the card and never stops the round itself.
+    async function mirrorReporting() {
+      try { await mirrorChrome(); }
+      catch (cause) { if (!cause.recorded) report('Could not back up settings to browser sync.', cause); }
     }
     async function readRemote(client) {
       const remote = await client.readState();
       return remote && { state: contract.validateState(remote.state), etag: remote.etag };
     }
+    // A write lock this device took but could not release would hold every
+    // device at remote-locked. It is retried once at once and otherwise
+    // remembered, so the next round releases it before anything else.
+    async function releaseOwnStaleLock(client) {
+      const marker = await privateStore.get('staleLock');
+      if (!marker || typeof client.releaseStaleLock !== 'function') return;
+      try { if (await client.releaseStaleLock(marker)) await privateStore.put('staleLock', null); }
+      catch (cause) { report('Could not release a WebDAV write lock left by this device.', cause); }
+    }
+    async function rememberStaleLock(client, marker) {
+      if (!marker.uncertain) {
+        try { if (await client.releaseStaleLock(marker)) return; }
+        catch (_cause) { /* Kept for the next round below. */ }
+      }
+      await privateStore.put('staleLock', marker);
+    }
+    async function writeState(client, state, remote) {
+      let written;
+      try { written = await client.writeState(state, remote && remote.etag); }
+      catch (cause) {
+        if (cause && cause.staleLock) await rememberStaleLock(client, cause.staleLock);
+        throw cause;
+      }
+      if (written && written.staleLock) await rememberStaleLock(client, written.staleLock);
+      return written;
+    }
     async function publish(state, remote, client, capturedGeneration) {
       if (capturedGeneration !== generation) fail('local-changed');
       await uploadAssets(state, client, remote && remote.state.assets);
-      if (remote) {
-        const archived = await client.request(`snapshots/${cryptoApi.randomUUID()}.json`, 'PUT', JSON.stringify(remote.state),
-          { 'If-None-Match': '*', 'Content-Type': 'application/json' });
-        if (![200, 201, 204].includes(archived.status)) fail('write-failed');
-      }
+      if (remote) await archiveSnapshot(remote.state, client);
       if (capturedGeneration !== generation) fail('local-changed');
-      await client.writeState(state, remote && remote.etag);
-      const verified = await readRemote(client);
-      if (!verified || !contract.equal(state, verified.state)) fail('remote-changed');
-      return verified;
+      // The client already read the state back under the lock and compared it.
+      const written = await writeState(client, state, remote);
+      return { state: contract.validateState(written.state), etag: written.etag };
+    }
+    // Each device keeps its last SNAPSHOT_SLOTS copies of the server state it
+    // replaced, overwriting the oldest, so snapshots never pile up. Older
+    // clients' randomly named snapshots are left alone.
+    async function archiveSnapshot(remoteState, client) {
+      const saved = await privateStore.get('snapshotRing');
+      const ring = saved && /^[-\w]{1,80}$/.test(saved.device || '') && Number.isInteger(saved.next)
+        ? saved : { device: cryptoApi.randomUUID(), next: 0 };
+      const slot = ((ring.next % SNAPSHOT_SLOTS) + SNAPSHOT_SLOTS) % SNAPSHOT_SLOTS;
+      const archived = await client.request(`snapshots/${ring.device}-${slot}.json`, 'PUT', JSON.stringify(remoteState),
+        { 'Content-Type': 'application/json' });
+      if (![200, 201, 204].includes(archived.status)) fail('write-failed');
+      await privateStore.put('snapshotRing', { device: ring.device, next: (slot + 1) % SNAPSHOT_SLOTS });
     }
     // Answers to the first-join choice: keep one side, or merge wallpapers onto the server's copy.
     const INITIAL_DECISIONS = ['local', 'remote', 'merge'];
@@ -442,6 +549,7 @@
       await setStatus({ state: 'syncing', error: null });
       const client = await verifiedClient(config);
       await saveConfig(config);
+      await releaseOwnStaleLock(client);
       const captured = await capture(INITIAL_DECISIONS.includes(decision));
       const remote = await readRemote(client);
       if (INITIAL_DECISIONS.includes(decision)) {
@@ -474,13 +582,22 @@
       }
       await prepareChrome(target, captured);
       if (!remote || !contract.equal(target, remote.state)) await publish(target, remote, client, captured.generation);
-      if (!contract.equal(target, captured.state)) await apply(target, captured, client, false, { config, base: target });
-      else if (captured.generation !== generation) fail('local-changed');
-      else await privateStore.put('session', { config, base: target });
+      if (!contract.equal(target, captured.state)) {
+        // The server now holds target: the captured state plus what only the
+        // server changed. Until target is applied here, the captured state is
+        // what both sides share. As the baseline it survives an apply that
+        // fails below: published edits of this device are not reported again
+        // as conflicts, and the server's changes are not taken for reverts.
+        await privateStore.put('session', { config, base: captured.state });
+        await apply(target, captured, client, false, { config, base: target });
+      } else {
+        await privateStore.put('session', { config, base: target });
+        if (captured.generation !== generation) fail('local-changed');
+      }
       if (decision) await privateStore.put('recoveryBlocked', false);
       await privateStore.put('conflict', null);
+      await mirrorReporting();
       await setStatus({ state: 'ready', error: null, diagnostic: null, conflicts: [], lastSyncAt: Date.now() });
-      await mirrorChrome();
       return { ok: true };
     }
     async function guardedSync(decision) {
@@ -502,9 +619,11 @@
         const diagnostic = clientApi.diagnostic(cause.diagnostic);
         await setStatus({ state: cause.code === 'local-changed' ? 'pending' : cause.code === 'remote-missing' ? 'choice' : 'error',
           error: cause.code || 'sync-failed', diagnostic });
-        throw Object.assign(clientApi.error(cause.code || 'sync-failed'), { diagnostic });
+        // Callers without a page to report to know the card already shows it.
+        throw Object.assign(clientApi.error(cause.code || 'sync-failed'), { diagnostic, recorded: true });
       }
     }
+    const sameAccount = (left, right) => ['endpoint', 'directory', 'username'].every((key) => left[key] === right[key]);
     async function connection(input) {
       const { config: previous } = await session();
       const candidate = clientApi.normalizeConfig({ ...input, password: input.password || (previous && previous.password) || 'placeholder' });
@@ -536,6 +655,7 @@
         // Repeated toggles and worker restarts don't rerun destructive probes.
         await saveConfig({ ...config, enabled: previous.enabled });
       }
+      if (previous && sameAccount(config, previous)) await releaseOwnStaleLock(client);
       const remote = await readRemote(client);
       if (!decision && previous && config.endpoint === previous.endpoint && config.directory === previous.directory &&
           config.username === previous.username && base) {
@@ -564,8 +684,8 @@
         await privateStore.put('recoveryBlocked', false);
       } else await apply(target, captured, client, true, { config: { ...config, enabled: true }, base: target });
       await privateStore.put('conflict', null);
+      await mirrorReporting();
       await setStatus({ state: 'ready', enabled: true, error: null, diagnostic: null, conflicts: [], lastSyncAt: Date.now() });
-      await mirrorChrome();
       schedule();
       return { ok: true };
     }
@@ -622,8 +742,12 @@
     }
     function onStorageChanged(changes, areaName) {
         if (stopped) return;
+        const changed = watchedKeys.filter((key) => changes[key]);
+        // This controller's own apply: nothing new to capture or upload.
+        if (changed.length && !changes[CHROME_SYNC_META_KEY] &&
+            changed.filter((key) => !isOwnWrite(areaName, key, changes[key])).length === 0) return;
         if ((areaName === 'local' || (areaName === 'sync' && !runtime.isActiveAreaName('local'))) &&
-            watchedKeys.some((key) => changes[key])) generation += 1;
+            changed.length) generation += 1;
         if (!((areaName === 'sync' && !runtime.isActiveAreaName('local')) || areaName === 'local') ||
             !(watchedKeys.some((key) => changes[key]) || (areaName === 'sync' && changes[CHROME_SYNC_META_KEY]))) return;
         queueSync(1500);
@@ -640,7 +764,7 @@
       if (timerKeepsAlive) holdKeepAlive();
       timer = setTimeout(() => {
         timer = null;
-        exclusive(async () => { if (!stopped) { await mirrorChrome(); await guardedSync(); } }).catch(() => {});
+        backgroundRound(false);
         // exclusive() took its own hold above, so the page stays alive throughout.
         if (timerKeepsAlive) {
           timerKeepsAlive = false;
@@ -649,8 +773,24 @@
       }, delay);
       if (timer && typeof timer.unref === 'function') timer.unref();
     }
+    // Timer, alarm and start-up rounds have no page waiting for them. The
+    // round records its own outcome on the card; anything it could not record
+    // is logged instead of disappearing.
+    function backgroundRound(recover) {
+      return exclusive(async () => {
+        if (stopped) return;
+        let recovered = true;
+        if (recover) {
+          try { await recoverPendingApply(); }
+          catch (cause) { recovered = false; report('Could not recover an interrupted WebDAV apply.', cause); }
+        }
+        // A partially applied state must not reach browser sync either.
+        if (recovered) await mirrorReporting();
+        await guardedSync();
+      }).catch((cause) => { if (!cause || !cause.recorded) report('WebDAV sync failed.', cause); });
+    }
     function onAlarm(alarm) {
-      if (!stopped && alarm.name === alarmName) exclusive(async () => { if (!stopped) { await mirrorChrome(); await guardedSync(); } }).catch(() => {});
+      if (!stopped && alarm.name === alarmName) backgroundRound(false);
     }
     function start() {
       if (started || stopped) return;
@@ -662,9 +802,9 @@
         const { config } = await session();
         if ((config && config.enabled) || runtime.isActiveAreaName('local') || await privateStore.get('pendingApply')) {
           if (config && config.enabled) schedule();
-          await exclusive(async () => { await recoverPendingApply(); await mirrorChrome(); await guardedSync(); });
+          await backgroundRound(true);
         }
-      }).catch(() => {});
+      }).catch((cause) => report('Could not start WebDAV sync.', cause));
     }
     function stop() {
       return exclusive(async () => {
@@ -691,6 +831,8 @@
           const wasEnabled = Boolean(previous.config && previous.config.enabled);
           const sameServer = previous.config && ['endpoint', 'directory', 'username'].every((key) => previous.config[key] === config[key]);
           await privateStore.put('session', { config: { ...config, enabled: false }, base: sameServer ? previous.base : null });
+          // A lock left on the old server is not this connection's any more.
+          if (!sameServer) await privateStore.put('staleLock', null);
           await pause();
           await setStatus({ conflicts: [], ...(!sameServer ? { lastSyncAt: null } : {}) });
           if (wasEnabled && request.resume === true) return { ...await connectReporting((await session()).config), resumed: true };
@@ -724,8 +866,8 @@
           const { config, base } = await session();
           await apply(backup.captured.state, captured, config ? clientApi.createClient(config, opts.clientOptions) : null, true,
             { config: config ? { ...config, enabled: false } : null, base });
+          await mirrorReporting();
           await setStatus({ state: 'paused', enabled: false, error: null });
-          await mirrorChrome();
           return { ok: true };
         }
         default: fail('unknown-operation');
@@ -743,7 +885,8 @@
     const wallpaperStore = opts.wallpaperStore || root.LumnoNewtabWallpaperLocalStore.createWallpaperLocalStore({ windowObj: root, onChange() {} });
     const workers = new Map();
     const probeCache = opts.probeCache || createProbeCache();
-    const recordKeys = ['session', 'pendingApply', 'recoveryBlocked', 'conflict', 'replacementBackup', 'replacementBackupMeta', 'migrationBackup', 'migrationBackupMeta'];
+    const recordKeys = ['session', 'pendingApply', 'recoveryBlocked', 'conflict', 'replacementBackup', 'replacementBackupMeta', 'migrationBackup', 'migrationBackupMeta',
+      'staleLock', 'snapshotRing'];
     let ids = [];
     let registryChain = Promise.resolve();
     let hintChain = Promise.resolve();
@@ -820,9 +963,15 @@
         const controller = createConnectionController({ ...opts, chrome: chromeApi, settings, privateStore: scopedStore,
           wallpaperStore, probeCache, statusKey: statusKeyFor(id), alarmName: id === 'default' ? ALARM_NAME : `${ALARM_NAME}:${id}`,
           managed: true, withLocalWrite,
+          // An unrecovered local write of any connection may have left a
+          // partial state, so no connection uploads until its journal is
+          // recovered (at start-up, before any sync). A connection that then
+          // waits for its backup to be restored pauses only itself: the others
+          // keep syncing the device's current settings instead of stopping
+          // until someone restores.
           hasPendingApply: async () => {
-            for (const connectionId of workers.keys()) if (await store.get(keyFor(connectionId, 'pendingApply')) ||
-              await store.get(keyFor(connectionId, 'recoveryBlocked'))) return true;
+            if (await store.get(keyFor(id, 'recoveryBlocked'))) return true;
+            for (const connectionId of workers.keys()) if (await store.get(keyFor(connectionId, 'pendingApply'))) return true;
             return false;
           } });
         workers.set(id, controller);
@@ -913,7 +1062,10 @@
           await worker(id).handle({ operation: 'schedule' });
           await worker(id).handle({ operation: 'sync' });
         }
-      }))).catch(() => {});
+      }))).catch((cause) => {
+        // A failed round is already on its card; only the rest is logged.
+        if (!cause || !cause.recorded) (opts.logger || root.console).warn('[Lumno] Could not start WebDAV sync.', cause);
+      });
     }
     async function handle(request) {
       await ready;

@@ -190,6 +190,15 @@ describe('WebDAV connection cards', () => {
     expect(card('failed').textContent).not.toContain('move-race');
     expect([...card('failed').querySelectorAll('button')].some((button) => button.textContent?.includes(copy.webdav_copy_diagnostic))).toBe(true);
   });
+  it('shows a standing warning without marking a synced connection as failed', () => {
+    const { card } = fixture({ ...model, connections: [{ ...item, enabled: true, state: 'ready', lastSyncAt: Date.now(),
+      warningText: copy.webdav_warning_chrome_backup }] });
+    const notice = card('a').querySelector<HTMLElement>('.lumno-webdav-notice')!;
+    expect(notice.dataset.tone).toBe('warning');
+    expect(notice.textContent).toBe(copy.webdav_warning_chrome_backup);
+    expect(card('a').querySelector<HTMLElement>('._x_extension_sync_status_2024_unique_')!.dataset.status).toBe('success');
+    expect(card('a').querySelector(`button[aria-label="${copy.webdav_sync}"]`)).not.toBeNull();
+  });
   it('retries a failed connection from its notice', async () => {
     const { card, onAction } = fixture({ ...model, connections: [{ ...item, enabled: true, state: 'error', errorText: 'Offline' }] });
     await click([...card('a').querySelectorAll('button')].find((button) => button.textContent?.includes(copy.webdav_retry))!);

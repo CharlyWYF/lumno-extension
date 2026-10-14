@@ -724,45 +724,72 @@
     });
   }
 
-  function writeStorageValues(storageArea, chromeApi, values) {
+  // chrome.storage.sync refuses a burst of writes (dragging a slider, several
+  // pages saving at once) with an error naming the exhausted quota. Its
+  // buckets refill about one write every two seconds, so a single later
+  // attempt goes through unless the burst keeps going.
+  const STORAGE_RATE_LIMIT_RETRY_MS = 2500;
+  const STORAGE_RATE_LIMIT_PATTERN = /MAX_(?:SUSTAINED_)?WRITE_OPERATIONS_PER_(?:MINUTE|HOUR)/;
+  function isStorageRateLimitError(error) {
+    return STORAGE_RATE_LIMIT_PATTERN.test(String(error && error.message || error || ''));
+  }
+  function getStorageRetryDelay(options) {
+    const delay = options && Number(options.retryDelayMs);
+    return Number.isFinite(delay) && delay >= 0 ? delay : STORAGE_RATE_LIMIT_RETRY_MS;
+  }
+  // Provider areas retry refused bursts themselves; wrapping one must not
+  // retry the same write twice.
+  const rateLimitRetryingAreas = new WeakSet();
+
+  function writeStorageValues(storageArea, chromeApi, values, options) {
     const payload = values && typeof values === 'object' && !Array.isArray(values)
       ? { ...values }
       : {};
+    const retryDelayMs = getStorageRetryDelay(options);
     return new Promise((resolve, reject) => {
       if (!storageArea || typeof storageArea.set !== 'function') {
         resolve(payload);
         return;
       }
-      let settled = false;
-      const finish = (error) => {
-        if (settled) {
-          return;
+      let retries = rateLimitRetryingAreas.has(storageArea) ? 0 : 1;
+      const attempt = () => {
+        let settled = false;
+        const finish = (error) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          if (error && retries > 0 && isStorageRateLimitError(error)) {
+            retries -= 1;
+            setTimeout(attempt, retryDelayMs);
+            return;
+          }
+          if (error) {
+            reject(error instanceof Error ? error : new Error(String(error)));
+            return;
+          }
+          resolve(payload);
+        };
+        const callback = () => {
+          const runtimeError = chromeApi && chromeApi.runtime
+            ? chromeApi.runtime.lastError
+            : null;
+          finish(runtimeError
+            ? new Error(String(runtimeError.message || 'storage-write-failed'))
+            : null);
+        };
+        try {
+          const maybePromise = storageArea.set(payload, callback);
+          if (maybePromise && typeof maybePromise.then === 'function') {
+            maybePromise.then(() => {
+              Promise.resolve().then(() => finish(null));
+            }).catch(finish);
+          }
+        } catch (error) {
+          finish(error);
         }
-        settled = true;
-        if (error) {
-          reject(error instanceof Error ? error : new Error(String(error)));
-          return;
-        }
-        resolve(payload);
       };
-      const callback = () => {
-        const runtimeError = chromeApi && chromeApi.runtime
-          ? chromeApi.runtime.lastError
-          : null;
-        finish(runtimeError
-          ? new Error(String(runtimeError.message || 'storage-write-failed'))
-          : null);
-      };
-      try {
-        const maybePromise = storageArea.set(payload, callback);
-        if (maybePromise && typeof maybePromise.then === 'function') {
-          maybePromise.then(() => {
-            Promise.resolve().then(() => finish(null));
-          }).catch(finish);
-        }
-      } catch (error) {
-        finish(error);
-      }
+      attempt();
     });
   }
 
@@ -983,37 +1010,62 @@
 
   const providerStorageRuntimes = new WeakMap();
 
-  function createProviderStorageRuntime(chromeApi) {
+  // Reading the local-primary flag picks the area every setting comes from,
+  // so a failed read is retried instead of silently choosing browser sync.
+  const MODE_READ_RETRY_DELAYS_MS = [100, 400, 1600];
+
+  function createProviderStorageRuntime(chromeApi, options) {
     if (chromeApi && providerStorageRuntimes.has(chromeApi)) {
       return providerStorageRuntimes.get(chromeApi);
     }
     const storage = chromeApi && chromeApi.storage ? chromeApi.storage : null;
     const syncArea = storage && storage.sync ? storage.sync : null;
     const localArea = storage && storage.local ? storage.local : syncArea;
+    const retryDelayMs = getStorageRetryDelay(options);
+    const modeRetryDelays = options && Array.isArray(options.modeRetryDelaysMs)
+      ? options.modeRetryDelaysMs : MODE_READ_RETRY_DELAYS_MS;
     let activeAreaName = syncArea ? 'sync' : (localArea ? 'local' : '');
     let observedModeChange = false;
+    let modeKnown = true;
     const modeReady = new Promise((resolve) => {
       if (!localArea || typeof localArea.get !== 'function') {
         resolve(activeAreaName);
         return;
       }
-      let settled = false;
-      const finish = (result) => {
-        if (settled) return;
-        settled = true;
-        if (!observedModeChange && result && result[LOCAL_PRIMARY_STORAGE_KEY] === true) activeAreaName = 'local';
-        resolve(activeAreaName);
+      const readMode = (attempt) => {
+        let settled = false;
+        const finish = (result, error) => {
+          if (settled) return;
+          settled = true;
+          const lastError = error || (chromeApi && chromeApi.runtime && chromeApi.runtime.lastError);
+          if (lastError && !observedModeChange) {
+            if (attempt < modeRetryDelays.length) {
+              setTimeout(() => readMode(attempt + 1), modeRetryDelays[attempt]);
+              return;
+            }
+            // Still unreadable: keep the default, but say so, so callers that
+            // would copy settings elsewhere can refuse instead of guessing.
+            modeKnown = false;
+            try { console.warn('[Lumno] Could not read the settings storage mode.', lastError); } catch (_error) { /* ignore */ }
+          }
+          if (!lastError && !observedModeChange && result && result[LOCAL_PRIMARY_STORAGE_KEY] === true) activeAreaName = 'local';
+          resolve(activeAreaName);
+        };
+        try {
+          const pending = localArea.get([LOCAL_PRIMARY_STORAGE_KEY], (result) => finish(result));
+          if (pending && typeof pending.then === 'function') {
+            pending.then((result) => finish(result)).catch((error) => finish(null, error || new Error('storage-read-failed')));
+          }
+        } catch (error) { finish(null, error); }
       };
-      try {
-        const pending = localArea.get([LOCAL_PRIMARY_STORAGE_KEY], finish);
-        if (pending && typeof pending.then === 'function') pending.then(finish).catch(() => finish({}));
-      } catch (_error) { finish({}); }
+      readMode(0);
     });
     const onChanged = storage && storage.onChanged;
     if (onChanged && typeof onChanged.addListener === 'function') {
       onChanged.addListener((changes, areaName) => {
         if (areaName === 'local' && changes[LOCAL_PRIMARY_STORAGE_KEY]) {
           observedModeChange = true;
+          modeKnown = true;
           activeAreaName = changes[LOCAL_PRIMARY_STORAGE_KEY].newValue === true
             ? 'local' : (syncArea ? 'sync' : 'local');
         }
@@ -1024,9 +1076,27 @@
       return activeAreaName === 'local' ? localArea : (syncArea || localArea);
     }
 
+    // The latest write of each key, so a refused write that a newer one has
+    // replaced is not retried over it.
+    let writeSequence = 0;
+    const latestWrites = new Map();
+    function writtenKeys(method, values) {
+      if (method === 'set') return Object.keys(values[0] && typeof values[0] === 'object' ? values[0] : {});
+      if (method === 'remove') return (Array.isArray(values[0]) ? values[0] : [values[0]]).map(String);
+      return [];
+    }
+
+    // A callback receives the storage error as its second argument (Chrome
+    // also leaves it in runtime.lastError while the callback runs); without a
+    // callback the returned promise rejects. A write refused for exceeding
+    // the sync write quota is retried once after the quota refills.
     function invoke(method, args) {
       const values = Array.from(args || []);
       const callback = typeof values[values.length - 1] === 'function' ? values.pop() : null;
+      const isWrite = method === 'set' || method === 'remove';
+      const keys = isWrite ? writtenKeys(method, values) : [];
+      const sequence = ++writeSequence;
+      keys.forEach((key) => latestWrites.set(key, sequence));
       return modeReady.then(() => new Promise((resolve, reject) => {
         const area = getActiveArea();
         if (!area || typeof area[method] !== 'function') {
@@ -1034,23 +1104,50 @@
           resolve(method === 'get' ? {} : undefined);
           return;
         }
-        let settled = false;
-        const finish = (result) => {
-          if (settled) return;
-          settled = true;
-          const lastError = chromeApi && chromeApi.runtime && chromeApi.runtime.lastError;
-          if (callback) callback(result);
-          if (lastError && !callback) reject(new Error(lastError.message || 'Storage operation failed'));
+        let retried = false;
+        const complete = (result, error) => {
+          if (callback) callback(result, error || undefined);
+          if (error && callback && isWrite) {
+            try { console.warn('[Lumno] Could not save settings.', error); } catch (_error) { /* ignore */ }
+          }
+          if (error && !callback) reject(error);
           else resolve(result);
         };
-        try {
-          const maybePromise = area[method](...values, finish);
-          if (maybePromise && typeof maybePromise.then === 'function') {
-            maybePromise.then(finish).catch(reject);
+        const attempt = () => {
+          let settled = false;
+          const finish = (result, failure) => {
+            if (settled) return;
+            settled = true;
+            const lastError = failure || (chromeApi && chromeApi.runtime && chromeApi.runtime.lastError);
+            if (lastError && isWrite && !retried && isStorageRateLimitError(lastError)) {
+              retried = true;
+              if (keys.length && keys.every((key) => latestWrites.get(key) > sequence)) {
+                // A newer write carries every value; report this one once the
+                // refusal has left runtime.lastError.
+                Promise.resolve().then(() => complete(undefined, null));
+                return;
+              }
+              setTimeout(attempt, retryDelayMs);
+              return;
+            }
+            complete(result, lastError
+              ? (lastError instanceof Error ? lastError : new Error(lastError.message || 'Storage operation failed'))
+              : null);
+          };
+          try {
+            const maybePromise = area[method](...values, (result) => finish(result));
+            if (maybePromise && typeof maybePromise.then === 'function') {
+              maybePromise.then((result) => finish(result))
+                .catch((error) => finish(undefined, error || new Error('Storage operation failed')));
+            }
+          } catch (error) {
+            if (!settled) {
+              settled = true;
+              reject(error);
+            }
           }
-        } catch (error) {
-          reject(error);
-        }
+        };
+        attempt();
       }));
     }
 
@@ -1060,13 +1157,17 @@
       remove(...args) { return invoke('remove', args); },
       clear(...args) { return invoke('clear', args); }
     });
+    rateLimitRetryingAreas.add(area);
 
     const runtime = Object.freeze({
       area,
       get name() { return activeAreaName; },
       ready: modeReady,
       getActiveAreaName() { return activeAreaName; },
-      isActiveAreaName(areaName) { return String(areaName || '') === activeAreaName; }
+      isActiveAreaName(areaName) { return String(areaName || '') === activeAreaName; },
+      // False only when the mode could not be read at all; the active area is
+      // then the default, not a choice the user made.
+      isModeKnown() { return modeKnown; }
     });
     if (chromeApi) providerStorageRuntimes.set(chromeApi, runtime);
     return runtime;
@@ -1264,6 +1365,7 @@
     readStorageValue,
     writeStorageValue,
     writeStorageValues,
+    isStorageRateLimitError,
     createStorageReadBatch,
     prefetchStorageRead,
     createProviderStorageRuntime,

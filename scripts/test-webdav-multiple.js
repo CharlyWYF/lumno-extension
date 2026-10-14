@@ -123,13 +123,17 @@ async function run() {
   await assert.rejects(partial.controller.handle({ operation: 'sync', id: pa.id }));
   const beforePartialUpload = partialB.requests.filter((request) => request.method === 'PUT').length;
   await assert.rejects(partial.controller.handle({ operation: 'sync', id: pb.id }), /interrupted-apply/);
-  await assert.rejects(partial.controller.handle({ operation: 'remove', id: pa.id }), /interrupted-apply/);
-  await assert.rejects(partial.controller.handle({ operation: 'sync', id: pb.id }), /interrupted-apply/);
   assert.strictEqual(partialB.requests.filter((request) => request.method === 'PUT').length, beforePartialUpload,
-    'other connections cannot upload a partial local version, even after the journal is recovered');
+    'other connections cannot upload while an interrupted local write is unrecovered');
+  await assert.rejects(partial.controller.handle({ operation: 'remove', id: pa.id }), /interrupted-apply/);
+  const statusOf = async (id) => (await partial.controller.status()).connections.find((value) => value.id === id);
+  assert.strictEqual((await statusOf(pa.id)).needsRecovery, true);
+  await partial.controller.handle({ operation: 'sync', id: pb.id });
+  assert.strictEqual((await statusOf(pb.id)).state, 'ready',
+    'once the journal is recovered, a connection waiting for its restore pauses only itself');
   await partial.controller.handle({ operation: 'restoreBackup', id: pa.id });
   await partial.controller.handle({ operation: 'sync', id: pb.id });
-  assert.strictEqual((await partial.controller.status()).connections.find((value) => value.id === pb.id).state, 'ready');
+  assert.strictEqual((await statusOf(pb.id)).state, 'ready');
   await partial.controller.handle({ operation: 'remove', id: pa.id });
   await partial.controller.handle({ operation: 'remove', id: pb.id });
 

@@ -274,6 +274,10 @@
         ready: initialized, outdated: requiresReload(), copy, lang: document.documentElement.lang || '',
         suggestions: Array.isArray(current.suggestions) ? current.suggestions : [],
         connections: connections.map((item) => ({ ...item, errorText: describeError(item), remoteMissing: item.error === 'remote-missing',
+          // An older local-only installation whose settings do not fit browser
+          // sync keeps syncing through WebDAV; the card says the backup waits.
+          warningText: item.localPrimary && ['incomplete', 'failed'].includes(item.chromeBackup)
+            ? t('webdav_warning_chrome_backup', '本机配置超过 Chrome 同步容量，暂未备份到 Chrome 同步。WebDAV 同步照常进行，本机数据保留；减少配置内容后会完成备份。') : '',
           diagnosticText: diagnosticText(item.error, item.diagnostic),
           conflictsText: [...new Set((item.conflicts || []).map((key) => copy[
             key === 'shortcuts' ? 'webdav_conflict_shortcuts' : key === 'wallpapers' ? 'webdav_conflict_wallpapers' : 'webdav_conflict_preferences'

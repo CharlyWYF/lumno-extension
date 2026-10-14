@@ -59,6 +59,13 @@ async function run() {
   assert.strictEqual(renderModel.copy.webdav_add, 'Add WebDAV');
   assert.strictEqual(window.document.querySelector('#lumno-webdav-setup-hint').hidden, false);
   const a = { id: 'a', state: 'paused', enabled: false, config: { endpoint: 'https://dav.test/', directory: 'lumno', username: 'user', hasPassword: true } };
+  model.connections = [{ ...a, id: 'backup', enabled: true, state: 'ready', localPrimary: true, chromeBackup: 'incomplete' },
+    { ...a, id: 'migrated', enabled: true, state: 'ready', localPrimary: false, chromeBackup: 'incomplete' }];
+  await controller.refresh();
+  assert.strictEqual(renderModel.connections[0].warningText, messages.webdav_warning_chrome_backup.message,
+    'an incomplete browser-sync backup is a warning on the card');
+  assert.strictEqual(renderModel.connections[0].errorText, '', 'it is not a sync failure');
+  assert.strictEqual(renderModel.connections[1].warningText, '', 'the warning ends once the installation left local-only mode');
   model.connections = [a, { ...a, id: 'b', state: 'conflict', conflicts: ['shortcuts', 'wallpapers'], error: 'remote-missing' }];
   await controller.refresh();
   assert.strictEqual(renderModel.connections.length, 2);

@@ -492,7 +492,104 @@ async function testProviderStorageRuntime() {
   );
 }
 
-testProviderStorageRuntime().then(() => {
+// Storage errors reach callers, sync write-quota refusals are retried once,
+// and an unreadable storage mode is retried instead of guessed.
+async function testStorageFailures() {
+  const quietConsole = console.warn;
+  console.warn = () => {};
+  try {
+    const rateLimited = 'This request exceeds the MAX_WRITE_OPERATIONS_PER_MINUTE quota.';
+    function failingArea(chromeApi, failures) {
+      const values = {};
+      const area = { values, calls: 0,
+        get(keys, callback) { callback(Object.fromEntries(keys.filter((key) => key in values).map((key) => [key, values[key]]))); },
+        set(payload, callback) {
+          area.calls += 1;
+          const failure = failures.shift();
+          if (failure) {
+            chromeApi.runtime.lastError = { message: failure };
+            callback();
+            chromeApi.runtime.lastError = null;
+            return;
+          }
+          Object.assign(values, payload);
+          callback();
+        },
+        remove(_keys, callback) { callback(); } };
+      return area;
+    }
+    const chromeApi = { runtime: { lastError: null }, storage: {} };
+    const failures = ['QUOTA_BYTES quota exceeded'];
+    chromeApi.storage.sync = failingArea(chromeApi, failures);
+    chromeApi.storage.local = failingArea(chromeApi, []);
+    const runtime = settings.createProviderStorageRuntime(chromeApi, { retryDelayMs: 0 });
+    await runtime.ready;
+    let seen;
+    await runtime.area.set({ a: 1 }, (_result, error) => { seen = { error, lastError: chromeApi.runtime.lastError }; });
+    assert.match(String(seen.error && seen.error.message), /QUOTA_BYTES/, 'a callback receives the storage error');
+    assert.match(String(seen.lastError && seen.lastError.message), /QUOTA_BYTES/, 'runtime.lastError is still set inside the callback');
+    failures.push('QUOTA_BYTES quota exceeded');
+    await assert.rejects(runtime.area.set({ a: 2 }), /QUOTA_BYTES/, 'without a callback the promise rejects');
+
+    failures.push(rateLimited);
+    seen = 'pending';
+    await runtime.area.set({ b: 1 }, (_result, error) => { seen = error; });
+    assert.strictEqual(seen, undefined, 'a write refused by the write quota succeeds on its retry');
+    assert.strictEqual(chromeApi.storage.sync.values.b, 1);
+
+    // A refused write replaced by a newer one is not retried over it.
+    const callsBefore = chromeApi.storage.sync.calls;
+    failures.push(rateLimited);
+    const stale = runtime.area.set({ c: 'old' });
+    const fresh = runtime.area.set({ c: 'new' });
+    await Promise.all([stale, fresh]);
+    assert.strictEqual(chromeApi.storage.sync.values.c, 'new');
+    assert.strictEqual(chromeApi.storage.sync.calls - callsBefore, 2, 'the superseded write is dropped, not retried');
+
+    failures.push(rateLimited, rateLimited);
+    await assert.rejects(runtime.area.set({ d: 1 }), /MAX_WRITE_OPERATIONS_PER_MINUTE/, 'only one retry is made');
+
+    // The plain helper retries a raw area, and not a provider area again.
+    const raw = { runtime: { lastError: null } };
+    const rawFailures = [rateLimited];
+    const rawArea = failingArea(raw, rawFailures);
+    await settings.writeStorageValues(rawArea, raw, { e: 1 }, { retryDelayMs: 0 });
+    assert.deepStrictEqual([rawArea.values.e, rawArea.calls], [1, 2]);
+    failures.push(rateLimited, rateLimited);
+    const providerCalls = chromeApi.storage.sync.calls;
+    await assert.rejects(settings.writeStorageValues(runtime.area, chromeApi, { f: 1 }, { retryDelayMs: 0 }), /MAX_WRITE/);
+    assert.strictEqual(chromeApi.storage.sync.calls - providerCalls, 2, 'a provider area is retried once in total');
+
+    // The local-primary flag decides where settings live.
+    function modeApi(failuresBeforeRead) {
+      const api = { runtime: { lastError: null }, storage: { sync: failingArea({ runtime: {} }, []) } };
+      let remaining = failuresBeforeRead;
+      api.storage.local = { get(_keys, callback) {
+        if (remaining > 0) {
+          remaining -= 1;
+          api.runtime.lastError = { message: 'IO error' };
+          callback(undefined);
+          api.runtime.lastError = null;
+          return;
+        }
+        callback({ [settings.LOCAL_PRIMARY_STORAGE_KEY]: true });
+      } };
+      return api;
+    }
+    const recovered = settings.createProviderStorageRuntime(modeApi(2), { modeRetryDelaysMs: [0, 0, 0] });
+    await recovered.ready;
+    assert.deepStrictEqual([recovered.getActiveAreaName(), recovered.isModeKnown()], ['local', true],
+      'a failed mode read is retried instead of falling back to browser sync');
+    const unknown = settings.createProviderStorageRuntime(modeApi(10), { modeRetryDelaysMs: [0, 0] });
+    await unknown.ready;
+    assert.deepStrictEqual([unknown.getActiveAreaName(), unknown.isModeKnown()], ['sync', false],
+      'an unreadable mode is reported as unknown');
+  } finally {
+    console.warn = quietConsole;
+  }
+}
+
+testProviderStorageRuntime().then(testStorageFailures).then(() => {
   console.log('settings tests passed');
 }).catch((error) => {
   console.error(error);

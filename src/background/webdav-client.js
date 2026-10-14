@@ -10,6 +10,11 @@
   // Nextcloud 500 when the contenders really overlap. None is trusted alone;
   // every refusal is confirmed by reading the owner files afterwards.
   const MOVE_REFUSALS = [405, 409, 412, 423, 500];
+  // A write holds the shared lock for a handful of requests of at most 20 s
+  // each. A lock whose owner file the server last modified this long ago
+  // belongs to a client that was terminated or lost its network; it may be
+  // broken. Both times come from the server, never from device clocks.
+  const STALE_LOCK_MS = 10 * 60 * 1000;
   const DIAGNOSTIC_PHASES = ['state-etag', 'state-lock-create', 'directory-race', 'directory-delete', 'directory-recreate',
     'move-race', 'move-owner', 'move-delete', 'move-recreate', 'move-claim', 'state-read'];
   function error(code, status) { return Object.assign(new Error(code), { code, status }); }
@@ -80,7 +85,10 @@
         } else bytes = new Uint8Array(await response.arrayBuffer());
         if (bytes.byteLength > limit) throw error('response-too-large');
         if (![200, 201, 204, 304, 404, 405, 412].includes(response.status) && !(method === 'MOVE' && MOVE_REFUSALS.includes(response.status))) throw error(`http-${response.status}`, response.status);
-        return { status: response.status, etag: response.headers.get('ETag'), bytes };
+        const length = response.headers.get('Content-Length');
+        return { status: response.status, etag: response.headers.get('ETag'), bytes,
+          size: length !== null && /^\d+$/.test(length) ? Number(length) : null,
+          lastModified: response.headers.get('Last-Modified'), date: response.headers.get('Date') };
       } catch (cause) {
         if (cause.code) throw cause;
         throw error(abort.signal.aborted ? 'timeout' : 'network-error');
@@ -127,22 +135,56 @@
       // must never bypass a lock left by an uncertain write.
       return writeWithCollectionLock(state, etag);
     }
-    async function acquireCollectionLock() {
-      const lockUrl = `${prefix}write-lock/`;
+    const lockUrl = `${prefix}write-lock/`;
+    const text = (result) => new TextDecoder().decode(result.bytes);
+    // Releases the shared lock only while it still names this owner.
+    async function releaseOwned(owner) {
+      const current = await requestUrl(lockUrl + 'owner.txt', 'GET', undefined, {}, 65536);
+      if (current.status === 404) return;
+      if (current.status !== 200 || text(current) !== owner) throw error('lock-release-failed');
+      const released = await requestUrl(lockUrl, 'DELETE', undefined, {}, 65536);
+      if (released.status !== 204) throw error('lock-release-failed');
+    }
+    // A lock this client could not release, so the next run releases it first.
+    const staleMarker = (owner, uncertain) => ({ owner, at: Date.now(), uncertain: Boolean(uncertain) });
+    // Breaks a MOVE lock whose owner file is older than STALE_LOCK_MS by the
+    // server's own clock. It is moved aside rather than deleted, so of several
+    // devices breaking it at once only one succeeds, and a fresh lock taken in
+    // between is recognised by its owner and put back.
+    async function breakStaleLock() {
+      const current = await requestUrl(lockUrl + 'owner.txt', 'GET', undefined, {}, 65536);
+      // A collection-create lock has no owner file; its age is never guessed.
+      if (current.status !== 200) return false;
+      const modified = Date.parse(current.lastModified || '');
+      const now = Date.parse(current.date || '');
+      if (!Number.isFinite(modified) || !Number.isFinite(now) || now - modified < STALE_LOCK_MS) return false;
+      const staleOwner = text(current);
+      const aside = `${prefix}lock-stale-${root.crypto.randomUUID()}/`;
+      const moved = await requestUrl(lockUrl, 'MOVE', undefined, { Destination: aside, Overwrite: 'F' }, 65536);
+      if (moved.status !== 201) return false;
+      if (await ownerMatches(aside, staleOwner)) {
+        await requestUrl(aside, 'DELETE', undefined, {}, 65536).catch(() => {});
+        return true;
+      }
+      await requestUrl(aside, 'MOVE', undefined, { Destination: lockUrl, Overwrite: 'F' }, 65536).catch(() => {});
+      return false;
+    }
+    async function acquireCollectionLock(allowTakeover = true) {
       if (lockStrategy === 'collection-create') {
         const claimed = await requestUrl(lockUrl, 'MKCOL', undefined, {}, 65536);
         if (claimed.status === 405) throw error('remote-locked');
         if (claimed.status !== 201) throw unsupported('state-lock-create', [claimed.status]);
-        return async () => {
+        return { owner: null, release: async () => {
           const released = await requestUrl(lockUrl, 'DELETE', undefined, {}, 65536);
           if (released.status !== 204) throw error('lock-release-failed');
-        };
+        } };
       }
       // A private candidate avoids relying on concurrent MKCOL being atomic.
       // MOVE with Overwrite:F competes for the one shared destination instead.
       const owner = root.crypto.randomUUID();
       const candidate = `${prefix}lock-candidate-${owner}/`;
       let cleanup = false;
+      let retry = false;
       try {
         const created = await requestUrl(candidate, 'MKCOL', undefined, {}, 65536);
         if (created.status !== 201) throw creationFailed(created.status);
@@ -154,7 +196,10 @@
         catch (cause) {
           // A late MOVE can still acquire the lock. Preserve both paths when
           // its result is unknown; never remove the shared destination here.
-          if (!cause.status || cause.status >= 500) { cleanup = false; throw error('lock-write-uncertain'); }
+          if (!cause.status || cause.status >= 500) {
+            cleanup = false;
+            throw Object.assign(error('lock-write-uncertain'), { staleLock: staleMarker(owner, true) });
+          }
           throw cause;
         }
         cleanup = false;
@@ -162,27 +207,56 @@
           // A candidate still holding its owner proves this MOVE took nothing.
           if (!await ownerMatches(candidate, owner)) throw unsupported('move-claim', [claimed.status]);
           cleanup = true;
-          throw error('remote-locked');
+          if (!allowTakeover || !await breakStaleLock()) throw error('remote-locked');
+          retry = true;
+        } else {
+          if (claimed.status !== 201) throw unsupported('move-claim', [claimed.status]);
+          let target;
+          let source;
+          try {
+            target = await requestUrl(lockUrl + 'owner.txt', 'GET', undefined, {}, 65536);
+            source = await requestUrl(candidate + 'owner.txt', 'GET', undefined, {}, 65536);
+          } catch (cause) {
+            // The MOVE reported success, so the lock may well be ours.
+            throw Object.assign(cause, { staleLock: staleMarker(owner, false) });
+          }
+          if (target.status !== 200 || text(target) !== owner || source.status !== 404) {
+            // Never keep a lock this client cannot vouch for, and never touch
+            // one that names someone else.
+            cleanup = source.status === 200 && text(source) === owner;
+            const failure = unsupported('move-owner', [target.status, source.status]);
+            if (target.status === 200 && text(target) === owner) {
+              try { await releaseOwned(owner); } catch (_cause) { failure.staleLock = staleMarker(owner, false); }
+            }
+            throw failure;
+          }
+          return { owner, release: () => releaseOwned(owner) };
         }
-        if (claimed.status !== 201) throw unsupported('move-claim', [claimed.status]);
-        const target = await requestUrl(lockUrl + 'owner.txt', 'GET', undefined, {}, 65536);
-        const source = await requestUrl(candidate + 'owner.txt', 'GET', undefined, {}, 65536);
-        if (target.status !== 200 || new TextDecoder().decode(target.bytes) !== owner || source.status !== 404) {
-          throw unsupported('move-owner', [target.status, source.status]);
-        }
-        return async () => {
-          const current = await requestUrl(lockUrl + 'owner.txt', 'GET', undefined, {}, 65536);
-          if (current.status !== 200 || new TextDecoder().decode(current.bytes) !== owner) throw error('lock-release-failed');
-          const released = await requestUrl(lockUrl, 'DELETE', undefined, {}, 65536);
-          if (released.status !== 204) throw error('lock-release-failed');
-        };
       } finally {
         if (cleanup) await requestUrl(candidate, 'DELETE', undefined, {}, 65536).catch(() => {});
       }
+      return retry ? acquireCollectionLock(false) : null;
+    }
+    // Releases a lock an earlier run left behind. Resolves true once nothing
+    // is left to do (released, or the lock is no longer this client's), false
+    // while an uncertain write may still be in flight on the server.
+    async function releaseStaleLock(marker, now = Date.now()) {
+      if (!marker || typeof marker.owner !== 'string' || !/^[-\w]{1,80}$/.test(marker.owner)) return true;
+      if (marker.uncertain && now - Number(marker.at || 0) < STALE_LOCK_MS) return false;
+      const current = await requestUrl(lockUrl + 'owner.txt', 'GET', undefined, {}, 65536);
+      if (current.status === 200 && text(current) === marker.owner) {
+        const released = await requestUrl(lockUrl, 'DELETE', undefined, {}, 65536);
+        if (released.status !== 204) throw error('lock-release-failed');
+      } else if (![200, 404].includes(current.status)) throw error('lock-release-failed');
+      const candidate = `${prefix}lock-candidate-${marker.owner}/`;
+      if (await ownerMatches(candidate, marker.owner)) await requestUrl(candidate, 'DELETE', undefined, {}, 65536);
+      return true;
     }
     async function writeWithCollectionLock(state, revision) {
-      const release = await acquireCollectionLock();
+      const lock = await acquireCollectionLock();
       let uncertain = false;
+      let primary = null;
+      let verified = null;
       try {
         const latest = await readState();
         if ((latest && latest.etag || null) !== (revision || null)) throw error('remote-changed');
@@ -203,16 +277,28 @@
         if (written.status === 412) throw error('remote-changed');
         if ([404, 405].includes(written.status)) throw error('write-failed');
         if (![200, 201, 204].includes(written.status)) { uncertain = true; throw error('lock-write-uncertain'); }
-        const verified = await readState();
+        verified = await readState();
         if (!verified || JSON.stringify(verified.state) !== JSON.stringify(state)) throw error('remote-changed');
-      } finally {
-        // Never steal another device's lock or release an uncertain write.
-        // Worker termination leaves it intact for explicit, quiescent recovery.
-        if (!uncertain) {
-          try { await release(); }
-          catch (_cause) { throw error('lock-release-failed'); }
-        }
+      } catch (cause) {
+        primary = cause;
       }
+      // Never steal another device's lock or release an uncertain write. It
+      // stays for this client to release once the write must have settled,
+      // or for another device to break once it is stale.
+      if (uncertain) {
+        if (lock.owner) primary.staleLock = staleMarker(lock.owner, true);
+        throw primary;
+      }
+      try { await lock.release(); }
+      catch (releaseError) {
+        // A failed release never hides why the write itself failed.
+        if (!lock.owner) throw primary || releaseError;
+        const staleLock = staleMarker(lock.owner, false);
+        if (primary) throw Object.assign(primary, { staleLock });
+        return { state: verified.state, etag: verified.etag, staleLock };
+      }
+      if (primary) throw primary;
+      return { state: verified.state, etag: verified.etag };
     }
     async function testCollectionLock() {
       const url = `${prefix}probe-lock-${root.crypto.randomUUID()}/`;
@@ -318,7 +404,7 @@
       }
       return { ok: true, concurrency: conditional ? 'conditional' : 'collection-lock', lockStrategy };
     }
-    return Object.freeze({ request, ensureDirectories, readState, writeState, testConnection });
+    return Object.freeze({ request, ensureDirectories, readState, writeState, releaseStaleLock, testConnection });
   }
-  return Object.freeze({ normalizeConfig, createClient, error, diagnostic, REVISION, MOVE_REFUSALS });
+  return Object.freeze({ normalizeConfig, createClient, error, diagnostic, REVISION, MOVE_REFUSALS, STALE_LOCK_MS });
 });
