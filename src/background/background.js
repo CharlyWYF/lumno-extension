@@ -4325,7 +4325,7 @@ const backgroundMessageRouter = BACKGROUND_MESSAGE_ROUTER.createRouter(
 // switcher, selection toolbar and picture-in-picture helpers) send. Those run
 // inside web pages; every other action is accepted from extension pages only.
 const WEB_PAGE_MESSAGE_ACTIONS = Object.freeze([
-  'switchToTab', 'reportTabVisible', 'notifyOverlayClosed', 'notifyTopFrameDocumentStarted',
+  'switchToTab', 'notifyOverlayClosed', 'notifyTopFrameDocumentStarted',
   'updateOverlayLoadingSession', 'getTabsForOverlay', 'closeOtherTabsForOverlay',
   'getShowSearchShortcut', 'copyCurrentPageUrl', 'triggerShowSearchFromPageHotkey',
   'notifyTabSwitcherShortcutModifierReleased', 'getShortcutRules',
