@@ -159,7 +159,7 @@ describe('Bookmarks React island', () => {
     expect(pin.dataset.added).toBe('true');
   });
 
-  it('does not pin folders or compact topbar items and suppresses stale context presses', () => {
+  it('does not pin folders, supports compact topbar items and suppresses stale context presses', () => {
     const addShortcut = vi.fn();
     const { view } = createView({ addShortcut, isActivationSuppressed: () => true });
     const site = { id: 's', type: 'bookmark', title: 'Site', url: 'https://example.com/' };
@@ -168,7 +168,7 @@ describe('Bookmarks React island', () => {
     act(() => view.getCards()[1].querySelector<HTMLButtonElement>('.x-nt-bookmark-pin-action')!.click());
     expect(addShortcut).not.toHaveBeenCalled();
     renderItems(view, [site], { viewMode: 'top' });
-    expect(view.getCards()[0].querySelector('.x-nt-bookmark-pin-action')).toBeNull();
+    expect(view.getCards()[0].querySelector('.x-nt-bookmark-pin-action')).not.toBeNull();
   });
   it('preserves signatures through the React API', () => {
     const item = {

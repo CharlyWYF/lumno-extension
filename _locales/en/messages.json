@@ -627,8 +627,19 @@
     "message": "Close other tabs in this window? Pinned and grouped tabs stay open."
   },
   "overlay_close_other_tabs_confirm_button": {
-    "message": "Close"
+    "message": "Confirm close other tabs"
   },
+  "newtab_quote_source": { "message": "Source" },
+  "newtab_quote_custom": { "message": "Custom" },
+  "newtab_quote_collection_save_error": { "message": "Could not save on this device. Your previous collection is retained. Try again." },
+  "newtab_quote_hitokoto": { "message": "Hitokoto" },
+  "newtab_quote_provider_custom": { "message": "Custom collection · stored on this device" },
+  "newtab_quote_import_md": { "message": "Import Markdown file" },
+  "newtab_quote_importing": { "message": "Importing…" },
+  "newtab_quote_import_hint": { "message": "One paragraph or list item per quote. Up to 1 MB, 1,000 quotes, 500 characters each; stored on this device only." },
+  "newtab_quote_import_empty": { "message": "Import a Markdown file to start." },
+  "newtab_quote_entries": { "message": "quotes" },
+  "newtab_quote_import_error": { "message": "Import failed. Choose a valid Markdown file up to 1 MB with 1–1,000 quotes, each no longer than 500 characters. The previous collection is kept." },
   "settings_shortcuts_status": {
     "message": "Current: {shortcut}"
   },

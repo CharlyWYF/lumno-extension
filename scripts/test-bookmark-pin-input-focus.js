@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 let focusCount = 0;
-const pin = { tagName: 'BUTTON', closest: selector => selector === '.x-nt-bookmark-pin-action' ? pin : null };
+const pin = { tagName: 'BUTTON', closest: selector => selector.includes('.x-nt-bookmark-pin-action') ? pin : null };
 const input = { tagName: 'INPUT', value: '', focus() { focusCount++; documentObj.activeElement = input; }, setSelectionRange() {}, dispatchEvent() {} };
 const documentObj = { activeElement: pin, body: {}, documentElement: {} };
 const sandbox = { document: documentObj, window: {}, chrome: { runtime: { sendMessage(_message, callback) { callback({ shortcut: '' }); } } }, Date, console, Event: function() {} };

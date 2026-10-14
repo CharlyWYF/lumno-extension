@@ -4336,7 +4336,10 @@
     openShortcutDialog,
     openShortcutAddContextMenu,
     handleShortcutDragPointerDown: (...args) => handleShortcutDragPointerDown(...args),
-    refreshBookmarkShortcutStates: () => bookmarksView?.refreshShortcutStates?.(),
+    refreshBookmarkShortcutStates: () => {
+      bookmarksView?.refreshShortcutStates?.();
+      bookmarkCascadeRuntime?.refreshShortcutStates?.();
+    },
     handleShortcutDockPointerOver,
     handleShortcutDockPointerMove,
     syncShortcutDockFolderMenu,
@@ -5413,6 +5416,11 @@
   bookmarkGrid.addEventListener('pointerdown', handleBookmarkDragPointerDown, true);
   applyBookmarkGridColumns();
   let bookmarkShortcutAddTask = Promise.resolve();
+  function addBookmarkSiteToShortcuts(item) {
+    const task = bookmarkShortcutAddTask.then(() => addSiteToShortcuts(item));
+    bookmarkShortcutAddTask = task.catch(() => {});
+    return task;
+  }
   bookmarksView = NEWTAB_BOOKMARKS_VIEW.createBookmarksView({
     documentObj: document,
     windowObj: window,
@@ -5448,11 +5456,7 @@
     openFolderMenu: openBookmarkCascadeMenu,
     copyUrl: copyBookmarkUrl,
     hasShortcut: hasShortcutForSite,
-    addShortcut: (item) => {
-      const task = bookmarkShortcutAddTask.then(() => addSiteToShortcuts(item));
-      bookmarkShortcutAddTask = task.catch(() => {});
-      return task;
-    },
+    addShortcut: addBookmarkSiteToShortcuts,
     onItemContextMenu: handleBookmarkItemContextMenu,
     isActivationSuppressed: isCardActivationSuppressed,
     navigateToUrl,
@@ -5496,6 +5500,8 @@
     hideCursorTooltip,
     copyUrl: copyBookmarkUrl,
     copyTooltipController: bookmarkCascadeCopyTooltipController,
+    hasShortcut: hasShortcutForSite,
+    addShortcut: addBookmarkSiteToShortcuts,
     showTopActionTooltip,
     hideTopActionTooltip,
     onItemPointerDown: handleBookmarkCascadeItemPointerDown,
@@ -7956,7 +7962,8 @@
       message: t('overlay_close_other_tabs_confirm', '关闭此窗口中的其他标签页？置顶和分组内的标签页会保留。'),
       messageKey: 'overlay_close_other_tabs_confirm',
       confirmLabel: t('overlay_close_other_tabs_confirm_button', '关闭'),
-      confirmLabelKey: 'overlay_close_other_tabs_confirm_button'
+      confirmLabelKey: 'overlay_close_other_tabs_confirm_button',
+      cancelLabel: t('confirm_cancel', 'Cancel'), cancelLabelKey: 'confirm_cancel'
     };
   }
 

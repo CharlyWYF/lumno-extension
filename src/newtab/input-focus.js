@@ -221,7 +221,7 @@
         return;
       }
       if (activeElement && typeof activeElement.closest === 'function' &&
-          activeElement.closest('.x-nt-bookmark-pin-action') &&
+          activeElement.closest('.x-nt-bookmark-pin-action, .x-nt-bookmark-cascade-pin-trigger, .x-lumno-search-input__popconfirm, .x-nt-close-other-tabs') &&
           (event.key === 'Enter' || event.key === ' ')) {
         return;
       }

@@ -555,7 +555,7 @@ function BookmarkCard({
 
   const isTopbarMode = viewMode === 'top';
   const isFolder = item.type === 'folder';
-  const hasPinAction = !isFolder && !isTopbarMode && Boolean(options.addShortcut);
+  const hasPinAction = !isFolder && Boolean(options.addShortcut);
   const pinLabel = shortcutAdded
     ? options.t('newtab_shortcuts_already_added', 'Already in shortcuts')
     : pinFailed ? options.t('bookmarks_add_shortcut_failed', 'Could not add shortcut. Try again.')
