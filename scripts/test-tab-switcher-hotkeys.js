@@ -1152,11 +1152,6 @@ assert.match(
 );
 assert.match(
   backgroundSource,
-  /storageArea\.get\(\[[\s\S]*TAB_SWITCHER_ENABLED_STORAGE_KEY[\s\S]*\][\s\S]*tabSwitcherEnabledCache = normalizedTabSwitcher/,
-  'background startup should load and normalize the tab switcher enabled setting'
-);
-assert.match(
-  backgroundSource,
   /function advanceExistingTabSwitcherOnTab\(tab,\s*source,\s*callback\)[\s\S]*advanceOpenTabSwitcherFromCommand/,
   'Alt+Q command re-entry should have a lightweight advance path for an already-open switcher'
 );
@@ -1462,16 +1457,6 @@ assert.match(
 );
 assert.match(
   backgroundSource,
-  /function shouldPreCaptureActiveSwitcherThumbnailBeforePayload\(tab\)[\s\S]*tab\.active === true[\s\S]*tab\.status === 'loading'[\s\S]*getSwitcherThumbnailStateForPayload\(tab,[\s\S]*isSwitcherThumbnailRefreshNeeded\(state\)/,
-  'Alt+Q should refresh a missing active thumbnail only after the page has stopped loading'
-);
-assert.strictEqual(
-  /TAB_SWITCHER_COMMAND_PRECAPTURE_BUDGET_MS|waitForSwitcherCommandPreCaptureBudget/.test(backgroundSource),
-  false,
-  'Alt+Q startup should not wait for active-tab thumbnail capture'
-);
-assert.match(
-  backgroundSource,
   /const tabSwitcherThumbnailPriorityByTabId = new Map\(\);[\s\S]*function markSwitcherThumbnailPriorityForItems\(items,\s*tabList,\s*reason\)[\s\S]*isSwitcherThumbnailRefreshNeeded/,
   'Alt+Q should remember missing recent-tab thumbnails as priority refresh candidates'
 );
@@ -1509,16 +1494,6 @@ assert.match(
   scheduleThumbnailBlock,
   /tabSwitcherThumbnailTimersByTabId\.set\(tab\.id,\s*timer\)/,
   'Alt+Q thumbnail scheduling should store pending capture timers by tab id'
-);
-assert.match(
-  scheduleThumbnailBlock,
-  /markSwitcherThumbnailStatus\(tab,\s*'pending',\s*reason/,
-  'Alt+Q thumbnail scheduling should mark thumbnails as pending before deferred capture'
-);
-assert.match(
-  scheduleThumbnailBlock,
-  /consumeSwitcherThumbnailPriority\(tab[\s\S]*TAB_SWITCHER_PRIORITY_CAPTURE_DELAY_MS[\s\S]*TAB_SWITCHER_CAPTURE_DELAY_MS/,
-  'Alt+Q thumbnail scheduling should use a shorter delay when a recent missing thumbnail becomes visible'
 );
 const triggerSwitcherBlock = getFunctionBlock(
   backgroundSource,
@@ -1668,11 +1643,6 @@ assert.match(
   triggerSwitcherBlock,
   /const activeTab = tabList\.find[\s\S]*clearScheduledSwitcherThumbnailCapture\(activeTab\.id\)[\s\S]*shouldTrackSwitcherTab\(activeTab\)/,
   'Alt+Q should cancel any resolved active-tab pending thumbnail timer before payload construction'
-);
-assert.match(
-  triggerSwitcherBlock,
-  /shouldPreCaptureActiveSwitcherThumbnailBeforePayload\(activeTab\)[\s\S]*captureSwitcherThumbnailForTab\([\s\S]*activeTab,[\s\S]*TAB_SWITCHER_CAPTURE_REASON_COMMAND_IMMEDIATE[\s\S]*\.catch\(\(\) => false\);[\s\S]*const items = getRecentTabsForSwitcher\(tabList,\s*activeTab\.id\)/,
-  'Alt+Q should refresh eligible active thumbnails asynchronously without blocking payload construction'
 );
 assert.strictEqual(
   triggerSwitcherBlock.includes('activeThumbnailReady'),

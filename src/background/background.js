@@ -1166,7 +1166,7 @@ if (storageArea) {
     if (tabSwitcherStored !== normalizedTabSwitcher) {
       storageArea.set({ [TAB_SWITCHER_ENABLED_STORAGE_KEY]: normalizedTabSwitcher });
     }
-    tabSwitcherEnabledCache = normalizedTabSwitcher;
+    applyTabSwitcherEnabledSetting(normalizedTabSwitcher);
     const pinnedTabRecoveryStored = result[PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY];
     applyPinnedTabRecoverySetting(pinnedTabRecoveryStored);
     markBackgroundSettingsLoaded();
@@ -4463,7 +4463,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (changes[TAB_SWITCHER_ENABLED_STORAGE_KEY]) {
     const next = changes[TAB_SWITCHER_ENABLED_STORAGE_KEY].newValue;
     const normalized = SETTINGS.normalizeTabSwitcherEnabled(next);
-    tabSwitcherEnabledCache = normalized;
+    applyTabSwitcherEnabledSetting(normalized);
     if (typeof next !== 'undefined' && next !== normalized && storageArea) {
       storageArea.set({ [TAB_SWITCHER_ENABLED_STORAGE_KEY]: normalized });
     }

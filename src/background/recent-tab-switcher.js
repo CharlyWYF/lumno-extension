@@ -456,6 +456,12 @@
       };
     }
 
+    function clearThumbnails() {
+      const hadThumbnails = thumbnailByTabId.size > 0;
+      thumbnailByTabId.clear();
+      return hadThumbnails;
+    }
+
     function getThumbnail(tabId, expectedUrl) {
       return getThumbnailState(tabId, expectedUrl).dataUrl || '';
     }
@@ -567,6 +573,7 @@
       getRecentTabs,
       setThumbnail,
       setThumbnailStatus,
+      clearThumbnails,
       getThumbnailState,
       getThumbnail,
       getStackSnapshot,
