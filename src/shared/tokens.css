@@ -113,6 +113,8 @@
   --lumno-color-toast-error-border: rgba(255, 255, 255, 0.16);
   --lumno-color-toast-error-text: #ffffff;
   --lumno-color-selection-outline: #6b7280;
+  /* Lumno link blue as channels, for tints: rgb(var(--lumno-color-accent-rgb) / 0.12). */
+  --lumno-color-accent-rgb: 37 99 235;
 
   /* Color: control parts */
   --lumno-color-knob: #ffffff;

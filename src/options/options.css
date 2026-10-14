@@ -1450,7 +1450,7 @@ body[data-theme="dark"] ._x_extension_shortcut_ghost_2026_unique_ {
   background: var(--input-focus-bg);
 }
 ._x_extension_shortcuts_hotkey_wrap_2024_unique_[data-capturing="true"] {
-  border-color: #2563eb;
+  border-color: rgb(var(--lumno-color-accent-rgb));
   animation: _x_extension_shortcut_capture_breathe_2024_unique_ 1.6s ease-in-out infinite;
 }
 ._x_extension_shortcuts_hotkey_tokens_2024_unique_ {
@@ -1485,7 +1485,7 @@ body[data-theme="dark"] ._x_extension_shortcut_ghost_2026_unique_ {
   transition: opacity var(--lumno-duration-xs) ease, border-radius var(--lumno-duration-xs) ease, background-color var(--lumno-duration-xs) ease;
 }
 ._x_extension_shortcuts_hotkey_action_2024_unique_:hover {
-  color: #2563eb;
+  color: rgb(var(--lumno-color-accent-rgb));
 }
 ._x_extension_shortcuts_hotkey_wrap_2024_unique_:not([data-capturing="true"]):hover ._x_extension_shortcuts_hotkey_action_2024_unique_ {
   opacity: 1;
@@ -1514,7 +1514,7 @@ body[data-theme="dark"] ._x_extension_shortcut_ghost_2026_unique_ {
 }
 ._x_extension_shortcuts_hotkey_wrap_2024_unique_:focus-within
   ._x_extension_shortcuts_hotkey_tokens_2024_unique_[data-empty="true"]::before {
-  color: rgba(37, 99, 235, 0.72);
+  color: rgb(var(--lumno-color-accent-rgb) / 0.72);
   font-weight: 500;
 }
 ._x_extension_shortcuts_hotkey_tokens_2024_unique_[data-empty="true"] {
@@ -1556,11 +1556,11 @@ body[data-theme="dark"] ._x_extension_shortcut_ghost_2026_unique_ {
   z-index: 1;
 }
 ._x_extension_shortcuts_hotkey_wrap_2024_unique_:focus-within ._x_extension_shortcuts_hotkey_token_2024_unique_ {
-  --keycap-shadow-color: #2563eb;
-  border-color: #2563eb;
+  --keycap-shadow-color: rgb(var(--lumno-color-accent-rgb));
+  border-color: rgb(var(--lumno-color-accent-rgb));
   background: linear-gradient(180deg, #e8f0ff 0%, #dbeafe 100%);
   box-shadow: 0 4px 0 var(--keycap-shadow-color);
-  color: #2563eb;
+  color: rgb(var(--lumno-color-accent-rgb));
 }
 #_x_extension_settings_panel_2024_unique_[data-theme="dark"] ._x_extension_shortcuts_hotkey_tokens_2024_unique_[data-empty="true"]::before {
   color: rgba(203, 213, 225, 0.82);
@@ -1622,13 +1622,13 @@ body[data-theme="dark"] ._x_extension_shortcut_ghost_2026_unique_ {
 }
 @keyframes _x_extension_shortcut_capture_breathe_2024_unique_ {
   0% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.18);
+    box-shadow: 0 0 0 0 rgb(var(--lumno-color-accent-rgb) / 0.18);
   }
   50% {
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    box-shadow: 0 0 0 3px rgb(var(--lumno-color-accent-rgb) / 0.1);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.18);
+    box-shadow: 0 0 0 0 rgb(var(--lumno-color-accent-rgb) / 0.18);
   }
 }
 ._x_extension_setting_row_compact_2024_unique_ {
