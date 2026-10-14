@@ -250,7 +250,8 @@
           await refresh();
           return result;
         } catch (error) {
-          await refresh().catch(() => {});
+          // The action's own error is what the list shows; a failed refresh on top of it only warns.
+          await refresh().catch((refreshError) => console.warn('[Lumno] WebDAV status refresh failed', refreshError));
           throw failure(error);
         }
       }
@@ -297,7 +298,9 @@
         WEBDAV_DISMISSED_CONNECTIONS_STORAGE_KEY: dismissed } = root.LumnoSettings;
       const names = Object.keys(changes);
       if ((area === 'local' && names.some((name) => name === key || name.startsWith(`${key}:`) || name === dismissed)) ||
-          (area === 'sync' && names.includes(synced))) refresh().catch(() => {});
+          (area === 'sync' && names.includes(synced))) {
+        refresh().catch((error) => console.warn('[Lumno] WebDAV status refresh failed', error));
+      }
     });
     render();
     refresh().catch((error) => {

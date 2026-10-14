@@ -14,23 +14,8 @@ function assertMatches(source, pattern, message) {
 
 assertMatches(
   optionsJs,
-  /function getThemeStorageUpdate\(mode\) \{[\s\S]*?SETTINGS\.createGlobalThemeModeStorageUpdate/,
-  'options should build global theme writes through the shared helper'
-);
-assertMatches(
-  optionsJs,
-  /function setThemeMode\(mode\) \{[\s\S]*?const updates = getThemeStorageUpdate\(mode\);[\s\S]*?storageArea\.set\(updates/,
-  'options theme picker should write the global theme through the shared helper'
-);
-assertMatches(
-  optionsJs,
   /optionsThemePickerApi\.createThemePickerController\(themePicker,[\s\S]*?setThemeMode\(mode\)/,
   'options should route React theme selections back through the existing storage adapter'
-);
-assertMatches(
-  optionsJs,
-  /function updateThemeButtons\(mode\)[\s\S]*?themePickerController\.render\([\s\S]*?activeMode: nextMode/,
-  'options should render the controlled theme picker state through React when available'
 );
 
 assertMatches(

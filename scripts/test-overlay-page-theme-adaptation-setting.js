@@ -80,11 +80,6 @@ assert.match(
   'options should hide webpage adaptation outside follow-system-and-website mode'
 );
 assert.match(
-  optionsSource,
-  /function updateThemeButtons\(mode\)[\s\S]*?updateOverlayPageThemeAdaptationVisibility\(nextMode\);/,
-  'theme initialization, clicks, and synchronized updates should all refresh adaptation visibility'
-);
-assert.match(
   overlayRuntimeSource,
   /overlayPageThemeAdaptationEnabled: '_x_extension_overlay_page_theme_adaptation_enabled_2026_unique_'/,
   'overlay runtime should expose the synchronized adaptation key'

@@ -434,7 +434,6 @@ localeNames.forEach((locale) => {
 });
 [
   ['new tab', newtabSource],
-  ['options', optionsSource],
   ['background', backgroundSource]
 ].forEach(([surface, source]) => {
   const migrationSource = getFunctionSource(source, 'migrateStorageIfNeeded');

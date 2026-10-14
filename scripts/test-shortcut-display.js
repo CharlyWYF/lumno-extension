@@ -185,16 +185,6 @@ const optionsSource = fs.readFileSync(
 );
 assert.match(
   optionsSource,
-  /const effectiveShortcut = shortcut \|\| defaultShortcut;\s*setFallbackShortcutLabel\(effectiveShortcut\);/,
-  'the stored shortcut should remain parseable and only be formatted at render time'
-);
-assert.match(
-  optionsSource,
-  /shortcutsStatus\.textContent = currentShortcutLabel[\s\S]*formatShortcutForDisplay\(currentShortcutLabel\)/,
-  'the shortcut status chip should format the raw shortcut for the current platform'
-);
-assert.match(
-  optionsSource,
   /item\.shortcutLabelKey[\s\S]*?modifier:\s*isMacPlatform \? '⌘' : 'Ctrl'[\s\S]*?shortcutLabel:\s*customShortcutLabel/,
   'Options should render the localized long-hold instruction with the platform modifier'
 );

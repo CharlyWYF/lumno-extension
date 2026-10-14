@@ -28,7 +28,6 @@
   const SETTINGS = globalThis.LumnoSettings;
   const AGGREGATE_SEARCH_STORE = globalThis.LumnoAggregateSearchStore;
   const SHORTCUT_FAVICON = globalThis.LumnoShortcutFavicon;
-  const LUMNO_FEEDBACK_SUPPORT_LINKS_FALLBACK = COMMUNITY_LINKS.FALLBACK_LINKS;
   const panel = document.getElementById('_x_extension_settings_panel_2024_unique_');
   const optionsRoot = document.getElementById('_x_extension_options_root_2024_unique_');
   const tabsRow = document.querySelector('._x_extension_settings_tabs_row_2024_unique_');
@@ -163,8 +162,16 @@
     windowObj: window,
     duration: 2200
   });
-  const feedbackSupportController =
-    optionsFeedbackSupportApi.createFeedbackSupportController(feedbackSupportHost);
+  const feedbackSupportSection = globalThis.LumnoOptionsFeedbackSupportSection.createFeedbackSupportSection({
+    communityLinks: COMMUNITY_LINKS,
+    controller: optionsFeedbackSupportApi.createFeedbackSupportController(feedbackSupportHost),
+    getLocale: () => (currentLanguageMode === 'system' ? getSystemLocale() : normalizeLocale(currentLanguageMode)),
+    getMessage,
+    helpIconUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
+      ? chrome.runtime.getURL('assets/images/site-search/glyph-lm.png')
+      : '../../assets/images/site-search/glyph-lm.png',
+    isHelpCenterSearchEnabled: () => helpCenterSearchEnabled
+  });
   function createOptionsInfoButtonController(host) {
     return optionsInfoButtonApi.createInfoButtonController(host);
   }
@@ -304,10 +311,21 @@
       selectionQuickActionsGroupRow.setAttribute('aria-disabled', disabled ? 'true' : 'false');
     }
   }
-  const TOGGLE_SETTINGS = globalThis.LumnoOptionsToggleSettings.getToggleSettings(SETTINGS);
+  const TOGGLE_SETTINGS = globalThis.LumnoOptionsToggleSettings.getToggleSettings(SETTINGS, {
+    faviconBlacklistEditor: setFaviconBlacklistEditorEnabled,
+    newtabShortcutSubcontrols: syncNewtabShortcutSubcontrolAvailability,
+    selectionQuickActionsAvailability: syncSelectionQuickActionsProviderAvailability
+  });
+  // Each switch's React view replaces its <input> in the document. The page
+  // keeps working with the original element: the view reports clicks to it as
+  // change events and re-renders from it, so look every control up once, now.
+  const toggleSettingControls = new Map(TOGGLE_SETTINGS.map((entry) => [
+    entry,
+    document.getElementById(entry.inputId)
+  ]));
   TOGGLE_SETTINGS.forEach((entry) => {
     if (entry.kind) {
-      registerOptionsToggleControl(document.getElementById(entry.inputId), entry.kind);
+      registerOptionsToggleControl(toggleSettingControls.get(entry), entry.kind);
     }
   });
   newtabOpenInNewTabToggles.forEach((input) => registerOptionsToggleControl(input, 'newtab-open-in-new-tab'));
@@ -583,197 +601,20 @@
     return SETTINGS.addStorageChangeListener(chrome, listener);
   }
 
-  function getFocusedSettingsPanelAnchor() {
-    const activeElement = document.activeElement;
-    if (!activeElement || activeElement === document.body || !panel.contains(activeElement) ||
-        typeof activeElement.getBoundingClientRect !== 'function') {
-      return null;
-    }
-    const rect = activeElement.getBoundingClientRect();
-    return rect.width > 0 || rect.height > 0 ? activeElement : null;
-  }
-
-  function setOptionsPanelFocusAnchorReserve(anchor, reserve) {
-    const nextReserve = Number.isFinite(reserve) ? Math.max(0, Math.ceil(reserve)) : 0;
-    optionsPanelFocusAnchor = nextReserve > 0 ? anchor : null;
-    optionsPanelFocusAnchorReserve = nextReserve;
-    if (nextReserve > 0) {
-      optionsRoot.style.setProperty('--settings-focus-anchor-reserve', `${nextReserve}px`);
-      return;
-    }
-    optionsRoot.style.removeProperty('--settings-focus-anchor-reserve');
-  }
-
-  function clearOptionsPanelFocusAnchorReserve() {
-    setOptionsPanelFocusAnchorReserve(null, 0);
-  }
-
-  function releaseOptionsPanelFocusAnchorReserve(event) {
-    const anchor = optionsPanelFocusAnchor;
-    const target = event && event.target;
-    if (!anchor || !target || target === anchor ||
-        (typeof anchor.contains === 'function' && anchor.contains(target))) {
-      return;
-    }
-    clearOptionsPanelFocusAnchorReserve();
-  }
-
-  function primeOptionsPanelFocusAnchorReserve(anchor, beforeHeight) {
-    if (!anchor) {
-      return;
-    }
-    setOptionsPanelFocusAnchorReserve(
-      anchor,
-      Math.max(optionsPanelFocusAnchorReserve, Number.isFinite(beforeHeight) ? beforeHeight : 0)
-    );
-  }
-
-  function stabilizeOptionsPanelFocusAnchor(anchor, focusTop, minimumHeightReduction) {
-    if (!anchor || !Number.isFinite(focusTop) || !anchor.isConnected) {
-      clearOptionsPanelFocusAnchorReserve();
-      return;
-    }
-    const heightReduction = Number.isFinite(minimumHeightReduction)
-      ? Math.max(0, minimumHeightReduction)
-      : 0;
-    for (let pass = 0; pass < 2; pass += 1) {
-      const nextFocusTop = anchor.getBoundingClientRect().top;
-      const focusOffset = nextFocusTop - focusTop;
-      if (Number.isFinite(focusOffset) && Math.abs(focusOffset) > 0.5) {
-        window.scrollBy(0, focusOffset);
-      }
-      const baseDocumentHeight = Math.max(
-        0,
-        document.documentElement.scrollHeight - optionsPanelFocusAnchorReserve - heightReduction
-      );
-      const requiredReserve = Math.max(
-        0,
-        window.scrollY + window.innerHeight - baseDocumentHeight + 2
-      );
-      setOptionsPanelFocusAnchorReserve(anchor, requiredReserve);
-    }
-  }
-
-  function cancelOptionsPanelHeightAnimation() {
-    const animation = optionsPanelHeightAnimation;
-    optionsPanelHeightAnimation = null;
-    if (animation) {
-      animation.onfinish = null;
-      animation.cancel();
-    }
-    panel.style.removeProperty('height');
-    panel.removeAttribute('data-height-animating');
-    clearOptionsPanelFocusAnchorReserve();
-  }
-
-  function shouldAnimateOptionsPanelHeight() {
-    if (!document.documentElement ||
-        document.documentElement.getAttribute('data-lumno-options-ready') !== 'true' ||
-        typeof panel.animate !== 'function') {
-      return false;
-    }
-    if (typeof panel.getClientRects === 'function' && panel.getClientRects().length === 0) {
-      return false;
-    }
-    return !(typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  }
-
+  const PANEL_MOTION = globalThis.LumnoOptionsPanelMotion;
+  const panelHeightAnimator = PANEL_MOTION.createPanelHeightAnimator({
+    documentObj: document,
+    panel,
+    reserveHost: optionsRoot,
+    windowObj: window
+  });
+  const { setConditionalSettingsElementVisibility } = PANEL_MOTION;
   function animateOptionsPanelHeight(mutateLayout) {
-    if (typeof mutateLayout !== 'function') {
-      return false;
-    }
-    const animationInProgress = Boolean(optionsPanelHeightAnimation);
-    const previousFocusAnchor = optionsPanelFocusAnchor;
-    const previousFocusAnchorReserve = optionsPanelFocusAnchorReserve;
-    const beforeHeight = panel.getBoundingClientRect().height;
-    const focusAnchor = getFocusedSettingsPanelAnchor();
-    const focusTop = focusAnchor ? focusAnchor.getBoundingClientRect().top : null;
-    primeOptionsPanelFocusAnchorReserve(focusAnchor, beforeHeight);
-    panel.setAttribute('data-height-animating', 'true');
-
-    const layoutChanged = mutateLayout() !== false;
-    if (!layoutChanged) {
-      setOptionsPanelFocusAnchorReserve(previousFocusAnchor, previousFocusAnchorReserve);
-      if (!animationInProgress) {
-        panel.removeAttribute('data-height-animating');
-      }
-      return false;
-    }
-
-    if (optionsPanelHeightAnimation) {
-      const previousAnimation = optionsPanelHeightAnimation;
-      optionsPanelHeightAnimation = null;
-      previousAnimation.onfinish = null;
-      previousAnimation.cancel();
-    }
-    panel.style.removeProperty('height');
-    const afterHeight = panel.getBoundingClientRect().height;
-    const canAnimateHeight = shouldAnimateOptionsPanelHeight() &&
-      Number.isFinite(beforeHeight) && Number.isFinite(afterHeight) &&
-      Math.abs(afterHeight - beforeHeight) >= 0.5;
-
-    stabilizeOptionsPanelFocusAnchor(
-      focusAnchor,
-      focusTop,
-      canAnimateHeight ? Math.max(0, afterHeight - beforeHeight) : 0
-    );
-
-    if (!canAnimateHeight) {
-      panel.removeAttribute('data-height-animating');
-      return true;
-    }
-
-    panel.style.height = `${afterHeight}px`;
-    const animation = panel.animate(
-      [
-        { height: `${beforeHeight}px` },
-        { height: `${afterHeight}px` }
-      ],
-      {
-        duration: OPTIONS_PANEL_HEIGHT_ANIMATION_DURATION_MS,
-        easing: OPTIONS_PANEL_HEIGHT_ANIMATION_EASING,
-        fill: 'both'
-      }
-    );
-    optionsPanelHeightAnimation = animation;
-    animation.onfinish = () => {
-      if (optionsPanelHeightAnimation !== animation) {
-        return;
-      }
-      optionsPanelHeightAnimation = null;
-      animation.onfinish = null;
-      animation.cancel();
-      panel.style.removeProperty('height');
-      panel.removeAttribute('data-height-animating');
-      stabilizeOptionsPanelFocusAnchor(focusAnchor, focusTop, 0);
-    };
-    return true;
+    return panelHeightAnimator.animate(mutateLayout);
   }
-
-  function setConditionalSettingsElementVisibility(element, visible, visibleDisplay) {
-    if (!element) {
-      return false;
-    }
-    const shouldShow = Boolean(visible);
-    const wasVisible = visibleDisplay
-      ? element.style.display !== 'none'
-      : !element.hidden;
-    if (visibleDisplay) {
-      element.style.setProperty('display', shouldShow ? visibleDisplay : 'none');
-    } else {
-      element.hidden = !shouldShow;
-    }
-    element.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
-    return wasVisible !== shouldShow;
-  }
-
-  document.addEventListener('pointerdown', releaseOptionsPanelFocusAnchorReserve, true);
-  document.addEventListener('focusin', releaseOptionsPanelFocusAnchorReserve, true);
 
   const {
     THEME_STORAGE_KEY,
-    OPTIONS_THEME_PRELOAD_STORAGE_KEY,
     LANGUAGE_STORAGE_KEY,
     RECENT_MODE_STORAGE_KEY,
     RECENT_COUNT_STORAGE_KEY,
@@ -834,11 +675,6 @@
     normalizeItems: normalizeBlacklistItems,
     normalizeMatchModes: normalizeBlacklistMatchModes
   } = blacklistModel;
-  const OPTIONS_PANEL_HEIGHT_ANIMATION_DURATION_MS = 280;
-  const OPTIONS_PANEL_HEIGHT_ANIMATION_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
-  let optionsPanelHeightAnimation = null;
-  let optionsPanelFocusAnchor = null;
-  let optionsPanelFocusAnchorReserve = 0;
   let currentMessages = null;
   let currentLanguageMode = 'system';
   const webDavSettingsController = globalThis.LumnoWebDavOptions.createController({ chromeApi: chrome, getMessage,
@@ -850,13 +686,10 @@
   }
   const DEBUG_DUPLICATE_CUSTOM_KEY = 'dup';
   const SHORTCUT_KEYS = globalThis.LumnoOptionsShortcutKeys;
-  const { buildShortcutFromEvent, normalizeFallbackShortcut } = SHORTCUT_KEYS;
   const shortcutPlatform = shortcutDisplay.getNavigatorPlatform(typeof navigator !== 'undefined' ? navigator : null);
   const isMacPlatform = shortcutPlatform === 'mac';
   const OPTIONS_TARGET_SITE_SEARCH_AI = 'site-search-ai';
   const OPTIONS_TARGET_DOCUMENT_PIP = 'document-pip';
-  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-  let mediaListenerAttached = false;
   let defaultSiteSearchProviders = [];
   let customSiteSearchProviders = [];
   let customSiteSearchProviderIdsReady = true;
@@ -880,10 +713,6 @@
   let siteSearchRefreshTimer = null;
   let siteSearchProviderRefreshCoordinator = null;
   let pendingOptionsScrollTarget = '';
-  let currentShortcutLabel = null;
-  let isCapturingFallbackShortcut = false;
-  let cancelCaptureOnMouseLeave = false;
-  let fallbackCaptureStopTimer = null;
   let fallbackShortcutBaseWidth = 0;
   let isFallbackWidthReady = false;
   let searchBlacklistItems = [];
@@ -938,8 +767,6 @@
     return `${safePrefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
   }
 
-  let feedbackSupportLinks = LUMNO_FEEDBACK_SUPPORT_LINKS_FALLBACK;
-  let currentThemeMode = 'system';
   let currentRecentMode = 'most';
   let currentNewtabWidthMode = 'wide';
   let currentOverlaySizeMode = 'standard';
@@ -1371,50 +1198,6 @@
     'labs'
   ]);
 
-  function migrateStorageIfNeeded(keys) {
-    if (!storageArea || !localStorageArea || getActivePrimaryAreaName() === 'local') {
-      return;
-    }
-    localStorageArea.get(keys, (localResult) => {
-      const hasLocal = keys.some((key) => typeof localResult[key] !== 'undefined');
-      if (!hasLocal) {
-        return;
-      }
-      storageArea.get(keys, (syncResult) => {
-        const missingSyncValues = {};
-        keys.forEach((key) => {
-          if (typeof localResult[key] !== 'undefined' && typeof syncResult[key] === 'undefined') {
-            missingSyncValues[key] = localResult[key];
-          }
-        });
-        // Grouped shortcuts move only as a whole save, never chunk by chunk.
-        const [shortcutsHeadKey] = SETTINGS.NEWTAB_SHORTCUTS_V2_STORAGE_KEYS;
-        SETTINGS.NEWTAB_SHORTCUTS_V2_STORAGE_KEYS.forEach((key) => {
-          if (!Object.prototype.hasOwnProperty.call(missingSyncValues, shortcutsHeadKey)) {
-            delete missingSyncValues[key];
-          } else if (typeof localResult[key] !== 'undefined') {
-            missingSyncValues[key] = localResult[key];
-          }
-        });
-        const missingKeys = Object.keys(missingSyncValues);
-        if (missingKeys.length === 0) {
-          return;
-        }
-        storageArea.get(missingKeys, (latestSyncResult) => {
-          const stillMissingSyncValues = {};
-          missingKeys.forEach((key) => {
-            if (typeof latestSyncResult[key] === 'undefined') {
-              stillMissingSyncValues[key] = missingSyncValues[key];
-            }
-          });
-          if (Object.keys(stillMissingSyncValues).length > 0) {
-            storageArea.set(stillMissingSyncValues);
-          }
-        });
-      });
-    });
-  }
-
   function getMessage(key, fallback) {
     if (currentMessages && Object.prototype.hasOwnProperty.call(currentMessages, key)) {
       const entry = currentMessages[key];
@@ -1434,133 +1217,12 @@
     return fallback || '';
   }
 
-  function getFeedbackSupportWebLocale() {
-    const locale = currentLanguageMode === 'system'
-      ? getSystemLocale()
-      : normalizeLocale(currentLanguageMode);
-    if (locale === 'zh_CN') {
-      return 'zh-CN';
-    }
-    if (locale === 'zh_TW') {
-      return 'zh-TW';
-    }
-    if (locale === 'ja') {
-      return 'ja';
-    }
-    return 'en';
-  }
-
-  function getFeedbackSupportCommunityChannel() {
-    return COMMUNITY_LINKS.getCommunityChannel(
-      feedbackSupportLinks,
-      getFeedbackSupportWebLocale()
-    );
-  }
-
   function renderFeedbackSupport() {
-    if (!feedbackSupportController) {
-      return;
-    }
-    const links = feedbackSupportLinks || LUMNO_FEEDBACK_SUPPORT_LINKS_FALLBACK;
-    const channel = getFeedbackSupportCommunityChannel();
-    const communityIsWechat = channel === 'wechat';
-    feedbackSupportController.render({
-      heading: getMessage('settings_feedback_support_section_title', '反馈与支持'),
-      headingKey: 'settings_feedback_support_section_title',
-      help: {
-        ask: helpCenterSearchEnabled !== true ? null : {
-          caption: getMessage('settings_help_center_ask_caption', '在新标签页或命令栏输入 lm 或「帮助中心」，按 Tab，再写下你的问题。'),
-          captionKey: 'settings_help_center_ask_caption',
-          iconUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
-            ? chrome.runtime.getURL('assets/images/site-search/glyph-lm.png')
-            : '../../assets/images/site-search/glyph-lm.png',
-          label: getMessage('settings_help_center_ask_action', '在搜索框中提问'),
-          labelKey: 'settings_help_center_ask_action',
-          prefix: 'lm',
-          providerName: getMessage('site_search_name_lumno_help', 'Lumno 帮助中心'),
-          query: getMessage('settings_help_center_ask_demo_query', '怎么修改快捷键'),
-          results: [
-            {
-              detail: getMessage('settings_help_center_ask_demo_result_1_detail', '修改快捷键'),
-              title: getMessage('settings_help_center_ask_demo_result_1_title', '快捷键')
-            },
-            {
-              detail: getMessage('settings_help_center_ask_demo_result_2_detail', '快捷键没反应怎么办？'),
-              title: getMessage('settings_help_center_ask_demo_result_2_title', '常见问题')
-            }
-          ]
-        },
-        description: getMessage('settings_help_center_desc', '不清楚某个功能怎么用？每个功能的用法都写在这里。'),
-        descriptionKey: 'settings_help_center_desc',
-        href: COMMUNITY_LINKS.getHelpUrl(getFeedbackSupportWebLocale()),
-        label: getMessage('settings_help_center_action', '查看'),
-        labelKey: 'settings_help_center_action',
-        title: getMessage('settings_help_center_title', '帮助中心'),
-        titleKey: 'settings_help_center_title'
-      },
-      items: [
-        // Chinese readers get the WeChat group; elsewhere "contact the author" (X) below is the community entry.
-        ...(communityIsWechat
-          ? [{
-              href: links.wechatQr,
-              iconClass: 'ri-wechat-line',
-              key: 'community',
-              label: getMessage('settings_feedback_support_wechat_action', '加入反馈群'),
-              labelKey: 'settings_feedback_support_wechat_action',
-              qr: {
-                alt: getMessage('newtab_feedback_wechat_qr_alt', 'Lumno 微信群二维码'),
-                closeLabel: getMessage('newtab_feedback_wechat_close_tooltip', '关闭'),
-                imageUrl: links.wechatQr,
-                title: getMessage('newtab_feedback_wechat_panel_title', 'Bug 反馈 & 新功能提需')
-              }
-            }]
-          : []),
-        {
-          href: COMMUNITY_LINKS.getReviewUrl(links),
-          iconClass: 'ri-star-line',
-          key: 'chrome-review',
-          label: getMessage(
-            'settings_feedback_support_review_action',
-            '为 Lumno 评分'
-          ),
-          labelKey: 'settings_feedback_support_review_action'
-        },
-        {
-          href: links.githubIssue,
-          iconClass: 'ri-github-line',
-          key: 'github-issue',
-          label: getMessage(
-            'settings_feedback_support_github_issue_action',
-            '创建 Issue'
-          ),
-          labelKey: 'settings_feedback_support_github_issue_action'
-        },
-        {
-          href: links.x,
-          iconClass: 'ri-twitter-x-line',
-          key: 'contact-author',
-          label: getMessage(
-            'settings_feedback_support_contact_author_action',
-            '联系作者'
-          ),
-          labelKey: 'settings_feedback_support_contact_author_action'
-        }
-      // Firefox has no store listing to review yet (empty review URL).
-      ].filter((item) => Boolean(item.href))
-    });
-  }
-
-  function loadFeedbackSupportLinks() {
-    return COMMUNITY_LINKS.load()
-      .then((links) => {
-        feedbackSupportLinks = links || LUMNO_FEEDBACK_SUPPORT_LINKS_FALLBACK;
-        renderFeedbackSupport();
-        return feedbackSupportLinks;
-      });
+    feedbackSupportSection.render();
   }
 
   renderFeedbackSupport();
-  loadFeedbackSupportLinks();
+  feedbackSupportSection.loadLinks();
 
   function formatTemplate(text, params) {
     return String(text || '').replace(/\{(\w+)\}/g, (match, key) => {
@@ -2374,7 +2036,7 @@
     });
     if (fallbackShortcutInput && fallbackShortcutTokens) {
       fallbackShortcutTokens.setAttribute('data-placeholder', fallbackShortcutInput.getAttribute('placeholder') || '');
-      renderFallbackShortcutTokens(currentShortcutLabel || '');
+      fallbackShortcutSection.renderTokens();
     }
   }
 
@@ -2539,157 +2201,39 @@
     };
   }
 
-  function setSyncButtonEnabled(button, enabled) {
-    if (!button) {
-      return;
-    }
-    const isEnabled = enabled === true;
-    button.disabled = !isEnabled;
-    button.setAttribute('data-disabled', isEnabled ? 'false' : 'true');
-  }
-
-  function formatSyncTime(timestamp) {
-    if (!timestamp) {
-      return '';
-    }
-    try {
-      return new Date(timestamp).toLocaleString();
-    } catch (e) {
-      return '';
-    }
-  }
-
-  function updateSyncStatusText(statusKey, fallback, params) {
-    if (!syncStatus) {
-      return;
-    }
-    let statusStyle = '';
-    let tooltipKey = 'sync_status_hint';
-    if (statusKey === 'sync_status_ready' || statusKey === 'sync_status_done') {
-      statusStyle = 'success';
-      tooltipKey = 'sync_status_hint';
-    } else if (statusKey === 'sync_status_failed' || statusKey === 'sync_status_failed_reason' || statusKey === 'sync_status_unavailable') {
-      statusStyle = 'danger';
-      tooltipKey = 'sync_status_unavailable_hint';
-    }
-    if (statusStyle) {
-      syncStatus.setAttribute('data-status', statusStyle);
-    } else {
-      syncStatus.removeAttribute('data-status');
-    }
-    if (syncStatus.hasAttribute('data-i18n-tooltip')) {
-      syncStatus.setAttribute('data-i18n-tooltip', tooltipKey);
-    }
-    syncStatus.setAttribute('data-tooltip', getMessage(tooltipKey, syncStatus.getAttribute('data-tooltip') || ''));
-    const template = getMessage(statusKey, fallback);
-    const target = syncStatusText || syncStatus;
-    target.textContent = params ? formatTemplate(template, params) : template;
-  }
-
-  function updateSyncNowTooltip(timeText) {
-    if (!syncNowButton) {
-      return;
-    }
-    if (!timeText) {
-      syncNowButton.setAttribute('data-tooltip', getMessage('sync_tooltip_default', '手动同步'));
-      return;
-    }
-    const template = getMessage('sync_tooltip_last_manual', '最近导入/手动同步 {time}');
-    syncNowButton.setAttribute('data-tooltip', formatTemplate(template, { time: timeText }));
-    if (syncNowButton.matches(':hover') || syncNowButton.matches(':focus')) {
-      showTooltipFor(syncNowButton);
-    }
-  }
-
-  // Says how many New Tab shortcuts browser sync carries and where the
-  // rest are kept, since what does not fit stays on this device or goes
-  // through WebDAV.
-  let shortcutSyncSummaryRevision = 0;
-  function refreshShortcutSyncSummary() {
-    const store = globalThis.LumnoNewtabShortcutsStore;
-    if (!shortcutSyncSummary || !store || !storageArea || getActivePrimaryAreaName() !== 'sync' ||
-        !localStorageArea) {
-      if (shortcutSyncSummary) shortcutSyncSummary.hidden = true;
-      return;
-    }
-    const revision = ++shortcutSyncSummaryRevision;
-    storageArea.get(store.SHORTCUT_STORAGE_KEYS.slice(), (values) => {
-      localStorageArea.get([store.SHORTCUTS_LOCAL_OVERFLOW_KEY, SETTINGS.WEBDAV_STATUS_STORAGE_KEY], (local) => {
-        if (revision !== shortcutSyncSummaryRevision) return;
-        const summary = store.summarizeShortcutSync(values || {}, local && local[store.SHORTCUTS_LOCAL_OVERFLOW_KEY]);
-        const webdavStatus = local && local[SETTINGS.WEBDAV_STATUS_STORAGE_KEY];
-        const webdav = Boolean(webdavStatus && webdavStatus.enabled === true);
-        let text = '';
-        if (summary.total <= 0) {
-          text = '';
-        } else if (summary.syncFailed) {
-          text = formatTemplate(webdav
-            ? getMessage('options_shortcut_sync_failed_webdav', 'Shortcuts couldn’t be saved to browser sync; all {count} sync through WebDAV for now.')
-            : getMessage('options_shortcut_sync_failed_local', 'Shortcuts couldn’t be saved to browser sync; all {count} stay on this device for now.'),
-          { count: summary.total });
-        } else if (!summary.synced) {
-          text = formatTemplate(webdav
-            ? getMessage('options_shortcut_sync_none_webdav', 'Shortcuts: browser sync is full, so all {count} sync through WebDAV.')
-            : getMessage('options_shortcut_sync_none_local', 'Shortcuts: browser sync is full, so all {count} stay on this device. Turn on WebDAV to sync them.'),
-          { count: summary.total });
-        } else if (!summary.localOnly) {
-          text = formatTemplate(getMessage('options_shortcut_sync_all', 'Shortcuts: all {count} sync with the browser.'),
-            { count: summary.total });
-        } else {
-          text = formatTemplate(webdav
-            ? getMessage('options_shortcut_sync_split_webdav', 'Shortcuts: {synced} sync with the browser; the other {local} sync through WebDAV.')
-            : getMessage('options_shortcut_sync_split_local', 'Shortcuts: {synced} sync with the browser; {local} exceed its sync space and stay on this device. Turn on WebDAV to sync them too.'),
-          { synced: summary.synced, local: summary.localOnly });
-        }
-        shortcutSyncSummary.textContent = text;
-        shortcutSyncSummary.hidden = !text;
-      });
-    });
-  }
-
+  const syncSection = globalThis.LumnoOptionsSyncSection.createSyncSection({
+    beginToast,
+    chromeApi: chrome,
+    documentObj: document,
+    elements: {
+      shortcutSyncSummary,
+      syncExportButton,
+      syncImportButton,
+      syncImportInput,
+      syncNowButton,
+      syncStatus,
+      syncStatusText
+    },
+    formatTemplate,
+    getActivePrimaryAreaName,
+    getMessage,
+    localStorageArea,
+    settings: SETTINGS,
+    showToast,
+    showTooltipFor,
+    storageArea,
+    syncTransfer
+  });
   function refreshSyncStatus() {
-    refreshShortcutSyncSummary();
-    if (!syncStatus) {
-      return;
-    }
-    if (!storageArea) {
-      updateSyncStatusText('sync_status_unavailable', '同步不可用');
-      setSyncButtonEnabled(syncNowButton, false);
-      setSyncButtonEnabled(syncExportButton, false);
-      setSyncButtonEnabled(syncImportButton, false);
-      return;
-    }
-    setSyncButtonEnabled(syncNowButton, true);
-    setSyncButtonEnabled(syncExportButton, true);
-    setSyncButtonEnabled(syncImportButton, true);
-    updateSyncStatusText('sync_status_ready', '同步已开启');
-    // The last-sync time describes the browser's own sync service.
-    (chrome.storage.sync || storageArea).get([SYNC_META_STORAGE_KEY], (result) => {
-      const meta = result ? result[SYNC_META_STORAGE_KEY] : null;
-      const lastSyncAt = meta && meta.lastSyncAt ? meta.lastSyncAt : '';
-      updateSyncNowTooltip(lastSyncAt ? formatSyncTime(lastSyncAt) : '');
-    });
+    syncSection.refreshSyncStatus();
   }
-
   storageChanges.on(SETTINGS.WEBDAV_STATUS_STORAGE_KEY, refreshSyncStatus, { area: 'local' });
   storageChanges.on(
     globalThis.LumnoNewtabShortcutsStore && globalThis.LumnoNewtabShortcutsStore.SHORTCUTS_LOCAL_OVERFLOW_KEY,
-    refreshShortcutSyncSummary,
+    () => syncSection.refreshShortcutSyncSummary(),
     { area: 'local' }
   );
   storageChanges.on([SYNC_META_STORAGE_KEY, ...SYNC_KEYS], refreshSyncStatus);
-
-  function downloadJson(filename, payload) {
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-  }
 
   function closeActivePopconfirm() {
     if (activePopconfirm) {
@@ -2976,9 +2520,9 @@
       updateAggregateSearchClearTooltip();
       updateBlacklistClearTooltip();
       refreshSyncStatus();
-      refreshShortcutsStatus();
+      fallbackShortcutSection.refreshShortcutsStatus();
       renderShortcutReferenceList();
-      updateThemeButtons(currentThemeMode);
+      themeSection.render();
       setNewtabWidthTabState(currentNewtabWidthMode);
       setOverlaySizeTabState(currentOverlaySizeMode);
       setOverlayEnterAnimationTabState(currentOverlayEnterAnimation);
@@ -3006,128 +2550,35 @@
     applyLanguageMode(changes[LANGUAGE_STORAGE_KEY].newValue || 'system');
   });
 
-  function refreshShortcutsStatus() {
-    if (!shortcutsStatus) return;
-    shortcutsStatus.textContent = currentShortcutLabel
-      ? (formatShortcutForDisplay(currentShortcutLabel) || currentShortcutLabel)
-      : getMessage('settings_shortcuts_unset', '未设置');
-  }
-
-  function getDefaultFallbackShortcut() {
-    return isMacPlatform ? 'Command+Shift+K' : 'Ctrl+Shift+K';
-  }
-
   function formatShortcutForDisplay(shortcut) {
     return shortcutDisplay.formatShortcutChord(shortcut, {
       platform: isMacPlatform ? 'mac' : 'windows'
     });
   }
 
-  function renderFallbackShortcutTokens(shortcut, animate) {
-    if (!shortcutHotkeyController) {
-      return;
-    }
-    const tokens = SHORTCUT_KEYS.getShortcutDisplayTokens(shortcut, { macSymbols: isMacPlatform });
-    const emptyPlaceholder = isCapturingFallbackShortcut
-      ? (fallbackShortcutInput ? (fallbackShortcutInput.getAttribute('placeholder') || '') : '')
-      : getMessage('settings_shortcuts_empty_state', '无');
-    shortcutHotkeyController.render({
-      animate: Boolean(animate),
-      placeholder: emptyPlaceholder,
-      tokens
-    });
-  }
-
-  function setFallbackShortcutLabel(value, animate) {
-    currentShortcutLabel = value || '';
-    if (fallbackShortcutInput) {
-      fallbackShortcutInput.value = '';
-    }
-    renderFallbackShortcutTokens(currentShortcutLabel, animate);
-    updateFallbackShortcutResetVisibility();
-    refreshShortcutsStatus();
-  }
-
-  function updateFallbackShortcutResetVisibility() {
-    if (!resetShortcutButton) {
-      return;
-    }
-    const normalizedCurrent = normalizeFallbackShortcut(currentShortcutLabel || '');
-    const normalizedDefault = normalizeFallbackShortcut(getDefaultFallbackShortcut());
-    const canReset = normalizedCurrent !== normalizedDefault;
-    resetShortcutButton.setAttribute('data-can-reset', canReset ? 'true' : 'false');
-    if (canReset) {
-      resetShortcutButton.removeAttribute('disabled');
-    } else {
-      resetShortcutButton.setAttribute('disabled', 'disabled');
-    }
-  }
-
-  function stopFallbackShortcutCapture() {
-    if (fallbackCaptureStopTimer) {
-      clearTimeout(fallbackCaptureStopTimer);
-      fallbackCaptureStopTimer = null;
-    }
-    isCapturingFallbackShortcut = false;
-    cancelCaptureOnMouseLeave = false;
-    if (fallbackShortcutWrap) {
-      fallbackShortcutWrap.removeAttribute('data-capturing');
-    }
-    if (fallbackShortcutInput && document.activeElement === fallbackShortcutInput) {
-      fallbackShortcutInput.blur();
-    }
-    if (!currentShortcutLabel) {
-      renderFallbackShortcutTokens('');
-    }
-  }
-
-  function stopFallbackShortcutCaptureDeferred(delayMs) {
-    if (fallbackCaptureStopTimer) {
-      clearTimeout(fallbackCaptureStopTimer);
-      fallbackCaptureStopTimer = null;
-    }
-    fallbackCaptureStopTimer = setTimeout(() => {
-      fallbackCaptureStopTimer = null;
-      stopFallbackShortcutCapture();
-    }, Math.max(0, Number(delayMs) || 0));
-  }
-
-  function persistFallbackShortcut(value, onDone) {
-    if (!storageArea) {
-      if (typeof onDone === 'function') {
-        onDone(true);
-      }
-      return;
-    }
-    storageArea.set({ [FALLBACK_SHORTCUT_STORAGE_KEY]: value }, () => {
-      const ok = !(chrome.runtime && chrome.runtime.lastError);
-      if (typeof onDone === 'function') {
-        onDone(ok);
-      }
-    });
-  }
-
+  const fallbackShortcutSection = globalThis.LumnoOptionsFallbackShortcut.createFallbackShortcutSection({
+    chromeApi: chrome,
+    documentObj: document,
+    elements: {
+      clearShortcutButton,
+      fallbackShortcutInput,
+      fallbackShortcutWrap,
+      resetShortcutButton,
+      shortcutsStatus
+    },
+    formatShortcutForDisplay,
+    getMessage,
+    isMacPlatform,
+    settings: SETTINGS,
+    shortcutHotkeyController,
+    shortcutKeys: SHORTCUT_KEYS,
+    showToast,
+    storageArea,
+    windowObj: window
+  });
   function loadCurrentShortcut() {
-    const defaultShortcut = getDefaultFallbackShortcut();
-    if (!chrome || !chrome.commands || typeof chrome.commands.getAll !== 'function') {
-      setFallbackShortcutLabel(defaultShortcut);
-      return;
-    }
-    chrome.commands.getAll((commands) => {
-      if (chrome.runtime && chrome.runtime.lastError) {
-        setFallbackShortcutLabel(defaultShortcut);
-        return;
-      }
-      const items = Array.isArray(commands) ? commands : [];
-      const command = items.find((item) => item && item.name === 'show-search');
-      const shortcut = command && typeof command.shortcut === 'string'
-        ? String(command.shortcut).trim()
-        : '';
-      const effectiveShortcut = shortcut || defaultShortcut;
-      setFallbackShortcutLabel(effectiveShortcut);
-    });
+    fallbackShortcutSection.loadCurrentShortcut();
   }
-
   storageChanges.on(FALLBACK_SHORTCUT_STORAGE_KEY, () => loadCurrentShortcut());
 
   function getShortcutReferencePartLabel(part) {
@@ -3272,7 +2723,7 @@
 
   function setActiveTab(tabKey) {
     const nextTabKey = normalizeSettingsTabKey(tabKey);
-    cancelOptionsPanelHeightAnimation();
+    panelHeightAnimator.cancel();
     currentActiveSettingsTab = nextTabKey;
     renderSettingsNavigation(nextTabKey);
     tabContents.forEach((content) => {
@@ -3432,59 +2883,6 @@
     });
   }
 
-  function applyResolvedTheme(resolvedTheme) {
-    document.body.setAttribute('data-theme', resolvedTheme);
-    panel.setAttribute('data-theme', resolvedTheme);
-    document.documentElement.style.colorScheme = resolvedTheme;
-    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeColorMeta) {
-      themeColorMeta.setAttribute('content', resolvedTheme === 'dark' ? '#111111' : '#f1f5f9');
-    }
-  }
-
-  function resolveTheme(mode) {
-    if (mode === 'dark') {
-      return 'dark';
-    }
-    if (mode === 'light') {
-      return 'light';
-    }
-    return mediaQuery.matches ? 'dark' : 'light';
-  }
-
-  function getThemeStorageUpdate(mode) {
-    return SETTINGS.createGlobalThemeModeStorageUpdate(mode);
-  }
-
-  function updateThemeButtons(mode) {
-    const nextMode = mode === 'dark' || mode === 'light' ? mode : 'system';
-    currentThemeMode = nextMode;
-    updateOverlayPageThemeAdaptationVisibility(nextMode);
-    themePickerController.render({
-      activeMode: nextMode,
-      options: [
-        {
-          mode: 'system',
-          labelKey: 'settings_theme_system',
-          label: getMessage('settings_theme_system', '跟随系统'),
-          previewSrc: '../../assets/images/system.svg'
-        },
-        {
-          mode: 'light',
-          labelKey: 'settings_theme_light',
-          label: getMessage('settings_theme_light', '浅色'),
-          previewSrc: '../../assets/images/light.svg'
-        },
-        {
-          mode: 'dark',
-          labelKey: 'settings_theme_dark',
-          label: getMessage('settings_theme_dark', '深色'),
-          previewSrc: '../../assets/images/dark.svg'
-        }
-      ]
-    });
-  }
-
   function updateOverlayPageThemeAdaptationVisibility(mode) {
     const nextMode = mode === 'dark' || mode === 'light' ? mode : 'system';
     const visible = nextMode === 'system';
@@ -3498,96 +2896,29 @@
     });
   }
 
-  function onMediaChange() {
-    if (!storageArea) {
-      return;
-    }
-    storageArea.get([THEME_STORAGE_KEY], (result) => {
-      const mode = result[THEME_STORAGE_KEY] || 'system';
-      if (mode === 'system') {
-        applyResolvedTheme(resolveTheme(mode));
-      }
-    });
-  }
-
   function setThemeMode(mode) {
-    if (!storageArea) {
-      return;
-    }
-    const updates = getThemeStorageUpdate(mode);
-    const nextMode = updates[THEME_STORAGE_KEY];
-    cacheOptionsThemeMode(nextMode);
-    storageArea.set(updates, () => {
-      updateThemeButtons(nextMode);
-      applyResolvedTheme(resolveTheme(nextMode));
-      if (nextMode === 'system' && !mediaListenerAttached) {
-        mediaQuery.addEventListener('change', onMediaChange);
-        mediaListenerAttached = true;
-        return;
-      }
-      if (nextMode !== 'system' && mediaListenerAttached) {
-        mediaQuery.removeEventListener('change', onMediaChange);
-        mediaListenerAttached = false;
-      }
-    });
+    themeSection.setMode(mode);
   }
-
-  function getStoredThemeMode() {
-    return new Promise((resolve) => {
-      if (!storageArea) {
-        resolve('system');
-        return;
-      }
-      storageArea.get([THEME_STORAGE_KEY], (result) => {
-        resolve((result && result[THEME_STORAGE_KEY]) || 'system');
-      });
-    });
-  }
-
-  function cacheOptionsThemeMode(mode) {
-    const nextMode = mode === 'dark' || mode === 'light' ? mode : 'system';
-    try {
-      if (window.localStorage) {
-        window.localStorage.setItem(OPTIONS_THEME_PRELOAD_STORAGE_KEY, nextMode);
-      }
-    } catch (e) {
-      // The early theme preloader falls back to the system theme when caching is unavailable.
-    }
-  }
-
-  // theme-preload.js has already painted the cached (or system) theme and
-  // marked the page ready before this runs, so there is nothing to fall back
-  // to while the stored preference loads.
-  async function initTheme() {
-    const storedMode = await getStoredThemeMode();
-    cacheOptionsThemeMode(storedMode);
-    updateThemeButtons(storedMode);
-    applyResolvedTheme(resolveTheme(storedMode));
-    if (storedMode === 'system' && !mediaListenerAttached) {
-      mediaQuery.addEventListener('change', onMediaChange);
-      mediaListenerAttached = true;
-    }
-    document.documentElement.setAttribute('data-theme-ready', 'true');
-  }
-
-  initTheme();
-  storageChanges.on(THEME_STORAGE_KEY, (changes) => {
-    const nextMode = changes[THEME_STORAGE_KEY].newValue || 'system';
-    updateThemeButtons(nextMode);
-    applyResolvedTheme(resolveTheme(nextMode));
-  });
 
   function playThemeOptionClickEffect(button) {
-    if (!button) {
-      return;
-    }
-    button.classList.remove('x-theme-clicking');
-    void button.offsetWidth;
-    button.classList.add('x-theme-clicking');
-    window.setTimeout(() => {
-      button.classList.remove('x-theme-clicking');
-    }, 260);
+    THEME.playThemeOptionClickEffect(button, window);
   }
+
+  const THEME = globalThis.LumnoOptionsTheme;
+  const themeSection = THEME.createThemeSection({
+    documentObj: document,
+    getMessage,
+    onModeShown: updateOverlayPageThemeAdaptationVisibility,
+    panel,
+    picker: themePickerController,
+    settings: SETTINGS,
+    storageArea,
+    windowObj: window
+  });
+  themeSection.init();
+  storageChanges.on(THEME_STORAGE_KEY, (changes) => {
+    themeSection.applyStorageChange(changes[THEME_STORAGE_KEY].newValue);
+  });
 
   themeButtons.forEach((button) => {
     button.addEventListener('click', function() {
@@ -3635,7 +2966,7 @@
   updateTabsStickyVisualState();
   window.addEventListener('resize', scheduleOptionsViewportLayoutRefresh, { passive: true });
   providerStorageRuntime.ready.then(() => {
-    migrateStorageIfNeeded(SYNC_KEYS);
+    syncSection.migrateStorageIfNeeded(SYNC_KEYS);
     refreshSyncStatus();
   });
 
@@ -3904,116 +3235,7 @@
     });
   }
 
-  if (fallbackShortcutInput) {
-    const handleFallbackShortcutKeydown = (event) => {
-      if (!event) {
-        return;
-      }
-      if (event.key === 'Tab') {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      if (event.key === 'Escape') {
-        fallbackShortcutInput.value = '';
-        renderFallbackShortcutTokens(currentShortcutLabel || getDefaultFallbackShortcut());
-        stopFallbackShortcutCapture();
-        return;
-      }
-      const nextShortcut = buildShortcutFromEvent(event);
-      if (nextShortcut) {
-        fallbackShortcutInput.value = '';
-        const normalized = normalizeFallbackShortcut(nextShortcut);
-        if (!normalized) {
-          return;
-        }
-        if (normalized === currentShortcutLabel) {
-          renderFallbackShortcutTokens(normalized, true);
-          stopFallbackShortcutCaptureDeferred(260);
-          return;
-        }
-        setFallbackShortcutLabel(normalized, true);
-        persistFallbackShortcut(normalized, (ok) => {
-          if (!ok) {
-            showToast(getMessage('toast_error', '操作失败，请重试。'), true);
-          }
-        });
-        stopFallbackShortcutCaptureDeferred(260);
-      }
-    };
-    const captureWindowKeydown = (event) => {
-      if (!isCapturingFallbackShortcut) {
-        return;
-      }
-      handleFallbackShortcutKeydown(event);
-    };
-    window.addEventListener('keydown', captureWindowKeydown, true);
-    if (fallbackShortcutWrap) {
-      fallbackShortcutWrap.addEventListener('pointerdown', (event) => {
-        const target = event && event.target;
-        if (target && target.closest && target.closest('button')) {
-          return;
-        }
-        event.preventDefault();
-        fallbackShortcutInput.focus();
-      });
-      fallbackShortcutWrap.addEventListener('mouseleave', () => {
-        if (!cancelCaptureOnMouseLeave) {
-          return;
-        }
-        cancelCaptureOnMouseLeave = false;
-        stopFallbackShortcutCapture();
-      });
-    }
-    fallbackShortcutInput.addEventListener('focus', () => {
-      isCapturingFallbackShortcut = true;
-      if (fallbackShortcutWrap) {
-        fallbackShortcutWrap.setAttribute('data-capturing', 'true');
-      }
-      fallbackShortcutInput.value = '';
-      if (!currentShortcutLabel) {
-        renderFallbackShortcutTokens('');
-      }
-    });
-    fallbackShortcutInput.addEventListener('blur', () => {
-      stopFallbackShortcutCapture();
-    });
-    fallbackShortcutInput.addEventListener('input', () => {
-      fallbackShortcutInput.value = '';
-    });
-    fallbackShortcutInput.addEventListener('keydown', handleFallbackShortcutKeydown);
-  }
-
-  if (clearShortcutButton) {
-    clearShortcutButton.addEventListener('click', () => {
-      setFallbackShortcutLabel('');
-      persistFallbackShortcut('', (ok) => {
-        if (!ok) {
-          showToast(getMessage('toast_error', '操作失败，请重试。'), true);
-        }
-      });
-      cancelCaptureOnMouseLeave = true;
-      if (fallbackShortcutInput) {
-        fallbackShortcutInput.focus();
-      }
-    });
-  }
-
-  if (resetShortcutButton) {
-    resetShortcutButton.addEventListener('click', () => {
-      const defaultShortcut = getDefaultFallbackShortcut();
-      setFallbackShortcutLabel(defaultShortcut, true);
-      persistFallbackShortcut(defaultShortcut, (ok) => {
-        if (!ok) {
-          showToast(getMessage('toast_error', '操作失败，请重试。'), true);
-        }
-      });
-      cancelCaptureOnMouseLeave = true;
-      if (fallbackShortcutInput) {
-        fallbackShortcutInput.focus();
-      }
-    });
-  }
+  fallbackShortcutSection.bindControls();
 
   loadCurrentShortcut();
   renderShortcutReferenceList();
@@ -4029,109 +3251,7 @@
     }
   }, true);
 
-  function getSyncFailureMessage() {
-    const reason = chrome.runtime && chrome.runtime.lastError
-      ? chrome.runtime.lastError.message
-      : '';
-    return formatTemplate(getMessage('sync_status_failed_reason', '同步失败：{reason}'), {
-      reason: reason || getMessage('sync_status_failed', '同步失败')
-    });
-  }
-
-  if (syncNowButton) {
-    syncNowButton.addEventListener('click', () => {
-      // Pushes the values browser sync already holds, stamped as a manual sync.
-      const browserSyncArea = chrome.storage.sync;
-      if (!browserSyncArea) {
-        updateSyncStatusText('sync_status_unavailable', '同步不可用');
-        return;
-      }
-      if (syncNowButton.getAttribute('aria-busy') === 'true') {
-        return;
-      }
-      syncNowButton.setAttribute('aria-busy', 'true');
-      browserSyncArea.get(SYNC_KEYS, (result) => {
-        browserSyncArea.set(syncTransfer.buildManualSyncPayload(result, Date.now()), () => {
-          syncNowButton.removeAttribute('aria-busy');
-          if (chrome.runtime && chrome.runtime.lastError) {
-            showToast(getSyncFailureMessage(), true);
-            return;
-          }
-          showToast(getMessage('sync_status_done', '同步完成'), false);
-          updateSyncNowTooltip(formatSyncTime(Date.now()));
-        });
-      });
-    });
-  }
-
-  if (syncExportButton) {
-    syncExportButton.addEventListener('click', () => {
-      if (!storageArea) {
-        return;
-      }
-      storageArea.get(SYNC_KEYS, (result) => {
-        downloadJson(
-          `lumno-settings-${Date.now()}.json`,
-          syncTransfer.buildExportFile(result, new Date().toISOString())
-        );
-        showToast(getMessage('sync_export_done', '已导出配置'), false);
-      });
-    });
-  }
-
-  function readTextFile(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () => reject(reader.error || new Error('file-read-failed'));
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.readAsText(file);
-    });
-  }
-
-  function applySyncImport(plan, toastTask) {
-    storageArea.set(plan.payload, () => {
-      if (chrome.runtime && chrome.runtime.lastError) {
-        toastTask.fail(getSyncFailureMessage());
-        return;
-      }
-      const finishImport = () => {
-        toastTask.done(getMessage('sync_import_done', '导入完成'));
-        refreshSyncStatus();
-      };
-      if (!plan.keysToClear.length) {
-        finishImport();
-        return;
-      }
-      storageArea.remove(plan.keysToClear, finishImport);
-    });
-  }
-
-  if (syncImportButton && syncImportInput) {
-    syncImportButton.addEventListener('click', () => {
-      syncImportInput.click();
-    });
-    syncImportInput.addEventListener('change', (event) => {
-      const file = event.target && event.target.files ? event.target.files[0] : null;
-      if (!file) {
-        return;
-      }
-      const toastTask = beginToast(getMessage('sync_importing', '正在导入配置…'));
-      const failInvalid = () => toastTask.fail(getMessage('sync_import_invalid', '配置文件无效'));
-      readTextFile(file).then((text) => {
-        const data = syncTransfer.parseImportFile(text);
-        const plan = data ? syncTransfer.buildImportPlan(data, Date.now()) : null;
-        if (!plan) {
-          failInvalid();
-        } else if (storageArea) {
-          applySyncImport(plan, toastTask);
-        } else {
-          toastTask.cancel();
-        }
-      }, failInvalid).finally(() => {
-        syncImportInput.value = '';
-      });
-    });
-  }
+  syncSection.bindControls();
 
   // Keeps a copy of the language in chrome.storage.local and moves a value
   // found only there into the primary area. With nothing stored yet the page
@@ -4396,16 +3516,8 @@
     repairOnLoad: false,
     repairOnChange: false
   });
-  const toggleSettingHooks = {
-    faviconBlacklistEditor: setFaviconBlacklistEditorEnabled,
-    newtabShortcutSubcontrols: syncNewtabShortcutSubcontrolAvailability,
-    selectionQuickActionsAvailability: syncSelectionQuickActionsProviderAvailability
-  };
   TOGGLE_SETTINGS.forEach((entry) => {
-    const spec = Object.assign({}, entry, {
-      afterApply: entry.after ? toggleSettingHooks[entry.after] : null,
-      input: document.getElementById(entry.inputId)
-    });
+    const spec = Object.assign({}, entry, { input: toggleSettingControls.get(entry) });
     if (entry.control === 'select') {
       settingBinder.bindSelect(spec);
     } else {

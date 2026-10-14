@@ -2,13 +2,18 @@ import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import optionsHtml from '../../src/options/options.html?raw';
 import optionsSource from '../../src/options/options.js?raw';
+import panelMotionSource from '../../src/options/options-panel-motion.js?raw';
+import themeSource from '../../src/options/options-theme.js?raw';
 import settingBindingsSource from '../../src/options/options-setting-bindings.js?raw';
 import toggleSettingsSource from '../../src/options/options-toggle-settings.js?raw';
 import siteSearchSource from '../../src/options/options-site-search.js?raw';
 import aggregateSearchSource from '../../src/options/options-aggregate-search.js?raw';
 import syncTransferSource from '../../src/options/options-sync-transfer.js?raw';
+import syncSectionSource from '../../src/options/options-sync-section.js?raw';
 import shortcutKeysSource from '../../src/options/options-shortcut-keys.js?raw';
+import fallbackShortcutSource from '../../src/options/options-fallback-shortcut.js?raw';
 import blacklistSource from '../../src/options/options-blacklist.js?raw';
+import feedbackSupportSource from '../../src/options/options-feedback-support.js?raw';
 import webdavOptionsSource from '../../src/options/webdav-options.js?raw';
 import settingsSource from '../../src/shared/settings.js?raw';
 import blacklistUtilsSource from '../../src/shared/blacklist-utils.js?raw';
@@ -65,13 +70,18 @@ const PAGE_SCRIPTS = [
   browserProfileSource,
   shortcutReferenceSource,
   webdavOptionsSource,
+  panelMotionSource,
+  themeSource,
   settingBindingsSource,
   toggleSettingsSource,
   siteSearchSource,
   aggregateSearchSource,
   syncTransferSource,
+  syncSectionSource,
   shortcutKeysSource,
-  blacklistSource
+  fallbackShortcutSource,
+  blacklistSource,
+  feedbackSupportSource
 ];
 
 const addedListeners: Array<[EventTarget, string, EventListenerOrEventListenerObject, unknown]> = [];
@@ -253,6 +263,10 @@ describe('Options page storage wiring', () => {
     expect(synced[settings.SIMPLE_MODE_ENABLED_STORAGE_KEY]).toBe(false);
     expect(synced[settings.AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY]).toBe(true);
     expect(synced[settings.MOTION_EFFECTS_ENABLED_STORAGE_KEY]).toBe(false);
+    expect(document.getElementById('_x_extension_feedback_support_2026_unique_')?.textContent)
+      .toContain((enMessages as Messages).settings_help_center_title.message);
+    // The WebDAV controller is created in the page's own declaration order.
+    expect(document.getElementById('lumno-webdav-list')?.childElementCount).toBeGreaterThan(0);
     // Ready once the startup values have been painted.
     await vi.waitFor(() => {
       expect(document.documentElement.getAttribute('data-lumno-options-ready')).toBe('true');
@@ -264,8 +278,8 @@ describe('Options page storage wiring', () => {
     const chrome = await bootOptionsPage();
     const simpleMode = toggle('_x_extension_simple_mode_toggle_2026_unique_');
     await act(async () => {
-      simpleMode.checked = true;
-      simpleMode.dispatchEvent(new Event('change'));
+      // A click on the switch the user sees.
+      simpleMode.click();
     });
     await settle();
     expect(chrome.storage.sync.values[settings.SIMPLE_MODE_ENABLED_STORAGE_KEY]).toBe(true);
@@ -325,14 +339,25 @@ describe('Options page storage wiring', () => {
         }>;
       };
     }).LumnoOptionsToggleSettings.getToggleSettings(SETTINGS);
+    // Sub-options stay disabled while their parent switch is off.
+    const parents = [SETTINGS.SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY, SETTINGS.NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY];
     for (const entry of entries) {
+      if (!parents.includes(entry.key)) {
+        await act(async () => {
+          chrome.storage.sync.externalSet(Object.fromEntries(parents.map((key) => [key, true])));
+        });
+        await settle();
+      }
       const control = document.getElementById(entry.inputId) as HTMLInputElement & HTMLSelectElement;
       expect(control, entry.inputId).toBeTruthy();
       if (entry.control === 'select') {
         const option = Array.from(control.options).map((item) => item.value).find((value) => value !== control.value);
+        const host = control.closest('._x_extension_custom_select_2024_unique_') as HTMLElement;
         await act(async () => {
-          control.value = String(option);
-          control.dispatchEvent(new Event('change'));
+          host.querySelector<HTMLButtonElement>('button')?.click();
+        });
+        await act(async () => {
+          host.querySelector<HTMLElement>(`[data-value="${option}"]`)?.click();
         });
         await settle();
         expect(chrome.storage.sync.values[entry.key], entry.key).toBe(entry.normalize(option));
@@ -340,8 +365,7 @@ describe('Options page storage wiring', () => {
       }
       const next = !control.checked;
       await act(async () => {
-        control.checked = next;
-        control.dispatchEvent(new Event('change'));
+        control.click();
       });
       await settle();
       const written = (entry.normalizeInput || entry.normalize)(next);
@@ -353,6 +377,18 @@ describe('Options page storage wiring', () => {
       await settle();
       expect(control.checked, `${entry.key} follows storage`).toBe(Boolean(entry.normalize(!written)));
     }
+  });
+
+  it('runs each switch\'s follow-up, such as locking the selection provider while it is off', async () => {
+    const settings = SETTINGS;
+    const chrome = await bootOptionsPage({ [settings.SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY]: true });
+    const provider = document.getElementById('_x_extension_selection_quick_actions_provider_select_2026_unique_') as HTMLSelectElement;
+    expect(provider.disabled).toBe(false);
+    await act(async () => {
+      chrome.storage.sync.externalSet({ [settings.SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY]: false });
+    });
+    await settle();
+    expect(provider.disabled).toBe(true);
   });
 
   it('migrates the aggregate tab-group switch from older per-search values', async () => {

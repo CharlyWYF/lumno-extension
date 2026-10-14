@@ -13,11 +13,16 @@
   //   key, normalize  storage key and normalizer
   //   control         'select' for a select; toggles by default
   //   refreshSelects  refresh the custom selects after applying
-  //   after           name of the page hook to run after applying a value
+  //   afterApply      page function to run after applying a value (from hooks)
   //   load            false when a section reads the key with related keys
   //   repairOnLoad/repairOnChange, normalizeInput: see createSettingBinder
-  function getToggleSettings(settings) {
+  //
+  // hooks: { faviconBlacklistEditor, newtabShortcutSubcontrols,
+  //          selectionQuickActionsAvailability } — page functions some
+  //          switches run after a value is applied; tests may leave them out.
+  function getToggleSettings(settings, hooks) {
     const S = settings;
+    const page = hooks || {};
     const isNotFalse = (value) => value !== false;
     const isTrue = (value) => value === true;
     return Object.freeze([
@@ -37,7 +42,7 @@
         kind: 'favicon-enhanced-fetch',
         key: S.FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY,
         normalize: S.normalizeFaviconEnhancedFetchEnabled,
-        after: 'faviconBlacklistEditor'
+        afterApply: page.faviconBlacklistEditor
       },
       {
         inputId: '_x_extension_bookmark_folder_icons_visible_toggle_2026_unique_',
@@ -72,7 +77,7 @@
         kind: 'newtab-shortcuts',
         key: S.NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY,
         normalize: S.normalizeNewtabShortcutsVisible,
-        after: 'newtabShortcutSubcontrols',
+        afterApply: page.newtabShortcutSubcontrols,
         load: false
       },
       {
@@ -185,7 +190,7 @@
         key: S.SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY,
         normalize: S.normalizeSelectionQuickActionsEnabled,
         refreshSelects: true,
-        after: 'selectionQuickActionsAvailability'
+        afterApply: page.selectionQuickActionsAvailability
       },
       {
         inputId: '_x_extension_selection_quick_actions_provider_select_2026_unique_',
@@ -200,7 +205,7 @@
         key: S.SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY,
         normalize: S.normalizeSelectionQuickActionsGroupEnabled,
         refreshSelects: true,
-        after: 'selectionQuickActionsAvailability'
+        afterApply: page.selectionQuickActionsAvailability
       }
     ].map((entry) => Object.freeze(entry)));
   }
