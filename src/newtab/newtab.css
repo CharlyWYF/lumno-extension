@@ -191,8 +191,38 @@ body.x-nt-bottom-layout:not(.x-nt-mobile-flow) {
   --x-nt-bookmark-icon-bg: rgba(241, 245, 249, 0.92);
   --x-nt-bookmark-folder-hover-bg: rgba(83, 147, 255, 0.05);
   --x-nt-bookmark-shadow-rgb: 199, 199, 199;
+  /* Hovered card lift: alphas of its four visible shadow layers (folders use half). */
+  --x-nt-bookmark-hover-shadow-alpha-1: 0.008;
+  --x-nt-bookmark-hover-shadow-alpha-2: 0.04;
+  --x-nt-bookmark-hover-shadow-alpha-3: 0.075;
+  --x-nt-bookmark-hover-shadow-alpha-4: 0.085;
+  --x-nt-bookmark-folder-hover-border: rgba(59, 130, 246, 0.22);
+  --x-nt-bookmark-folder-drop-border: rgba(37, 99, 235, 0.78);
   --x-nt-bookmark-pager-hover-bg: rgba(17, 24, 39, 0.08);
   --x-nt-insert-indicator: #7a8491;
+  /* Wallpaper and feedback buttons without a wallpaper behind them. */
+  --x-nt-corner-hover-bg: rgba(15, 23, 42, 0.06);
+  --x-nt-corner-hover-border: rgba(15, 23, 42, 0.1);
+  --x-nt-corner-hover-ring: rgba(15, 23, 42, 0.02);
+  --x-nt-corner-hover-ink: #374151;
+  --x-nt-corner-open-bg: rgba(15, 23, 42, 0.07);
+  --x-nt-corner-open-border: rgba(15, 23, 42, 0.08);
+  --x-nt-corner-open-ring: rgba(15, 23, 42, 0.02);
+  --x-nt-corner-open-ink: #374151;
+  --x-nt-corner-open-hover-bg: rgba(15, 23, 42, 0.1);
+  --x-nt-corner-open-hover-border: rgba(15, 23, 42, 0.12);
+  --x-nt-corner-open-hover-ring: rgba(15, 23, 42, 0.03);
+  --x-nt-corner-press-bg: rgba(15, 23, 42, 0.13);
+  --x-nt-corner-press-border: rgba(15, 23, 42, 0.16);
+  --x-nt-corner-press-shadow:
+    inset 0 1px 2px rgba(15, 23, 42, 0.12),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.04);
+  --x-nt-corner-open-press-bg: rgba(15, 23, 42, 0.14);
+  --x-nt-corner-open-press-border: rgba(15, 23, 42, 0.18);
+  --x-nt-corner-open-press-shadow:
+    inset 0 1px 2px rgba(15, 23, 42, 0.13),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.05);
+  --x-nt-corner-active-ink: color-mix(in srgb, var(--x-nt-text, #111827) 62%, transparent);
   --input-focus-color: var(--lumno-color-focus-ring);
   --input-focus-shadow: rgba(59, 130, 246, 0.2);
   --input-placeholder: rgba(100, 116, 139, 0.7);
@@ -208,6 +238,70 @@ body.x-nt-bottom-layout:not(.x-nt-mobile-flow) {
   --select-hover-bg: var(--lumno-color-hover);
   --select-selected-bg: var(--lumno-color-selected);
   --select-selected-text: var(--lumno-color-selected-text);
+  /* Appearance panel. */
+  --x-nt-panel-surface: rgb(255 255 255);
+  --x-nt-panel-muted-ink: var(--x-nt-subtext, #6b7280);
+  --x-nt-panel-icon-hover-bg: rgba(17, 24, 39, 0.05);
+  --x-nt-segmented-bg: rgba(17, 24, 39, 0.04);
+  --x-nt-segmented-border: var(--x-nt-panel-border, rgba(0, 0, 0, 0.08));
+  --x-nt-segmented-indicator-bg: rgba(255, 255, 255, 0.82);
+  --x-nt-segmented-indicator-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+  --x-nt-segmented-hover-bg: rgba(255, 255, 255, 0.36);
+  --x-nt-segmented-active-ink: var(--x-nt-text, #111827);
+  --x-nt-thumb-hover-filter: brightness(0.92) saturate(1.04);
+  --x-nt-upload-border: rgba(107, 114, 128, 0.36);
+  --x-nt-upload-bg: rgba(107, 114, 128, 0.06);
+  --x-nt-upload-hover-bg: rgba(107, 114, 128, 0.12);
+  --x-nt-upload-ink: color-mix(in srgb, var(--x-nt-subtext, #6b7280) 74%, transparent);
+  --x-nt-upload-hover-ink: color-mix(in srgb, var(--x-nt-text, #111827) 72%, transparent);
+  --x-nt-favicon-thumb-bg: rgba(107, 114, 128, 0.07);
+  --x-nt-choice-hover-border: rgba(107, 114, 128, 0.36);
+  /* Bookmark folder menus. */
+  --x-nt-cascade-ink: #1f2937;
+  --x-nt-cascade-surface: rgba(255, 255, 255, 0.96);
+  --x-nt-cascade-shadow:
+    0 18px 34px rgba(15, 23, 42, 0.12),
+    0 2px 4px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.74);
+  --x-nt-cascade-quiet-ink: #7a8491;
+  --x-nt-cascade-item-ink: #263140;
+  --x-nt-cascade-item-hover-ink: #263140;
+  --x-nt-cascade-item-hover-bg: rgba(15, 23, 42, 0.07);
+  --x-nt-cascade-drop-ink: #1d4ed8;
+  --x-nt-cascade-drop-bg: rgba(37, 99, 235, 0.11);
+  --x-nt-cascade-drop-ring: rgba(37, 99, 235, 0.24);
+  --x-nt-cascade-icon-ink: #64748b;
+  --x-nt-cascade-copy-ink: #64748b;
+  --x-nt-cascade-copy-hover-ink: #334155;
+  /* Feedback menu. */
+  --x-nt-feedback-surface: rgba(255, 255, 255, 0.92);
+  --x-nt-feedback-shadow:
+    0 18px 34px rgba(15, 23, 42, 0.12),
+    0 2px 4px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.74);
+  --x-nt-feedback-ink: #212733;
+  --x-nt-feedback-action-ink: #4b545f;
+  --x-nt-feedback-detail-ink: #212733;
+  --x-nt-feedback-action-face: linear-gradient(180deg, #ffffff 0%, #ecedef 100%);
+  --x-nt-feedback-action-edge:
+    0 0 0 1px rgba(210, 216, 223, 0.92),
+    0 1px 2px rgba(0, 0, 0, 0.02),
+    inset 0 -4px 3px rgba(255, 255, 255, 0.58);
+  --x-nt-feedback-action-hover-face: linear-gradient(180deg, #ffffff 0%, #e8ebef 100%);
+  --x-nt-feedback-action-hover-edge:
+    0 0 0 1px #d2d8df,
+    0 10px 16px rgba(15, 23, 42, 0.07),
+    0 2px 3px rgba(15, 23, 42, 0.04),
+    inset 0 -4px 3px rgba(255, 255, 255, 0.64);
+  --x-nt-feedback-action-press-edge:
+    0 0 0 1px rgba(210, 216, 223, 0.92),
+    0 2px 5px rgba(0, 0, 0, 0.06),
+    inset 0 -4px 3px rgba(255, 255, 255, 0.58);
+  --x-nt-feedback-detail-action-ink: #606976;
+  --x-nt-feedback-detail-action-hover-ink: #212733;
+  --x-nt-feedback-detail-action-hover-bg: rgba(15, 23, 42, 0.07);
+  --x-nt-feedback-detail-action-press-bg: rgba(15, 23, 42, 0.12);
+  --x-nt-feedback-qr-bg: #f2f4f8;
   --x-nt-wallpaper-image: none;
   --x-nt-wallpaper-overlay: none;
   --x-nt-wallpaper-effect-overlay: none;
@@ -377,8 +471,36 @@ body[data-theme="dark"] {
   --x-nt-bookmark-icon-bg: rgba(255, 255, 255, 0.08);
   --x-nt-bookmark-folder-hover-bg: rgba(83, 147, 255, 0.08);
   --x-nt-bookmark-shadow-rgb: 60, 74, 97;
+  --x-nt-bookmark-hover-shadow-alpha-1: 0.065;
+  --x-nt-bookmark-hover-shadow-alpha-2: 0.16;
+  --x-nt-bookmark-hover-shadow-alpha-3: 0.24;
+  --x-nt-bookmark-hover-shadow-alpha-4: 0.3;
+  --x-nt-bookmark-folder-hover-border: rgba(96, 165, 250, 0.34);
+  --x-nt-bookmark-folder-drop-border: rgba(96, 165, 250, 0.86);
   --x-nt-bookmark-pager-hover-bg: rgba(226, 232, 240, 0.18);
   --x-nt-insert-indicator: #a8b0bc;
+  --x-nt-corner-hover-bg: rgba(255, 255, 255, 0.1);
+  --x-nt-corner-hover-border: rgba(255, 255, 255, 0.14);
+  --x-nt-corner-hover-ring: rgba(255, 255, 255, 0.03);
+  --x-nt-corner-hover-ink: color-mix(in srgb, var(--x-nt-text, #e5e7eb) 68%, transparent);
+  --x-nt-corner-open-bg: rgba(255, 255, 255, 0.11);
+  --x-nt-corner-open-border: rgba(255, 255, 255, 0.13);
+  --x-nt-corner-open-ring: rgba(255, 255, 255, 0.03);
+  --x-nt-corner-open-ink: color-mix(in srgb, var(--x-nt-text, #e5e7eb) 68%, transparent);
+  --x-nt-corner-open-hover-bg: rgba(255, 255, 255, 0.15);
+  --x-nt-corner-open-hover-border: rgba(255, 255, 255, 0.18);
+  --x-nt-corner-open-hover-ring: rgba(255, 255, 255, 0.04);
+  --x-nt-corner-press-bg: rgba(255, 255, 255, 0.18);
+  --x-nt-corner-press-border: rgba(255, 255, 255, 0.22);
+  --x-nt-corner-press-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --x-nt-corner-open-press-bg: rgba(255, 255, 255, 0.21);
+  --x-nt-corner-open-press-border: rgba(255, 255, 255, 0.24);
+  --x-nt-corner-open-press-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.09),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --x-nt-corner-active-ink: color-mix(in srgb, var(--x-nt-text, #e5e7eb) 68%, transparent);
   --input-focus-color: var(--lumno-color-focus-ring);
   --input-focus-shadow: rgba(59, 130, 246, 0.3);
   --input-placeholder: rgba(148, 163, 184, 0.7);
@@ -393,6 +515,57 @@ body[data-theme="dark"] {
   --select-hover-bg: var(--lumno-color-hover);
   --select-selected-bg: var(--lumno-color-selected);
   --select-selected-text: var(--lumno-color-selected-text);
+  --x-nt-panel-surface: rgb(20 20 20);
+  --x-nt-panel-muted-ink: #a3a3a3;
+  --x-nt-panel-icon-hover-bg: rgba(255, 255, 255, 0.06);
+  --x-nt-segmented-bg: rgba(255, 255, 255, 0.06);
+  --x-nt-segmented-border: rgba(255, 255, 255, 0.12);
+  --x-nt-segmented-indicator-bg: #3f3f46;
+  --x-nt-segmented-indicator-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
+  --x-nt-segmented-hover-bg: rgba(255, 255, 255, 0.1);
+  --x-nt-segmented-active-ink: #f8fafc;
+  --x-nt-thumb-hover-filter: brightness(1.12) saturate(1.04);
+  --x-nt-upload-border: rgba(156, 163, 175, 0.34);
+  --x-nt-upload-bg: rgba(255, 255, 255, 0.06);
+  --x-nt-upload-hover-bg: rgba(255, 255, 255, 0.12);
+  --x-nt-upload-ink: rgba(229, 231, 235, 0.62);
+  --x-nt-upload-hover-ink: rgba(229, 231, 235, 0.82);
+  --x-nt-favicon-thumb-bg: rgba(255, 255, 255, 0.06);
+  --x-nt-choice-hover-border: rgba(156, 163, 175, 0.42);
+  --x-nt-cascade-ink: #e5e7eb;
+  --x-nt-cascade-surface: rgba(17, 24, 39, 0.95);
+  --x-nt-cascade-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.36),
+    0 2px 4px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --x-nt-cascade-quiet-ink: #94a3b8;
+  --x-nt-cascade-item-ink: #d6dbe3;
+  --x-nt-cascade-item-hover-ink: #f8fafc;
+  --x-nt-cascade-item-hover-bg: rgba(255, 255, 255, 0.09);
+  --x-nt-cascade-drop-ink: #bfdbfe;
+  --x-nt-cascade-drop-bg: rgba(59, 130, 246, 0.2);
+  --x-nt-cascade-drop-ring: rgba(96, 165, 250, 0.38);
+  --x-nt-cascade-icon-ink: #94a3b8;
+  --x-nt-cascade-copy-ink: #cbd5e1;
+  --x-nt-cascade-copy-hover-ink: #f8fafc;
+  --x-nt-feedback-surface: rgba(39, 39, 42, 0.92);
+  --x-nt-feedback-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.28),
+    0 2px 4px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --x-nt-feedback-ink: #e5e7eb;
+  --x-nt-feedback-action-ink: #e5e7eb;
+  --x-nt-feedback-action-face: linear-gradient(180deg, #3f3f46 0%, #27272a 100%);
+  --x-nt-feedback-action-edge: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  --x-nt-feedback-action-hover-face: linear-gradient(180deg, #52525b 0%, #3f3f46 100%);
+  --x-nt-feedback-action-hover-edge: 0 0 0 1px rgba(255, 255, 255, 0.18);
+  --x-nt-feedback-action-press-edge: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  --x-nt-feedback-detail-ink: #f4f4f5;
+  --x-nt-feedback-detail-action-ink: #a1a1aa;
+  --x-nt-feedback-detail-action-hover-ink: #f4f4f5;
+  --x-nt-feedback-detail-action-hover-bg: rgba(255, 255, 255, 0.1);
+  --x-nt-feedback-detail-action-press-bg: rgba(255, 255, 255, 0.16);
+  --x-nt-feedback-qr-bg: #18181b;
 }
 body[data-theme="dark"][data-wallpaper-active="true"] {
   --x-nt-wallpaper-overlay: var(--x-nt-wallpaper-effect-overlay);
@@ -535,12 +708,14 @@ body:not([data-nt-enter="done"])::after {
 body:not([data-nt-enter="done"])::before {
   transition: none;
 }
-html body ._x_extension_tooltip_2026_unique_,
-html body ._x_extension_tooltip_2026_unique_[data-visible="true"],
-html body ._x_extension_tooltip_2026_unique_[data-tooltip-kind],
-html body ._x_extension_tooltip_2026_unique_[data-tooltip-kind][data-visible="true"],
-html body ._x_extension_tooltip_2026_unique_._x_extension_cursor_tooltip_tag_2026_unique_[data-tooltip-kind],
-html body ._x_extension_tooltip_2026_unique_._x_extension_cursor_tooltip_tag_2026_unique_[data-tooltip-kind][data-visible="true"] {
+/* New Tab tooltips appear in place, without the shared tooltip's entry offset; the
+   body prefix outranks each of tooltip.css's state rules by one element. */
+body ._x_extension_tooltip_2026_unique_,
+body ._x_extension_tooltip_2026_unique_[data-visible="true"],
+body ._x_extension_tooltip_2026_unique_[data-tooltip-kind],
+body ._x_extension_tooltip_2026_unique_[data-tooltip-kind][data-visible="true"],
+body ._x_extension_tooltip_2026_unique_._x_extension_cursor_tooltip_tag_2026_unique_[data-tooltip-kind],
+body ._x_extension_tooltip_2026_unique_._x_extension_cursor_tooltip_tag_2026_unique_[data-tooltip-kind][data-visible="true"] {
   transform: none;
 }
 #_x_extension_newtab_root_2024_unique_ {
@@ -573,12 +748,9 @@ body[data-nt-ready="1"] #_x_extension_newtab_root_2024_unique_ {
   pointer-events: auto;
 }
 body[data-wallpaper-panel-open="true"] #_x_extension_newtab_root_2024_unique_ {
-  background: rgb(255 255 255);
+  background: var(--x-nt-panel-surface);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-}
-body[data-theme="dark"][data-wallpaper-panel-open="true"] #_x_extension_newtab_root_2024_unique_ {
-  background: rgb(20 20 20);
 }
 #_x_extension_newtab_search_layer_2024_unique_ {
   all: unset;
@@ -713,7 +885,7 @@ body[data-zen-mode="true"] .x-lumno-feature-hint--update-notice-newtab {
    section above the bottom dock and bookmarks bar while it can leave the
    grid; pointer capture keeps delivering events to the tile. */
 body[data-drag-source="shortcut"] .x-nt-shortcuts-section {
-  z-index: 10001;
+  z-index: var(--lumno-z-drag-lift);
   pointer-events: none;
 }
 .x-nt-shortcut-tile:focus-visible {
@@ -872,11 +1044,12 @@ body[data-theme="dark"] .x-nt-shortcut-group-empty:hover .x-nt-shortcut-icon {
   border-radius: var(--lumno-radius-lg);
 }
 /* A scrolling section would clip the dragged tile, so it is lifted out as a
-   fixed element while this placeholder keeps its slot. */
+   fixed element while this placeholder keeps its slot. It still stacks inside
+   the lifted section, so it stays under menus with the rest of the drag. */
 .x-nt-shortcut-tile[data-shortcut-lifted="true"] {
   position: fixed;
   margin: 0;
-  z-index: 10002;
+  z-index: var(--lumno-z-drag-lift);
 }
 .x-nt-shortcut-drag-placeholder {
   width: var(--x-nt-shortcut-tile-size, 64px);
@@ -895,7 +1068,7 @@ body[data-drag-source="shortcut-group"] {
 }
 .x-nt-shortcut-group-ghost {
   position: fixed;
-  z-index: 10050;
+  z-index: var(--lumno-z-drag-ghost);
   width: max-content;
   margin: 0;
   padding: 0 6px;
@@ -910,7 +1083,7 @@ body[data-theme="dark"] .x-nt-shortcut-group-ghost {
 }
 .x-nt-shortcut-group-drop-line {
   position: fixed;
-  z-index: 10050;
+  z-index: var(--lumno-z-drag-ghost);
   height: 2px;
   border-radius: 1px;
   background: var(--x-nt-bookmark-heading-color, #000000);
@@ -1170,7 +1343,7 @@ body[data-theme="dark"] .x-nt-shortcut-favicon-mask[data-builtin-monochrome="tru
   width: 1px;
   height: 1px;
   pointer-events: none;
-  z-index: 10040;
+  z-index: var(--lumno-z-context-menu);
 }
 .x-nt-shortcut-context-menu ._x_extension_select_trigger_2024_unique_ {
   width: 1px;
@@ -1332,6 +1505,13 @@ body[data-nt-ready="1"] #_x_extension_newtab_wordmark_2026_unique_[data-enter="d
 #_x_extension_newtab_bookmarks_2024_unique_[data-visible="false"],
 #_x_extension_newtab_recent_sites_2024_unique_[data-visible="false"] {
   display: none;
+}
+@media (max-width: 520px) {
+  #_x_extension_newtab_bookmarks_2024_unique_,
+  #_x_extension_newtab_recent_sites_2024_unique_ {
+    min-width: 0;
+    width: min(96vw, var(--x-nt-content-max-width, 1040px));
+  }
 }
 #_x_extension_newtab_bottom_dock_2024_unique_ #_x_extension_newtab_bookmarks_2024_unique_,
 #_x_extension_newtab_bottom_dock_2024_unique_ #_x_extension_newtab_recent_sites_2024_unique_ {
@@ -1516,6 +1696,11 @@ body.x-nt-bottom-layout.x-nt-no-bookmarks #_x_extension_newtab_recent_sites_2024
   row-gap: var(--x-nt-grid-row-gap, 16px);
   align-content: start;
   box-sizing: border-box;
+}
+@media (max-width: 860px) {
+  #_x_extension_newtab_bookmarks_grid_2024_unique_ {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 body:not([data-nt-ready="1"]) #_x_extension_newtab_bottom_dock_2024_unique_ {
   visibility: hidden;
@@ -1958,7 +2143,7 @@ body[data-theme="dark"] .x-nt-section-mode-select[data-open="true"] ._x_extensio
 }
 .x-nt-bookmark-card-drag-preview {
   position: fixed;
-  z-index: 2147483645 !important;
+  z-index: var(--lumno-z-drag-ghost) !important;
   margin: 0;
   background: rgba(255, 255, 255, 0.96);
   border-color: rgba(37, 99, 235, 0.38);
@@ -2094,16 +2279,12 @@ body[data-drag-blocked="true"] {
   z-index: 8;
 }
 .x-nt-bookmark-card--folder[data-bookmark-drop-target="true"] {
-  border-color: rgba(37, 99, 235, 0.78);
+  border-color: var(--x-nt-bookmark-folder-drop-border);
   box-shadow: none;
 }
 .x-nt-bookmark-card--folder[data-bookmark-drop-target="true"]::before {
   background: rgba(37, 99, 235, 0.08);
   opacity: 1;
-}
-body[data-theme="dark"] .x-nt-bookmark-card--folder[data-bookmark-drop-target="true"] {
-  border-color: rgba(96, 165, 250, 0.86);
-  box-shadow: none;
 }
 [data-insert-line-position]::after {
   content: "";
@@ -2175,16 +2356,19 @@ body[data-theme="dark"] .x-nt-bookmark-card--folder[data-bookmark-drop-target="t
 .x-nt-bookmark-card--folder {
   --x-nt-bookmark-card-hover-color: var(--x-nt-bookmark-folder-hover-bg, rgba(83, 147, 255, 0.05));
 }
+/* The shadow color follows each card's theme (set on the card); the layer
+   strengths follow the page theme, and folders lift half as much. */
 .x-nt-bookmark-card.x-nt-bookmark-card--hover {
+  --x-nt-bookmark-hover-shadow-scale: 1;
   transform: none;
   border-color: var(--x-nt-bookmark-card-border-color, var(--x-nt-bookmark-card-border, rgba(0, 0, 0, 0.08)));
   backdrop-filter: blur(var(--x-nt-bookmark-card-blur-hover, 9px));
   -webkit-backdrop-filter: blur(var(--x-nt-bookmark-card-blur-hover, 9px));
-  box-shadow: 0 55px 15px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0),
-    0 35px 14px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0.008),
-    0 20px 12px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0.04),
-    0 9px 9px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0.075),
-    0 2px 5px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0.085);
+  box-shadow: 0 55px 15px 0 rgba(var(--x-nt-bookmark-shadow-rgb), 0),
+    0 35px 14px 0 rgba(var(--x-nt-bookmark-shadow-rgb), calc(var(--x-nt-bookmark-hover-shadow-alpha-1) * var(--x-nt-bookmark-hover-shadow-scale))),
+    0 20px 12px 0 rgba(var(--x-nt-bookmark-shadow-rgb), calc(var(--x-nt-bookmark-hover-shadow-alpha-2) * var(--x-nt-bookmark-hover-shadow-scale))),
+    0 9px 9px 0 rgba(var(--x-nt-bookmark-shadow-rgb), calc(var(--x-nt-bookmark-hover-shadow-alpha-3) * var(--x-nt-bookmark-hover-shadow-scale))),
+    0 2px 5px 0 rgba(var(--x-nt-bookmark-shadow-rgb), calc(var(--x-nt-bookmark-hover-shadow-alpha-4) * var(--x-nt-bookmark-hover-shadow-scale)));
 }
 .x-nt-bookmark-card.x-nt-bookmark-card--hover::before {
   opacity: 1;
@@ -2195,28 +2379,9 @@ body[data-theme="dark"] .x-nt-bookmark-card--folder[data-bookmark-drop-target="t
 .x-nt-bookmark-card[data-bookmark-context-menu-open="true"]::before {
   opacity: 1;
 }
-body[data-theme="dark"] .x-nt-bookmark-card.x-nt-bookmark-card--hover {
-  box-shadow: 0 55px 15px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0),
-    0 35px 14px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.065),
-    0 20px 12px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.16),
-    0 9px 9px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.24),
-    0 2px 5px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.3);
-}
 .x-nt-bookmark-card--folder.x-nt-bookmark-card--hover {
-  border-color: rgba(59, 130, 246, 0.22);
-  box-shadow: 0 55px 15px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0),
-    0 35px 14px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0.004),
-    0 20px 12px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0.02),
-    0 9px 9px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0.0375),
-    0 2px 5px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0.0425);
-}
-body[data-theme="dark"] .x-nt-bookmark-card--folder.x-nt-bookmark-card--hover {
-  border-color: rgba(96, 165, 250, 0.34);
-  box-shadow: 0 55px 15px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0),
-    0 35px 14px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.0325),
-    0 20px 12px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.08),
-    0 9px 9px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.12),
-    0 2px 5px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.15);
+  --x-nt-bookmark-hover-shadow-scale: 0.5;
+  border-color: var(--x-nt-bookmark-folder-hover-border);
 }
 .x-nt-bookmark-card:focus-visible {
   outline: 2px solid var(--lumno-color-focus-ring);
@@ -2393,10 +2558,15 @@ body[data-theme="dark"] .x-nt-folder-preview-favicon--fallback {
   overflow: hidden;
 }
 .x-nt-bookmarks-topbar {
-  --x-nt-bookmarks-topbar-surface:
+  /* The theme sets the default surface and line; surface modes and wallpapers
+     replace the surface, terminal and border variables below. */
+  --x-nt-bookmarks-topbar-default-surface:
     linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(248, 250, 252, 0.62));
-  --x-nt-bookmarks-topbar-terminal-surface: rgba(248, 250, 252, 0.78);
-  --x-nt-bookmarks-topbar-border: rgba(15, 23, 42, 0.065);
+  --x-nt-bookmarks-topbar-default-terminal-surface: rgba(248, 250, 252, 0.78);
+  --x-nt-bookmarks-topbar-default-border: rgba(15, 23, 42, 0.065);
+  --x-nt-bookmarks-topbar-surface: var(--x-nt-bookmarks-topbar-default-surface);
+  --x-nt-bookmarks-topbar-terminal-surface: var(--x-nt-bookmarks-topbar-default-terminal-surface);
+  --x-nt-bookmarks-topbar-border: var(--x-nt-bookmarks-topbar-default-border);
   --x-nt-bookmarks-topbar-blur: 22px;
   --x-nt-bookmarks-topbar-saturate: 160%;
   /* Only the floating bar shows this hairline along its top; the docked bar meets the browser there. */
@@ -2419,6 +2589,7 @@ body[data-theme="dark"] .x-nt-folder-preview-favicon--fallback {
   --x-nt-bookmarks-topbar-action-hover: rgba(15, 23, 42, 0.065);
   --x-nt-bookmarks-topbar-item-hover: rgba(15, 23, 42, 0.065);
   --x-nt-bookmarks-topbar-folder-hover: rgba(37, 99, 235, 0.075);
+  --x-nt-bookmarks-topbar-drop-border: rgba(37, 99, 235, 0.58);
   all: unset;
   /* Keep the bar in page coordinates so zooming and panning move it
      together with the rest of the new-tab content. */
@@ -2426,7 +2597,7 @@ body[data-theme="dark"] .x-nt-folder-preview-favicon--fallback {
   top: env(safe-area-inset-top);
   left: 0;
   right: 0;
-  z-index: 10000;
+  z-index: var(--lumno-z-topbar);
   height: 36px;
   padding: 4px;
   display: none;
@@ -2471,9 +2642,7 @@ body[data-theme="dark"] .x-nt-folder-preview-favicon--fallback {
   margin-right: -6px;
   padding: 6px;
 }
-/* The surface choices outrank the dark theme's default surface below, which would otherwise tint
-   the clear and transparent bars without a wallpaper. */
-html body .x-nt-bookmarks-topbar[data-surface-mode="clear"] {
+.x-nt-bookmarks-topbar[data-surface-mode="clear"] {
   --x-nt-bookmarks-topbar-surface: var(--x-nt-bookmarks-topbar-clear-fallback);
   --x-nt-bookmarks-topbar-terminal-surface:
     var(--x-nt-bookmarks-topbar-clear-terminal-fallback);
@@ -2486,7 +2655,7 @@ html body .x-nt-bookmarks-topbar[data-surface-mode="clear"] {
   --x-nt-bookmarks-topbar-rim-bottom: rgba(15, 23, 42, 0.1);
   --x-nt-bookmarks-topbar-liquid-tone: brightness(1.01);
 }
-html body[data-theme="dark"] .x-nt-bookmarks-topbar[data-surface-mode="clear"] {
+body[data-theme="dark"] .x-nt-bookmarks-topbar[data-surface-mode="clear"] {
   --x-nt-bookmarks-topbar-sheen: rgba(255, 255, 255, 0.035);
   --x-nt-bookmarks-topbar-rim-top: rgba(255, 255, 255, 0.14);
   --x-nt-bookmarks-topbar-rim-bottom: rgba(255, 255, 255, 0.06);
@@ -2503,7 +2672,7 @@ html body[data-theme="dark"] .x-nt-bookmarks-topbar[data-surface-mode="clear"] {
 /* One line per edge, never stacked: floating glass drops the outline ring and top highlight for a
    single rim that is bright along the top and fades toward the bottom, like light caught in a glass
    edge. */
-html body .x-nt-bookmarks-topbar[data-surface-mode="clear"][data-layout="floating"] {
+.x-nt-bookmarks-topbar[data-surface-mode="clear"][data-layout="floating"] {
   box-shadow: var(--x-nt-bookmarks-topbar-floating-shadow);
 }
 .x-nt-bookmarks-topbar[data-surface-mode="clear"][data-layout="floating"]::after {
@@ -2532,7 +2701,7 @@ html body .x-nt-bookmarks-topbar[data-surface-mode="clear"][data-layout="floatin
     saturate(var(--x-nt-bookmarks-topbar-saturate))
     var(--x-nt-bookmarks-topbar-liquid-tone);
 }
-html body .x-nt-bookmarks-topbar[data-surface-mode="transparent"] {
+.x-nt-bookmarks-topbar[data-surface-mode="transparent"] {
   --x-nt-bookmarks-topbar-surface: transparent;
   --x-nt-bookmarks-topbar-terminal-surface: transparent;
   --x-nt-bookmarks-topbar-border: transparent;
@@ -2726,7 +2895,7 @@ body:not([data-nt-ready="1"]) .x-nt-bookmarks-topbar {
 }
 .x-nt-bookmarks-topbar
   .x-nt-bookmark-card--folder[data-bookmark-drop-target="true"] {
-  border-color: rgba(37, 99, 235, 0.58);
+  border-color: var(--x-nt-bookmarks-topbar-drop-border);
   background: var(--x-nt-bookmarks-topbar-folder-hover);
   box-shadow: none;
 }
@@ -2768,7 +2937,7 @@ body:not([data-nt-ready="1"]) .x-nt-bookmarks-topbar {
   box-sizing: border-box;
   border-radius: 7px;
 }
-body .x-nt-bookmarks-topbar
+.x-nt-bookmarks-topbar
   .x-nt-section-mode-select
   ._x_extension_select_trigger_2024_unique_
   ._x_extension_select_icon_2024_unique_ {
@@ -2812,10 +2981,10 @@ body[data-bookmark-view-mode="top"] .x-nt-bookmarks-topbar
   height: var(--x-nt-insert-line-height, 24px);
 }
 body[data-theme="dark"] .x-nt-bookmarks-topbar {
-  --x-nt-bookmarks-topbar-surface:
+  --x-nt-bookmarks-topbar-default-surface:
     linear-gradient(180deg, rgba(28, 30, 34, 0.78), rgba(18, 20, 24, 0.68));
-  --x-nt-bookmarks-topbar-terminal-surface: rgba(18, 20, 24, 0.8);
-  --x-nt-bookmarks-topbar-border: rgba(248, 250, 252, 0.1);
+  --x-nt-bookmarks-topbar-default-terminal-surface: rgba(18, 20, 24, 0.8);
+  --x-nt-bookmarks-topbar-default-border: rgba(248, 250, 252, 0.1);
   --x-nt-bookmarks-topbar-highlight: rgba(255, 255, 255, 0.08);
   --x-nt-bookmarks-topbar-shadow: 0 10px 24px -18px rgba(0, 0, 0, 0.7);
   --x-nt-bookmarks-topbar-floating-shadow:
@@ -2832,47 +3001,7 @@ body[data-theme="dark"] .x-nt-bookmarks-topbar {
   --x-nt-bookmarks-topbar-action-hover: rgba(255, 255, 255, 0.09);
   --x-nt-bookmarks-topbar-item-hover: rgba(255, 255, 255, 0.09);
   --x-nt-bookmarks-topbar-folder-hover: rgba(96, 165, 250, 0.11);
-}
-body[data-theme="dark"] .x-nt-bookmarks-topbar .x-nt-bookmark-card.x-nt-bookmark-card--hover,
-body[data-theme="dark"] .x-nt-bookmarks-topbar .x-nt-bookmark-card[data-bookmark-context-menu-open="true"],
-body[data-theme="dark"] .x-nt-bookmarks-topbar .x-nt-bookmark-card:focus-visible {
-  border-color: transparent;
-  background: var(--x-nt-bookmarks-topbar-item-hover);
-  box-shadow: none;
-}
-body[data-theme="dark"] .x-nt-bookmarks-topbar .x-nt-bookmark-card--folder.x-nt-bookmark-card--hover {
-  border-color: transparent;
-  background: var(--x-nt-bookmarks-topbar-folder-hover);
-  box-shadow: none;
-}
-body[data-theme="dark"] .x-nt-bookmarks-topbar
-  .x-nt-bookmark-card--folder[data-bookmark-drop-target="true"] {
-  border-color: rgba(96, 165, 250, 0.68);
-  background: var(--x-nt-bookmarks-topbar-folder-hover);
-  box-shadow: none;
-}
-body[data-theme="dark"][data-bookmark-view-mode="top"] .x-nt-bookmarks-topbar
-  .x-nt-bookmarks-topbar-actions
-  .x-nt-section-mode-select ._x_extension_select_trigger_2024_unique_,
-body[data-theme="dark"][data-bookmark-view-mode="top"] .x-nt-bookmarks-topbar
-  .x-nt-bookmarks-topbar-actions
-  .x-nt-bookmarks-pager-btn {
-  color: var(--x-nt-bookmarks-topbar-ink);
-}
-body[data-theme="dark"][data-bookmark-view-mode="top"] .x-nt-bookmarks-topbar
-  .x-nt-bookmarks-topbar-actions
-  .x-nt-section-mode-select:hover ._x_extension_select_trigger_2024_unique_,
-body[data-theme="dark"][data-bookmark-view-mode="top"] .x-nt-bookmarks-topbar
-  .x-nt-bookmarks-topbar-actions
-  .x-nt-section-mode-select ._x_extension_select_trigger_2024_unique_:hover,
-body[data-theme="dark"][data-bookmark-view-mode="top"] .x-nt-bookmarks-topbar
-  .x-nt-bookmarks-topbar-actions
-  .x-nt-section-mode-select[data-open="true"] ._x_extension_select_trigger_2024_unique_,
-body[data-theme="dark"][data-bookmark-view-mode="top"] .x-nt-bookmarks-topbar
-  .x-nt-bookmarks-topbar-actions
-  .x-nt-bookmarks-pager-btn:hover:not([aria-disabled="true"]) {
-  color: var(--x-nt-bookmarks-topbar-ink);
-  background: var(--x-nt-bookmarks-topbar-action-hover) !important;
+  --x-nt-bookmarks-topbar-drop-border: rgba(96, 165, 250, 0.68);
 }
 body[data-wallpaper-active="true"] .x-nt-bookmarks-topbar[data-surface-mode="adaptive"] {
   --x-nt-bookmarks-topbar-surface:
@@ -2975,7 +3104,7 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
   all: unset;
   position: fixed;
   inset: 0;
-  z-index: 10002;
+  z-index: var(--lumno-z-menu);
   width: 100vw;
   height: 100vh;
   overflow: visible;
@@ -2983,13 +3112,14 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
   font-family: "Open Sans", "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI",
     "Helvetica Neue", Arial, sans-serif;
   line-height: 1;
-  color: #1f2937;
+  color: var(--x-nt-cascade-ink);
 }
+/* Tooltips over the bookmark menus. */
 .x-nt-bookmark-cursor-tooltip {
-  --x-extension-tooltip-z-index: 10003;
+  --x-extension-tooltip-z-index: calc(var(--lumno-z-menu) + 1);
 }
 .x-nt-shortcut-tooltip {
-  --x-extension-tooltip-z-index: 10004;
+  --x-extension-tooltip-z-index: calc(var(--lumno-z-menu) + 2);
 }
 .x-nt-shortcut-tooltip[data-shortcut-origin-label] ._x_extension_tooltip_line_2026_unique_:last-child {
   display: inline;
@@ -3001,7 +3131,7 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
   white-space: nowrap;
 }
 .x-nt-bookmark-cascade-copy-tooltip {
-  --x-extension-tooltip-z-index: 10005;
+  --x-extension-tooltip-z-index: calc(var(--lumno-z-menu) + 3);
 }
 .x-nt-bookmark-cascade-debug-svg {
   position: fixed;
@@ -3058,15 +3188,9 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
   --x-nt-bookmark-cascade-max-height: min(420px, calc(100vh - 24px));
   max-height: var(--x-nt-bookmark-cascade-max-height);
   border-radius: var(--lumno-radius-xl);
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid var(
-    --x-nt-surface-border,
-    var(--x-lumno-search-shell-border-light, rgba(0, 0, 0, 0.14))
-  );
-  box-shadow:
-    0 18px 34px rgba(15, 23, 42, 0.12),
-    0 2px 4px rgba(15, 23, 42, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.74);
+  background: var(--x-nt-cascade-surface);
+  border: 1px solid var(--x-nt-surface-border);
+  box-shadow: var(--x-nt-cascade-shadow);
   backdrop-filter: blur(18px) saturate(135%);
   -webkit-backdrop-filter: blur(18px) saturate(135%);
   box-sizing: border-box;
@@ -3185,7 +3309,7 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
   padding: 4px 8px 2px;
   overflow: hidden;
   box-sizing: border-box;
-  color: #7a8491;
+  color: var(--x-nt-cascade-quiet-ink);
   font-size: var(--lumno-font-size-xs);
   font-weight: 600;
   line-height: 1;
@@ -3236,7 +3360,7 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
   align-items: center;
   gap: 8px;
   box-sizing: border-box;
-  color: #263140;
+  color: var(--x-nt-cascade-item-ink);
   cursor: pointer;
   white-space: nowrap;
   transition: color var(--lumno-duration-2xs) ease;
@@ -3255,7 +3379,7 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
 }
 .x-nt-bookmark-cascade-drag-preview {
   position: fixed;
-  z-index: 2147483645;
+  z-index: var(--lumno-z-drag-ghost);
   margin: 0;
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(37, 99, 235, 0.34);
@@ -3278,7 +3402,7 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  color: #64748b;
+  color: var(--x-nt-cascade-copy-ink);
   opacity: 0;
   pointer-events: none;
   cursor: pointer;
@@ -3293,7 +3417,7 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
 }
 .x-nt-bookmark-cascade-copy-trigger:hover,
 .x-nt-bookmark-cascade-copy-trigger:focus-visible {
-  color: #334155;
+  color: var(--x-nt-cascade-copy-hover-ink);
 }
 .x-nt-bookmark-cascade-row:has(> .x-nt-bookmark-cascade-item[data-bookmark-dragging="true"])
   > .x-nt-bookmark-cascade-copy-trigger {
@@ -3309,15 +3433,17 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
 .x-nt-bookmark-cascade-item:focus-visible,
 .x-nt-bookmark-cascade-item[data-active="true"],
 .x-nt-bookmark-cascade-item[data-bookmark-context-menu-open="true"] {
-  background: rgba(15, 23, 42, 0.07);
+  background: var(--x-nt-cascade-item-hover-bg);
+  color: var(--x-nt-cascade-item-hover-ink);
 }
 .x-nt-bookmark-cascade-item[data-hover-suppressed="true"]:hover:not([data-active="true"]) {
   background: transparent;
+  color: var(--x-nt-cascade-item-ink);
 }
 .x-nt-bookmark-cascade-item--folder[data-bookmark-drop-target="true"] {
-  color: #1d4ed8;
-  background: rgba(37, 99, 235, 0.11);
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.24);
+  color: var(--x-nt-cascade-drop-ink);
+  background: var(--x-nt-cascade-drop-bg);
+  box-shadow: inset 0 0 0 1px var(--x-nt-cascade-drop-ring);
 }
 .x-nt-bookmark-cascade-icon {
   width: 18px;
@@ -3337,7 +3463,7 @@ body[data-theme="dark"] .x-nt-bookmark-cascade-icon[data-builtin-monochrome="tru
   align-items: center;
   justify-content: center;
   overflow: visible;
-  color: #64748b;
+  color: var(--x-nt-cascade-icon-ink);
 }
 .x-nt-bookmark-cascade-icon--folder svg {
   width: 100%;
@@ -3371,24 +3497,10 @@ body[data-theme="dark"] .x-nt-bookmark-cascade-icon[data-builtin-monochrome="tru
   padding: 0 10px;
   display: flex;
   align-items: center;
-  color: #7a8491;
+  color: var(--x-nt-cascade-quiet-ink);
   font-size: var(--lumno-font-size-sm);
   font-weight: 500;
   box-sizing: border-box;
-}
-body[data-theme="dark"] .x-nt-bookmark-cascade-menu {
-  color: #e5e7eb;
-}
-body[data-theme="dark"] .x-nt-bookmark-cascade-level {
-  background: rgba(17, 24, 39, 0.95);
-  border-color: var(
-    --x-nt-surface-border,
-    var(--x-lumno-search-shell-border-dark, rgba(255, 255, 255, 0.16))
-  );
-  box-shadow:
-    0 18px 34px rgba(0, 0, 0, 0.36),
-    0 2px 4px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 :root:not([data-lumno-scrollbars="overlay"]) body[data-theme="dark"] .x-nt-bookmark-cascade-content::-webkit-scrollbar-thumb,
 :root:not([data-lumno-scrollbars="overlay"]) body[data-theme="dark"] .x-nt-shortcuts-section[data-shortcuts-scrollable="true"]::-webkit-scrollbar-thumb,
@@ -3430,12 +3542,6 @@ body[data-theme="dark"] .x-nt-bookmark-cascade-debug-label {
   border-color: rgba(96, 165, 250, 0.44);
   box-shadow: 0 8px 18px rgba(2, 6, 23, 0.32);
 }
-body[data-theme="dark"] .x-nt-bookmark-cascade-title {
-  color: #94a3b8;
-}
-body[data-theme="dark"] .x-nt-bookmark-cascade-item {
-  color: #d6dbe3;
-}
 body[data-theme="dark"] .x-nt-bookmark-cascade-drag-preview {
   background: rgba(17, 24, 39, 0.98);
   border-color: rgba(96, 165, 250, 0.44);
@@ -3446,34 +3552,6 @@ body[data-theme="dark"] .x-nt-bookmark-card-drag-preview {
   border-color: rgba(96, 165, 250, 0.48);
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.42);
 }
-body[data-theme="dark"] .x-nt-bookmark-cascade-item:hover,
-body[data-theme="dark"] .x-nt-bookmark-cascade-item:focus-visible,
-body[data-theme="dark"] .x-nt-bookmark-cascade-item[data-active="true"],
-body[data-theme="dark"] .x-nt-bookmark-cascade-item[data-bookmark-context-menu-open="true"] {
-  background: rgba(255, 255, 255, 0.09);
-  color: #f8fafc;
-}
-body[data-theme="dark"] .x-nt-bookmark-cascade-item[data-hover-suppressed="true"]:hover:not([data-active="true"]) {
-  background: transparent;
-  color: #d6dbe3;
-}
-body[data-theme="dark"] .x-nt-bookmark-cascade-item--folder[data-bookmark-drop-target="true"] {
-  color: #bfdbfe;
-  background: rgba(59, 130, 246, 0.2);
-  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.38);
-}
-body[data-theme="dark"] .x-nt-bookmark-cascade-copy-trigger {
-  color: #cbd5e1;
-}
-body[data-theme="dark"] .x-nt-bookmark-cascade-copy-trigger:hover,
-body[data-theme="dark"] .x-nt-bookmark-cascade-copy-trigger:focus-visible {
-  color: #f8fafc;
-}
-body[data-theme="dark"] .x-nt-bookmark-cascade-icon--folder,
-body[data-theme="dark"] .x-nt-bookmark-cascade-arrow,
-body[data-theme="dark"] .x-nt-bookmark-cascade-empty {
-  color: #94a3b8;
-}
 #_x_extension_newtab_recent_sites_grid_2024_unique_ {
   width: 100%;
   display: grid;
@@ -3481,6 +3559,11 @@ body[data-theme="dark"] .x-nt-bookmark-cascade-empty {
   column-gap: 12px;
   row-gap: var(--x-nt-grid-row-gap, 16px);
   box-sizing: border-box;
+}
+@media (max-width: 860px) {
+  #_x_extension_newtab_recent_sites_grid_2024_unique_ {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .x-nt-recent-heading {
   font-size: var(--x-nt-dock-heading-size, 14px);
@@ -3593,6 +3676,22 @@ body[data-theme="dark"] .x-nt-bookmark-cascade-empty {
   height: var(--x-nt-dock-recent-inner-height, 104px);
   transform: none;
   margin-bottom: 0;
+}
+/* Touch screens have no hover to lift a recent card with. */
+@media (hover: none) {
+  .x-nt-recent-card:hover {
+    transform: none;
+    --x-nt-recent-title-lines: var(--x-nt-dock-recent-title-lines, 3);
+  }
+  .x-nt-recent-card:hover .x-nt-recent-card-visual {
+    transform: none;
+    box-shadow: var(--x-nt-recent-card-shadow);
+  }
+  .x-nt-recent-card:hover .x-nt-recent-inner {
+    height: var(--x-nt-dock-recent-inner-height, 104px);
+    transform: none;
+    margin-bottom: 0;
+  }
 }
 body[data-theme="dark"] .x-nt-recent-inner {
   border: none;
@@ -4025,38 +4124,91 @@ body[data-theme="dark"] .x-nt-recent-track.x-nt-recent-track--active {
   white-space: nowrap;
   pointer-events: none;
 }
-.x-nt-wallpaper-control {
+/* The page buttons share the bottom-right corner: the wallpaper button at the
+   corner, then feedback, then the bookmark menu debug button. Each control takes a
+   slot, so a breakpoint only changes the inset, the button size or the direction. */
+.x-nt-wallpaper-control,
+.x-nt-feedback-control,
+.x-nt-bookmark-cascade-debug-control {
+  --x-nt-corner-inset-x: 14px;
+  --x-nt-corner-inset-y: 14px;
+  --x-nt-corner-size: 38px;
+  --x-nt-corner-step: 46px;
+  /* 1 lines the buttons up in a row, 0 stacks them in a column. */
+  --x-nt-corner-row: 1;
   position: fixed;
-  right: 14px;
-  bottom: 14px;
-  z-index: 18;
-  width: 38px;
+  right: calc(var(--x-nt-corner-inset-x) + var(--x-nt-corner-slot, 0) * var(--x-nt-corner-step) * var(--x-nt-corner-row));
+  bottom: calc(var(--x-nt-corner-inset-y) + var(--x-nt-corner-slot, 0) * var(--x-nt-corner-step) * (1 - var(--x-nt-corner-row)));
+  z-index: 19;
+  width: var(--x-nt-corner-size);
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
   pointer-events: none;
+}
+.x-nt-wallpaper-control {
+  z-index: 18;
 }
 .x-nt-feedback-control {
-  position: fixed;
-  right: 60px;
-  bottom: 14px;
-  z-index: 19;
-  width: 38px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  pointer-events: none;
+  --x-nt-corner-slot: 1;
 }
 .x-nt-bookmark-cascade-debug-control {
-  position: fixed;
-  right: 106px;
-  bottom: 14px;
-  z-index: 19;
-  width: 38px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  pointer-events: none;
+  --x-nt-corner-slot: 2;
+}
+/* Corner layout by viewport; the ranges do not overlap:
+   wider than 860px and taller than 680px   row, 14px from the edges
+   641-860px wide, taller than 680px        row, 12px
+   wider than 640px, 561-680px tall         column, 10px
+   wider than 640px, up to 560px tall       column, 8px
+   up to 640px wide                         row of 44px buttons at the safe-area inset */
+@media (min-width: 641px) and (max-width: 860px) and (min-height: 681px) {
+  .x-nt-wallpaper-control,
+  .x-nt-feedback-control,
+  .x-nt-bookmark-cascade-debug-control {
+    --x-nt-corner-inset-x: 12px;
+    --x-nt-corner-inset-y: 12px;
+  }
+}
+@media (min-width: 641px) and (min-height: 561px) and (max-height: 680px) {
+  .x-nt-wallpaper-control,
+  .x-nt-feedback-control,
+  .x-nt-bookmark-cascade-debug-control {
+    --x-nt-corner-inset-x: 10px;
+    --x-nt-corner-inset-y: 10px;
+    --x-nt-corner-row: 0;
+  }
+}
+@media (min-width: 641px) and (max-height: 560px) {
+  .x-nt-wallpaper-control,
+  .x-nt-feedback-control,
+  .x-nt-bookmark-cascade-debug-control {
+    --x-nt-corner-inset-x: 8px;
+    --x-nt-corner-inset-y: 8px;
+    --x-nt-corner-row: 0;
+  }
+}
+@media (max-width: 640px) {
+  .x-nt-wallpaper-control,
+  .x-nt-feedback-control,
+  .x-nt-bookmark-cascade-debug-control {
+    --x-nt-corner-inset-x: max(10px, env(safe-area-inset-right));
+    --x-nt-corner-inset-y: max(10px, env(safe-area-inset-bottom));
+    --x-nt-corner-size: 44px;
+    --x-nt-corner-step: 52px;
+  }
+}
+/* Touch screens get a larger target, in place. */
+@media (hover: none) {
+  .x-nt-wallpaper-control,
+  .x-nt-feedback-control {
+    --x-nt-corner-size: 44px;
+  }
+}
+@media (min-width: 641px) and (max-width: 900px) and (max-height: 560px) {
+  .x-nt-wallpaper-control,
+  .x-nt-feedback-control {
+    --x-nt-corner-size: 44px;
+  }
 }
 /* A visible feature hint stretches left over the feedback button, so lift the control above it. */
 .x-nt-wallpaper-control:has(> .x-lumno-feature-hint[data-visible="true"]) {
@@ -4065,41 +4217,15 @@ body[data-theme="dark"] .x-nt-recent-track.x-nt-recent-track--active {
 .x-nt-wallpaper-control[data-panel-open="true"] {
   z-index: 30;
 }
-.x-nt-wallpaper-button {
+/* State colors come from --x-nt-corner-* (page theme, see the theme blocks); the
+   debug button swaps in its own blue set below. */
+.x-nt-wallpaper-button,
+.x-nt-feedback-button,
+.x-nt-bookmark-cascade-debug-button {
   all: unset;
-  width: 38px;
-  min-width: 38px;
-  height: 38px;
-  border-radius: var(--lumno-radius-pill);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: color-mix(
-    in srgb,
-    var(--x-ext-input-icon, #4b545f) 78%,
-    transparent
-  );
-  background: transparent;
-  border: 1px solid transparent;
-  box-shadow: none;
-  box-sizing: border-box;
-  cursor: pointer;
-  font-size: var(--lumno-font-size-xl);
-  gap: 0;
-  padding: 0;
-  pointer-events: auto;
-  -webkit-text-fill-color: currentColor;
-  transition:
-    border-color var(--lumno-duration-md) ease,
-    background var(--lumno-duration-md) ease,
-    box-shadow var(--lumno-duration-md) ease,
-    color var(--lumno-duration-md) ease;
-}
-.x-nt-feedback-button {
-  all: unset;
-  width: 38px;
-  min-width: 38px;
-  height: 38px;
+  width: var(--x-nt-corner-size, 38px);
+  min-width: var(--x-nt-corner-size, 38px);
+  height: var(--x-nt-corner-size, 38px);
   border-radius: var(--lumno-radius-pill);
   display: inline-flex;
   align-items: center;
@@ -4126,225 +4252,105 @@ body[data-theme="dark"] .x-nt-recent-track.x-nt-recent-track--active {
     color var(--lumno-duration-md) ease;
 }
 .x-nt-bookmark-cascade-debug-button {
-  all: unset;
-  width: 38px;
-  min-width: 38px;
-  height: 38px;
-  border-radius: var(--lumno-radius-pill);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: color-mix(
-    in srgb,
-    var(--x-ext-input-icon, #4b545f) 78%,
-    transparent
-  );
-  background: transparent;
-  border: 1px solid transparent;
-  box-shadow: none;
-  box-sizing: border-box;
-  cursor: pointer;
-  font-size: var(--lumno-font-size-xl);
-  gap: 0;
-  padding: 0;
-  pointer-events: auto;
-  -webkit-text-fill-color: currentColor;
-  transition:
-    border-color var(--lumno-duration-md) ease,
-    background var(--lumno-duration-md) ease,
-    box-shadow var(--lumno-duration-md) ease,
-    color var(--lumno-duration-md) ease;
+  --x-nt-corner-hover-bg: rgba(37, 99, 235, 0.08);
+  --x-nt-corner-hover-border: rgba(37, 99, 235, 0.16);
+  --x-nt-corner-hover-ring: rgba(37, 99, 235, 0.04);
+  --x-nt-corner-hover-ink: #1d4ed8;
+  --x-nt-corner-open-bg: rgba(37, 99, 235, 0.12);
+  --x-nt-corner-open-border: rgba(37, 99, 235, 0.24);
+  --x-nt-corner-open-ring: rgba(37, 99, 235, 0.06);
+  --x-nt-corner-open-ink: #1d4ed8;
+  --x-nt-corner-press-bg: rgba(37, 99, 235, 0.16);
+  --x-nt-corner-press-border: rgba(37, 99, 235, 0.28);
+  --x-nt-corner-press-shadow:
+    inset 0 1px 2px rgba(30, 64, 175, 0.12),
+    inset 0 0 0 1px rgba(37, 99, 235, 0.06);
 }
-.x-nt-wallpaper-button .ri-icon {
-  color: inherit;
-  -webkit-text-fill-color: currentColor;
-  --ri-size: 16px;
-  line-height: 1;
+body[data-theme="dark"] .x-nt-bookmark-cascade-debug-button {
+  --x-nt-corner-hover-bg: rgba(96, 165, 250, 0.16);
+  --x-nt-corner-hover-border: rgba(96, 165, 250, 0.24);
+  --x-nt-corner-hover-ring: rgba(96, 165, 250, 0.05);
+  --x-nt-corner-hover-ink: #bfdbfe;
+  --x-nt-corner-open-bg: rgba(96, 165, 250, 0.2);
+  --x-nt-corner-open-border: rgba(96, 165, 250, 0.32);
+  --x-nt-corner-open-ring: rgba(96, 165, 250, 0.08);
+  --x-nt-corner-open-ink: #bfdbfe;
+  --x-nt-corner-press-bg: rgba(96, 165, 250, 0.24);
+  --x-nt-corner-press-border: rgba(96, 165, 250, 0.36);
+  --x-nt-corner-press-shadow:
+    inset 0 1px 2px rgba(2, 6, 23, 0.2),
+    inset 0 0 0 1px rgba(96, 165, 250, 0.1);
 }
-.x-nt-feedback-button .ri-icon {
-  color: inherit;
-  -webkit-text-fill-color: currentColor;
-  --ri-size: 16px;
-  line-height: 1;
-}
+.x-nt-wallpaper-button .ri-icon,
+.x-nt-feedback-button .ri-icon,
 .x-nt-bookmark-cascade-debug-button .ri-icon {
   color: inherit;
   -webkit-text-fill-color: currentColor;
   --ri-size: 16px;
   line-height: 1;
 }
-.x-nt-wallpaper-button:hover {
-  background: rgba(15, 23, 42, 0.06);
-  border-color: rgba(15, 23, 42, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.02);
-  color: #374151;
-}
-.x-nt-feedback-button:hover {
-  background: rgba(15, 23, 42, 0.06);
-  border-color: rgba(15, 23, 42, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.02);
-  color: #374151;
-}
+.x-nt-wallpaper-button:hover,
+.x-nt-feedback-button:hover,
 .x-nt-bookmark-cascade-debug-button:hover {
-  background: rgba(37, 99, 235, 0.08);
-  border-color: rgba(37, 99, 235, 0.16);
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.04);
-  color: #1d4ed8;
+  background: var(--x-nt-corner-hover-bg);
+  border-color: var(--x-nt-corner-hover-border);
+  box-shadow: inset 0 0 0 1px var(--x-nt-corner-hover-ring);
+  color: var(--x-nt-corner-hover-ink);
 }
-.x-nt-wallpaper-button[data-open="true"] {
-  background: rgba(15, 23, 42, 0.07);
-  border-color: rgba(15, 23, 42, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.02);
-  color: #374151;
-}
-.x-nt-feedback-button[data-open="true"] {
-  background: rgba(15, 23, 42, 0.07);
-  border-color: rgba(15, 23, 42, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.02);
-  color: #374151;
-}
+.x-nt-wallpaper-button[data-open="true"],
+.x-nt-feedback-button[data-open="true"],
 .x-nt-bookmark-cascade-debug-button[data-active="true"] {
-  background: rgba(37, 99, 235, 0.12);
-  border-color: rgba(37, 99, 235, 0.24);
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.06);
-  color: #1d4ed8;
+  background: var(--x-nt-corner-open-bg);
+  border-color: var(--x-nt-corner-open-border);
+  box-shadow: inset 0 0 0 1px var(--x-nt-corner-open-ring);
+  color: var(--x-nt-corner-open-ink);
 }
-.x-nt-wallpaper-button[data-open="true"]:hover {
-  background: rgba(15, 23, 42, 0.1);
-  border-color: rgba(15, 23, 42, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.03);
-}
+.x-nt-wallpaper-button[data-open="true"]:hover,
 .x-nt-feedback-button[data-open="true"]:hover {
-  background: rgba(15, 23, 42, 0.1);
-  border-color: rgba(15, 23, 42, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.03);
+  background: var(--x-nt-corner-open-hover-bg);
+  border-color: var(--x-nt-corner-open-hover-border);
+  box-shadow: inset 0 0 0 1px var(--x-nt-corner-open-hover-ring);
 }
-.x-nt-wallpaper-button:active {
-  background: rgba(15, 23, 42, 0.13);
-  border-color: rgba(15, 23, 42, 0.16);
-  box-shadow:
-    inset 0 1px 2px rgba(15, 23, 42, 0.12),
-    inset 0 0 0 1px rgba(15, 23, 42, 0.04);
-}
-.x-nt-feedback-button:active {
-  background: rgba(15, 23, 42, 0.13);
-  border-color: rgba(15, 23, 42, 0.16);
-  box-shadow:
-    inset 0 1px 2px rgba(15, 23, 42, 0.12),
-    inset 0 0 0 1px rgba(15, 23, 42, 0.04);
-}
+.x-nt-wallpaper-button:active,
+.x-nt-feedback-button:active,
 .x-nt-bookmark-cascade-debug-button:active {
-  background: rgba(37, 99, 235, 0.16);
-  border-color: rgba(37, 99, 235, 0.28);
-  box-shadow:
-    inset 0 1px 2px rgba(30, 64, 175, 0.12),
-    inset 0 0 0 1px rgba(37, 99, 235, 0.06);
+  background: var(--x-nt-corner-press-bg);
+  border-color: var(--x-nt-corner-press-border);
+  box-shadow: var(--x-nt-corner-press-shadow);
 }
 .x-nt-wallpaper-button[data-open="true"]:active,
 .x-nt-feedback-button[data-open="true"]:active {
-  background: rgba(15, 23, 42, 0.14);
-  border-color: rgba(15, 23, 42, 0.18);
-  box-shadow:
-    inset 0 1px 2px rgba(15, 23, 42, 0.13),
-    inset 0 0 0 1px rgba(15, 23, 42, 0.05);
+  background: var(--x-nt-corner-open-press-bg);
+  border-color: var(--x-nt-corner-open-press-border);
+  box-shadow: var(--x-nt-corner-open-press-shadow);
 }
-.x-nt-wallpaper-button:focus-visible {
-  outline: 2px solid var(--lumno-color-focus-ring);
-  outline-offset: 2px;
-}
-.x-nt-feedback-button:focus-visible {
-  outline: 2px solid var(--lumno-color-focus-ring);
-  outline-offset: 2px;
-}
+.x-nt-wallpaper-button:focus-visible,
+.x-nt-feedback-button:focus-visible,
 .x-nt-bookmark-cascade-debug-button:focus-visible {
   outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-wallpaper-button[data-active="true"] {
-  color: color-mix(in srgb, var(--x-nt-text, #111827) 62%, transparent);
+  color: var(--x-nt-corner-active-ink);
 }
-body[data-theme="dark"] .x-nt-wallpaper-button:hover,
-body[data-theme="dark"] .x-nt-wallpaper-button[data-active="true"] {
-  color: color-mix(in srgb, var(--x-nt-text, #e5e7eb) 68%, transparent);
-}
-body[data-theme="dark"] .x-nt-feedback-button:hover,
-body[data-theme="dark"] .x-nt-feedback-button[data-open="true"] {
-  color: color-mix(in srgb, var(--x-nt-text, #e5e7eb) 68%, transparent);
-}
-body[data-theme="dark"] .x-nt-bookmark-cascade-debug-button:hover,
-body[data-theme="dark"] .x-nt-bookmark-cascade-debug-button[data-active="true"] {
-  color: #bfdbfe;
-}
-body[data-theme="dark"] .x-nt-wallpaper-button:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
-}
-body[data-theme="dark"] .x-nt-feedback-button:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
-}
-body[data-theme="dark"] .x-nt-bookmark-cascade-debug-button:hover {
-  background: rgba(96, 165, 250, 0.16);
-  border-color: rgba(96, 165, 250, 0.24);
-  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.05);
-}
-body[data-theme="dark"] .x-nt-wallpaper-button[data-open="true"] {
-  background: rgba(255, 255, 255, 0.11);
-  border-color: rgba(255, 255, 255, 0.13);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
-  color: color-mix(in srgb, var(--x-nt-text, #e5e7eb) 68%, transparent);
-}
-body[data-theme="dark"] .x-nt-feedback-button[data-open="true"] {
-  background: rgba(255, 255, 255, 0.11);
-  border-color: rgba(255, 255, 255, 0.13);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
-  color: color-mix(in srgb, var(--x-nt-text, #e5e7eb) 68%, transparent);
-}
-body[data-theme="dark"] .x-nt-bookmark-cascade-debug-button[data-active="true"] {
-  background: rgba(96, 165, 250, 0.2);
-  border-color: rgba(96, 165, 250, 0.32);
-  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.08);
-}
-body[data-theme="dark"] .x-nt-wallpaper-button[data-open="true"]:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-}
-body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-}
-body[data-theme="dark"] .x-nt-wallpaper-button:active {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.22);
-  box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.08),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-body[data-theme="dark"] .x-nt-feedback-button:active {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.22);
-  box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.08),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-body[data-theme="dark"] .x-nt-bookmark-cascade-debug-button:active {
-  background: rgba(96, 165, 250, 0.24);
-  border-color: rgba(96, 165, 250, 0.36);
-  box-shadow:
-    inset 0 1px 2px rgba(2, 6, 23, 0.2),
-    inset 0 0 0 1px rgba(96, 165, 250, 0.1);
-}
-body[data-theme="dark"] .x-nt-wallpaper-button[data-open="true"]:active,
-body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:active {
-  background: rgba(255, 255, 255, 0.21);
-  border-color: rgba(255, 255, 255, 0.24);
-  box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.09),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+@media (max-width: 640px) {
+  /* Suggestions reach the bottom edge on phones; the page buttons would cover the last rows. */
+  .x-nt-wallpaper-control,
+  .x-nt-feedback-control {
+    transition: opacity var(--lumno-duration-xs) ease, visibility var(--lumno-duration-xs) ease;
+  }
+  body[data-nt-suggestions-open="true"] .x-nt-wallpaper-control,
+  body[data-nt-suggestions-open="true"] .x-nt-feedback-control {
+    opacity: 0;
+    visibility: hidden;
+  }
+  .x-nt-wallpaper-button {
+    background: var(--control-bg);
+    border-color: var(--tab-border);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
 }
 .x-nt-feedback-control[data-menu-open="true"] {
   z-index: 31;
@@ -4358,20 +4364,14 @@ body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:active {
   height: 54px;
   padding: 10px 8px;
   border-radius: var(--lumno-radius-2xl);
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid var(
-    --x-nt-surface-border,
-    var(--x-lumno-search-shell-border-light, rgba(0, 0, 0, 0.14))
-  );
-  box-shadow:
-    0 18px 34px rgba(15, 23, 42, 0.12),
-    0 2px 4px rgba(15, 23, 42, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.74);
+  background: var(--x-nt-feedback-surface);
+  border: 1px solid var(--x-nt-surface-border);
+  box-shadow: var(--x-nt-feedback-shadow);
   backdrop-filter: blur(18px) saturate(135%);
   -webkit-backdrop-filter: blur(18px) saturate(135%);
   box-sizing: border-box;
   contain: layout;
-  color: #212733;
+  color: var(--x-nt-feedback-ink);
   opacity: 0;
   overflow: visible;
   pointer-events: none;
@@ -4428,7 +4428,7 @@ body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:active {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #4b545f;
+  color: var(--x-nt-feedback-action-ink);
   background: transparent;
   border: 0;
   box-shadow: none;
@@ -4448,12 +4448,9 @@ body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:active {
   z-index: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(180deg, #ffffff 0%, #ecedef 100%);
+  background: var(--x-nt-feedback-action-face);
   border: 0;
-  box-shadow:
-    0 0 0 1px rgba(210, 216, 223, 0.92),
-    0 1px 2px rgba(0, 0, 0, 0.02),
-    inset 0 -4px 3px rgba(255, 255, 255, 0.58);
+  box-shadow: var(--x-nt-feedback-action-edge);
   box-sizing: border-box;
   transition:
     box-shadow var(--lumno-duration-md) ease,
@@ -4475,22 +4472,15 @@ body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:active {
   transform: none;
 }
 .x-nt-feedback-action:hover::before {
-  background: linear-gradient(180deg, #ffffff 0%, #e8ebef 100%);
-  box-shadow:
-    0 0 0 1px #d2d8df,
-    0 10px 16px rgba(15, 23, 42, 0.07),
-    0 2px 3px rgba(15, 23, 42, 0.04),
-    inset 0 -4px 3px rgba(255, 255, 255, 0.64);
+  background: var(--x-nt-feedback-action-hover-face);
+  box-shadow: var(--x-nt-feedback-action-hover-edge);
 }
 .x-nt-feedback-action:active {
   transform: translateY(1px);
 }
 .x-nt-feedback-action:active::before {
-  background: linear-gradient(180deg, #ffffff 0%, #ecedef 100%);
-  box-shadow:
-    0 0 0 1px rgba(210, 216, 223, 0.92),
-    0 2px 5px rgba(0, 0, 0, 0.06),
-    inset 0 -4px 3px rgba(255, 255, 255, 0.58);
+  background: var(--x-nt-feedback-action-face);
+  box-shadow: var(--x-nt-feedback-action-press-edge);
 }
 .x-nt-feedback-action-community {
   color: var(--lumno-color-on-primary);
@@ -4532,6 +4522,7 @@ body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:active {
   transition:
     opacity 170ms ease,
     transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  color: var(--x-nt-feedback-detail-ink);
 }
 .x-nt-feedback-detail[hidden] {
   display: none;
@@ -4550,7 +4541,7 @@ body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:active {
   flex: 1 1 auto;
   min-width: 0;
   margin: 0;
-  color: #212733;
+  color: var(--x-nt-feedback-detail-ink);
   font-size: var(--lumno-font-size-lg);
   line-height: 1.25;
   font-weight: 700;
@@ -4573,7 +4564,7 @@ body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:active {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #606976;
+  color: var(--x-nt-feedback-detail-action-ink);
   background: transparent;
   box-sizing: border-box;
   cursor: pointer;
@@ -4591,11 +4582,11 @@ body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:active {
   line-height: 1;
 }
 .x-nt-feedback-detail-action:hover {
-  color: #212733;
-  background: rgba(15, 23, 42, 0.07);
+  color: var(--x-nt-feedback-detail-action-hover-ink);
+  background: var(--x-nt-feedback-detail-action-hover-bg);
 }
 .x-nt-feedback-detail-action:active {
-  background: rgba(15, 23, 42, 0.12);
+  background: var(--x-nt-feedback-detail-action-press-bg);
   transform: scale(0.94);
 }
 .x-nt-feedback-detail-action:focus-visible {
@@ -4615,53 +4606,7 @@ body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:active {
   /* Concentric with the popover: its radius minus the inset around the image. */
   border-radius: calc(var(--x-nt-feedback-detail-radius, 16px) - var(--x-nt-feedback-detail-inset, 10px));
   object-fit: contain;
-  background: #f2f4f8;
-}
-body[data-theme="dark"] .x-nt-feedback-popover {
-  background: rgba(39, 39, 42, 0.92);
-  border-color: var(
-    --x-nt-surface-border,
-    var(--x-lumno-search-shell-border-dark, rgba(255, 255, 255, 0.16))
-  );
-  box-shadow:
-    0 18px 34px rgba(0, 0, 0, 0.28),
-    0 2px 4px rgba(0, 0, 0, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  color: #e5e7eb;
-}
-body[data-theme="dark"] .x-nt-feedback-action:not(.x-nt-feedback-action-community) {
-  color: #e5e7eb;
-}
-body[data-theme="dark"] .x-nt-feedback-action:not(.x-nt-feedback-action-community)::before {
-  background: linear-gradient(180deg, #3f3f46 0%, #27272a 100%);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
-}
-body[data-theme="dark"] .x-nt-feedback-action:not(.x-nt-feedback-action-community):hover::before {
-  background: linear-gradient(180deg, #52525b 0%, #3f3f46 100%);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
-}
-body[data-theme="dark"] .x-nt-feedback-action:not(.x-nt-feedback-action-community):active::before {
-  background: linear-gradient(180deg, #3f3f46 0%, #27272a 100%);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
-}
-body[data-theme="dark"] .x-nt-feedback-detail {
-  color: #f4f4f5;
-}
-body[data-theme="dark"] .x-nt-feedback-detail-title {
-  color: #f4f4f5;
-}
-body[data-theme="dark"] .x-nt-feedback-detail-action {
-  color: #a1a1aa;
-}
-body[data-theme="dark"] .x-nt-feedback-detail-action:hover {
-  color: #f4f4f5;
-  background: rgba(255, 255, 255, 0.1);
-}
-body[data-theme="dark"] .x-nt-feedback-detail-action:active {
-  background: rgba(255, 255, 255, 0.16);
-}
-body[data-theme="dark"] .x-nt-feedback-qr-image {
-  background: #18181b;
+  background: var(--x-nt-feedback-qr-bg);
 }
 body[data-wallpaper-active="true"] {
   --x-nt-wallpaper-adaptive-ink: rgb(248 250 252 / 88%);
@@ -4864,22 +4809,8 @@ body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button[data-wall
 body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-wallpaper-icon-bg="true"]:not([data-wallpaper-overlay-cover="true"]):hover {
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
 }
-body[data-wallpaper-active="true"] .x-nt-feedback-button:not([data-wallpaper-overlay-cover="true"]):hover {
-  background: var(--x-nt-wallpaper-icon-solid-bg-hover, var(--x-nt-wallpaper-icon-solid-bg, rgb(15 23 42)));
-  border-color: transparent;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
-  color: var(--x-nt-wallpaper-icon-solid-ink-hover, var(--x-nt-wallpaper-adaptive-ink));
-  filter: none;
-  text-shadow: none;
-}
-body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button:not([data-wallpaper-overlay-cover="true"]):hover {
-  background: var(--x-nt-wallpaper-icon-solid-bg-hover, var(--x-nt-wallpaper-icon-solid-bg, rgb(15 23 42)));
-  border-color: transparent;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
-  color: var(--x-nt-wallpaper-icon-solid-ink-hover, var(--x-nt-wallpaper-adaptive-ink));
-  filter: none;
-  text-shadow: none;
-}
+body[data-wallpaper-active="true"] .x-nt-feedback-button:not([data-wallpaper-overlay-cover="true"]):hover,
+body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button:not([data-wallpaper-overlay-cover="true"]):hover,
 body[data-wallpaper-active="true"] .x-nt-wallpaper-button:not([data-wallpaper-overlay-cover="true"]):hover {
   background: var(--x-nt-wallpaper-icon-solid-bg-hover, var(--x-nt-wallpaper-icon-solid-bg, rgb(15 23 42)));
   border-color: transparent;
@@ -4888,24 +4819,8 @@ body[data-wallpaper-active="true"] .x-nt-wallpaper-button:not([data-wallpaper-ov
   filter: none;
   text-shadow: none;
 }
-body[data-wallpaper-active="true"] .x-nt-feedback-button[data-open="true"]:not([data-wallpaper-overlay-cover="true"]) {
-  color: var(--x-nt-wallpaper-icon-solid-ink, var(--x-nt-wallpaper-adaptive-ink));
-  background: var(--x-nt-wallpaper-icon-solid-bg, rgb(20 28 45));
-  border-color: transparent;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.03);
-  mix-blend-mode: normal;
-  filter: none;
-  text-shadow: none;
-}
-body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button[data-active="true"]:not([data-wallpaper-overlay-cover="true"]) {
-  color: var(--x-nt-wallpaper-icon-solid-ink, var(--x-nt-wallpaper-adaptive-ink));
-  background: var(--x-nt-wallpaper-icon-solid-bg, rgb(20 28 45));
-  border-color: transparent;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.03);
-  mix-blend-mode: normal;
-  filter: none;
-  text-shadow: none;
-}
+body[data-wallpaper-active="true"] .x-nt-feedback-button[data-open="true"]:not([data-wallpaper-overlay-cover="true"]),
+body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button[data-active="true"]:not([data-wallpaper-overlay-cover="true"]),
 body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-open="true"]:not([data-wallpaper-overlay-cover="true"]) {
   color: var(--x-nt-wallpaper-icon-solid-ink, var(--x-nt-wallpaper-adaptive-ink));
   background: var(--x-nt-wallpaper-icon-solid-bg, rgb(20 28 45));
@@ -4915,42 +4830,16 @@ body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-open="true"]:not(
   filter: none;
   text-shadow: none;
 }
-body[data-wallpaper-active="true"] .x-nt-feedback-button[data-open="true"]:not([data-wallpaper-overlay-cover="true"]):hover {
-  background: var(--x-nt-wallpaper-icon-solid-bg-hover, var(--x-nt-wallpaper-icon-solid-bg, rgb(15 23 42)));
-  border-color: transparent;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
-  color: var(--x-nt-wallpaper-icon-solid-ink-hover, var(--x-nt-wallpaper-adaptive-ink));
-}
-body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button[data-active="true"]:not([data-wallpaper-overlay-cover="true"]):hover {
-  background: var(--x-nt-wallpaper-icon-solid-bg-hover, var(--x-nt-wallpaper-icon-solid-bg, rgb(15 23 42)));
-  border-color: transparent;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
-  color: var(--x-nt-wallpaper-icon-solid-ink-hover, var(--x-nt-wallpaper-adaptive-ink));
-}
+body[data-wallpaper-active="true"] .x-nt-feedback-button[data-open="true"]:not([data-wallpaper-overlay-cover="true"]):hover,
+body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button[data-active="true"]:not([data-wallpaper-overlay-cover="true"]):hover,
 body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-open="true"]:not([data-wallpaper-overlay-cover="true"]):hover {
   background: var(--x-nt-wallpaper-icon-solid-bg-hover, var(--x-nt-wallpaper-icon-solid-bg, rgb(15 23 42)));
   border-color: transparent;
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
   color: var(--x-nt-wallpaper-icon-solid-ink-hover, var(--x-nt-wallpaper-adaptive-ink));
 }
-body[data-wallpaper-active="true"] .x-nt-feedback-button:not([data-wallpaper-overlay-cover="true"]):active {
-  background: var(--x-nt-wallpaper-icon-solid-bg-press, var(--x-nt-wallpaper-icon-solid-bg, rgb(20 28 45)));
-  box-shadow:
-    inset 0 1px 2px rgba(0, 0, 0, 0.18),
-    inset 0 0 0 1px rgba(15, 23, 42, 0.06);
-  color: var(--x-nt-wallpaper-icon-solid-ink, var(--x-nt-wallpaper-adaptive-ink));
-  filter: none;
-  text-shadow: none;
-}
-body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button:not([data-wallpaper-overlay-cover="true"]):active {
-  background: var(--x-nt-wallpaper-icon-solid-bg-press, var(--x-nt-wallpaper-icon-solid-bg, rgb(20 28 45)));
-  box-shadow:
-    inset 0 1px 2px rgba(0, 0, 0, 0.18),
-    inset 0 0 0 1px rgba(15, 23, 42, 0.06);
-  color: var(--x-nt-wallpaper-icon-solid-ink, var(--x-nt-wallpaper-adaptive-ink));
-  filter: none;
-  text-shadow: none;
-}
+body[data-wallpaper-active="true"] .x-nt-feedback-button:not([data-wallpaper-overlay-cover="true"]):active,
+body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button:not([data-wallpaper-overlay-cover="true"]):active,
 body[data-wallpaper-active="true"] .x-nt-wallpaper-button:not([data-wallpaper-overlay-cover="true"]):active {
   background: var(--x-nt-wallpaper-icon-solid-bg-press, var(--x-nt-wallpaper-icon-solid-bg, rgb(20 28 45)));
   box-shadow:
@@ -5005,7 +4894,7 @@ body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-open="true"]:not(
   /* No bottom inset: the scroll area and the pinned help footer bring their own. */
   padding: var(--x-nt-panel-padding) var(--x-nt-panel-padding) 0;
   border-radius: var(--lumno-radius-dialog);
-  background: rgb(255 255 255);
+  background: var(--x-nt-panel-surface);
   border: 1px solid var(
     --x-nt-surface-border,
     var(--x-lumno-search-shell-border-light, rgba(0, 0, 0, 0.14))
@@ -5033,9 +4922,6 @@ body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-open="true"]:not(
   pointer-events: auto;
   transform: scale(1);
 }
-body[data-theme="dark"] .x-nt-wallpaper-panel {
-  background: rgb(20 20 20);
-}
 .x-nt-wallpaper-panel-scroll {
   min-width: 0;
   min-height: 0;
@@ -5049,6 +4935,59 @@ body[data-theme="dark"] .x-nt-wallpaper-panel {
   overflow: hidden auto;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
+}
+/* Smaller screens tighten the panel; on phones it spans the screen above the corner
+   buttons (later blocks win where these ranges overlap). */
+@media (max-width: 520px) {
+  .x-nt-wallpaper-panel {
+    --x-nt-panel-divider-gap: 18px;
+    --x-nt-panel-header-gap: 15px;
+    --x-nt-panel-inline-gap: 13px;
+    --x-nt-panel-item-gap: 16px;
+    --x-nt-panel-control-gap: 13px;
+    --x-nt-panel-field-gap: 10px;
+    --x-nt-panel-option-gap: 12px;
+    --x-nt-panel-tab-gap: 5px;
+    --x-nt-panel-grid-gap: 14px;
+    max-width: calc(100vw - 28px);
+    max-height: calc(100vh - 70px - var(--x-nt-top-bar-max-inset));
+    max-height: calc(100dvh - 70px - var(--x-nt-top-bar-max-inset));
+    padding: 18px;
+  }
+}
+@media (max-height: 560px) {
+  .x-nt-wallpaper-panel {
+    --x-nt-panel-divider-gap: 16px;
+    --x-nt-panel-item-gap: 18px;
+    --x-nt-panel-option-gap: 12px;
+    max-height: calc(100vh - 70px - var(--x-nt-top-bar-max-inset));
+    max-height: calc(100dvh - 70px - var(--x-nt-top-bar-max-inset));
+  }
+}
+@media (max-width: 640px) {
+  .x-nt-wallpaper-panel {
+    --x-nt-panel-divider-gap: 16px;
+    --x-nt-panel-header-gap: 12px;
+    --x-nt-panel-inline-gap: 12px;
+    --x-nt-panel-item-gap: 14px;
+    --x-nt-panel-control-gap: 12px;
+    --x-nt-panel-field-gap: 8px;
+    --x-nt-panel-option-gap: 10px;
+    --x-nt-panel-tab-gap: 5px;
+    --x-nt-panel-grid-gap: 12px;
+    --x-nt-panel-scroll-edge: 10px;
+    position: fixed;
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 56px);
+    width: auto;
+    max-width: none;
+    max-height: calc(100dvh - 80px - var(--x-nt-top-bar-max-inset) - var(--x-nt-bottom-safe-inset));
+    --x-nt-panel-padding: 16px;
+  }
+  .x-nt-wallpaper-panel-scroll {
+    scrollbar-gutter: auto;
+  }
 }
 :root:not([data-lumno-scrollbars="overlay"]) .x-nt-wallpaper-panel-scroll::-webkit-scrollbar {
   width: 8px;
@@ -5109,10 +5048,7 @@ body[data-theme="dark"] .x-nt-wallpaper-panel {
   gap: var(--x-nt-panel-inline-gap);
   margin: -2px -2px 14px;
   padding: 2px;
-  background: rgb(255 255 255);
-}
-body[data-theme="dark"] .x-nt-appearance-header {
-  background: rgb(20 20 20);
+  background: var(--x-nt-panel-surface);
 }
 /* Quiet way out to the help center, pinned under the scrolling settings. */
 .x-nt-appearance-help-footer {
@@ -5156,7 +5092,7 @@ body[data-theme="dark"] .x-nt-appearance-header {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  color: var(--x-nt-subtext, #6b7280);
+  color: var(--x-nt-panel-muted-ink);
   background: transparent;
   cursor: help;
   transition: background-color var(--lumno-duration-xs) ease, color var(--lumno-duration-xs) ease;
@@ -5165,7 +5101,7 @@ body[data-theme="dark"] .x-nt-appearance-header {
   --ri-size: 14px;
 }
 .x-nt-appearance-info-button:hover {
-  background: rgba(17, 24, 39, 0.05);
+  background: var(--x-nt-panel-icon-hover-bg);
   color: var(--x-nt-text, #111827);
 }
 .x-nt-appearance-info-button:focus-visible {
@@ -5183,7 +5119,7 @@ body[data-theme="dark"] .x-nt-appearance-header {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  color: var(--x-nt-subtext, #6b7280);
+  color: var(--x-nt-panel-muted-ink);
   background: transparent;
   cursor: pointer;
   transition: background-color var(--lumno-duration-xs) ease, color var(--lumno-duration-xs) ease;
@@ -5195,7 +5131,7 @@ body[data-theme="dark"] .x-nt-appearance-header {
   --ri-size: 14px;
 }
 .x-nt-panel-icon-button:hover {
-  background: rgba(17, 24, 39, 0.05);
+  background: var(--x-nt-panel-icon-hover-bg);
   color: var(--x-nt-text, #111827);
 }
 .x-nt-panel-icon-button:focus-visible {
@@ -5273,9 +5209,8 @@ body[data-theme="dark"] .x-nt-appearance-header {
   gap: var(--x-nt-panel-tab-gap);
   padding: var(--x-nt-segmented-tabs-inset);
   border-radius: var(--x-nt-segmented-tabs-radius);
-  border: var(--x-nt-segmented-tabs-border-width) solid
-    var(--x-nt-panel-border, rgba(0, 0, 0, 0.08));
-  background: rgba(17, 24, 39, 0.04);
+  border: var(--x-nt-segmented-tabs-border-width) solid var(--x-nt-segmented-border);
+  background: var(--x-nt-segmented-bg);
   min-height: 30px;
   position: relative;
   box-sizing: border-box;
@@ -5289,8 +5224,8 @@ body[data-theme="dark"] .x-nt-appearance-header {
   height: calc(
     100% - var(--x-nt-segmented-tabs-inset) - var(--x-nt-segmented-tabs-inset)
   );
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+  background: var(--x-nt-segmented-indicator-bg);
+  box-shadow: var(--x-nt-segmented-indicator-shadow);
   transition: transform var(--lumno-duration-xl) var(--lumno-ease-emphasized),
     width var(--lumno-duration-xl) var(--lumno-ease-emphasized);
   pointer-events: none;
@@ -5301,7 +5236,7 @@ body[data-theme="dark"] .x-nt-appearance-header {
   min-width: 0;
   height: 28px;
   padding: 0 10px;
-  color: var(--x-nt-subtext, #6b7280);
+  color: var(--x-nt-panel-muted-ink);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5321,7 +5256,7 @@ body[data-theme="dark"] .x-nt-appearance-header {
   z-index: 1;
 }
 .x-nt-wallpaper-tab:hover:not([data-active="true"]) {
-  background: rgba(255, 255, 255, 0.36);
+  background: var(--x-nt-segmented-hover-bg);
   color: var(--x-nt-text, #111827);
 }
 .x-nt-wallpaper-tab:active {
@@ -5332,7 +5267,7 @@ body[data-theme="dark"] .x-nt-appearance-header {
   outline-offset: 2px;
 }
 .x-nt-wallpaper-tab[data-active="true"] {
-  color: var(--x-nt-text, #111827);
+  color: var(--x-nt-segmented-active-ink);
 }
 .x-nt-top-content-header {
   flex-wrap: nowrap;
@@ -5581,13 +5516,12 @@ body[data-theme="dark"] .x-nt-appearance-header {
 .x-nt-range-slider-row .x-range-slider {
   --x-range-slider-fill: var(--x-nt-text, #111827);
   --x-range-slider-rail: rgba(17, 24, 39, 0.1);
-  --x-range-slider-surface: rgb(255 255 255);
+  --x-range-slider-surface: var(--x-nt-panel-surface);
   --x-range-slider-ring: rgba(17, 24, 39, 0.08);
 }
 body[data-theme="dark"] .x-nt-range-slider-row .x-range-slider {
   --x-range-slider-fill: var(--x-nt-text, #e5e7eb);
   --x-range-slider-rail: rgba(255, 255, 255, 0.16);
-  --x-range-slider-surface: rgb(20 20 20);
   --x-range-slider-thumb-bg: #f5f5f5;
   --x-range-slider-thumb-shadow:
     0 0 0 0.5px rgba(0, 0, 0, 0.4),
@@ -5668,7 +5602,7 @@ body[data-theme="dark"] .x-nt-row-select {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  color: var(--x-nt-subtext, #6b7280);
+  color: var(--x-nt-panel-muted-ink);
   font-size: var(--lumno-font-size-sm);
   line-height: 1.25;
   font-weight: 400;
@@ -5683,9 +5617,8 @@ body[data-theme="dark"] .x-nt-row-select {
   margin-top: var(--x-nt-effect-control-gap);
   padding: var(--x-nt-segmented-tabs-inset);
   border-radius: var(--x-nt-segmented-tabs-radius);
-  border: var(--x-nt-segmented-tabs-border-width) solid
-    var(--x-nt-panel-border, rgba(0, 0, 0, 0.08));
-  background: rgba(17, 24, 39, 0.04);
+  border: var(--x-nt-segmented-tabs-border-width) solid var(--x-nt-segmented-border);
+  background: var(--x-nt-segmented-bg);
   min-height: 30px;
   position: relative;
   box-sizing: border-box;
@@ -5699,8 +5632,8 @@ body[data-theme="dark"] .x-nt-row-select {
   height: calc(
     100% - var(--x-nt-segmented-tabs-inset) - var(--x-nt-segmented-tabs-inset)
   );
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+  background: var(--x-nt-segmented-indicator-bg);
+  box-shadow: var(--x-nt-segmented-indicator-shadow);
   transition: transform var(--lumno-duration-xl) var(--lumno-ease-emphasized),
     width var(--lumno-duration-xl) var(--lumno-ease-emphasized);
   pointer-events: none;
@@ -5711,7 +5644,7 @@ body[data-theme="dark"] .x-nt-row-select {
   min-width: 0;
   height: 28px;
   padding: 0 10px;
-  color: var(--x-nt-subtext, #6b7280);
+  color: var(--x-nt-panel-muted-ink);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5732,7 +5665,7 @@ body[data-theme="dark"] .x-nt-row-select {
   z-index: 1;
 }
 .x-nt-effect-option:hover:not([data-active="true"]) {
-  background: rgba(255, 255, 255, 0.36);
+  background: var(--x-nt-segmented-hover-bg);
   color: var(--x-nt-text, #111827);
 }
 .x-nt-effect-option:active {
@@ -5743,7 +5676,7 @@ body[data-theme="dark"] .x-nt-row-select {
   outline-offset: 2px;
 }
 .x-nt-effect-option[data-active="true"] {
-  color: var(--x-nt-text, #111827);
+  color: var(--x-nt-segmented-active-ink);
 }
 .x-nt-segmented-tabs-indicator,
 .x-nt-segmented-tab {
@@ -5781,48 +5714,6 @@ body[data-theme="dark"] .x-nt-row-select {
 .x-nt-effect-slider-wrap[data-disabled="true"] {
   opacity: 0.46;
 }
-body[data-theme="dark"] .x-nt-overlay-control-header {
-  color: #a3a3a3;
-}
-body[data-theme="dark"] .x-nt-wallpaper-mode-sync-title {
-  color: var(--x-nt-text, #e5e7eb);
-}
-body[data-theme="dark"] .x-nt-wallpaper-tabs {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
-}
-body[data-theme="dark"] .x-nt-wallpaper-tabs-indicator {
-  background: #3f3f46;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
-}
-body[data-theme="dark"] .x-nt-wallpaper-tab {
-  color: #a3a3a3;
-}
-body[data-theme="dark"] .x-nt-wallpaper-tab:hover:not([data-active="true"]) {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--x-nt-text, #e5e7eb);
-}
-body[data-theme="dark"] .x-nt-wallpaper-tab[data-active="true"] {
-  color: #f8fafc;
-}
-body[data-theme="dark"] .x-nt-effect-options {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
-}
-body[data-theme="dark"] .x-nt-effect-indicator {
-  background: #3f3f46;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
-}
-body[data-theme="dark"] .x-nt-effect-option {
-  color: #a3a3a3;
-}
-body[data-theme="dark"] .x-nt-effect-option:hover:not([data-active="true"]) {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--x-nt-text, #e5e7eb);
-}
-body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
-  color: #f8fafc;
-}
 .x-nt-appearance-option {
   all: unset;
   min-width: 0;
@@ -5830,7 +5721,7 @@ body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
   flex-direction: column;
   align-items: center;
   gap: var(--x-nt-panel-field-gap);
-  color: var(--x-nt-subtext, #6b7280);
+  color: var(--x-nt-panel-muted-ink);
   cursor: pointer;
   position: relative;
   box-sizing: border-box;
@@ -5858,7 +5749,7 @@ body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
   aspect-ratio: 16 / 9;
 }
 .x-nt-appearance-option:hover:not([data-selected="true"]) .x-nt-appearance-preview::after {
-  border-color: rgba(107, 114, 128, 0.36);
+  border-color: var(--x-nt-choice-hover-border);
 }
 .x-nt-appearance-preview img {
   width: 100%;
@@ -5952,7 +5843,7 @@ body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
   border: none;
   border-radius: 0;
   background: transparent;
-  color: var(--x-nt-subtext, #6b7280);
+  color: var(--x-nt-panel-muted-ink);
   box-sizing: border-box;
   cursor: pointer;
   position: relative;
@@ -6000,7 +5891,7 @@ body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
   transition: border-color 170ms ease;
 }
 .x-nt-wallpaper-tile[data-selected="true"] .x-nt-wallpaper-thumb::after {
-  border-color: #6b7280;
+  border-color: var(--lumno-color-selection-outline);
 }
 .x-nt-wallpaper-thumb img {
   width: 100%;
@@ -6040,7 +5931,7 @@ body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(107, 114, 128, 0.07);
+  background: var(--x-nt-favicon-thumb-bg);
   border: none;
 }
 .x-nt-favicon-thumb .x-nt-favicon-image {
@@ -6070,7 +5961,7 @@ body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
 }
 .x-nt-wallpaper-tile:hover .x-nt-wallpaper-thumb img,
 .x-nt-wallpaper-tile:focus-visible .x-nt-wallpaper-thumb img {
-  filter: brightness(0.92) saturate(1.04);
+  filter: var(--x-nt-thumb-hover-filter);
 }
 .x-nt-wallpaper-custom-image[hidden],
 .x-nt-wallpaper-upload-placeholder[hidden] {
@@ -6080,12 +5971,12 @@ body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px dashed rgba(107, 114, 128, 0.36);
-  background: rgba(107, 114, 128, 0.06);
+  border: 1px dashed var(--x-nt-upload-border);
+  background: var(--x-nt-upload-bg);
 }
 .x-nt-wallpaper-upload-tile:hover .x-nt-wallpaper-upload-thumb,
 .x-nt-wallpaper-upload-tile:focus-visible .x-nt-wallpaper-upload-thumb {
-  background: rgba(107, 114, 128, 0.12);
+  background: var(--x-nt-upload-hover-bg);
 }
 .x-nt-wallpaper-upload-placeholder {
   width: auto;
@@ -6094,13 +5985,13 @@ body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: color-mix(in srgb, var(--x-nt-subtext, #6b7280) 74%, transparent);
+  color: var(--x-nt-upload-ink);
   background: transparent;
   transition: color var(--lumno-duration-xs) ease;
 }
 .x-nt-wallpaper-upload-tile:hover .x-nt-wallpaper-upload-placeholder,
 .x-nt-wallpaper-upload-tile:focus-visible .x-nt-wallpaper-upload-placeholder {
-  color: color-mix(in srgb, var(--x-nt-text, #111827) 72%, transparent);
+  color: var(--x-nt-upload-hover-ink);
   background: transparent;
 }
 .x-nt-wallpaper-check {
@@ -6181,74 +6072,12 @@ body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
   transform: scale(1);
   pointer-events: auto;
 }
-body[data-theme="dark"] .x-nt-wallpaper-tile {
-  background: transparent;
-  color: #a3a3a3;
-}
-body[data-theme="dark"] .x-nt-appearance-option {
-  color: #a3a3a3;
-}
-body[data-theme="dark"] .x-nt-appearance-info-button {
-  color: #a3a3a3;
-}
-body[data-theme="dark"] .x-nt-appearance-info-button:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--x-nt-text, #e5e7eb);
-}
-body[data-theme="dark"] .x-nt-panel-icon-button {
-  color: #a3a3a3;
-}
-body[data-theme="dark"] .x-nt-panel-icon-button:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--x-nt-text, #e5e7eb);
-}
-body[data-theme="dark"] .x-nt-wallpaper-tile[data-selected="true"] {
-  color: var(--x-nt-text, #e5e7eb);
-}
-body[data-theme="dark"] .x-nt-appearance-option[data-selected="true"] {
-  color: var(--x-nt-text, #e5e7eb);
-}
-body[data-theme="dark"] .x-nt-wallpaper-upload-thumb {
-  border-color: rgba(156, 163, 175, 0.34);
-  background: rgba(255, 255, 255, 0.06);
-}
-body[data-theme="dark"] .x-nt-favicon-thumb {
-  border-color: rgba(156, 163, 175, 0.18);
-  background: rgba(255, 255, 255, 0.06);
-}
 body[data-theme="dark"] .x-nt-favicon-svg-preview {
   color: #f1f3f4;
   --x-nt-favicon-shadow-opacity: 0.34;
   --x-nt-favicon-main-opacity: 0.72;
 }
-body[data-theme="dark"] .x-nt-wallpaper-tile:hover .x-nt-wallpaper-thumb img,
-body[data-theme="dark"] .x-nt-wallpaper-tile:focus-visible .x-nt-wallpaper-thumb img {
-  filter: brightness(1.12) saturate(1.04);
-}
-body[data-theme="dark"] .x-nt-wallpaper-upload-tile:hover .x-nt-wallpaper-upload-thumb,
-body[data-theme="dark"] .x-nt-wallpaper-upload-tile:focus-visible .x-nt-wallpaper-upload-thumb {
-  background: rgba(255, 255, 255, 0.12);
-}
-body[data-theme="dark"] .x-nt-wallpaper-upload-placeholder {
-  color: rgba(229, 231, 235, 0.62);
-  background: transparent;
-}
-body[data-theme="dark"] .x-nt-wallpaper-upload-tile:hover .x-nt-wallpaper-upload-placeholder,
-body[data-theme="dark"] .x-nt-wallpaper-upload-tile:focus-visible .x-nt-wallpaper-upload-placeholder {
-  color: rgba(229, 231, 235, 0.82);
-  background: transparent;
-}
-body[data-theme="dark"] .x-nt-appearance-option:hover:not([data-selected="true"]) .x-nt-appearance-preview::after {
-  border-color: rgba(156, 163, 175, 0.42);
-}
-body[data-theme="dark"] .x-nt-wallpaper-tile[data-selected="true"] .x-nt-wallpaper-thumb::after {
-  border-color: #9ca3af;
-}
-body[data-theme="dark"] .x-nt-wallpaper-check {
-  color: #111111;
-  background: linear-gradient(180deg, #f3f4f6 0%, #e5e7eb 100%);
-  border-color: #d1d5db;
-}
+body[data-theme="dark"] .x-nt-wallpaper-check,
 body[data-theme="dark"] .x-nt-appearance-check {
   color: #111111;
   background: linear-gradient(180deg, #f3f4f6 0%, #e5e7eb 100%);
@@ -6264,9 +6093,7 @@ body[data-theme="dark"] .x-nt-wallpaper-delete-button:hover,
 body[data-theme="dark"] .x-nt-wallpaper-delete-button:focus-visible {
   background: rgba(255, 255, 255, 0.96);
 }
-body[data-theme="dark"] .x-nt-wallpaper-check::after {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
-}
+body[data-theme="dark"] .x-nt-wallpaper-check::after,
 body[data-theme="dark"] .x-nt-appearance-check::after {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
 }
@@ -7050,37 +6877,8 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
 .x-nt-close-other-tabs[data-hover-active="true"] .ri-icon {
   transform: scale(1.06);
 }
-@supports (corner-shape: superellipse(1.25)) {
-  .x-nt-close-other-tabs {
-    corner-shape: superellipse(1.25);
-  }
-}
-@media (max-width: 860px) {
-  :root {
-    --x-nt-shortcuts-reserved-height: 82px;
-  }
-  .x-nt-wallpaper-control {
-    right: 12px;
-    bottom: 12px;
-  }
-  .x-nt-feedback-control {
-    right: 58px;
-    bottom: 12px;
-  }
-  .x-nt-bookmark-cascade-debug-control {
-    right: 104px;
-    bottom: 12px;
-  }
-  #_x_extension_newtab_bookmarks_grid_2024_unique_ {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  #_x_extension_newtab_recent_sites_grid_2024_unique_ {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .x-nt-shortcuts-section {
-    max-width: 100%;
-  }
-}
+/* Layout variables by viewport. Width and height ranges overlap; later blocks win,
+   so short screens tighten the dock even when narrow, and phones (<=640px) come last. */
 @media (min-width: 521px) and (max-width: 1440px) {
   :root {
     --x-nt-content-viewport-width: calc(100vw - clamp(56px, 7.5vw, 88px));
@@ -7089,38 +6887,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
 @media (max-width: 520px) {
   :root {
     --x-nt-content-viewport-width: 96vw;
-  }
-  .x-nt-wallpaper-control {
-    right: 8px;
-    bottom: 8px;
-  }
-  .x-nt-feedback-control {
-    right: 54px;
-    bottom: 8px;
-  }
-  .x-nt-bookmark-cascade-debug-control {
-    right: 100px;
-    bottom: 8px;
-  }
-  .x-nt-wallpaper-panel {
-    --x-nt-panel-divider-gap: 18px;
-    --x-nt-panel-header-gap: 15px;
-    --x-nt-panel-inline-gap: 13px;
-    --x-nt-panel-item-gap: 16px;
-    --x-nt-panel-control-gap: 13px;
-    --x-nt-panel-field-gap: 10px;
-    --x-nt-panel-option-gap: 12px;
-    --x-nt-panel-tab-gap: 5px;
-    --x-nt-panel-grid-gap: 14px;
-    max-width: calc(100vw - 28px);
-    max-height: calc(100vh - 70px - var(--x-nt-top-bar-max-inset));
-    max-height: calc(100dvh - 70px - var(--x-nt-top-bar-max-inset));
-    padding: 18px;
-  }
-  #_x_extension_newtab_bookmarks_2024_unique_,
-  #_x_extension_newtab_recent_sites_2024_unique_ {
-    min-width: 0;
-    width: min(96vw, var(--x-nt-content-max-width, 1040px));
   }
 }
 @media (max-height: 800px) {
@@ -7145,18 +6911,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
     --x-nt-shortcuts-reserved-height: 72px;
     --x-nt-shortcuts-section-margin-top: 12px;
   }
-  .x-nt-wallpaper-control {
-    right: 10px;
-    bottom: 10px;
-  }
-  .x-nt-feedback-control {
-    right: 10px;
-    bottom: 56px;
-  }
-  .x-nt-bookmark-cascade-debug-control {
-    right: 10px;
-    bottom: 102px;
-  }
 }
 @media (max-height: 560px) {
   :root {
@@ -7168,25 +6922,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
     --x-nt-bottom-dock-top-padding: 14px;
     --x-nt-bottom-dock-bottom-padding: 32px;
     --x-nt-shortcuts-section-margin-top: 8px;
-  }
-  .x-nt-wallpaper-control {
-    right: 8px;
-    bottom: 8px;
-  }
-  .x-nt-feedback-control {
-    right: 8px;
-    bottom: 54px;
-  }
-  .x-nt-bookmark-cascade-debug-control {
-    right: 8px;
-    bottom: 100px;
-  }
-  .x-nt-wallpaper-panel {
-    --x-nt-panel-divider-gap: 16px;
-    --x-nt-panel-item-gap: 18px;
-    --x-nt-panel-option-gap: 12px;
-    max-height: calc(100vh - 70px - var(--x-nt-top-bar-max-inset));
-    max-height: calc(100dvh - 70px - var(--x-nt-top-bar-max-inset));
   }
 }
 @media (max-height: 430px) {
@@ -7254,92 +6989,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
     overflow: visible;
     overscroll-behavior: auto;
   }
-  #_x_extension_newtab_bookmarks_grid_2024_unique_ {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  #_x_extension_newtab_recent_sites_grid_2024_unique_ {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .x-nt-wallpaper-control,
-  .x-nt-feedback-control {
-    bottom: max(10px, env(safe-area-inset-bottom));
-    width: 44px;
-  }
-  .x-nt-wallpaper-control {
-    right: max(10px, env(safe-area-inset-right));
-  }
-  .x-nt-feedback-control {
-    right: calc(max(10px, env(safe-area-inset-right)) + 52px);
-  }
-  /* Suggestions reach the bottom edge on phones; the page buttons would cover the last rows. */
-  .x-nt-wallpaper-control,
-  .x-nt-feedback-control {
-    transition: opacity var(--lumno-duration-xs) ease, visibility var(--lumno-duration-xs) ease;
-  }
-  body[data-nt-suggestions-open="true"] .x-nt-wallpaper-control,
-  body[data-nt-suggestions-open="true"] .x-nt-feedback-control {
-    opacity: 0;
-    visibility: hidden;
-  }
-  .x-nt-wallpaper-button,
-  .x-nt-feedback-button {
-    width: 44px;
-    height: 44px;
-  }
-  .x-nt-wallpaper-button {
-    background: var(--control-bg);
-    border-color: var(--tab-border);
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
-  .x-nt-wallpaper-panel {
-    --x-nt-panel-divider-gap: 16px;
-    --x-nt-panel-header-gap: 12px;
-    --x-nt-panel-inline-gap: 12px;
-    --x-nt-panel-item-gap: 14px;
-    --x-nt-panel-control-gap: 12px;
-    --x-nt-panel-field-gap: 8px;
-    --x-nt-panel-option-gap: 10px;
-    --x-nt-panel-tab-gap: 5px;
-    --x-nt-panel-grid-gap: 12px;
-    --x-nt-panel-scroll-edge: 10px;
-    position: fixed;
-    left: max(12px, env(safe-area-inset-left));
-    right: max(12px, env(safe-area-inset-right));
-    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 56px);
-    width: auto;
-    max-width: none;
-    max-height: calc(100dvh - 80px - var(--x-nt-top-bar-max-inset) - var(--x-nt-bottom-safe-inset));
-    --x-nt-panel-padding: 16px;
-  }
-  .x-nt-wallpaper-panel-scroll {
-    scrollbar-gutter: auto;
-  }
-}
-@media (hover: none) {
-  .x-nt-recent-card:hover {
-    transform: none;
-    --x-nt-recent-title-lines: var(--x-nt-dock-recent-title-lines, 3);
-  }
-  .x-nt-recent-card:hover .x-nt-recent-card-visual {
-    transform: none;
-    box-shadow: var(--x-nt-recent-card-shadow);
-  }
-  .x-nt-recent-card:hover .x-nt-recent-inner {
-    height: var(--x-nt-dock-recent-inner-height, 104px);
-    transform: none;
-    margin-bottom: 0;
-  }
-  .x-nt-wallpaper-control,
-  .x-nt-feedback-control {
-    width: 44px;
-  }
-  .x-nt-wallpaper-button,
-  .x-nt-feedback-button {
-    width: 44px;
-    height: 44px;
-  }
 }
 @media (min-width: 641px) and (max-width: 900px) and (max-height: 560px) {
   body[data-nt-bottom-dock-density="tiny"] {
@@ -7347,15 +6996,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
   }
   #_x_extension_newtab_bottom_dock_2024_unique_[data-density="tiny"] {
     --x-nt-dock-bookmark-card-height: 44px;
-  }
-  .x-nt-wallpaper-control,
-  .x-nt-feedback-control {
-    width: 44px;
-  }
-  .x-nt-wallpaper-button,
-  .x-nt-feedback-button {
-    width: 44px;
-    height: 44px;
   }
 }
 /* Keep this after component resets: `all: unset` also resets corner-shape. */
@@ -7412,7 +7052,8 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
   .x-nt-suggestion-action-button,
   .x-nt-suggestion-number-shortcut,
   .x-nt-suggestion-utility-button,
-  .x-nt-tab-switch-button {
+  .x-nt-tab-switch-button,
+  .x-nt-close-other-tabs {
     corner-shape: superellipse(1.25);
   }
 

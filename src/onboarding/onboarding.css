@@ -1284,11 +1284,6 @@ html[lang="en"] .onboarding-shell[data-active-slide="intro"] .title-logo-mark {
 }
 
 @media (max-height: 559px) and (min-width: 860px) {
-  .onboarding-shell {
-    --onboarding-shell-padding-y: 16px;
-    --onboarding-shell-lift-y: 0px;
-  }
-
   .copy-panel {
     --onboarding-copy-padding-x: 44px;
     --onboarding-copy-padding-y: 36px;
@@ -1307,19 +1302,10 @@ html[lang="en"] .onboarding-shell[data-active-slide="intro"] .title-logo-mark {
     font-size: 15px;
     line-height: 1.52;
   }
-
-  .visual-panel-slot {}
 }
 
+/* The shell itself for these widths is set by the narrow-or-short block below. */
 @media (max-width: 859px) {
-  .onboarding-shell {
-    --onboarding-shell-padding-x: 16px;
-    --onboarding-shell-padding-y: 16px;
-    --onboarding-shell-lift-y: 0px;
-    --onboarding-stacked-copy-min-height: 588px;
-    place-items: start center;
-  }
-
   .onboarding-frame {
     width: min(720px, 100%);
     height: auto;
@@ -1370,20 +1356,6 @@ html[lang="en"] .onboarding-shell[data-active-slide="intro"] .title-logo-mark {
   .body-copy {
     font-size: 15px;
     line-height: 1.54;
-  }
-
-  .visual-panel-slot {}
-}
-
-@media (max-width: 380px) {
-  .onboarding-shell {
-    --onboarding-stacked-copy-min-height: 638px;
-  }
-}
-
-@media (max-width: 340px) {
-  .onboarding-shell {
-    --onboarding-stacked-copy-min-height: 660px;
   }
 }
 

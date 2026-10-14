@@ -50,12 +50,16 @@ function getCssZIndex(source, selector) {
   return Number.parseInt(match[1], 10);
 }
 
+// Layers are tokens, sometimes offset with calc(); the page source has the tokens
+// resolved, so a value is a number or calc(number + number).
 function getCssNumericDeclaration(source, selector, propertyName) {
   const body = getCssRuleBody(source, selector);
   const escapedProperty = String(propertyName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = body.match(new RegExp(`${escapedProperty}:\\s*(-?\\d+)`));
+  const match = body.match(new RegExp(`${escapedProperty}:\\s*(?:calc\\(\\s*(-?\\d+)\\s*\\+\\s*(\\d+)\\s*\\)|(-?\\d+))`));
   assert.ok(match, `${selector} should define ${propertyName} as a numeric value`);
-  return Number.parseInt(match[1], 10);
+  return match[3] !== undefined
+    ? Number.parseInt(match[3], 10)
+    : Number.parseInt(match[1], 10) + Number.parseInt(match[2], 10);
 }
 
 function assertBookmarkCursorTooltipAboveCascade(source, label) {

@@ -143,7 +143,7 @@ assert.doesNotMatch(
 
 assert.match(
   newtabHtml,
-  /html body \._x_extension_tooltip_2026_unique_[\s\S]*?html body \._x_extension_tooltip_2026_unique_\._x_extension_cursor_tooltip_tag_2026_unique_\[data-tooltip-kind\]\[data-visible="true"\][\s\S]*?\{\s*transform:\s*none;/,
+  /body \._x_extension_tooltip_2026_unique_[\s\S]*?body \._x_extension_tooltip_2026_unique_\._x_extension_cursor_tooltip_tag_2026_unique_\[data-tooltip-kind\]\[data-visible="true"\][\s\S]*?\{\s*transform:\s*none;/,
   'New Tab tooltips should override shared vertical reveal motion'
 );
 
