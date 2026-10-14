@@ -90,7 +90,7 @@ describe('Options settings form React islands', () => {
     controllers.push(controller);
     act(() => controller.render(siteModel));
 
-    const buttons = host.querySelectorAll<HTMLButtonElement>('button');
+    const buttons = host.querySelectorAll<HTMLButtonElement>('button:not(._x_extension_info_button_2026_unique_)');
     act(() => buttons[0]?.click());
     const inputs = host.querySelectorAll<HTMLInputElement>('input');
     act(() => {
@@ -162,7 +162,7 @@ describe('Options settings form React islands', () => {
     });
     controllers.push(controller);
     act(() => controller.render(siteModel));
-    const buttons = host.querySelectorAll<HTMLButtonElement>('button');
+    const buttons = host.querySelectorAll<HTMLButtonElement>('button:not(._x_extension_info_button_2026_unique_)');
     act(() => buttons[0]?.click());
     await act(async () => {
       host.querySelector<HTMLButtonElement>(
@@ -183,7 +183,7 @@ describe('Options settings form React islands', () => {
     });
     controllers.push(controller);
     act(() => controller.render(siteModel));
-    const buttons = host.querySelectorAll<HTMLButtonElement>('button');
+    const buttons = host.querySelectorAll<HTMLButtonElement>('button:not(._x_extension_info_button_2026_unique_)');
     act(() => buttons[0]?.click());
 
     await act(async () => {
@@ -211,7 +211,7 @@ describe('Options settings form React islands', () => {
     });
     controllers.push(controller);
     act(() => controller.render(blacklistModel));
-    const buttons = host.querySelectorAll<HTMLButtonElement>('button');
+    const buttons = host.querySelectorAll<HTMLButtonElement>('button:not(._x_extension_info_button_2026_unique_)');
     const checkboxes = host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
     act(() => buttons[0]?.click());
     act(() => checkboxes[0]?.click());
@@ -241,7 +241,7 @@ describe('Options settings form React islands', () => {
     });
     controllers.push(controller);
     act(() => controller.render(blacklistModel));
-    const buttons = host.querySelectorAll<HTMLButtonElement>('button');
+    const buttons = host.querySelectorAll<HTMLButtonElement>('button:not(._x_extension_info_button_2026_unique_)');
     act(() => buttons[0]?.click());
     await act(async () => {
       buttons[2]?.click();

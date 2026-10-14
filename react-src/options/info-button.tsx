@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import {
   createReactRootController,
   type ReactRootController
@@ -20,26 +21,31 @@ export function InfoButton({
   tooltip,
   tooltipKey
 }: InfoButtonRenderModel) {
+  const descriptionId = useId();
   const classes = [
     '_x_extension_info_button_2026_unique_',
     '_x_extension_tooltip_host_2026_unique_',
     className
   ].filter(Boolean).join(' ');
+  // The floating tooltip is drawn from data-tooltip; screen readers get the
+  // same text as the name, or as a description when a separate label names it.
+  const describesTooltip = Boolean(label) && label !== tooltip;
 
   return (
-    <span
+    <button
+      aria-describedby={describesTooltip ? descriptionId : undefined}
       aria-label={label || tooltip}
       className={classes}
       data-i18n-tooltip={tooltipKey || undefined}
       data-tooltip={tooltip}
-      role="img"
-      tabIndex={0}
+      type="button"
     >
       <i
         aria-hidden="true"
         className={`ri-icon ri-size-14 ${iconClass}`}
       />
-    </span>
+      {describesTooltip ? <span hidden id={descriptionId}>{tooltip}</span> : null}
+    </button>
   );
 }
 
