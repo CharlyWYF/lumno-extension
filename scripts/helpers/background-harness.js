@@ -397,6 +397,10 @@ function loadBackground(options) {
     { filename: 'src/background/background.js' }
   );
 
+  // Without an explicit sender a message comes from an extension page, which
+  // may send every action; pass a { tab, url } sender to act as a web page.
+  const extensionPageSender = { url: chromeApi.runtime.getURL('newtab.html') };
+
   function sendMessage(request, sender, timeoutMs) {
     return new Promise((resolve) => {
       let settled = false;
@@ -407,7 +411,7 @@ function loadBackground(options) {
         settled = true;
         resolve(response);
       };
-      const results = chromeApi.runtime.onMessage.dispatch(request, sender || {}, finish);
+      const results = chromeApi.runtime.onMessage.dispatch(request, sender || extensionPageSender, finish);
       if (!results.some((result) => result === true)) {
         setTimeout(() => finish(undefined), 0);
       }
