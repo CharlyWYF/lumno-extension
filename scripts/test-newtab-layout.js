@@ -1332,12 +1332,14 @@ function testBottomDockCssDefinesAdaptiveDensityVariables() {
   );
   assert.match(
     newtabHtml,
-    /@media \(max-width:\s*640px\)[\s\S]*?#_x_extension_newtab_bookmarks_grid_2024_unique_\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/,
+    // Two columns from 860px down, phones included.
+    /@media \(max-width:\s*860px\)\s*\{\s*#_x_extension_newtab_bookmarks_grid_2024_unique_\s*\{\s*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/,
     'mobile bookmarks should render two columns'
   );
   assert.match(
     newtabHtml,
-    /@media \(max-width:\s*640px\)[\s\S]*?#_x_extension_newtab_recent_sites_grid_2024_unique_\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/,
+    // Two columns from 860px down, phones included.
+    /@media \(max-width:\s*860px\)\s*\{\s*#_x_extension_newtab_recent_sites_grid_2024_unique_\s*\{\s*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/,
     'mobile recent sites should render two columns'
   );
   // The corner buttons take their size from their control's --x-nt-corner-size.

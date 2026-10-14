@@ -1394,6 +1394,13 @@ body[data-nt-ready="1"] #_x_extension_newtab_wordmark_2026_unique_[data-enter="d
 #_x_extension_newtab_recent_sites_2024_unique_[data-visible="false"] {
   display: none;
 }
+@media (max-width: 520px) {
+  #_x_extension_newtab_bookmarks_2024_unique_,
+  #_x_extension_newtab_recent_sites_2024_unique_ {
+    min-width: 0;
+    width: min(96vw, var(--x-nt-content-max-width, 1040px));
+  }
+}
 #_x_extension_newtab_bottom_dock_2024_unique_ #_x_extension_newtab_bookmarks_2024_unique_,
 #_x_extension_newtab_bottom_dock_2024_unique_ #_x_extension_newtab_recent_sites_2024_unique_ {
   width: 100%;
@@ -1577,6 +1584,11 @@ body.x-nt-bottom-layout.x-nt-no-bookmarks #_x_extension_newtab_recent_sites_2024
   row-gap: var(--x-nt-grid-row-gap, 16px);
   align-content: start;
   box-sizing: border-box;
+}
+@media (max-width: 860px) {
+  #_x_extension_newtab_bookmarks_grid_2024_unique_ {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 body:not([data-nt-ready="1"]) #_x_extension_newtab_bottom_dock_2024_unique_ {
   visibility: hidden;
@@ -3487,6 +3499,11 @@ body[data-theme="dark"] .x-nt-bookmark-cascade-empty {
   row-gap: var(--x-nt-grid-row-gap, 16px);
   box-sizing: border-box;
 }
+@media (max-width: 860px) {
+  #_x_extension_newtab_recent_sites_grid_2024_unique_ {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 .x-nt-recent-heading {
   font-size: var(--x-nt-dock-heading-size, 14px);
   font-weight: 500;
@@ -3598,6 +3615,22 @@ body[data-theme="dark"] .x-nt-bookmark-cascade-empty {
   height: var(--x-nt-dock-recent-inner-height, 104px);
   transform: none;
   margin-bottom: 0;
+}
+/* Touch screens have no hover to lift a recent card with. */
+@media (hover: none) {
+  .x-nt-recent-card:hover {
+    transform: none;
+    --x-nt-recent-title-lines: var(--x-nt-dock-recent-title-lines, 3);
+  }
+  .x-nt-recent-card:hover .x-nt-recent-card-visual {
+    transform: none;
+    box-shadow: var(--x-nt-recent-card-shadow);
+  }
+  .x-nt-recent-card:hover .x-nt-recent-inner {
+    height: var(--x-nt-dock-recent-inner-height, 104px);
+    transform: none;
+    margin-bottom: 0;
+  }
 }
 body[data-theme="dark"] .x-nt-recent-inner {
   border: none;
@@ -4238,6 +4271,25 @@ body[data-theme="dark"] .x-nt-bookmark-cascade-debug-button {
 }
 .x-nt-wallpaper-button[data-active="true"] {
   color: var(--x-nt-corner-active-ink);
+}
+@media (max-width: 640px) {
+  /* Suggestions reach the bottom edge on phones; the page buttons would cover the last rows. */
+  .x-nt-wallpaper-control,
+  .x-nt-feedback-control {
+    transition: opacity var(--lumno-duration-xs) ease, visibility var(--lumno-duration-xs) ease;
+  }
+  body[data-nt-suggestions-open="true"] .x-nt-wallpaper-control,
+  body[data-nt-suggestions-open="true"] .x-nt-feedback-control {
+    opacity: 0;
+    visibility: hidden;
+  }
+  .x-nt-wallpaper-button {
+    background: var(--control-bg);
+    border-color: var(--tab-border);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
 }
 .x-nt-feedback-control[data-menu-open="true"] {
   z-index: 31;
@@ -4886,6 +4938,59 @@ body[data-theme="dark"] .x-nt-wallpaper-panel {
   overflow: hidden auto;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
+}
+/* Smaller screens tighten the panel; on phones it spans the screen above the corner
+   buttons (later blocks win where these ranges overlap). */
+@media (max-width: 520px) {
+  .x-nt-wallpaper-panel {
+    --x-nt-panel-divider-gap: 18px;
+    --x-nt-panel-header-gap: 15px;
+    --x-nt-panel-inline-gap: 13px;
+    --x-nt-panel-item-gap: 16px;
+    --x-nt-panel-control-gap: 13px;
+    --x-nt-panel-field-gap: 10px;
+    --x-nt-panel-option-gap: 12px;
+    --x-nt-panel-tab-gap: 5px;
+    --x-nt-panel-grid-gap: 14px;
+    max-width: calc(100vw - 28px);
+    max-height: calc(100vh - 70px - var(--x-nt-top-bar-max-inset));
+    max-height: calc(100dvh - 70px - var(--x-nt-top-bar-max-inset));
+    padding: 18px;
+  }
+}
+@media (max-height: 560px) {
+  .x-nt-wallpaper-panel {
+    --x-nt-panel-divider-gap: 16px;
+    --x-nt-panel-item-gap: 18px;
+    --x-nt-panel-option-gap: 12px;
+    max-height: calc(100vh - 70px - var(--x-nt-top-bar-max-inset));
+    max-height: calc(100dvh - 70px - var(--x-nt-top-bar-max-inset));
+  }
+}
+@media (max-width: 640px) {
+  .x-nt-wallpaper-panel {
+    --x-nt-panel-divider-gap: 16px;
+    --x-nt-panel-header-gap: 12px;
+    --x-nt-panel-inline-gap: 12px;
+    --x-nt-panel-item-gap: 14px;
+    --x-nt-panel-control-gap: 12px;
+    --x-nt-panel-field-gap: 8px;
+    --x-nt-panel-option-gap: 10px;
+    --x-nt-panel-tab-gap: 5px;
+    --x-nt-panel-grid-gap: 12px;
+    --x-nt-panel-scroll-edge: 10px;
+    position: fixed;
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 56px);
+    width: auto;
+    max-width: none;
+    max-height: calc(100dvh - 80px - var(--x-nt-top-bar-max-inset) - var(--x-nt-bottom-safe-inset));
+    --x-nt-panel-padding: 16px;
+  }
+  .x-nt-wallpaper-panel-scroll {
+    scrollbar-gutter: auto;
+  }
 }
 :root:not([data-lumno-scrollbars="overlay"]) .x-nt-wallpaper-panel-scroll::-webkit-scrollbar {
   width: 8px;
@@ -6884,25 +6989,8 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
 .x-nt-close-other-tabs[data-hover-active="true"] .ri-icon {
   transform: scale(1.06);
 }
-@supports (corner-shape: superellipse(1.25)) {
-  .x-nt-close-other-tabs {
-    corner-shape: superellipse(1.25);
-  }
-}
-@media (max-width: 860px) {
-  :root {
-    --x-nt-shortcuts-reserved-height: 82px;
-  }
-  #_x_extension_newtab_bookmarks_grid_2024_unique_ {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  #_x_extension_newtab_recent_sites_grid_2024_unique_ {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .x-nt-shortcuts-section {
-    max-width: 100%;
-  }
-}
+/* Layout variables by viewport. Width and height ranges overlap; later blocks win,
+   so short screens tighten the dock even when narrow, and phones (<=640px) come last. */
 @media (min-width: 521px) and (max-width: 1440px) {
   :root {
     --x-nt-content-viewport-width: calc(100vw - clamp(56px, 7.5vw, 88px));
@@ -6911,26 +6999,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
 @media (max-width: 520px) {
   :root {
     --x-nt-content-viewport-width: 96vw;
-  }
-  .x-nt-wallpaper-panel {
-    --x-nt-panel-divider-gap: 18px;
-    --x-nt-panel-header-gap: 15px;
-    --x-nt-panel-inline-gap: 13px;
-    --x-nt-panel-item-gap: 16px;
-    --x-nt-panel-control-gap: 13px;
-    --x-nt-panel-field-gap: 10px;
-    --x-nt-panel-option-gap: 12px;
-    --x-nt-panel-tab-gap: 5px;
-    --x-nt-panel-grid-gap: 14px;
-    max-width: calc(100vw - 28px);
-    max-height: calc(100vh - 70px - var(--x-nt-top-bar-max-inset));
-    max-height: calc(100dvh - 70px - var(--x-nt-top-bar-max-inset));
-    padding: 18px;
-  }
-  #_x_extension_newtab_bookmarks_2024_unique_,
-  #_x_extension_newtab_recent_sites_2024_unique_ {
-    min-width: 0;
-    width: min(96vw, var(--x-nt-content-max-width, 1040px));
   }
 }
 @media (max-height: 800px) {
@@ -6966,13 +7034,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
     --x-nt-bottom-dock-top-padding: 14px;
     --x-nt-bottom-dock-bottom-padding: 32px;
     --x-nt-shortcuts-section-margin-top: 8px;
-  }
-  .x-nt-wallpaper-panel {
-    --x-nt-panel-divider-gap: 16px;
-    --x-nt-panel-item-gap: 18px;
-    --x-nt-panel-option-gap: 12px;
-    max-height: calc(100vh - 70px - var(--x-nt-top-bar-max-inset));
-    max-height: calc(100dvh - 70px - var(--x-nt-top-bar-max-inset));
   }
 }
 @media (max-height: 430px) {
@@ -7040,67 +7101,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
     overflow: visible;
     overscroll-behavior: auto;
   }
-  #_x_extension_newtab_bookmarks_grid_2024_unique_ {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  #_x_extension_newtab_recent_sites_grid_2024_unique_ {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  /* Suggestions reach the bottom edge on phones; the page buttons would cover the last rows. */
-  .x-nt-wallpaper-control,
-  .x-nt-feedback-control {
-    transition: opacity var(--lumno-duration-xs) ease, visibility var(--lumno-duration-xs) ease;
-  }
-  body[data-nt-suggestions-open="true"] .x-nt-wallpaper-control,
-  body[data-nt-suggestions-open="true"] .x-nt-feedback-control {
-    opacity: 0;
-    visibility: hidden;
-  }
-  .x-nt-wallpaper-button {
-    background: var(--control-bg);
-    border-color: var(--tab-border);
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
-  .x-nt-wallpaper-panel {
-    --x-nt-panel-divider-gap: 16px;
-    --x-nt-panel-header-gap: 12px;
-    --x-nt-panel-inline-gap: 12px;
-    --x-nt-panel-item-gap: 14px;
-    --x-nt-panel-control-gap: 12px;
-    --x-nt-panel-field-gap: 8px;
-    --x-nt-panel-option-gap: 10px;
-    --x-nt-panel-tab-gap: 5px;
-    --x-nt-panel-grid-gap: 12px;
-    --x-nt-panel-scroll-edge: 10px;
-    position: fixed;
-    left: max(12px, env(safe-area-inset-left));
-    right: max(12px, env(safe-area-inset-right));
-    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 56px);
-    width: auto;
-    max-width: none;
-    max-height: calc(100dvh - 80px - var(--x-nt-top-bar-max-inset) - var(--x-nt-bottom-safe-inset));
-    --x-nt-panel-padding: 16px;
-  }
-  .x-nt-wallpaper-panel-scroll {
-    scrollbar-gutter: auto;
-  }
-}
-@media (hover: none) {
-  .x-nt-recent-card:hover {
-    transform: none;
-    --x-nt-recent-title-lines: var(--x-nt-dock-recent-title-lines, 3);
-  }
-  .x-nt-recent-card:hover .x-nt-recent-card-visual {
-    transform: none;
-    box-shadow: var(--x-nt-recent-card-shadow);
-  }
-  .x-nt-recent-card:hover .x-nt-recent-inner {
-    height: var(--x-nt-dock-recent-inner-height, 104px);
-    transform: none;
-    margin-bottom: 0;
-  }
 }
 @media (min-width: 641px) and (max-width: 900px) and (max-height: 560px) {
   body[data-nt-bottom-dock-density="tiny"] {
@@ -7164,7 +7164,8 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
   .x-nt-suggestion-action-button,
   .x-nt-suggestion-number-shortcut,
   .x-nt-suggestion-utility-button,
-  .x-nt-tab-switch-button {
+  .x-nt-tab-switch-button,
+  .x-nt-close-other-tabs {
     corner-shape: superellipse(1.25);
   }
 

@@ -417,8 +417,6 @@ body[data-theme="dark"] ._x_extension_settings_tabs_row_2024_unique_[data-stuck=
 ._x_extension_settings_version_badge_2024_unique_ {
   margin-left: auto;
   cursor: pointer;
-}
-._x_extension_settings_version_badge_2024_unique_ {
   margin-right: 20px;
   appearance: none;
   -webkit-appearance: none;
@@ -2231,21 +2229,15 @@ body[data-theme="dark"] ._x_extension_shortcut_ghost_2026_unique_ {
 #_x_extension_settings_panel_2024_unique_[data-theme="dark"] ._x_extension_shortcut_form_2024_unique_[data-expanded="false"] {
   border-color: rgba(255, 255, 255, 0.1);
 }
-._x_extension_shortcut_form_2024_unique_[data-expanded="true"] {
-  /* box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12); */
-  border-color: rgba(15, 23, 42, 0.28);
-}
-#_x_extension_settings_panel_2024_unique_[data-theme="dark"] ._x_extension_shortcut_form_2024_unique_[data-expanded="true"] {
-  /* box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12); */
-  border-color: rgba(255, 255, 255, 0.28);
-}
-#_x_extension_settings_panel_2024_unique_[data-theme="dark"] ._x_extension_shortcut_form_2024_unique_[data-expanded="true"] {
-  background: rgba(255, 255, 255, 0.04);
-}
 /* The form follows its fields' height, which runs on the accordion timing. */
 ._x_extension_shortcut_form_2024_unique_[data-expanded="true"] {
+  border-color: rgba(15, 23, 42, 0.28);
   justify-content: flex-start;
   overflow: visible;
+}
+#_x_extension_settings_panel_2024_unique_[data-theme="dark"] ._x_extension_shortcut_form_2024_unique_[data-expanded="true"] {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.04);
 }
 ._x_extension_shortcut_form_trigger_2024_unique_ {
   position: absolute;
@@ -2485,9 +2477,6 @@ body[data-theme="dark"] ._x_extension_confirm_dialog_2024_unique_ {
     transform: scale(1.02);
   }
 }
-._x_extension_shortcut_form_trigger_2024_unique_ ._x_extension_shortcut_submit_2024_unique_ {
-  align-self: center;
-}
 ._x_extension_shortcut_submit_2024_unique_:focus-visible {
   outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
@@ -2570,6 +2559,7 @@ body[data-theme="dark"] ._x_extension_shortcut_secondary_2024_unique_ {
   margin-inline-end: -2px;
 }
 ._x_extension_shortcut_form_trigger_2024_unique_ ._x_extension_shortcut_submit_2024_unique_ {
+  align-self: center;
   --settings-button-bg: transparent;
   --settings-button-color: var(--panel-text);
   --settings-button-shadow: none;
