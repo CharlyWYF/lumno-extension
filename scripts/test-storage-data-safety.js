@@ -5,7 +5,6 @@ const path = require('path');
 
 const settings = require('../src/shared/settings.js');
 const shortcutFavicon = require('../src/shared/shortcut-favicon.js');
-const { extractFunction: extractFunctionSource } = require('./helpers/extract-function');
 const repoRoot = path.join(__dirname, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'manifest.json'), 'utf8'));
 const expectedDevelopmentExtensionId = 'kkcjcneagmlhpeaafngjdlpcfjakejgb';
@@ -196,17 +195,51 @@ assert.strictEqual(
   );
 });
 
-const migrationSurfaces = [
-  'src/background/background.js',
-  'src/newtab/newtab.js'
-  // Options' migration lives in src/options/options-sync-section.js and is
-  // exercised against areas without remove/clear in test-options-sync-section.js.
-];
-migrationSurfaces.forEach((file) => {
-  const source = fs.readFileSync(path.join(repoRoot, file), 'utf8');
-  const block = extractFunctionSource(source, 'migrateStorageIfNeeded');
-  assert.match(block, /storageArea\.set\(stillMissingSyncValues\)/);
-  assert.doesNotMatch(block, /\.remove\s*\(|\.clear\s*\(/);
-});
+// Background and New Tab move local settings into sync through one shared
+// helper. It never removes anything and treats grouped shortcuts as one save.
+{
+  const [V2_HEAD, V2_CHUNK_2] = settings.NEWTAB_SHORTCUTS_V2_STORAGE_KEYS;
+  const PLAIN_KEY = settings.THEME_STORAGE_KEY;
+  function runMigration(sync, local, keys, syncAfterFirstRead) {
+    const writes = [];
+    let syncReads = 0;
+    const forbidden = () => { throw new Error('migration must not remove or clear data'); };
+    const syncArea = {
+      get(requested, callback) {
+        syncReads += 1;
+        callback(syncReads > 1 && syncAfterFirstRead ? { ...sync, ...syncAfterFirstRead } : { ...sync });
+      },
+      set(payload) { writes.push(payload); },
+      remove: forbidden,
+      clear: forbidden
+    };
+    const localArea = { get(requested, callback) { callback({ ...local }); }, remove: forbidden, clear: forbidden };
+    settings.migrateLocalSettingsToSync(localArea, syncArea, keys);
+    return writes;
+  }
+  const allKeys = [PLAIN_KEY, ...settings.NEWTAB_SHORTCUTS_V2_STORAGE_KEYS];
+  assert.deepStrictEqual(runMigration({}, { [PLAIN_KEY]: 'dark' }, allKeys), [{ [PLAIN_KEY]: 'dark' }]);
+  assert.deepStrictEqual(runMigration({ [PLAIN_KEY]: 'light' }, { [PLAIN_KEY]: 'dark' }, allKeys), [],
+    'a value already in sync is kept');
+  assert.deepStrictEqual(runMigration({}, { [PLAIN_KEY]: 'dark' }, allKeys, { [PLAIN_KEY]: 'light' }), [],
+    'a value synced after the first read is not overwritten');
+  assert.deepStrictEqual(runMigration({}, { [V2_CHUNK_2]: ['b'] }, allKeys), [],
+    'a local chunk without its head never moves on its own');
+  assert.deepStrictEqual(
+    runMigration({ [V2_CHUNK_2]: ['stray'] }, { [V2_HEAD]: { v: 2 }, [V2_CHUNK_2]: ['b'] }, allKeys),
+    [{ [V2_HEAD]: { v: 2 }, [V2_CHUNK_2]: ['b'] }],
+    'the whole local grouped save moves with its head, replacing a stray chunk in sync'
+  );
+  assert.deepStrictEqual(
+    runMigration({ [V2_HEAD]: { v: 3 } }, { [V2_HEAD]: { v: 2 }, [V2_CHUNK_2]: ['b'] }, allKeys),
+    [],
+    'no local chunk moves next to a head sync already has'
+  );
+  assert.deepStrictEqual(
+    runMigration({}, { [V2_HEAD]: { v: 2 }, [V2_CHUNK_2]: ['b'], [PLAIN_KEY]: 'dark' }, allKeys, { [V2_HEAD]: { v: 3 } }),
+    [{ [PLAIN_KEY]: 'dark' }],
+    'once another device syncs a grouped save, none of the local one moves'
+  );
+}
 
 console.log('storage data safety tests passed');

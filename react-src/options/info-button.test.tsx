@@ -37,10 +37,34 @@ describe('Options InfoButton', () => {
     expect(button?.getAttribute('data-tooltip')).toBe('关闭后的行为说明');
     expect(button?.getAttribute('data-i18n-tooltip')).toBe('settings_example_tooltip');
     expect(button?.getAttribute('aria-label')).toBe('关闭后的行为说明');
-    expect(button?.getAttribute('role')).toBe('img');
+    expect(button?.tagName).toBe('BUTTON');
+    expect(button?.getAttribute('type')).toBe('button');
+    expect(button?.hasAttribute('role')).toBe(false);
     expect(button?.tabIndex).toBe(0);
+    expect(button?.hasAttribute('aria-describedby')).toBe(false);
     expect(button?.querySelector('.ri-information-line')).not.toBeNull();
     expect(button?.querySelector('.ri-question-line')).toBeNull();
+
+    act(() => root.unmount());
+  });
+
+  it('names the button with its label and describes it with the tooltip text', () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    act(() => root.render(<InfoButton label="Template help" tooltip="Use %s for the query" />));
+
+    const button = host.querySelector<HTMLButtonElement>('button')!;
+    expect(button.getAttribute('aria-label')).toBe('Template help');
+    const description = document.getElementById(button.getAttribute('aria-describedby') || '');
+    expect(description?.textContent).toBe('Use %s for the query');
+    expect(button.contains(description)).toBe(true);
+    expect(description?.hidden).toBe(true);
+    expect(button.getAttribute('data-tooltip')).toBe('Use %s for the query');
+
+    button.focus();
+    expect(document.activeElement).toBe(button);
 
     act(() => root.unmount());
   });

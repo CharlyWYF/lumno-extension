@@ -442,7 +442,7 @@ describe('Options page storage wiring', () => {
       `#_x_extension_overlay_enter_animation_tabs_wrap_2026_unique_ button[data-overlay-enter-animation="${value}"]`
     ) as HTMLButtonElement;
     expect(chrome.storage.sync.values[key]).toBe('elastic');
-    expect(button('elastic').getAttribute('aria-pressed')).toBe('true');
+    expect(button('elastic').getAttribute('aria-checked')).toBe('true');
     await act(async () => {
       button('fade').click();
     });
@@ -452,7 +452,7 @@ describe('Options page storage wiring', () => {
       chrome.storage.sync.externalSet({ [key]: 'elastic' });
     });
     await settle();
-    expect(button('elastic').getAttribute('aria-pressed')).toBe('true');
+    expect(button('elastic').getAttribute('aria-checked')).toBe('true');
   });
 
   it('refreshes the sync status when any synced preference changes', async () => {

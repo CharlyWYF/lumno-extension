@@ -1462,8 +1462,13 @@ assert.strictEqual(
 const searchWidth = panelState(runtime).search.width;
 assert.deepStrictEqual(
   [searchWidth.min, searchWidth.max, searchWidth.value, searchWidth.suffix, searchWidth.valueText],
-  [720, 1040, 920, ' px', '920 px'],
+  [640, 1040, 920, ' px', '920 px'],
   'the search width slider shows the page width in pixels'
+);
+assert.deepStrictEqual(
+  toHostRealm(panelOf(runtime).model.marks.searchWidth),
+  [0, 20, 70, 100],
+  'the search width marks sit on the snap points 640, 720, 920 and 1040'
 );
 assert.strictEqual(panelState(runtime).search.autoFocus.toggle.checked, false, 'input auto-focus should default to disabled');
 assert.strictEqual(panelState(runtime).shortcuts.enabled, true, 'shortcuts should default to enabled');

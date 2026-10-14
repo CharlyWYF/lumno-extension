@@ -26,6 +26,21 @@ assert.strictEqual(keys.buildShortcutFromEvent({ code: 'ShiftLeft', key: 'Shift'
   'a lone modifier records nothing');
 assert.strictEqual(keys.buildShortcutFromEvent({ code: 'KeyK', key: 'k' }), '', 'a bare key records nothing');
 
+// Arrow keys record and save like any other key, and the saved chord is the
+// one the shared matcher recognizes on a keydown.
+{
+  const matcher = require('../src/shared/shortcut-key-matcher');
+  [['ArrowUp', '↑'], ['ArrowDown', '↓'], ['ArrowLeft', '←'], ['ArrowRight', '→']].forEach(([arrow, label]) => {
+    const event = { code: arrow, key: arrow, altKey: true, shiftKey: true };
+    const recorded = keys.buildShortcutFromEvent(event);
+    assert.strictEqual(recorded, `Alt+Shift+${arrow}`);
+    const saved = keys.normalizeFallbackShortcut(recorded);
+    assert.strictEqual(saved, recorded, `${arrow} survives saving`);
+    assert.deepStrictEqual(keys.getShortcutDisplayTokens(saved, { macSymbols: true }), ['⌥', '⇧', label]);
+    assert.strictEqual(matcher.eventMatchesShortcut(event, saved), true, `the matcher recognizes a saved ${arrow}`);
+  });
+}
+
 // Keycap labels: Mac symbols, or words elsewhere; arrows use symbols on both.
 assert.deepStrictEqual(keys.getShortcutDisplayTokens('Ctrl+Alt+Shift+Command+K', { macSymbols: true }), ['⌃', '⌥', '⇧', '⌘', 'K']);
 assert.deepStrictEqual(keys.getShortcutDisplayTokens('Ctrl+Shift+Command+up', { macSymbols: false }), ['CTRL', 'SHIFT', 'CMD', '↑']);

@@ -151,11 +151,12 @@
       : (window && typeof window.BroadcastChannel === 'function'
         ? window.BroadcastChannel
         : (typeof globalThis.BroadcastChannel === 'function' ? globalThis.BroadcastChannel : null));
+    // New Tab passes LumnoNewtabLayout.SEARCH_WIDTH_CONFIG; these defaults mirror it.
     const searchWidthConfig = Object.assign({
-      min: 720,
+      min: 640,
       max: 1040,
       fallback: 920,
-      snapPoints: [720, 920, 1040],
+      snapPoints: [640, 720, 920, 1040],
       snapThreshold: 14
     }, options.searchWidthConfig || {});
     const getSearchWidth = typeof options.getSearchWidth === 'function'
@@ -605,8 +606,6 @@
     const WALLPAPER_SOURCE_TABS = ['built-in', 'local', 'bing', 'curated'];
     const WALLPAPER_APPEARANCE_MODES = ['system', 'light', 'dark'];
     const WALLPAPER_EFFECT_SLIDER_KEYS = ['strength', 'size', 'spacing', 'texture', 'crtBloom', 'crtRgbOffset', 'crtCurvature'];
-    // Marks on the search width slider: standard, wide and maximum.
-    const SEARCH_WIDTH_TICK_VALUES = [720, 920, 1040];
     const BING_DAILY_HINT = 'A new Bing photo every day. A photo you pick while this is on stays for the rest of the day.';
     const CURATED_DAILY_HINT = 'A new photo every day from the category shown when you turn this on, ' +
       'the same on every synced device. A photo you pick stays for the rest of the day.';
@@ -2571,7 +2570,7 @@
     }
 
     function getSearchWidthMin() {
-      return Number.isFinite(Number(searchWidthConfig.min)) ? Number(searchWidthConfig.min) : 720;
+      return Number.isFinite(Number(searchWidthConfig.min)) ? Number(searchWidthConfig.min) : 640;
     }
 
     function getSearchWidthMax() {
@@ -2596,7 +2595,7 @@
     function getSearchWidthSnapPoints() {
       const points = Array.isArray(searchWidthConfig.snapPoints)
         ? searchWidthConfig.snapPoints
-        : [720, 920, 1040];
+        : [640, 720, 920, 1040];
       return points.map(normalizeSearchWidthValue)
         .filter((value, index, array) => array.indexOf(value) === index)
         .sort((a, b) => a - b);
@@ -3726,10 +3725,8 @@
           defaultValue: SETTINGS.NEWTAB_QUOTE_FONT_SIZE_DEFAULT || 15
         },
         marks: {
-          searchWidth: getSliderMarks(
-            [getSearchWidthMin()].concat(SEARCH_WIDTH_TICK_VALUES),
-            getSearchWidthPercent
-          ),
+          // One mark per snap point, so the marks show where the slider settles.
+          searchWidth: getSliderMarks(getSearchWidthSnapPoints(), getSearchWidthPercent),
           shortcutColumns: getSliderMarks(getShortcutColumnsTickValues(), getShortcutColumnsPercent),
           shortcutSize: getSliderMarks(
             uniqueSorted([48, 64, 80].map(normalizeShortcutSizeValue)),

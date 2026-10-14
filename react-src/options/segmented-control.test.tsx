@@ -96,9 +96,9 @@ describe('Options segmented control React island', () => {
     }));
 
     expect(host.isConnected).toBe(true);
-    expect(host.querySelector('[data-recent-mode="most"]')?.getAttribute('aria-pressed'))
+    expect(host.querySelector('[data-recent-mode="most"]')?.getAttribute('aria-checked'))
       .toBe('true');
-    // Toggle-button group semantics: no tab role, no aria-selected alongside aria-pressed.
+    // Radio group semantics: no tab role, no aria-selected alongside aria-checked.
     expect(host.querySelector('[role="tab"]')).toBeNull();
     expect(host.querySelector('[aria-selected]')).toBeNull();
     expect(host.querySelector('select')?.value).toBe('most');
@@ -179,6 +179,49 @@ describe('Options segmented control React island', () => {
     expect(host.querySelector<HTMLButtonElement>('[data-recent-mode="latest"]')?.disabled)
       .toBe(true);
     expect(host.querySelector('select')?.disabled).toBe(true);
+  });
+
+  it('acts as one radio group with a single tab stop that arrows move', () => {
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      callback(0);
+      return 0;
+    });
+    const { controller, host, onSelect } = createFixture();
+    onSelect.mockImplementation((value: string) => {
+      controller.render({ ...model, activeValue: value });
+    });
+    act(() => controller.render(model));
+
+    expect(host.getAttribute('role')).toBe('radiogroup');
+    const radios = () => Array.from(host.querySelectorAll<HTMLButtonElement>('[role="radio"]'));
+    expect(radios()).toHaveLength(2);
+    expect(radios().map((radio) => radio.getAttribute('aria-checked'))).toEqual(['true', 'false']);
+    expect(radios().map((radio) => radio.tabIndex)).toEqual([0, -1]);
+    expect(radios().some((radio) => radio.hasAttribute('aria-pressed'))).toBe(false);
+
+    radios()[0].focus();
+    act(() => {
+      radios()[0].dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowDown' }));
+    });
+    expect(onSelect).toHaveBeenLastCalledWith('most');
+    expect(radios().map((radio) => radio.getAttribute('aria-checked'))).toEqual(['false', 'true']);
+    expect(radios().map((radio) => radio.tabIndex)).toEqual([-1, 0]);
+    expect(document.activeElement).toBe(radios()[1]);
+    expect(host.querySelector('select')?.value).toBe('most');
+
+    act(() => {
+      radios()[1].dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowRight' }));
+    });
+    expect(onSelect).toHaveBeenLastCalledWith('latest');
+    expect(document.activeElement).toBe(radios()[0]);
+  });
+
+  it('keeps the first option tabbable when nothing is selected', () => {
+    const { controller, host } = createFixture();
+    act(() => controller.render({ ...model, activeValue: 'unknown' }));
+
+    expect(Array.from(host.querySelectorAll<HTMLButtonElement>('[role="radio"]'), (radio) => radio.tabIndex))
+      .toEqual([0, -1]);
   });
 
   it('unmounts cleanly', () => {

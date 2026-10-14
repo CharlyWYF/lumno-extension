@@ -108,7 +108,9 @@ assert.strictEqual(settings.normalizeNewtabWidthMode('standard'), 'standard');
 assert.strictEqual(settings.normalizeNewtabWidthMode('wide'), 'wide');
 assert.strictEqual(settings.normalizeNewtabWidthMode('other'), 'wide');
 
-assert.strictEqual(settings.normalizeNewtabSearchWidth(719), 720);
+assert.strictEqual(settings.normalizeNewtabSearchWidth(639), 640);
+assert.strictEqual(settings.normalizeNewtabSearchWidth(680), 680, 'the default range starts at the New Tab minimum of 640');
+assert.strictEqual(settings.normalizeNewtabSearchWidth(700, { min: 720 }), 720);
 assert.strictEqual(settings.normalizeNewtabSearchWidth(920), 920);
 assert.strictEqual(settings.normalizeNewtabSearchWidth(1200), 1040);
 assert.strictEqual(settings.normalizeNewtabSearchWidth(undefined), 920);

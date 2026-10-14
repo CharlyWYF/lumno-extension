@@ -243,6 +243,55 @@
     DEFAULT_SEARCH_ENGINE_STORAGE_KEY
   ]);
 
+  // Copies settings this device saved locally into sync where sync has none.
+  // Sync is read again just before writing so a value another device synced
+  // meanwhile is never overwritten. The grouped shortcut keys move as one
+  // save keyed off their head: all of them while sync lacks a head (replacing
+  // any stray chunk there), none once it has one. Nothing is ever removed.
+  function migrateLocalSettingsToSync(localArea, syncArea, keys) {
+    const [groupHeadKey] = NEWTAB_SHORTCUTS_V2_STORAGE_KEYS;
+    const isGroupKey = (key) => NEWTAB_SHORTCUTS_V2_STORAGE_KEYS.includes(key);
+    localArea.get(keys, (localResult) => {
+      const hasLocal = keys.some((key) => typeof localResult[key] !== 'undefined');
+      if (!hasLocal) {
+        return;
+      }
+      syncArea.get(keys, (syncResult) => {
+        const groupMissing = typeof localResult[groupHeadKey] !== 'undefined'
+          && typeof syncResult[groupHeadKey] === 'undefined';
+        const missingSyncValues = {};
+        keys.forEach((key) => {
+          if (typeof localResult[key] === 'undefined') {
+            return;
+          }
+          const missing = isGroupKey(key) ? groupMissing : typeof syncResult[key] === 'undefined';
+          if (missing) {
+            missingSyncValues[key] = localResult[key];
+          }
+        });
+        const missingKeys = Object.keys(missingSyncValues);
+        if (missingKeys.length === 0) {
+          return;
+        }
+        syncArea.get(missingKeys, (latestSyncResult) => {
+          const groupStillMissing = typeof latestSyncResult[groupHeadKey] === 'undefined';
+          const stillMissingSyncValues = {};
+          missingKeys.forEach((key) => {
+            const missing = isGroupKey(key)
+              ? groupStillMissing
+              : typeof latestSyncResult[key] === 'undefined';
+            if (missing) {
+              stillMissingSyncValues[key] = missingSyncValues[key];
+            }
+          });
+          if (Object.keys(stillMissingSyncValues).length > 0) {
+            syncArea.set(stillMissingSyncValues);
+          }
+        });
+      });
+    });
+  }
+
   function normalizeLocale(locale) {
     const raw = String(locale || '').trim();
     if (!raw) {
@@ -282,7 +331,7 @@
   function normalizeNewtabSearchWidth(value, options) {
     const config = options || {};
     const allowNull = Boolean(config.allowNull);
-    const min = Number.isFinite(Number(config.min)) ? Number(config.min) : 720;
+    const min = Number.isFinite(Number(config.min)) ? Number(config.min) : 640;
     const max = Number.isFinite(Number(config.max)) ? Number(config.max) : 1040;
     const fallback = Number.isFinite(Number(config.fallback)) ? Number(config.fallback) : 920;
     const number = Number(value);
@@ -1244,6 +1293,7 @@
     NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY,
     NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY,
     NEWTAB_SHORTCUTS_V2_STORAGE_KEYS,
+    migrateLocalSettingsToSync,
     NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY,
     NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY,
     NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY,
