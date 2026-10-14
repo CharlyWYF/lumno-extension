@@ -54,7 +54,7 @@
       fitShortcutGroupColumns
     } = deps;
 
-    // Page state still owned by newtab.js; read and written through accessors.
+    // The page state object shared with newtab.js and the other modules.
     const pageState = deps.pageState;
 
     // One click guard for every drag on the page (drag-click-guard.js).

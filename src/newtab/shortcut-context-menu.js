@@ -36,7 +36,7 @@
       confirmDeleteShortcutGroupWithSites
     } = deps;
 
-    // Page state still owned by newtab.js; read and written through accessors.
+    // The page state object shared with newtab.js and the other modules.
     const pageState = deps.pageState;
 
     const SHORTCUT_CONTEXT_MENU_MIN_WIDTH_PX = 124;

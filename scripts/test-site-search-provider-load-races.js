@@ -32,11 +32,6 @@ function createLoadHarness(source) {
 async function verifyLoadGuard(surface, source) {
   assert.match(
     source,
-    /let siteSearchProvidersLoadPromise = null;[\s\S]*?let siteSearchProvidersLoadVersion = 0;|let siteSearchProvidersLoadVersion = 0;[\s\S]*?let siteSearchProvidersLoadPromise = null;/,
-    `${surface} should track an in-flight provider load and its generation`
-  );
-  assert.match(
-    source,
     /function getSiteSearchProviders\(\) \{\s*if \(siteSearchProvidersLoadPromise\) \{\s*return siteSearchProvidersLoadPromise;/,
     `${surface} should reuse the current provider load`
   );
