@@ -7,34 +7,54 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function() {
   'use strict';
 
-  // One Escape press dismisses one layer: the open layer pushed last, or a
-  // layer with a higher priority (an active drag) whenever it is open.
-  // Layers push themselves when they open; `isOpen` lets the stack skip a
-  // layer that closed some other way, so a missed `remove` never strands it.
+  // One Escape press dismisses one layer: the open layer that opened last,
+  // or a layer with a higher priority (an active drag) whenever it is open.
+  //
+  // Each layer registers once with `isOpen` and `close`; the stack never
+  // needs to be told when a layer opens or closes. It notes which layers
+  // are open at the start of every press, key press, hover change and focus
+  // change (capture phase, before the event can open anything), so a layer
+  // that opened since then counts as opened after every layer already seen.
   function createDismissStack(options) {
     const opts = options || {};
     const documentObj = opts.documentObj || (typeof document !== 'undefined' ? document : null);
     const layers = new Map();
-    let pushCount = 0;
+    let openCount = 0;
+    let registerCount = 0;
     let listening = false;
     let shouldIgnore = typeof opts.shouldIgnore === 'function' ? opts.shouldIgnore : null;
 
     function isLayerOpen(layer) {
       try {
-        return typeof layer.isOpen === 'function' ? Boolean(layer.isOpen()) : true;
+        return Boolean(layer.isOpen());
       } catch (_error) {
         return false;
       }
     }
 
+    // Layers seen opening in the same refresh keep their registration order.
+    function refresh() {
+      layers.forEach((layer) => {
+        const open = isLayerOpen(layer);
+        if (open && !layer.open) {
+          openCount += 1;
+          layer.openedAt = openCount;
+        }
+        layer.open = open;
+      });
+    }
+
     function getTopLayer() {
+      refresh();
       let top = null;
       layers.forEach((layer) => {
-        if (!isLayerOpen(layer)) {
+        if (!layer.open) {
           return;
         }
         if (!top || layer.priority > top.priority ||
-            (layer.priority === top.priority && layer.order > top.order)) {
+            (layer.priority === top.priority &&
+              (layer.openedAt > top.openedAt ||
+                (layer.openedAt === top.openedAt && layer.registeredAt > top.registeredAt)))) {
           top = layer;
         }
       });
@@ -54,14 +74,14 @@
         if (typeof event.stopPropagation === 'function') event.stopPropagation();
       }
       top.close(event);
+      refresh();
       return true;
     }
 
     function handleKeyDown(event) {
-      if (!event || event.key !== 'Escape' || event.defaultPrevented || event.isComposing) {
-        return;
-      }
-      if (shouldIgnore && shouldIgnore(event)) {
+      if (!event || event.key !== 'Escape' || event.defaultPrevented || event.isComposing ||
+          (shouldIgnore && shouldIgnore(event))) {
+        refresh();
         return;
       }
       dismissTop(event);
@@ -73,26 +93,29 @@
       }
       listening = true;
       documentObj.addEventListener('keydown', handleKeyDown, true);
+      ['pointerdown', 'pointerover', 'focusin'].forEach((type) => {
+        documentObj.addEventListener(type, refresh, true);
+      });
     }
 
-    // Puts `key` on top of the stack, adding it or refreshing its handlers.
-    function push(key, layer) {
-      if (!key || !layer || typeof layer.close !== 'function') {
+    // Registers (or replaces) the layer `key`; `isOpen()` says whether it
+    // is showing, `close(event)` dismisses it.
+    function register(key, layer) {
+      if (!key || !layer || typeof layer.close !== 'function' || typeof layer.isOpen !== 'function') {
         return;
       }
-      pushCount += 1;
+      const previous = layers.get(key);
+      registerCount += 1;
       layers.set(key, {
         key,
         close: layer.close,
         isOpen: layer.isOpen,
         priority: Number(layer.priority) || 0,
-        order: pushCount
+        registeredAt: previous ? previous.registeredAt : registerCount,
+        open: previous ? previous.open : false,
+        openedAt: previous ? previous.openedAt : 0
       });
       listen();
-    }
-
-    function remove(key) {
-      layers.delete(key);
     }
 
     function setShouldIgnore(predicate) {
@@ -100,8 +123,8 @@
     }
 
     return {
-      push,
-      remove,
+      register,
+      refresh,
       dismissTop,
       handleKeyDown,
       setShouldIgnore,

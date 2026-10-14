@@ -8273,7 +8273,7 @@
   };
 
   // Escape cancels a drag before it closes any open layer.
-  dismissStack.push('drag', {
+  dismissStack.register('drag', {
     priority: 1,
     isOpen: () => Boolean(shortcutDragState || bookmarkDragState || recentCardDragRuntime.hasRecentCardDragSession()),
     close: () => {
@@ -8484,9 +8484,7 @@
     }
     closeWallpaperPanel();
   }, true);
-  // The panel opens inside the wallpaper runtime, so it holds the bottom of
-  // the dismiss stack; whatever opens over it is pushed above it.
-  dismissStack.push('wallpaper-panel', {
+  dismissStack.register('wallpaper-panel', {
     isOpen: isWallpaperPanelOpen,
     close: () => {
       // Escape dismisses an open filter menu before it closes the whole panel.

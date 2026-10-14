@@ -510,9 +510,6 @@
       }
       bookmarkCascadeMenu = null;
       setDocumentListenersAttached(false);
-      if (dismissStack) {
-        dismissStack.remove(DISMISS_LAYER_KEY);
-      }
       bookmarkCascadePointer = null;
       bookmarkCascadePreviousPointer = null;
       if (optionsForClose.restoreFocus && anchorToRestore && typeof anchorToRestore.focus === 'function') {
@@ -1420,12 +1417,6 @@
         bookmarkCascadeMenu = view.createMenu(documentObj);
         bookmarkCascadeMenu.setAttribute('role', 'menu');
         setDocumentListenersAttached(true);
-        if (dismissStack) {
-          dismissStack.push(DISMISS_LAYER_KEY, {
-            isOpen: () => Boolean(bookmarkCascadeMenu),
-            close: () => close({ restoreFocus: true })
-          });
-        }
         setBookmarkCascadeDragMode(dragMode);
         documentObj.body.appendChild(bookmarkCascadeMenu);
         bookmarkCascadeKeyboardLevelIndex = 0;
@@ -1757,6 +1748,13 @@
         return;
       }
       handleBookmarkCascadeKeyboardNavigation(event);
+    }
+
+    if (dismissStack) {
+      dismissStack.register(DISMISS_LAYER_KEY, {
+        isOpen: () => Boolean(bookmarkCascadeMenu),
+        close: () => close({ restoreFocus: true })
+      });
     }
 
     // The document listeners exist only while a menu is open.

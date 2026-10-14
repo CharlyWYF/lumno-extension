@@ -212,6 +212,12 @@
       handleRecentContextMenuAction(option.getAttribute('data-value'));
     }
 
+    // Escape closes the menu through the page's dismiss stack.
+    root.LumnoNewtabDismissStack.getDismissStack().register('recent-context-menu', {
+      isOpen: () => Boolean(pageState.recentContextMenuTarget || isRecentContextMenuOpen()),
+      close: () => closeRecentContextMenu()
+    });
+
     function handleRecentContextMenuDocumentPointerDown(event) {
       if (!pageState.recentContextMenuTarget || isRecentContextMenuNode(event.target)) {
         return;
@@ -294,11 +300,6 @@
         );
       }
       pageState.recentContextMenuSelectController.setOpen(pageState.recentContextMenu.control, true);
-      // Escape closes the menu through the page's dismiss stack.
-      root.LumnoNewtabDismissStack.getDismissStack().push('recent-context-menu', {
-        isOpen: () => Boolean(pageState.recentContextMenuTarget || isRecentContextMenuOpen()),
-        close: () => closeRecentContextMenu()
-      });
     }
 
     function handleRecentCardContextMenu(payload) {

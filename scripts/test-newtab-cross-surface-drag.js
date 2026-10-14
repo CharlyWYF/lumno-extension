@@ -159,6 +159,7 @@ function rect(left, top, width = 60, height = 60) {
     };
     const renderShortcuts = () => {};
     const flushDeferredShortcutRender = () => {};
+    const getShortcutDropSettleMs = () => 0;
     const getDragClickGuard = () => ({ armAfterDrag() {} });
     ${getFunctionSource(newtabJs, 'getShortcutGroupHeader')}
     ${getFunctionSource(newtabJs, 'restoreShortcutDragOrder')}

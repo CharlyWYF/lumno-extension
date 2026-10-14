@@ -266,12 +266,13 @@
         );
       }
       pageState.bookmarkContextMenuSelectController.setOpen(pageState.bookmarkContextMenu.control, true);
-      // Opened over a folder menu, it is the layer Escape closes first.
-      root.LumnoNewtabDismissStack.getDismissStack().push('bookmark-context-menu', {
-        isOpen: isBookmarkContextMenuOpen,
-        close: () => closeBookmarkContextMenu()
-      });
     }
+
+    // Opened over a folder menu, it is the layer Escape closes first.
+    root.LumnoNewtabDismissStack.getDismissStack().register('bookmark-context-menu', {
+      isOpen: isBookmarkContextMenuOpen,
+      close: () => closeBookmarkContextMenu()
+    });
 
     function handleBookmarkItemContextMenu(payload) {
       const event = payload && payload.event;

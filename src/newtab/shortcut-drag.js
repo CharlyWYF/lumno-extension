@@ -302,6 +302,11 @@
       state.tile.style.transform = `translate3d(${nextX}px, ${nextY}px, 0)`;
     }
 
+    // How long a dropped tile takes to land and lose its drag styles.
+    function getShortcutDropSettleMs() {
+      return NEWTAB_CROSS_SURFACE_DRAG.prefersReducedMotion(window) ? 0 : SHORTCUT_DROP_ANIMATION_MS + 90;
+    }
+
     function settleShortcutDragTile(tile) {
       if (!tile || !tile.style) {
         return;
@@ -332,7 +337,7 @@
         tile.style.removeProperty('transform');
         tile.style.removeProperty('will-change');
         tile.style.pointerEvents = '';
-      }, reducedMotion ? 0 : SHORTCUT_DROP_ANIMATION_MS + 90);
+      }, getShortcutDropSettleMs());
     }
 
     function getShortcutTileInsertionIndex(tile) {
@@ -674,7 +679,8 @@
     }
 
     // Renders asked for during the drag were held back (see renderShortcuts);
-    // whatever the drop does first, they run once it has settled.
+    // they run once whatever the drop does has finished and the dropped tile
+    // has landed, so a render never cuts into its settle animation.
     function finishShortcutDrag(event, options) {
       if (!pageState.shortcutDragState) {
         return;
@@ -682,8 +688,12 @@
       if (event && pageState.shortcutDragState.pointerId !== event.pointerId) {
         return;
       }
+      const settleMs = pageState.shortcutDragState.isDragging ? getShortcutDropSettleMs() : 0;
       const outcome = endShortcutDrag(event, options);
-      Promise.resolve(outcome).then(flushDeferredShortcutRender, flushDeferredShortcutRender);
+      const flushAfterSettle = () => {
+        window.setTimeout(flushDeferredShortcutRender, settleMs);
+      };
+      Promise.resolve(outcome).then(flushAfterSettle, flushAfterSettle);
     }
 
     function endShortcutDrag(event, options) {
@@ -1021,6 +1031,13 @@
     const SHORTCUT_GROUP_DRAG_START_THRESHOLD_PX = 6;
     let shortcutGroupDragState = null;
 
+    // Escape cancels a group drag before it closes any open layer.
+    root.LumnoNewtabDismissStack.getDismissStack().register('shortcut-group-drag', {
+      priority: 1,
+      isOpen: () => Boolean(shortcutGroupDragState && shortcutGroupDragState.isDragging),
+      close: () => finishShortcutGroupDrag(false, null)
+    });
+
     function getShortcutGroupHeaders() {
       return pageState.shortcutGrid
         ? Array.from(pageState.shortcutGrid.querySelectorAll('.x-nt-shortcut-group-header'))
@@ -1060,12 +1077,6 @@
 
     function startShortcutGroupDrag(state) {
       state.isDragging = true;
-      // Escape cancels the drag before it closes any open layer.
-      root.LumnoNewtabDismissStack.getDismissStack().push('shortcut-group-drag', {
-        priority: 1,
-        isOpen: () => state === shortcutGroupDragState,
-        close: () => finishShortcutGroupDrag(false, null)
-      });
       closeShortcutContextMenu();
       hideShortcutTooltip();
       resetShortcutDockHover();
@@ -1153,7 +1164,6 @@
       document.removeEventListener('pointermove', handleShortcutGroupDragPointerMove, true);
       document.removeEventListener('pointerup', handleShortcutGroupDragPointerUp, true);
       document.removeEventListener('pointercancel', handleShortcutGroupDragPointerCancel, true);
-      root.LumnoNewtabDismissStack.getDismissStack().remove('shortcut-group-drag');
       if (state.frameId) window.cancelAnimationFrame(state.frameId);
       if (!state.isDragging) return;
       if (state.ghost) state.ghost.remove();

@@ -6,6 +6,7 @@ const path = require('path');
 const repoRoot = path.resolve(__dirname, '..');
 const NEWTAB_BOOKMARK_MOVE_HISTORY = require(path.join(repoRoot, 'src/newtab/bookmark-move-history.js'));
 const NEWTAB_CROSS_SURFACE_DRAG = require(path.join(repoRoot, 'src/newtab/cross-surface-drag.js'));
+require(path.join(repoRoot, 'src/newtab/dismiss-stack.js'));
 require(path.join(repoRoot, 'src/newtab/shortcut-drag.js'));
 
 global.window = global;

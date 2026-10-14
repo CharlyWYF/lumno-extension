@@ -286,6 +286,11 @@
       });
     }
 
+    dismissStack.register('shortcut-context-menu', {
+      isOpen: () => Boolean(pageState.shortcutContextMenuTarget || isShortcutContextMenuOpen()),
+      close: () => closeShortcutContextMenu()
+    });
+
     function handleShortcutContextMenuDocumentFocusIn(event) {
       if (pageState.shortcutContextMenuTarget && !isShortcutContextMenuNode(event.target)) {
         closeShortcutContextMenu();
@@ -390,10 +395,6 @@
       pageState.shortcutContextMenu.select.value = defaultValue;
       pageState.shortcutContextMenuSelectController.sync(pageState.shortcutContextMenu.control);
       pageState.shortcutContextMenuSelectController.setOpen(pageState.shortcutContextMenu.control, true);
-      dismissStack.push('shortcut-context-menu', {
-        isOpen: () => Boolean(pageState.shortcutContextMenuTarget || isShortcutContextMenuOpen()),
-        close: () => closeShortcutContextMenu()
-      });
     }
 
     function handleShortcutContextMenu(event) {
