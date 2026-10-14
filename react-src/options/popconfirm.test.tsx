@@ -109,6 +109,60 @@ describe('Options Popconfirm React island', () => {
     document.removeEventListener('click', documentClick);
   });
 
+  it('moves focus into the bubble, closes on Escape, and returns focus to the trigger', () => {
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    const { controller, host, options } = createFixture();
+    const model = {
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Confirm',
+      message: 'Continue?',
+      messageKey: 'confirm_continue'
+    };
+    options.onCancel.mockImplementation(() => controller.render({ ...model, open: false }));
+    const documentKeyDown = vi.fn();
+    document.addEventListener('keydown', documentKeyDown);
+    trigger.focus();
+
+    act(() => {
+      controller.render({ ...model, open: true });
+    });
+    expect(document.activeElement).toBe(host.querySelectorAll('button')[0]);
+
+    act(() => {
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Escape' })
+      );
+    });
+    expect(options.onCancel).toHaveBeenCalledTimes(1);
+    expect(host.dataset.open).toBe('false');
+    expect(document.activeElement).toBe(trigger);
+    expect(documentKeyDown).not.toHaveBeenCalled();
+    document.removeEventListener('keydown', documentKeyDown);
+  });
+
+  it('leaves focus where an outside click put it', () => {
+    const trigger = document.createElement('button');
+    const elsewhere = document.createElement('input');
+    document.body.append(trigger, elsewhere);
+    const { controller } = createFixture();
+    const model = {
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Confirm',
+      message: 'Continue?',
+      messageKey: 'confirm_continue'
+    };
+    trigger.focus();
+    act(() => {
+      controller.render({ ...model, open: true });
+    });
+    elsewhere.focus();
+    act(() => {
+      controller.render({ ...model, open: false });
+    });
+    expect(document.activeElement).toBe(elsewhere);
+  });
+
   it('unmounts cleanly', () => {
     const { controller, host } = createFixture();
     act(() => {
