@@ -11,6 +11,7 @@ import aggregateSearchSource from '../../src/options/options-aggregate-search.js
 import syncTransferSource from '../../src/options/options-sync-transfer.js?raw';
 import syncSectionSource from '../../src/options/options-sync-section.js?raw';
 import shortcutKeysSource from '../../src/options/options-shortcut-keys.js?raw';
+import fallbackShortcutSource from '../../src/options/options-fallback-shortcut.js?raw';
 import blacklistSource from '../../src/options/options-blacklist.js?raw';
 import feedbackSupportSource from '../../src/options/options-feedback-support.js?raw';
 import webdavOptionsSource from '../../src/options/webdav-options.js?raw';
@@ -78,6 +79,7 @@ const PAGE_SCRIPTS = [
   syncTransferSource,
   syncSectionSource,
   shortcutKeysSource,
+  fallbackShortcutSource,
   blacklistSource,
   feedbackSupportSource
 ];
