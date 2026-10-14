@@ -34,24 +34,67 @@
     });
   }
 
-  function sendUnknownResponse(sendResponse) {
+  // Who may send which action. Content scripts and the injected overlay run
+  // inside web pages, so a message from there is treated as coming from the
+  // page: only actions those surfaces use are accepted, and their arguments
+  // must pass the action's guard. Extension pages may send every action.
+  function createSenderPolicy(options) {
+    const config = options || {};
+    const extensionBaseUrl = String(config.extensionBaseUrl || '');
+    const pageActions = new Set((config.pageActions || []).map((action) => String(action)));
+    const pageArgumentGuards = config.pageArgumentGuards || {};
+
+    function isExtensionPageSender(sender) {
+      const url = sender && typeof sender.url === 'string' ? sender.url : '';
+      return Boolean(extensionBaseUrl && url.startsWith(extensionBaseUrl));
+    }
+
+    function check(action, request, sender) {
+      const name = String(action || '');
+      if (isExtensionPageSender(sender)) {
+        return { ok: true };
+      }
+      if (!pageActions.has(name)) {
+        return { ok: false, reason: 'sender-not-allowed' };
+      }
+      const guard = pageArgumentGuards[name];
+      if (typeof guard === 'function' && guard(request || {}, sender) !== true) {
+        return { ok: false, reason: 'argument-not-allowed' };
+      }
+      return { ok: true };
+    }
+
+    return Object.freeze({
+      isExtensionPageSender,
+      check
+    });
+  }
+
+  function sendRejectedResponse(sendResponse, reason) {
     if (typeof sendResponse === 'function') {
-      sendResponse({ ok: false });
+      sendResponse(reason ? { ok: false, reason } : { ok: false });
     }
     return undefined;
   }
 
-  function dispatch(router, request, sender, sendResponse) {
+  function dispatch(router, request, sender, sendResponse, senderPolicy) {
     const action = request && request.action ? String(request.action) : '';
     const handler = action && router ? router.get(action) : null;
     if (!handler) {
-      return sendUnknownResponse(sendResponse);
+      return sendRejectedResponse(sendResponse);
+    }
+    if (senderPolicy) {
+      const verdict = senderPolicy.check(action, request, sender);
+      if (!verdict.ok) {
+        return sendRejectedResponse(sendResponse, verdict.reason);
+      }
     }
     return handler(request, sender, sendResponse);
   }
 
   const api = Object.freeze({
     createRouter,
+    createSenderPolicy,
     dispatch
   });
 

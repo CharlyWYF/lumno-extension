@@ -1284,6 +1284,60 @@ async function run() {
     fallbackGoogleResponse && fallbackGoogleResponse.hasRemoteSuggestions === true,
     'an unconfigured search engine should still provide keyword suggestions through the Google fallback'
   );
+
+  // The prefill hotkey opens the overlay with the full current URL; neither it
+  // nor any other URL, host or path may reach the suggestion provider.
+  const remoteSuggestionQueries = [];
+  const { messageListeners: urlQueryListeners } = loadBackgroundForTest({
+    fetch: async (url) => {
+      const parsedUrl = new URL(String(url));
+      if (parsedUrl.hostname === 'suggestqueries.google.com') {
+        remoteSuggestionQueries.push(parsedUrl.searchParams.get('q'));
+        return { ok: true, json: async () => [parsedUrl.searchParams.get('q'), ['remote keyword']] };
+      }
+      throw new Error('unexpected request');
+    }
+  });
+  const urlLikeQueries = [
+    'https://wiki.corp.example/private/page?token=secret',
+    'https://wiki.corp.example/private/page?token=secret more words',
+    'file:///Users/someone/Documents/contract.pdf',
+    'jira.internal/browse/SEC-1',
+    '10.0.0.8:8080/admin'
+  ];
+  for (const query of urlLikeQueries) {
+    await sendBackgroundMessage(urlQueryListeners, {
+      action: 'getSearchSuggestions',
+      query,
+      context: 'overlay'
+    }, 200);
+    const response = await sendBackgroundMessage(urlQueryListeners, {
+      action: 'getSearchEngineSuggestions',
+      query,
+      context: 'overlay',
+      localSuggestions: []
+    }, 1000);
+    assert.ok(
+      response && response.hasRemoteSuggestions === false,
+      `${query} should not get remote keyword suggestions`
+    );
+  }
+  assert.deepStrictEqual(
+    remoteSuggestionQueries,
+    [],
+    'URL, host and path queries (including the prefilled page URL) should never be sent to the suggestion provider'
+  );
+  await sendBackgroundMessage(urlQueryListeners, {
+    action: 'getSearchEngineSuggestions',
+    query: 'weather tomorrow',
+    context: 'overlay',
+    localSuggestions: []
+  }, 1000);
+  assert.deepStrictEqual(
+    remoteSuggestionQueries,
+    ['weather tomorrow'],
+    'ordinary words should still get remote keyword suggestions'
+  );
 }
 
 run()

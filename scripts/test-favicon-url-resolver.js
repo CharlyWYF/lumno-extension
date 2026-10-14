@@ -51,14 +51,18 @@ const createResolver = (options) => utils.createFaviconUrlResolver({
 }
 
 {
-  // Proxy requests only stand for the page they name. Favicon.is may stand for
-  // the same host, but only when the caller opts in.
+  // Gstatic is only told the site origin, so its answer stands for that
+  // origin. Favicon.is may stand for the same host, but only when the caller
+  // opts in.
   const resolver = createResolver();
   const page = 'https://docs.example.com/guide';
   const samePageProxy = resolver.getGstaticFaviconUrl(page);
   assert.ok(samePageProxy);
+  assert.strictEqual(new URL(samePageProxy).searchParams.get('url'), 'https://docs.example.com/');
   assert.strictEqual(resolver.getSafeFaviconCandidateUrl(samePageProxy, page), samePageProxy);
-  assert.strictEqual(resolver.getSafeFaviconCandidateUrl(resolver.getGstaticFaviconUrl('https://docs.example.com/'), page), '');
+  assert.strictEqual(resolver.getSafeFaviconCandidateUrl(resolver.getGstaticFaviconUrl('https://docs.example.com/'), page),
+    samePageProxy);
+  assert.strictEqual(resolver.getSafeFaviconCandidateUrl(resolver.getGstaticFaviconUrl('https://api.example.com/'), page), '');
   assert.strictEqual(resolver.getSafeFaviconCandidateUrl('https://favicon.is/docs.example.com', page), '');
   assert.strictEqual(
     resolver.getSafeFaviconCandidateUrl('https://favicon.is/docs.example.com', page, 'explicit', { allowDomainProxy: true }),

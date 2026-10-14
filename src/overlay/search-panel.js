@@ -4023,10 +4023,11 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       parseCssColor,
       rgbToCss,
       isDarkMode: isOverlayDarkMode,
-      getProviderIcon,
-      resolveProviderIconUrl: (provider, iconUrl) => getOverlayFaviconUrlResolver().getProviderFaviconUrl(
-        SHORTCUT_FAVICON.getSiteSearchProviderPageUrl(provider), iconUrl
-      ),
+      getProviderIcon: getPageRenderableProviderIcon,
+      resolveProviderIconUrl: (provider, iconUrl) => {
+        const pageUrl = SHORTCUT_FAVICON.getSiteSearchProviderPageUrl(provider);
+        return toPageRenderableIconUrl(getOverlayFaviconUrlResolver().getProviderFaviconUrl(pageUrl, iconUrl), pageUrl);
+      },
       getProviderThemeHost,
       getThemeForProvider,
       getSiteSearchPrefixText,
@@ -4651,6 +4652,25 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       return resolver.getProviderFaviconUrl(SHORTCUT_FAVICON.getSiteSearchProviderPageUrl(provider), iconUrl);
     }
 
+    // Input-mode icons load straight into an <img> in the page, which cannot
+    // load the browser's _favicon cache; those arrive as data: URLs from the
+    // background, and the provider keeps its glyph until one is cached.
+    function toPageRenderableIconUrl(iconUrl, pageUrl) {
+      if (!FAVICON_UTILS.isExtensionFaviconEndpointUrl(iconUrl)) {
+        return iconUrl;
+      }
+      const cachedData = faviconDataCache.get(iconUrl);
+      if (cachedData) {
+        return cachedData;
+      }
+      requestFaviconData(iconUrl, pageUrl).catch(() => null);
+      return '';
+    }
+
+    function getPageRenderableProviderIcon(provider) {
+      return toPageRenderableIconUrl(getProviderIcon(provider), SHORTCUT_FAVICON.getSiteSearchProviderPageUrl(provider));
+    }
+
     function getProviderIconAttachPageUrl(provider, iconUrl, iconHost) {
       const providerPageUrl = SHORTCUT_FAVICON.getSiteSearchProviderPageUrl(provider);
       if (providerPageUrl) {
@@ -5171,7 +5191,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
             provider,
             label: getSiteSearchDisplayName(provider),
             group: isSearchEngine ? engineGroup : (isAi ? aiGroup : siteGroup),
-            iconUrl: getProviderIcon(provider),
+            iconUrl: getPageRenderableProviderIcon(provider),
             iconClass: isAi ? 'ri-search-ai-line' : 'ri-global-line',
             isAi,
             active: Boolean(siteSearchState && getSearchModeProviderId(siteSearchState) === getSearchModeProviderId(provider))

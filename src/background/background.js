@@ -4321,8 +4321,50 @@ const backgroundMessageRouter = BACKGROUND_MESSAGE_ROUTER.createRouter(
   FAVICON_MESSAGE_HANDLERS
 );
 
+// Actions the in-page surfaces (content scripts, the injected overlay, tab
+// switcher, selection toolbar and picture-in-picture helpers) send. Those run
+// inside web pages; every other action is accepted from extension pages only.
+const WEB_PAGE_MESSAGE_ACTIONS = Object.freeze([
+  'switchToTab', 'reportTabVisible', 'notifyOverlayClosed', 'notifyTopFrameDocumentStarted',
+  'updateOverlayLoadingSession', 'getTabsForOverlay', 'closeOtherTabsForOverlay',
+  'getShowSearchShortcut', 'copyCurrentPageUrl', 'triggerShowSearchFromPageHotkey',
+  'notifyTabSwitcherShortcutModifierReleased', 'getShortcutRules',
+  'pipRequestOwnership', 'pipReleaseOwnership', 'openDocumentPipPicker', 'siteTryEnterPiPInMainWorld',
+  'iqiyiTryEnterPiPInMainWorld', 'iqiyiSetupAutoPiPInMainWorld', 'forceExitPiPInMainWorld',
+  'ytForceExitPiPInMainWorld',
+  'searchOrNavigate', 'getSearchSuggestions', 'getSearchEngineSuggestions',
+  'recordSearchSuggestionSelection', 'deleteHistoryUrl',
+  'getSiteSearchProviders', 'getHelpCenterSearchResults', 'runSiteSearchProviderQuery',
+  'runAggregateSearchQuery', 'runSelectionQuickAction',
+  'getLocaleMessages', 'openOptionsPage', 'openReleasePage', 'createTab', 'openNewTab',
+  'getFaviconData'
+]);
+
+const backgroundMessageSenderPolicy = BACKGROUND_MESSAGE_ROUTER.createSenderPolicy({
+  extensionBaseUrl: chrome.runtime.getURL(''),
+  pageActions: WEB_PAGE_MESSAGE_ACTIONS,
+  pageArgumentGuards: {
+    // Typed, bookmarked and history targets stay openable; script, inline data
+    // documents and other extensions' pages do not.
+    createTab: (request) => globalThis.LumnoUrlGuards.canOpenUrlFromWebPageContext(
+      request.url,
+      chrome.runtime.getURL('')
+    ),
+    runSiteSearchProviderQuery: (request) => {
+      const entryUrl = getSiteSearchProviderEntryUrl(request.provider, request.query);
+      return /^https?:\/\//i.test(entryUrl);
+    }
+  }
+});
+
 function dispatchBackgroundMessage(request, sender, sendResponse) {
-  return BACKGROUND_MESSAGE_ROUTER.dispatch(backgroundMessageRouter, request, sender, sendResponse);
+  return BACKGROUND_MESSAGE_ROUTER.dispatch(
+    backgroundMessageRouter,
+    request,
+    sender,
+    sendResponse,
+    backgroundMessageSenderPolicy
+  );
 }
 
 // Listen for extension runtime messages.

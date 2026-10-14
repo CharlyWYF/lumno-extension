@@ -384,7 +384,11 @@ async function fetchJson(url, options) {
     return null;
   }
   const settings = options && typeof options === 'object' ? options : {};
-  const response = await fetch(url, settings.signal ? { signal: settings.signal } : undefined);
+  const response = await fetch(url, {
+    credentials: 'omit',
+    referrerPolicy: 'no-referrer',
+    ...(settings.signal ? { signal: settings.signal } : {})
+  });
   if (!response || !response.ok) {
     return null;
   }
@@ -396,7 +400,11 @@ async function fetchText(url, options) {
     return '';
   }
   const settings = options && typeof options === 'object' ? options : {};
-  const response = await fetch(url, settings.signal ? { signal: settings.signal } : undefined);
+  const response = await fetch(url, {
+    credentials: 'omit',
+    referrerPolicy: 'no-referrer',
+    ...(settings.signal ? { signal: settings.signal } : {})
+  });
   if (!response || !response.ok) {
     return '';
   }
@@ -406,7 +414,8 @@ async function fetchText(url, options) {
 async function fetchSearchSuggestionsForEngine(query, options) {
   const engineId = defaultSearchEngineState.id;
   const settings = options && typeof options === 'object' ? options : {};
-  if (!query || !engineId) {
+  // A URL, host or path (the prefilled current page among them) stays local.
+  if (!query || !engineId || SEARCH_UTILS.isUrlLikeSearchQuery(query)) {
     return [];
   }
   try {
@@ -877,6 +886,7 @@ function shouldPrefetchSearchEngineSuggestions(request, query) {
   return (context === 'newtab' || context === 'overlay') &&
     Boolean(normalizedQuery) &&
     !normalizedQuery.startsWith('/') &&
+    !SEARCH_UTILS.isUrlLikeSearchQuery(normalizedQuery) &&
     !isScopedLocalSearch;
 }
 

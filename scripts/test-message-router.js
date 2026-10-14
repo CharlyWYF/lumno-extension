@@ -69,6 +69,53 @@ function testRouterModule() {
   }, /not a function: broken/);
 }
 
+function testSenderPolicyModule() {
+  const extensionBaseUrl = 'chrome-extension://lumno/';
+  const policy = routerApi.createSenderPolicy({
+    extensionBaseUrl,
+    pageActions: ['createTab', 'getTabsForOverlay'],
+    pageArgumentGuards: {
+      createTab: (request) => /^https:/.test(request.url)
+    }
+  });
+  const extensionPage = { url: `${extensionBaseUrl}newtab.html`, tab: { id: 1 } };
+  const webPage = { url: 'https://example.com/', tab: { id: 2 } };
+  const lookalike = { url: 'https://chrome-extension.example/lumno/', tab: { id: 3 } };
+  assert.strictEqual(policy.isExtensionPageSender(extensionPage), true);
+  assert.strictEqual(policy.isExtensionPageSender(webPage), false);
+  assert.strictEqual(policy.isExtensionPageSender(lookalike), false);
+  assert.strictEqual(policy.isExtensionPageSender({}), false, 'a sender without a URL is not an extension page');
+
+  assert.deepStrictEqual(policy.check('openBookmarkManager', {}, extensionPage), { ok: true });
+  assert.deepStrictEqual(policy.check('openBookmarkManager', {}, webPage),
+    { ok: false, reason: 'sender-not-allowed' }, 'web pages reach only the actions their surfaces use');
+  assert.deepStrictEqual(policy.check('getTabsForOverlay', {}, webPage), { ok: true });
+  assert.deepStrictEqual(policy.check('createTab', { url: 'https://example.com/' }, webPage), { ok: true });
+  assert.deepStrictEqual(policy.check('createTab', { url: 'data:text/html,x' }, webPage),
+    { ok: false, reason: 'argument-not-allowed' }, 'web-page arguments must pass the action guard');
+  assert.deepStrictEqual(policy.check('createTab', { url: 'data:text/html,x' }, extensionPage), { ok: true },
+    'extension pages are not limited by web-page guards');
+
+  const handled = [];
+  const router = routerApi.createRouter({
+    openBookmarkManager(request, sender, sendResponse) {
+      handled.push('openBookmarkManager');
+      sendResponse({ ok: true });
+    }
+  });
+  let response = null;
+  routerApi.dispatch(router, { action: 'openBookmarkManager' }, webPage, (value) => {
+    response = value;
+  }, policy);
+  assert.deepStrictEqual(response, { ok: false, reason: 'sender-not-allowed' });
+  assert.deepStrictEqual(handled, [], 'a rejected message must not reach its handler');
+  routerApi.dispatch(router, { action: 'openBookmarkManager' }, extensionPage, (value) => {
+    response = value;
+  }, policy);
+  assert.deepStrictEqual(response, { ok: true });
+  assert.deepStrictEqual(handled, ['openBookmarkManager']);
+}
+
 // Every runtime message the extension's pages and content scripts send must
 // keep reaching a background handler.
 const EXPECTED_BACKGROUND_ACTIONS = [
@@ -134,10 +181,43 @@ async function testBackgroundRegistry() {
   const selection = await harness.sendMessage({ action: 'runSelectionQuickAction' }, { tab: senderTab });
   assert.strictEqual(selection && selection.ok, false);
   assert.ok(selection.reason, 'the selection quick action handler, not the unknown-action reply, should answer');
+
+  // Content scripts and the in-page overlay run inside web pages.
+  const webPageSender = { tab: senderTab, url: senderTab.url };
+  for (const action of ['webdav', 'openBookmarkManager', 'getShortcutFaviconData', 'resolveFaviconCandidates',
+    'openExtensionDetailsPage', 'swapNewtabForFocus', 'trackSearchTab', 'getFileSchemeAccessStatus']) {
+    const rejected = await harness.sendMessage({ action, op: 'status' }, webPageSender);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(rejected)), { ok: false, reason: 'sender-not-allowed' },
+      `${action} should be refused when a web page context sends it`);
+  }
+  const callCount = () => harness.calls.filter((call) => call.name === 'tabs.create' || call.name === 'tabs.update').length;
+  const beforeBlockedTabs = callCount();
+  for (const url of [
+    'data:text/html,<h1>Sign in</h1>',
+    'javascript:alert(1)',
+    'chrome-extension://another-extension-id/page.html',
+    'view-source:javascript:alert(1)'
+  ]) {
+    const blocked = await harness.sendMessage({ action: 'createTab', url }, webPageSender);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(blocked)), { ok: false, reason: 'argument-not-allowed' },
+      `a web page context must not open ${url}`);
+  }
+  assert.strictEqual(callCount(), beforeBlockedTabs, 'refused createTab requests must not open or navigate a tab');
+  for (const url of ['https://example.com/next', 'file:///Users/someone/report.pdf', 'chrome://settings/']) {
+    harness.sendMessage({ action: 'createTab', url, disposition: 'backgroundTab' }, webPageSender);
+  }
+  await wait(30);
+  assert.strictEqual(callCount() - beforeBlockedTabs, 3,
+    'typed, bookmarked and browser-page targets opened from the overlay keep working');
+  const fromExtensionPage = harness.sendMessage({ action: 'openBookmarkManager' });
+  await wait(30);
+  assert.notDeepStrictEqual(JSON.parse(JSON.stringify((await fromExtensionPage) || {})),
+    { ok: false, reason: 'sender-not-allowed' }, 'extension pages may send every action');
 }
 
 (async () => {
   testRouterModule();
+  testSenderPolicyModule();
   await testBackgroundRegistry();
   console.log('message router tests passed');
   process.exit(0);

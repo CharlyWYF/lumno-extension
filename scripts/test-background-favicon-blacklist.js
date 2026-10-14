@@ -29,7 +29,9 @@ const extractedFunctions = [
   'buildFaviconFallbackCandidates',
   'dedupeAndSortFaviconCandidates',
   'resolveFaviconCandidates',
-  'fetchFaviconData'
+  'fetchFaviconData',
+  'fetchExtensionFaviconPlaceholderData',
+  'fetchFaviconDataUrl'
 ].map((name) => extractFunctionSource(backgroundSource, name)).join('\n\n');
 
 const factory = new Function('deps', 'Buffer', `
@@ -110,7 +112,22 @@ const factory = new Function('deps', 'Buffer', `
     return Buffer.from(buffer).toString('base64');
   }
 
+  const extensionFaviconPlaceholderData = new Map();
+
   function fetch(url, options) {
+    if (String(url).includes('lumno.invalid')) {
+      // The browser's default globe, fetched to recognize unknown pages.
+      deps.placeholderCalls.push(url);
+      const bytes = deps.placeholderMatchesIcons ? [1, 2, 3, 4] : [9, 9, 9, 9];
+      return Promise.resolve({
+        ok: true,
+        blob: () => Promise.resolve({
+          size: 4,
+          type: 'image/png',
+          arrayBuffer: () => Promise.resolve(Uint8Array.from(bytes).buffer)
+        })
+      });
+    }
     deps.fetchCalls.push({ url, options });
     return Promise.resolve({
       ok: true,
@@ -179,6 +196,7 @@ async function run() {
     },
     blockedLogs: [],
     fetchCalls: [],
+    placeholderCalls: [],
     themeParseCalls: 0,
     themeResolveCalls: 0,
     persistCalls: 0
@@ -234,6 +252,18 @@ async function run() {
     deps.fetchCalls[0].url,
     'chrome-extension://test/_favicon/?pageUrl=https%3A%2F%2Ffoo.blocked.example.com%2Fpage&fallbackToHost=0',
     'virtual favicon data should fetch only the extension favicon endpoint'
+  );
+  assert.strictEqual(
+    new URL(deps.placeholderCalls[0]).searchParams.get('pageUrl'),
+    'https://lumno.invalid/__favicon_placeholder_probe__',
+    'browser-cache data should be compared with the default icon of an unknown page'
+  );
+  const globeDeps = { ...deps, fetchCalls: [], placeholderCalls: [], placeholderMatchesIcons: true };
+  const globeApi = factory(globeDeps, Buffer);
+  assert.strictEqual(
+    await globeApi.fetchFaviconData('chrome-extension://test/_favicon/?pageUrl=https%3A%2F%2Fnever-visited.example%2F'),
+    null,
+    'the default globe is reported as no icon, so web-page surfaces fall back without comparing pixels'
   );
 
   result = await api.fetchFaviconData('https://t2.gstatic.cn/faviconV2?url=https%3A%2F%2Ffoo.blocked.example.com%2Fpage');
@@ -339,6 +369,7 @@ async function run() {
     },
     blockedLogs: [],
     fetchCalls: [],
+    placeholderCalls: [],
     themeParseCalls: 0,
     themeResolveCalls: 0,
     persistCalls: 0,

@@ -59,4 +59,33 @@ assert.strictEqual(guards.canFetchPageForFavicon('https://chromewebstore.google.
 assert.strictEqual(guards.canFetchPageForFavicon('https://chrome.google.com/webstore/devconsole/abc'), false);
 assert.strictEqual(guards.canFetchPageForFavicon('file:///Users/kevinxu/test.html'), false);
 
+const ownBase = 'chrome-extension://lumno-id/';
+[
+  'https://example.com/path?q=1',
+  'http://intranet.local/',
+  'file:///Users/someone/report.pdf',
+  'mailto:someone@example.com',
+  'chrome://settings/',
+  'about:blank',
+  'view-source:https://example.com/',
+  `${ownBase}src/options/options.html#search`
+].forEach((url) => {
+  assert.strictEqual(guards.canOpenUrlFromWebPageContext(url, ownBase), true, `${url} stays openable from the overlay`);
+});
+[
+  'javascript:alert(1)',
+  ' JavaScript:alert(1)',
+  'data:text/html,<form>',
+  'vbscript:msgbox',
+  'view-source:data:text/html,x',
+  'chrome-extension://another-id/options.html',
+  'moz-extension://another-uuid/page.html',
+  'not a url',
+  ''
+].forEach((url) => {
+  assert.strictEqual(guards.canOpenUrlFromWebPageContext(url, ownBase), false, `${url} must not open from a web page context`);
+});
+assert.strictEqual(guards.canOpenUrlFromWebPageContext(`${ownBase}newtab.html`, ''), false,
+  'without a known own base, no extension page is treated as ours');
+
 console.log('url guards ok');

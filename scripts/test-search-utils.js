@@ -592,19 +592,46 @@ assert.strictEqual(
 );
 [
   'file:///Users/kevinxu/Downloads/report.pdf',
-  'data:text/plain,hello',
   'view-source:https://example.com/',
   'mailto:hello@example.com',
   'magnet:?xt=urn:btih:0123456789abcdef',
   'vscode://file/Users/kevinxu/github/Lumno',
-  'about:blank',
-  'javascript:alert(1)'
+  'about:blank'
 ].forEach((directUrl) => {
   assert.strictEqual(
     search.getDirectNavigationUrl(directUrl),
     directUrl,
     `${directUrl} should be preserved as a direct navigation target`
   );
+});
+[
+  'data:text/html,<script>alert(1)</script>',
+  'data:text/plain,hello',
+  'javascript:alert(1)',
+  'JavaScript:alert(document.cookie)'
+].forEach((input) => {
+  assert.strictEqual(
+    search.getDirectNavigationUrl(input),
+    '',
+    `${input} should be searched for instead of opened as a top-level page`
+  );
+});
+[
+  'https://wiki.corp.example/page?token=secret',
+  'https://wiki.corp.example/page?token=secret more',
+  'file:///Users/someone/contract.pdf',
+  'C:\\Users\\someone\\contract.pdf',
+  'example.com',
+  'jira.internal/browse/SEC-1',
+  '10.0.0.8:8080',
+  'localhost:3000',
+  'data:text/plain,hello',
+  'mailto:someone@example.com'
+].forEach((input) => {
+  assert.strictEqual(search.isUrlLikeSearchQuery(input), true, `${input} should count as a URL-like query`);
+});
+['weather tomorrow', 'vue.js tutorial', 'c++ templates', 'site:example.com', ''].forEach((input) => {
+  assert.strictEqual(search.isUrlLikeSearchQuery(input), false, `${input} should count as words to search`);
 });
 assert.strictEqual(
   search.getDirectNavigationUrl('example.com/docs'),
