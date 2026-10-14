@@ -9,6 +9,7 @@ import toggleSettingsSource from '../../src/options/options-toggle-settings.js?r
 import siteSearchSource from '../../src/options/options-site-search.js?raw';
 import aggregateSearchSource from '../../src/options/options-aggregate-search.js?raw';
 import syncTransferSource from '../../src/options/options-sync-transfer.js?raw';
+import syncSectionSource from '../../src/options/options-sync-section.js?raw';
 import shortcutKeysSource from '../../src/options/options-shortcut-keys.js?raw';
 import blacklistSource from '../../src/options/options-blacklist.js?raw';
 import feedbackSupportSource from '../../src/options/options-feedback-support.js?raw';
@@ -75,6 +76,7 @@ const PAGE_SCRIPTS = [
   siteSearchSource,
   aggregateSearchSource,
   syncTransferSource,
+  syncSectionSource,
   shortcutKeysSource,
   blacklistSource,
   feedbackSupportSource

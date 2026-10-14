@@ -198,8 +198,9 @@ assert.strictEqual(
 
 const migrationSurfaces = [
   'src/background/background.js',
-  'src/newtab/newtab.js',
-  'src/options/options.js'
+  'src/newtab/newtab.js'
+  // Options' migration lives in src/options/options-sync-section.js and is
+  // exercised against areas without remove/clear in test-options-sync-section.js.
 ];
 migrationSurfaces.forEach((file) => {
   const source = fs.readFileSync(path.join(repoRoot, file), 'utf8');
