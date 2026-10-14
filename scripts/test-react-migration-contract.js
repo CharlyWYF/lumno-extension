@@ -146,11 +146,13 @@ const assertWithinBudget = (actualBytes, budgetKiB, label) => {
 // New Tab moved to 399 KiB / 119 KiB gzip (the total to 792 KiB / 229 KiB gzip) at 1.0.1 for shortcut group titles.
 // The Overlay moved to 83 KiB gzip (the total to 230 KiB gzip) at 1.0.1: the close-other-tabs popconfirm and shortcut group titles fit only under Node 22's zlib, and CI measures with Node 20 (.nvmrc), which compresses slightly worse.
 // New Tab moved to 402 KiB / 120 KiB gzip (the total to 794 KiB / 231 KiB gzip) at 1.0.1 for the bookmark and site card sections in the appearance panel.
+// New Tab moved to 409 KiB / 123 KiB gzip (the total to 801 KiB / 234 KiB gzip) at 1.0.1: the appearance panel's controls moved
+// from the classic wallpaper.js (about 84 KiB smaller) into its React view.
 const bundleBudgets = {
-  newtab: { uncompressed: 402, gzip: 120 },
+  newtab: { uncompressed: 409, gzip: 123 },
   options: { uncompressed: 290, gzip: 85 },
   overlay: { uncompressed: 274, gzip: 83 },
-  total: { uncompressed: 794, gzip: 231 }
+  total: { uncompressed: 801, gzip: 234 }
 };
 
 const retiredNewtabRendererScripts = [

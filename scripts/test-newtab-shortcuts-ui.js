@@ -25,11 +25,6 @@ const shortcutDialogCss = readStylesheet('src/newtab/shortcut-dialog.css');
 const wallpaperAdaptiveToneJs = fs.readFileSync(path.join(repoRoot, 'src/newtab/wallpaper-adaptive-tone.js'), 'utf8');
 const tooltipJs = fs.readFileSync(path.join(repoRoot, 'src/shared/tooltip.js'), 'utf8');
 const optionsHtml = readPageSource('src/options/options.html');
-const wallpaperSource = fs.readFileSync(path.join(repoRoot, 'src/newtab/wallpaper.js'), 'utf8');
-const wallpaperViewSource = fs.readFileSync(
-  path.join(repoRoot, 'react-src/newtab/wallpaper-view.tsx'),
-  'utf8'
-);
 const locales = ['zh_CN', 'zh_TW', 'en', 'ja'].map((locale) => ({
   locale,
   messages: JSON.parse(fs.readFileSync(path.join(repoRoot, `_locales/${locale}/messages.json`), 'utf8'))
@@ -812,83 +807,9 @@ assertContains(
   'shortcut rail should stay hidden until stored shortcuts are rendered'
 );
 
-assertContains(
-  wallpaperViewSource,
-  'name="shortcutsToggle"',
-  'New Tab appearance should include a shortcuts visibility toggle'
-);
-
-assertContains(
-  wallpaperViewSource,
-  'triggerRef="shortcutsAccordionTrigger"',
-  'New Tab shortcuts should expose an accordion trigger'
-);
-
-assertContains(
-  wallpaperViewSource,
-  'aria-expanded="false"',
-  'New Tab shortcuts accordion should start collapsed'
-);
-
-assertContains(
-  wallpaperViewSource,
-  "ref('shortcutsDetails')",
-  'New Tab shortcuts should expose an accordion details region'
-);
-
-assertContains(
-  wallpaperViewSource,
-  'role="region"',
-  'New Tab shortcuts accordion details should be announced as a region'
-);
-
-assertContains(
-  wallpaperViewSource,
-  'name="shortcutAddToggle"',
-  'New Tab shortcuts should include the nested add shortcut visibility toggle'
-);
-
-assertContains(
-  wallpaperViewSource,
-  'name="shortcutDockMagnificationToggle"',
-  'New Tab shortcuts should include the nested Dock magnification toggle'
-);
-
-assertContains(
-  wallpaperViewSource,
-  "ref('shortcutColumnsSlider')",
-  'New Tab shortcuts should expose a per-row shortcut slider'
-);
-
-assertContains(
-  wallpaperViewSource,
-  "ref('shortcutColumnsSliderValueInput')",
-  'New Tab shortcuts should expose an editable numeric slider value'
-);
-
-assertContains(
-  wallpaperViewSource,
-  "label: '8', percent: 100 / 3",
-  'New Tab shortcuts should render the 4-step slider ticks'
-);
-
-assertContains(
-  wallpaperSource,
-  'function updateWallpaperShortcutsUi()',
-  'wallpaper runtime should centralize shortcut appearance control updates'
-);
-
-assertContains(
-  wallpaperSource,
-  'function setWallpaperShortcutsAccordionExpanded',
-  'wallpaper runtime should own shortcut accordion expansion state'
-);
-
-assertContains(
-  wallpaperSource,
-  'wallpaperShortcutsAccordionTrigger.disabled = !enabled',
-  'shortcut accordion should be disabled when shortcuts are turned off'
-);
+// The appearance panel is a React view driven by the wallpaper runtime; its controls are
+// tested by behavior in react-src/newtab/wallpaper-view.test.tsx and
+// scripts/test-newtab-wallpaper-panel.js rather than by matching source text here.
 
 assertContains(
   optionsHtml,

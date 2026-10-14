@@ -297,837 +297,135 @@ function createFakeDocument() {
   return documentObj;
 }
 
-function getEffectOption(control, type) {
-  const host = getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectSelectHost');
-  return getDescendantByAttribute(host, 'data-value', type);
-}
-
-function createFakeWallpaperViewController(config) {
+// Stands in for the React panel (react-src/newtab/wallpaper-view.tsx, tested with vitest):
+// it keeps the state the runtime renders and the few elements the runtime measures or
+// focuses. Tests read settings from that state and act through its callbacks, as the
+// panel's controls do.
+function createRecordingWallpaperViewController(config) {
   const documentObj = config.documentObj;
-  const model = config.model || {};
   const refs = Object.create(null);
-  const create = (tagName, className, attributes) => {
+  const create = (tagName, className, refName, parent) => {
     const element = documentObj.createElement(tagName);
     element.className = className || '';
-    Object.entries(attributes || {}).forEach(([name, value]) => {
-      element.setAttribute(name, value);
-    });
-    return element;
-  };
-  const add = (parent, tagName, className, attributes, refName) => {
-    const element = create(tagName, className, attributes);
-    parent.appendChild(element);
     if (refName) {
       refs[refName] = element;
       element.setAttribute('data-wallpaper-ref', refName);
     }
+    if (parent) parent.appendChild(element);
     return element;
   };
-  const addSwitch = (parent, refName) => {
-    const label = add(parent, 'label', 'x-nt-wallpaper-switch');
-    return add(label, 'input', '', { role: 'switch', type: 'checkbox' }, refName);
-  };
-  const addSliderControl = (parent, names, className) => {
-    const dynamicRange = Boolean(names.dynamicRange);
-    const control = add(
-      parent,
-      'div',
-      className || 'x-nt-effect-slider-control',
-      { 'data-visible': 'true', 'aria-hidden': 'false' },
-      names.control
-    );
-    const header = add(control, 'div', 'x-nt-overlay-control-header');
-    add(header, 'span', 'x-nt-effect-slider-label', {}, names.label);
-    const row = add(control, 'div', 'x-nt-range-slider-row');
-    const wrap = add(row, 'div', 'x-nt-overlay-slider-wrap');
-    const sliderAttributes = {
-      type: 'range',
-      min: '0',
-      max: '100',
-      step: dynamicRange ? 'any' : '1',
-      value: '50'
-    };
-    if (dynamicRange) {
-      sliderAttributes['data-wallpaper-dynamic-range'] = 'true';
-    }
-    const slider = add(
-      wrap,
-      'input',
-      'x-nt-overlay-slider',
-      sliderAttributes,
-      names.slider
-    );
-    slider.type = 'range';
-    const scale = add(wrap, 'div', 'x-nt-overlay-scale');
-    [
-      { align: 'start', label: '0' },
-      { align: 'center', key: 'default', label: 'Default' },
-      { align: 'end', label: '100%' }
-    ].forEach((tick) => {
-      const tickElement = add(scale, 'span', 'x-nt-overlay-tick', {
-        'data-align': tick.align,
-        ...(tick.key ? { 'data-overlay-tick': tick.key } : {})
-      });
-      tickElement.textContent = tick.label;
-    });
-    const valueInputAttributes = dynamicRange
-      ? { type: 'number', step: 'any', value: '50' }
-      : { type: 'number', min: '0', max: '100', step: '1', value: '50' };
-    const valueInput = add(
-      row,
-      'input',
-      '_x_extension_shortcut_input_2024_unique_ _x_extension_range_slider_value_input_2026_unique_',
-      valueInputAttributes,
-      `${names.slider}ValueInput`
-    );
-    valueInput.type = 'number';
-    return control;
-  };
-
-  const control = create('div', 'x-nt-wallpaper-control', {
-    'data-panel-open': 'false',
-    'data-react-island': 'newtab-wallpaper'
-  });
-  const panel = add(
-    control,
-    'div',
-    'x-nt-wallpaper-panel',
-    { 'data-open': 'false', role: 'dialog' },
-    'panel'
-  );
-  const appearanceHeader = add(panel, 'div', 'x-nt-appearance-header');
-  add(
-    appearanceHeader,
-    'div',
-    'x-nt-wallpaper-panel-title',
-    {},
-    'appearanceTitle'
-  );
-  const moreSettings = add(
-    appearanceHeader,
-    'a',
-    'x-nt-appearance-more-settings',
-    { href: model.moreSettingsUrl || '' },
-    'moreSettingsLink'
-  );
-  add(
-    moreSettings,
-    'span',
-    'x-nt-appearance-more-settings-text',
-    {},
-    'moreSettingsText'
-  );
-  const scroll = add(panel, 'div', 'x-nt-wallpaper-panel-scroll');
-  const appearanceSection = add(scroll, 'div', 'x-nt-appearance-section');
-  const themeSectionHeader = add(
-    appearanceSection,
-    'div',
-    'x-nt-wallpaper-panel-header'
-  );
-  const appearanceTitleGroup = add(
-    themeSectionHeader,
-    'div',
-    'x-nt-appearance-title-group'
-  );
-  add(
-    appearanceTitleGroup,
-    'div',
-    'x-nt-wallpaper-panel-title',
-    {},
-    'themeSectionTitle'
-  );
-  add(
-    appearanceTitleGroup,
-    'button',
-    'x-nt-appearance-info-button',
-    { type: 'button' },
-    'appearanceInfoButton'
-  );
-  const scopeTabs = add(
-    themeSectionHeader,
-    'div',
-    'x-nt-segmented-tabs x-nt-wallpaper-tabs x-nt-appearance-scope-tabs',
-    { role: 'group' },
-    'appearanceScopeTabs'
-  );
-  add(
-    scopeTabs,
-    'span',
-    'x-nt-segmented-tabs-indicator x-nt-wallpaper-tabs-indicator',
-    {},
-    'appearanceScopeTabsIndicator'
-  );
-  ['global', 'home'].forEach((scope) => {
-    add(scopeTabs, 'button', 'x-nt-segmented-tab x-nt-wallpaper-tab x-nt-appearance-scope-tab', {
-      type: 'button',
-      'data-theme-scope': scope,
-      'data-active': 'false'
-    });
-  });
-  const appearanceOptions = add(
-    appearanceSection,
-    'div',
-    'x-nt-appearance-options',
-    {},
-    'appearanceOptions'
-  );
-  (model.appearanceOptions || []).forEach((item) => {
-    add(appearanceOptions, 'button', 'x-nt-appearance-option', {
-      type: 'button',
-      'data-theme-mode': item.mode,
-      'data-selected': 'false'
-    });
-  });
-  const widthControl = add(
-    appearanceSection,
-    'div',
-    'x-nt-overlay-control x-nt-search-width-control',
-    { 'data-visible': 'false', 'aria-hidden': 'true' },
-    'searchWidthControl'
-  );
-  const widthHeader = add(widthControl, 'div', 'x-nt-overlay-control-header');
-  add(widthHeader, 'span', 'x-nt-overlay-label', {}, 'searchWidthLabel');
-  const widthRow = add(widthControl, 'div', 'x-nt-range-slider-row');
-  const widthWrap = add(
-    widthRow,
-    'div',
-    'x-nt-overlay-slider-wrap x-nt-search-width-slider-wrap'
-  );
-  const widthSlider = add(
-    widthWrap,
-    'input',
-    'x-nt-overlay-slider x-nt-search-width-slider',
-    {
-      type: 'range',
-      min: String(model.searchWidth && model.searchWidth.min || 0),
-      max: String(model.searchWidth && model.searchWidth.max || 1200),
-      step: '1'
-    },
-    'searchWidthSlider'
-  );
-  widthSlider.type = 'range';
-  widthSlider.value = String(model.searchWidth && model.searchWidth.min || 0);
-  const widthScale = add(widthWrap, 'div', 'x-nt-search-width-scale');
-  (model.searchWidth && model.searchWidth.ticks || []).forEach((tick) => {
-    add(widthScale, 'span', 'x-nt-search-width-tick', {
-      'data-search-width-tick': tick.searchKey || ''
-    });
-  });
-  const widthValueInput = add(
-    widthRow,
-    'input',
-    '_x_extension_shortcut_input_2024_unique_ _x_extension_range_slider_value_input_2026_unique_',
-    {
-      type: 'number',
-      min: widthSlider.min,
-      max: widthSlider.max,
-      step: widthSlider.step,
-      value: widthSlider.value
-    },
-    'searchWidthSliderValueInput'
-  );
-  widthValueInput.type = 'number';
-  const inputAutoFocusRow = add(
-    widthControl,
-    'div',
-    'x-nt-appearance-setting-row'
-  );
-  const inputAutoFocusTitleGroup = add(
-    inputAutoFocusRow,
-    'span',
-    'x-nt-appearance-setting-title-group'
-  );
-  add(
-    inputAutoFocusTitleGroup,
-    'span',
-    'x-nt-appearance-setting-title',
-    {},
-    'inputAutoFocusTitle'
-  );
-  add(
-    inputAutoFocusTitleGroup,
-    'button',
-    'x-nt-appearance-info-button',
-    { type: 'button' },
-    'inputAutoFocusInfoButton'
-  );
-  addSwitch(inputAutoFocusRow, 'inputAutoFocusToggle');
-  const shortcutsAccordion = add(
-    widthControl,
-    'div',
-    'x-nt-shortcuts-accordion',
-    { 'data-expanded': 'false', 'data-enabled': 'true' },
-    'shortcutsAccordion'
-  );
-  const shortcutsRow = add(
-    shortcutsAccordion,
-    'div',
-    'x-nt-appearance-setting-row x-nt-shortcuts-accordion-row'
-  );
-  const shortcutsTrigger = add(
-    shortcutsRow,
-    'button',
-    'x-nt-shortcuts-accordion-trigger',
-    {
-      'aria-controls': '_x_extension_newtab_shortcuts_settings_2026_unique_',
-      'aria-expanded': 'false',
-      id: '_x_extension_newtab_shortcuts_accordion_trigger_2026_unique_',
-      type: 'button'
-    },
-    'shortcutsAccordionTrigger'
-  );
-  add(shortcutsTrigger, 'span', 'x-nt-appearance-setting-title', {}, 'shortcutsTitle');
-  add(shortcutsTrigger, 'span', 'x-nt-shortcuts-accordion-icon');
-  addSwitch(shortcutsRow, 'shortcutsToggle');
-  const shortcutsDetails = add(
-    shortcutsAccordion,
-    'div',
-    'x-nt-shortcuts-accordion-details',
-    {
-      'aria-hidden': 'true',
-      'aria-labelledby': '_x_extension_newtab_shortcuts_accordion_trigger_2026_unique_',
-      'data-visible': 'false',
-      id: '_x_extension_newtab_shortcuts_settings_2026_unique_',
-      role: 'region'
-    },
-    'shortcutsDetails'
-  );
-  shortcutsDetails.hidden = true;
-  const shortcutsDetailsInner = add(
-    shortcutsDetails,
-    'div',
-    'x-nt-shortcuts-accordion-details-inner'
-  );
-  const shortcutAddRow = add(shortcutsDetailsInner, 'div', 'x-nt-appearance-setting-row');
-  add(shortcutAddRow, 'span', 'x-nt-appearance-setting-title', {}, 'shortcutAddTitle');
-  addSwitch(shortcutAddRow, 'shortcutAddToggle');
-  const shortcutDockRow = add(shortcutsDetailsInner, 'div', 'x-nt-appearance-setting-row');
-  add(
-    shortcutDockRow,
-    'span',
-    'x-nt-appearance-setting-title',
-    {},
-    'shortcutDockMagnificationTitle'
-  );
-  addSwitch(shortcutDockRow, 'shortcutDockMagnificationToggle');
-  const shortcutColumnsControl = add(
-    shortcutsDetailsInner,
-    'div',
-    'x-nt-overlay-control x-nt-shortcut-columns-control',
-    { 'data-visible': 'false', 'aria-hidden': 'true' },
-    'shortcutColumnsControl'
-  );
-  const shortcutColumnsHeader = add(
-    shortcutColumnsControl,
-    'div',
-    'x-nt-overlay-control-header'
-  );
-  add(
-    shortcutColumnsHeader,
-    'span',
-    'x-nt-overlay-label',
-    {},
-    'shortcutColumnsLabel'
-  );
-  const shortcutColumnsRow = add(
-    shortcutColumnsControl,
-    'div',
-    'x-nt-range-slider-row'
-  );
-  const shortcutColumnsWrap = add(
-    shortcutColumnsRow,
-    'div',
-    'x-nt-overlay-slider-wrap x-nt-shortcut-columns-slider-wrap'
-  );
-  const shortcutColumnsSlider = add(
-    shortcutColumnsWrap,
-    'input',
-    'x-nt-overlay-slider x-nt-shortcut-columns-slider',
-    {
-      type: 'range',
-      min: String(model.shortcutColumns && model.shortcutColumns.min || 4),
-      max: String(model.shortcutColumns && model.shortcutColumns.max || 16),
-      step: '1'
-    },
-    'shortcutColumnsSlider'
-  );
-  shortcutColumnsSlider.type = 'range';
-  shortcutColumnsSlider.value = String(
-    model.shortcutColumns && model.shortcutColumns.defaultValue || 10
-  );
-  const shortcutColumnsScale = add(
-    shortcutColumnsWrap,
-    'div',
-    'x-nt-overlay-scale x-nt-shortcut-columns-scale'
-  );
-  [4, 8, 12, 16].forEach((value, index) => {
-    add(shortcutColumnsScale, 'span', 'x-nt-overlay-tick', {
-      'data-align': index === 0 ? 'start' : (index === 3 ? 'end' : 'center')
-    }).textContent = String(value);
-  });
-  const shortcutColumnsSliderValueInput = add(
-    shortcutColumnsRow,
-    'input',
-    '_x_extension_shortcut_input_2024_unique_ _x_extension_range_slider_value_input_2026_unique_',
-    {
-      type: 'number',
-      min: String(model.shortcutColumns && model.shortcutColumns.min || 4),
-      max: String(model.shortcutColumns && model.shortcutColumns.max || 16),
-      step: '1'
-    },
-    'shortcutColumnsSliderValueInput'
-  );
-  shortcutColumnsSliderValueInput.type = 'number';
-  shortcutColumnsSliderValueInput.value = shortcutColumnsSlider.value;
-
-  const wallpaperSection = add(scroll, 'div', 'x-nt-wallpaper-section');
-  const panelHeader = add(
-    wallpaperSection,
-    'div',
-    'x-nt-wallpaper-panel-header',
-    {},
-    'panelHeader'
-  );
-  const wallpaperAccordionTrigger = add(panelHeader, 'button', 'x-nt-wallpaper-accordion-trigger', {}, 'wallpaperAccordionTrigger');
-  add(wallpaperAccordionTrigger, 'span', 'x-nt-wallpaper-panel-title', {}, 'panelTitle');
-  addSwitch(panelHeader, 'enabledToggle');
-  add(
-    wallpaperSection,
-    'input',
-    'x-nt-wallpaper-file-input',
-    { type: 'file' },
-    'customInput'
-  );
-  const body = add(
-    wallpaperSection,
-    'div',
-    'x-nt-wallpaper-body',
-    { 'data-visible': 'true', 'data-active-tab': model.activeTab || 'built-in' },
-    'body'
-  );
-  const modeSync = add(body, 'div', 'x-nt-wallpaper-mode-sync');
-  add(modeSync, 'span', 'x-nt-wallpaper-mode-sync-title', {}, 'modeSyncTitle');
-  addSwitch(modeSync, 'modeSyncToggle');
-  const modeRow = add(body, 'div', 'x-nt-appearance-setting-row x-nt-wallpaper-mode-row',
-    { 'data-visible': 'false' }, 'modeRow');
-  add(modeRow, 'span', 'x-nt-appearance-setting-title', {}, 'modeLabel');
-  const modeTabs = add(
-    modeRow,
-    'div',
-    'x-nt-segmented-tabs x-nt-wallpaper-tabs x-nt-wallpaper-mode-tabs',
-    {},
-    'modeTabs'
-  );
-  add(
-    modeTabs,
-    'span',
-    'x-nt-segmented-tabs-indicator x-nt-wallpaper-tabs-indicator',
-    {},
-    'modeTabsIndicator'
-  );
-  add(
-    modeTabs,
-    'button',
-    'x-nt-segmented-tab x-nt-wallpaper-tab x-nt-wallpaper-mode-tab',
-    { 'data-wallpaper-mode': 'light', 'data-active': 'false' },
-    'lightModeTab'
-  );
-  add(
-    modeTabs,
-    'button',
-    'x-nt-segmented-tab x-nt-wallpaper-tab x-nt-wallpaper-mode-tab',
-    { 'data-wallpaper-mode': 'dark', 'data-active': 'false' },
-    'darkModeTab'
-  );
-  const tabs = add(body, 'div', 'x-nt-segmented-tabs x-nt-wallpaper-tabs', {}, 'tabs');
-  add(
-    tabs,
-    'span',
-    'x-nt-segmented-tabs-indicator x-nt-wallpaper-tabs-indicator',
-    {},
-    'tabsIndicator'
-  );
-  add(
-    tabs,
-    'button',
-    'x-nt-segmented-tab x-nt-wallpaper-tab',
-    { 'data-wallpaper-tab': 'built-in', 'data-active': 'false' },
-    'builtInTab'
-  );
-  add(
-    tabs,
-    'button',
-    'x-nt-segmented-tab x-nt-wallpaper-tab',
-    { 'data-wallpaper-tab': 'local', 'data-active': 'false' },
-    'localTab'
-  );
-  add(tabs, 'button', 'x-nt-segmented-tab x-nt-wallpaper-tab',
-    { 'data-wallpaper-tab': 'bing', 'data-active': 'false' }, 'bingTab');
-  add(tabs, 'button', 'x-nt-segmented-tab x-nt-wallpaper-tab',
-    { 'data-wallpaper-tab': 'curated', 'data-active': 'false' }, 'curatedTab');
-  const builtInGrid = add(
-    body,
-    'div',
-    'x-nt-wallpaper-grid x-nt-wallpaper-grid--built-in',
-    { 'data-wallpaper-panel': 'built-in' },
-    'builtInGrid'
-  );
-  (model.wallpapers || []).forEach((item) => {
-    add(builtInGrid, 'button', 'x-nt-wallpaper-tile', {
-      'data-wallpaper-id': item.id,
-      'data-wallpaper-path': item.path || '',
-      'data-selected': 'false'
-    });
-  });
-  const localGrid = add(
-    body,
-    'div',
-    'x-nt-wallpaper-grid x-nt-wallpaper-grid--local',
-    { 'data-wallpaper-panel': 'local' },
-    'localGrid'
-  );
-  add(
-    localGrid,
-    'div',
-    'x-nt-wallpaper-tile x-nt-wallpaper-upload-tile',
-    { 'data-upload': 'true', 'data-loading': 'false', 'data-selected': 'false' },
-    'uploadTile'
-  );
-  add(localGrid, 'div', 'x-nt-wallpaper-tile x-nt-wallpaper-upload-tile x-nt-wallpaper-url-tile',
-    { 'data-selected': 'false' }, 'urlTile');
-  const customItemsHost = add(
-    localGrid,
-    'span',
-    '',
-    { 'data-wallpaper-custom-items': '' },
-    'customItemsHost'
-  );
-  const urlForm = add(body, 'form', 'x-nt-wallpaper-url-form', {}, 'urlForm');
-  urlForm.hidden = true;
-  add(urlForm, 'input', 'x-nt-wallpaper-url-input', { type: 'url' }, 'urlInput');
-  add(urlForm, 'button', 'x-nt-wallpaper-url-submit', { type: 'submit' }, 'urlSubmit');
-  const bingPanel = add(body, 'div', 'x-nt-bing-panel', { 'data-wallpaper-panel': 'bing' }, 'bingPanel');
-  for (const name of ['bingDailyLabel', 'bingRecentLabel', 'bingStatus', 'bingSelectedTitle', 'bingSelectedMeta']) {
-    add(bingPanel, 'span', '', {}, name);
-  }
-  addSwitch(bingPanel, 'bingDailyToggle');
-  add(bingPanel, 'button', '', {}, 'bingDailyRestore').hidden = true;
-  add(bingPanel, 'button', '', {}, 'bingRefresh');
-  add(bingPanel, 'div', '', {}, 'bingSelectedSource');
-  add(bingPanel, 'a', '', {}, 'bingSelectedLink');
-  add(bingPanel, 'button', '', {}, 'bingDailyInfoButton');
-  const bingItemsHost = add(bingPanel, 'div', 'x-nt-wallpaper-grid x-nt-wallpaper-grid--bing', {}, 'bingItemsHost');
-  const curatedPanel = add(body, 'div', 'x-nt-curated-panel', { 'data-wallpaper-panel': 'curated' }, 'curatedPanel');
-  for (const name of ['curatedDailyLabel', 'curatedCategoryLabel', 'curatedListLabel', 'curatedSelectedTitle',
-    'curatedSelectedMeta']) {
-    add(curatedPanel, 'span', '', {}, name);
-  }
-  addSwitch(curatedPanel, 'curatedDailyToggle');
-  add(curatedPanel, 'button', '', {}, 'curatedDailyRestore').hidden = true;
-  add(curatedPanel, 'button', '', {}, 'curatedDailyInfoButton');
-  const curatedCategoryTabs = add(curatedPanel, 'div', 'x-nt-segmented-tabs', {}, 'curatedCategoryTabs');
-  add(curatedCategoryTabs, 'span', 'x-nt-segmented-tabs-indicator', {}, 'curatedCategoryIndicator');
-  (model.curatedCategories || []).forEach((item) => {
-    add(curatedCategoryTabs, 'button', 'x-nt-segmented-tab',
-      { 'data-curated-category': item.value, 'data-active': 'false' });
-  });
-  add(curatedPanel, 'button', '', {}, 'curatedRefresh');
-  add(curatedPanel, 'div', '', {}, 'curatedSelectedSource');
-  add(curatedPanel, 'a', '', {}, 'curatedSelectedLink');
-  const curatedItemsHost = add(curatedPanel, 'div', 'x-nt-wallpaper-grid x-nt-wallpaper-grid--curated', {},
-    'curatedItemsHost');
-  const effectControl = add(body, 'div', 'x-nt-effect-control');
-  addSliderControl(
-    effectControl,
-    { control: 'overlayControl', label: 'overlayLabel', slider: 'overlaySlider' },
-    'x-nt-overlay-control x-nt-overlay-control--effect'
-  );
-  const effectHeader = add(
-    effectControl,
-    'div',
-    'x-nt-appearance-setting-row x-nt-effect-control-header'
-  );
-  add(effectHeader, 'span', 'x-nt-appearance-setting-title x-nt-effect-label', {}, 'effectLabel');
-  const effectSelectHost = add(effectHeader, 'div', 'x-nt-row-select', {}, 'effectSelectHost');
-  const effectInkToneControl = add(
-    effectControl,
-    'div',
-    'x-nt-effect-slider-control x-nt-effect-ink-tone-control',
-    { 'data-visible': 'false', 'aria-hidden': 'true' },
-    'effectInkToneControl'
-  );
-  const effectInkToneOptions = add(
-    effectInkToneControl,
-    'div',
-    'x-nt-segmented-tabs x-nt-effect-options x-nt-effect-ink-tone-options',
-    {},
-    'effectInkToneOptions'
-  );
-  add(
-    effectInkToneOptions,
-    'span',
-    'x-nt-segmented-tabs-indicator x-nt-effect-indicator',
-    {},
-    'effectInkToneIndicator'
-  );
-  (model.effectInkTones || []).forEach((item) => {
-    add(effectInkToneOptions, 'button', 'x-nt-segmented-tab x-nt-effect-option x-nt-effect-ink-tone-option', {
-      'data-wallpaper-effect-ink-tone': item.tone,
-      'data-active': 'false',
-      'aria-pressed': 'false'
-    });
-  });
-  addSliderControl(effectControl, {
-    control: 'effectStrengthControl',
-    label: 'effectStrengthLabel',
-    slider: 'effectStrengthSlider'
-  });
-  addSliderControl(effectControl, {
-    control: 'effectSizeControl',
-    label: 'effectSizeLabel',
-    slider: 'effectSizeSlider'
-  });
-  addSliderControl(effectControl, {
-    control: 'effectSpacingControl',
-    label: 'effectSpacingLabel',
-    slider: 'effectSpacingSlider'
-  });
-  addSliderControl(effectControl, {
-    control: 'effectTextureControl',
-    label: 'effectTextureLabel',
-    slider: 'effectTextureSlider'
-  });
-  addSliderControl(effectControl, {
-    control: 'effectCrtBloomControl',
-    label: 'effectCrtBloomLabel',
-    slider: 'effectCrtBloomSlider'
-  });
-  addSliderControl(effectControl, {
-    control: 'effectCrtRgbOffsetControl',
-    label: 'effectCrtRgbOffsetLabel',
-    slider: 'effectCrtRgbOffsetSlider'
-  });
-  addSliderControl(effectControl, {
-    control: 'effectCrtCurvatureControl',
-    label: 'effectCrtCurvatureLabel',
-    slider: 'effectCrtCurvatureSlider'
-  });
-
-  const brandSection = add(scroll, 'div', 'x-nt-wallpaper-section');
-  const topContentHeader = add(brandSection, 'div', 'x-nt-wallpaper-panel-header x-nt-top-content-header');
-  add(topContentHeader, 'div', 'x-nt-wallpaper-panel-title', {}, 'topContentTitle');
-  const topContentTabs = add(
-    topContentHeader,
-    'div',
-    'x-nt-segmented-tabs x-nt-wallpaper-tabs x-nt-top-content-tabs',
-    {},
-    'topContentTabs'
-  );
-  add(
-    topContentTabs,
-    'span',
-    'x-nt-segmented-tabs-indicator x-nt-wallpaper-tabs-indicator',
-    {},
-    'topContentTabsIndicator'
-  );
-  (model.topContentOptions || []).forEach((item) => {
-    add(
-      topContentTabs,
-      'button',
-      'x-nt-segmented-tab x-nt-wallpaper-tab x-nt-top-content-tab',
-      {
-        'data-newtab-top-content': item.value,
-        'data-active': item.value === 'brand' ? 'true' : 'false'
-      },
-      item.value === 'brand'
-        ? 'topContentBrandTab'
-        : item.value === 'time'
-          ? 'topContentTimeTab'
-          : 'topContentOffTab'
-    );
-  });
-  const topContentWeightControl = add(
-    brandSection,
-    'div',
-    'x-nt-time-weight-control',
-    { 'data-visible': 'false', 'aria-hidden': 'true', hidden: '' },
-    'topContentWeightControl'
-  );
-  const topContentWeightHeader = add(
-    topContentWeightControl,
-    'div',
-    'x-nt-overlay-control-header'
-  );
-  add(
-    topContentWeightHeader,
-    'span',
-    '',
-    {},
-    'topContentWeightTitle'
-  );
-  const topContentWeightRow = add(
-    topContentWeightControl,
-    'div',
-    'x-nt-range-slider-row'
-  );
-  const topContentWeightWrap = add(
-    topContentWeightRow,
-    'div',
-    'x-nt-overlay-slider-wrap x-nt-time-weight-slider-wrap'
-  );
-  const topContentWeightSlider = add(
-    topContentWeightWrap,
-    'input',
-    'x-nt-overlay-slider x-nt-time-weight-slider',
-    { type: 'range', min: '300', max: '800', step: '1', value: '320' },
-    'topContentWeightSlider'
-  );
-  topContentWeightSlider.type = 'range';
-  const topContentWeightSliderValueInput = add(
-    topContentWeightRow,
-    'input',
-    '_x_extension_shortcut_input_2024_unique_ _x_extension_range_slider_value_input_2026_unique_',
-    { type: 'number', min: '300', max: '800', step: '1', value: '320' },
-    'topContentWeightSliderValueInput'
-  );
-  topContentWeightSliderValueInput.type = 'number';
-  const topContentSecondsRow = add(
-    brandSection,
-    'div',
-    'x-nt-top-content-seconds-row',
-    { 'data-visible': 'false', 'aria-hidden': 'true', hidden: '' },
-    'topContentSecondsRow'
-  );
-  add(
-    topContentSecondsRow,
-    'span',
-    'x-nt-top-content-seconds-title',
-    {},
-    'topContentSecondsTitle'
-  );
-  const topContentSecondsSwitch = add(
-    topContentSecondsRow,
-    'label',
-    'x-nt-wallpaper-switch'
-  );
-  add(
-    topContentSecondsSwitch,
-    'input',
-    '',
-    { type: 'checkbox', role: 'switch' },
-    'topContentSecondsToggle'
-  );
-  add(topContentSecondsSwitch, 'span', 'x-nt-wallpaper-switch-slider');
-  const faviconGroup = add(brandSection, 'div', 'x-nt-favicon-group');
-  add(
-    faviconGroup,
-    'div',
-    'x-nt-wallpaper-panel-title x-nt-favicon-title',
-    {},
-    'faviconTitle'
-  );
-  const faviconOptions = add(
-    faviconGroup,
-    'div',
-    'x-nt-favicon-options',
-    {},
-    'faviconOptions'
-  );
-  (model.favicons || []).forEach((item) => {
-    const tile = add(faviconOptions, 'button', 'x-nt-wallpaper-tile x-nt-favicon-option', {
-      'data-newtab-favicon-id': item.id,
-      'data-selected': 'false'
-    });
-    const thumb = add(tile, 'span', 'x-nt-wallpaper-thumb x-nt-favicon-thumb');
-    if (item.inlineSvg) {
-      const preview = add(
-        thumb,
-        'span',
-        'x-nt-favicon-image x-nt-favicon-svg-preview'
-      );
-      preview.innerHTML = item.inlineSvg;
-    } else {
-      add(thumb, 'img', 'x-nt-favicon-image', { src: item.previewUrl || '' });
-    }
-  });
-  const button = add(
-    control,
-    'button',
-    'x-nt-wallpaper-button',
-    { 'data-open': 'false', 'aria-expanded': 'false' },
-    'button'
-  );
-
-  const effectSelectRows = new Map();
-  let effectSelectOpen = false;
-  const effectSelectTrigger = add(effectSelectHost, 'button', '_x_extension_select_trigger_2024_unique_');
-  effectSelectTrigger.addEventListener('click', () => {
-    effectSelectOpen = !effectSelectOpen;
-  });
-
-  return {
+  const control = create('div', 'x-nt-wallpaper-control');
+  const panel = create('div', 'x-nt-wallpaper-panel', 'panel', control);
+  const button = create('button', 'x-nt-wallpaper-button', 'button', control);
+  [
+    'appearanceOptions', 'builtInGrid', 'localGrid', 'bingPanel', 'curatedPanel', 'curatedItemsHost', 'modeRow',
+    'effectInkToneControl', 'effectStrengthControl', 'effectSizeControl', 'effectSpacingControl',
+    'effectTextureControl', 'effectCrtBloomControl', 'effectCrtRgbOffsetControl', 'effectCrtCurvatureControl',
+    'urlTile', 'urlForm', 'quoteBody'
+  ].forEach((name) => create('div', '', name, panel));
+  create('input', '', 'urlInput', refs.urlForm);
+  const view = {
     control,
     panel,
     button,
+    model: config.model,
+    state: config.state,
+    renders: 0,
+    focused: [],
+    selectOpen: false,
+    selects: {},
     getRefs() {
       return refs;
     },
+    render(state) {
+      view.state = state;
+      view.renders += 1;
+      control.setAttribute('data-panel-open', state.open ? 'true' : 'false');
+    },
+    focus(name) {
+      view.focused.push(name);
+      if (refs[name]) refs[name].focus();
+    },
     closeOpenSelect() {
-      const wasOpen = effectSelectOpen;
-      effectSelectOpen = false;
+      const wasOpen = view.selectOpen;
+      view.selectOpen = false;
       return wasOpen;
     },
     containsSelectMenuTarget(target) {
-      return Array.from(effectSelectRows.values()).includes(target);
+      return target === view.selectMenu;
     },
-    renderEffectSelect(select) {
-      effectSelectTrigger.setAttribute('aria-label', select.ariaLabel);
-      select.options.forEach((option) => {
-        let row = effectSelectRows.get(option.value);
-        if (!row) {
-          row = add(effectSelectHost, 'div', '_x_extension_select_option_2024_unique_', {
-            'data-value': option.value
-          });
-          effectSelectRows.set(option.value, row);
-        }
-        row.textContent = option.label;
-        row.setAttribute('data-selected', option.value === select.value ? 'true' : 'false');
-        row._listeners.click = [() => {
-          effectSelectOpen = false;
-          select.onChange(option.value);
-        }];
-      });
+    renderQuotePositionSelect(select) {
+      view.selects.quotePosition = select;
     },
-    renderOnlineWallpapers(items) {
-      bingItemsHost.children.length = 0;
-      return items.map((item) => add(bingItemsHost, 'button', 'x-nt-wallpaper-tile',
-        { 'data-wallpaper-id': item.id, 'data-selected': 'false' }));
+    renderBookmarkViewModeSelect(select) {
+      view.selects.bookmarkViewMode = select;
     },
-    renderCuratedWallpapers(items) {
-      curatedItemsHost.children.length = 0;
-      return items.map((item) => add(curatedItemsHost, 'button', 'x-nt-wallpaper-tile',
-        { 'data-wallpaper-id': item.id, 'data-selected': 'false', 'data-thumbnail-url': item.thumbnailUrl }));
-    },
-    renderCustomWallpapers(items) {
-      customItemsHost.children.length = 0;
-      return (Array.isArray(items) ? items : []).map((item) => {
-        const tile = add(
-          customItemsHost,
-          'div',
-          'x-nt-wallpaper-tile x-nt-wallpaper-custom-tile',
-          {
-            'data-wallpaper-id': item.id,
-            'data-custom-wallpaper': 'true',
-            'data-selected': 'false'
-          }
-        );
-        add(tile, 'button', 'x-nt-wallpaper-delete-button');
-        return tile;
-      });
+    renderBookmarkTopbarSurfaceSelect(select) {
+      view.selects.bookmarkTopbarSurface = select;
     },
     destroy() {}
   };
+  view.selectMenu = documentObj.createElement('div');
+  control.__view = view;
+  return view;
 }
+
+function panelOf(runtime) {
+  return runtime.getControlElement().__view;
+}
+
+// The runtime lives in its own VM realm; copy its state into this one so deepStrictEqual
+// compares plain arrays and objects. Callbacks are kept as they are.
+function toHostRealm(value) {
+  if (Array.isArray(value)) return Array.from(value, toHostRealm);
+  if (value && typeof value === 'object') {
+    const copy = {};
+    Object.keys(value).forEach((key) => {
+      copy[key] = toHostRealm(value[key]);
+    });
+    return copy;
+  }
+  return value;
+}
+
+function panelState(runtime) {
+  return toHostRealm(panelOf(runtime).state);
+}
+
+function panelActions(runtime) {
+  return panelState(runtime).actions;
+}
+
+function openPanel(runtime) {
+  if (!runtime.isPanelOpen()) panelActions(runtime).togglePanel();
+}
+
+function findTile(runtime, id) {
+  const wallpaper = panelState(runtime).wallpaper;
+  const sources = [
+    ['built-in', wallpaper.builtIn.tiles],
+    ['local', wallpaper.local.tiles],
+    ['bing', wallpaper.bing.tiles],
+    ['curated', wallpaper.curated.tiles]
+  ];
+  for (const [source, tiles] of sources) {
+    const tile = tiles.find((item) => item.id === id);
+    if (tile) return Object.assign({ source }, tile);
+  }
+  return null;
+}
+
+function clickTile(runtime, id) {
+  const tile = findTile(runtime, id);
+  assert.ok(tile, `${id} should be listed in the panel`);
+  const actions = panelActions(runtime);
+  if (tile.source === 'bing') actions.selectBingWallpaper(id);
+  else if (tile.source === 'curated') actions.selectCuratedWallpaper(id);
+  else actions.selectWallpaper(id);
+}
+
+const NOT_DRAGGING = Object.freeze({ dragging: false, final: false });
+const TYPED = Object.freeze({ dragging: false, final: true });
 
 function createFakeWindow() {
   const mediaQueries = new Map();
@@ -1580,19 +878,32 @@ function assertBrandMarkCopy() {
     assert.strictEqual(messages.newtab_time_show_seconds_title.message, expected[locale].seconds);
   });
 
-  const wallpaperSource = fs.readFileSync('src/newtab/wallpaper.js', 'utf8');
-  assert.match(
-    wallpaperSource,
-    /t\('settings_newtab_wordmark_title', 'Content above the search bar'\)/
+  // The panel shows those messages for the content above the search bar.
+  const zhMessages = readLocaleMessages('zh_CN');
+  const localized = createWallpaperSandbox();
+  const localizedRuntime = localized.sandbox.LumnoNewtabWallpaper.createWallpaperRuntime({
+    documentObj: localized.documentObj,
+    windowObj: localized.windowObj,
+    storageArea: null,
+    t: (key, fallback) => (zhMessages[key] ? zhMessages[key].message : fallback || ''),
+    getTopContentMode: () => 'time',
+    getRiSvg: () => ''
+  });
+  localizedRuntime.createControls();
+  const search = panelState(localizedRuntime).search;
+  assert.strictEqual(search.topContent.title, expected.zh_CN.title);
+  assert.strictEqual(search.topContent.tabs.label, expected.zh_CN.title);
+  assert.deepStrictEqual(
+    search.topContent.tabs.options.map((option) => [option.value, option.label]),
+    [['brand', expected.zh_CN.brand], ['time', expected.zh_CN.time], ['off', expected.zh_CN.off]]
   );
-  assert.match(wallpaperSource, /data-newtab-top-content/);
-  assert.match(wallpaperSource, /newtab_time_font_weight_title/);
-  assert.match(wallpaperSource, /newtab_time_show_seconds_title/);
-  assert.doesNotMatch(
-    wallpaperSource,
-    /\$\{label\} value/,
-    'slider value boxes should reuse the localized slider name without an English suffix'
-  );
+  assert.strictEqual(search.topContent.tabs.active, 'time');
+  assert.strictEqual(search.timeWeight.label, expected.zh_CN.weight);
+  assert.strictEqual(search.timeWeight.visible, true, 'the time shows its font weight setting');
+  assert.strictEqual(search.seconds.title, expected.zh_CN.seconds);
+  assert.strictEqual(search.seconds.toggle.label, expected.zh_CN.seconds);
+  assert.strictEqual(search.seconds.visible, true);
+
   const optionsHtml = readPageSource('src/options/options.html');
   assert.match(optionsHtml, /data-newtab-top-content="brand"/);
   assert.match(optionsHtml, /data-newtab-top-content="time"/);
@@ -2016,7 +1327,7 @@ function createWallpaperSandbox(options) {
       options && options.localStoreApi
     ),
     LumnoNewtabWallpaperView: {
-      createController: createFakeWallpaperViewController
+      createController: createRecordingWallpaperViewController
     }
   };
   testSandbox.globalThis = testSandbox;
@@ -2048,7 +1359,7 @@ const sandbox = {
   },
   ...REAL_WALLPAPER_DEPENDENCIES,
   LumnoNewtabWallpaperView: {
-    createController: createFakeWallpaperViewController
+    createController: createRecordingWallpaperViewController
   }
 };
 sandbox.globalThis = sandbox;
@@ -2090,9 +1401,9 @@ const runtime = sandbox.LumnoNewtabWallpaper.createWallpaperRuntime({
     shortcutPreferenceWrites.push(['dock', shortcutDockMagnificationEnabled]);
   },
   getShortcutColumns: () => shortcutColumns,
-  setShortcutColumns(value) {
+  setShortcutColumns(value, options) {
     shortcutColumns = Number(value);
-    shortcutPreferenceWrites.push(['columns', shortcutColumns]);
+    shortcutPreferenceWrites.push(['columns', shortcutColumns, Boolean(options && options.persist)]);
   },
   showTopActionTooltip(anchor, text) {
     inputAutoFocusTooltips.push({ anchor, text });
@@ -2121,15 +1432,13 @@ const control = runtime.getControlElement();
     path: 'assets/wallpapers/lumno-newtab-white-shanshui-bamboo-bridge.webp'
   }
 ].forEach((item) => {
-  const tile = getDescendantByAttribute(control, 'data-wallpaper-id', item.id);
+  const tile = findTile(runtime, item.id);
   assert.ok(tile, `${item.id} should render as a built-in wallpaper`);
-  assert.strictEqual(
-    tile.getAttribute('data-wallpaper-path'),
-    item.path,
-    `${item.id} should point to its full-size wallpaper asset`
-  );
+  assert.strictEqual(tile.source, 'built-in');
+  assert.strictEqual(tile.path, item.path, `${item.id} should point to its full-size wallpaper asset`);
+  assert.ok(tile.thumbnailUrl.endsWith('-thumb.webp'), `${item.id} should show its thumbnail in the grid`);
 });
-const panel = control.children[0];
+const panel = panelOf(runtime).panel;
 const slider = documentObj.createElement('input');
 slider.type = 'range';
 panel.appendChild(slider);
@@ -2140,135 +1449,66 @@ runtime.closePanel();
 assert.strictEqual(slider._blurred, true, 'closing the appearance panel should blur an active slider inside it');
 assert.strictEqual(documentObj.activeElement, null, 'closing the appearance panel should clear activeElement for panel sliders');
 
-const appearanceButton = control.children[1];
-appearanceButton.click();
-const renderedPanel = control.children[0];
-const rangeSliderRows = renderedPanel.querySelectorAll('.x-nt-range-slider-row');
-assert.strictEqual(rangeSliderRows.length, 11, 'every New Tab slider should include an editable numeric value');
-rangeSliderRows.forEach((row) => {
-  const rowSlider = row.querySelector('input[type="range"]');
-  const rowValueInput = row.querySelector('input[type="number"]');
-  assert.ok(rowSlider, 'each shared slider row should contain a range input');
-  assert.ok(rowValueInput, 'each shared slider row should contain a number input');
-  if (rowSlider.getAttribute('data-wallpaper-dynamic-range') === 'true') {
-    assert.strictEqual(rowValueInput.getAttribute('min'), null);
-    assert.strictEqual(rowValueInput.getAttribute('max'), null);
-  } else {
-    assert.strictEqual(
-      rowValueInput.max,
-      rowSlider.max,
-      'bounded numeric values should inherit the maximum from their slider'
-    );
-  }
-});
-const appearanceHeader = getChildByClassName(renderedPanel, 'x-nt-appearance-header');
-const appearanceScrollBody = getChildByClassName(renderedPanel, 'x-nt-wallpaper-panel-scroll');
-const appearanceSection = getChildByClassName(appearanceScrollBody, 'x-nt-appearance-section');
-const searchWidthControl = getChildByClassName(appearanceSection, 'x-nt-search-width-control');
-const searchWidthSlider = searchWidthControl.children[1].children[0];
-const inputAutoFocusRow = getChildByClassName(searchWidthControl, 'x-nt-appearance-setting-row');
-const inputAutoFocusTitleGroup = getChildByClassName(
-  inputAutoFocusRow,
-  'x-nt-appearance-setting-title-group'
+openPanel(runtime);
+assert.strictEqual(runtime.isPanelOpen(), true);
+assert.strictEqual(panelState(runtime).open, true, 'the panel renders open');
+assert.strictEqual(control.getAttribute('data-panel-open'), 'true');
+assert.strictEqual(panelState(runtime).button.label, 'Appearance');
+assert.strictEqual(
+  panelState(runtime).header.moreSettingsUrl,
+  'chrome-extension://abc/src/options/options.html#appearance',
+  'more settings opens the appearance page of the options'
 );
-const inputAutoFocusInfoButton = getChildByClassName(
-  inputAutoFocusTitleGroup,
-  'x-nt-appearance-info-button'
+const searchWidth = panelState(runtime).search.width;
+assert.deepStrictEqual(
+  [searchWidth.min, searchWidth.max, searchWidth.value, searchWidth.suffix, searchWidth.valueText],
+  [720, 1040, 920, ' px', '920 px'],
+  'the search width slider shows the page width in pixels'
 );
-const inputAutoFocusToggle = inputAutoFocusRow.children[1].children[0];
-const moreSettingsLink = getChildByClassName(appearanceHeader, 'x-nt-appearance-more-settings');
-const shortcutsAccordion = getChildByClassName(searchWidthControl, 'x-nt-shortcuts-accordion');
-const shortcutsRow = shortcutsAccordion.children[0];
-const shortcutsTrigger = shortcutsRow.children[0];
-const shortcutsToggle = shortcutsRow.children[1].children[0];
-const shortcutsDetails = shortcutsAccordion.children[1];
-const shortcutsDetailsInner = shortcutsDetails.children[0];
-const shortcutAddToggle = shortcutsDetailsInner.children[0].children[1].children[0];
-const shortcutDockToggle = shortcutsDetailsInner.children[1].children[1].children[0];
-const shortcutColumnsControl = shortcutsDetailsInner.children[2];
-const shortcutColumnsRow = shortcutColumnsControl.children[1];
-const shortcutColumnsSlider = shortcutColumnsRow.children[0].children[0];
-const shortcutColumnsSliderValueInput = shortcutColumnsRow.children[1];
-
-assert.ok(appearanceHeader, 'appearance header should be a direct panel child above the scrollable content');
-assert.ok(appearanceScrollBody, 'appearance panel content should use one dedicated internal scroll container');
-assert.strictEqual(searchWidthControl.getAttribute('data-visible'), 'true');
-assert.strictEqual(searchWidthSlider.disabled, false, 'global scope should still show the search width slider');
-assert.strictEqual(searchWidthSlider.tabIndex, 0, 'global scope search width slider should be tabbable');
-assert.strictEqual(inputAutoFocusToggle.checked, false, 'input auto-focus should default to disabled');
-assert.strictEqual(inputAutoFocusToggle.getAttribute('role'), 'switch');
-assert.strictEqual(inputAutoFocusToggle.getAttribute('aria-checked'), 'false');
-assert.strictEqual(shortcutsToggle.checked, true, 'shortcuts should default to enabled');
-assert.strictEqual(shortcutsTrigger.getAttribute('aria-expanded'), 'false');
-assert.strictEqual(shortcutsTrigger.disabled, false);
-assert.strictEqual(shortcutsDetails.hidden, true, 'shortcut details should default to collapsed');
-assert.strictEqual(shortcutAddToggle.disabled, true, 'collapsed shortcut details should not be tabbable');
-assert.strictEqual(shortcutDockToggle.disabled, true, 'collapsed shortcut details should disable nested toggles');
-assert.strictEqual(shortcutColumnsSlider.disabled, true, 'collapsed shortcut details should disable the column slider');
-assert.strictEqual(shortcutColumnsSliderValueInput.disabled, true, 'collapsed shortcut details should disable the numeric value');
-shortcutsTrigger.click();
-assert.strictEqual(shortcutsTrigger.getAttribute('aria-expanded'), 'true');
-assert.strictEqual(shortcutsDetails.hidden, false, 'clicking the shortcut row should expand its details');
-assert.strictEqual(shortcutAddToggle.disabled, false);
-assert.strictEqual(shortcutDockToggle.disabled, false);
-assert.strictEqual(shortcutColumnsSlider.disabled, false);
-assert.strictEqual(shortcutColumnsSliderValueInput.disabled, false);
-assert.strictEqual(shortcutColumnsSlider.value, '10');
-assert.strictEqual(shortcutColumnsSliderValueInput.value, '10');
-shortcutColumnsSlider.value = '7';
-shortcutColumnsSlider._listeners.input[0]();
-shortcutColumnsSlider._listeners.change[0]();
+assert.strictEqual(panelState(runtime).search.autoFocus.toggle.checked, false, 'input auto-focus should default to disabled');
+assert.strictEqual(panelState(runtime).shortcuts.enabled, true, 'shortcuts should default to enabled');
+assert.strictEqual(panelState(runtime).shortcuts.toggle.checked, true);
+assert.strictEqual(panelState(runtime).shortcuts.columns.value, 10);
+assert.deepStrictEqual(
+  [panelState(runtime).shortcuts.columns.min, panelState(runtime).shortcuts.columns.max],
+  [4, 16]
+);
+const panelActionsForMain = panelActions(runtime);
+panelActionsForMain.setShortcutColumns(7, NOT_DRAGGING);
+assert.deepStrictEqual(shortcutPreferenceWrites[shortcutPreferenceWrites.length - 1], ['columns', 7, false],
+  'moving the slider previews the column count without saving it');
+panelActionsForMain.setShortcutColumns(7, TYPED);
 assert.strictEqual(shortcutColumns, 7, 'the slider should preserve every integer without snapping');
-shortcutColumnsSliderValueInput.value = '11';
-shortcutColumnsSliderValueInput._listeners.keydown[0]({
-  key: 'Enter',
-  preventDefault() {}
-});
-assert.strictEqual(shortcutColumns, 11, 'Enter should commit a typed exact integer');
-shortcutColumnsSliderValueInput.value = '13';
-shortcutColumnsSliderValueInput._listeners.blur[0]();
-assert.strictEqual(shortcutColumns, 13, 'clicking outside should commit the numeric value through blur');
-shortcutColumnsSliderValueInput.value = '';
-shortcutColumnsSliderValueInput._listeners.blur[0]();
-assert.strictEqual(shortcutColumnsSliderValueInput.value, '13', 'an empty draft should restore the saved value');
-shortcutColumnsSliderValueInput.value = '99';
-shortcutColumnsSliderValueInput._listeners.blur[0]();
-assert.strictEqual(shortcutColumns, 16, 'typed values should clamp to the supported range');
-shortcutsTrigger.click();
-assert.strictEqual(shortcutsTrigger.getAttribute('aria-expanded'), 'false');
-assert.strictEqual(shortcutsDetails.hidden, true, 'clicking the shortcut row again should collapse its details');
-assert.strictEqual(shortcutAddToggle.disabled, true);
-assert.strictEqual(shortcutDockToggle.disabled, true);
-assert.strictEqual(shortcutColumnsSlider.disabled, true);
-assert.strictEqual(shortcutColumnsSliderValueInput.disabled, true);
-shortcutsTrigger.click();
-assert.strictEqual(shortcutsDetails.hidden, false, 'shortcut details should reopen after being collapsed');
-shortcutsToggle.checked = false;
-shortcutsToggle._listeners.change.forEach((listener) => listener({ target: shortcutsToggle }));
-assert.strictEqual(shortcutsTrigger.disabled, true, 'turning shortcuts off should disable the accordion trigger');
-assert.strictEqual(shortcutsDetails.hidden, true, 'turning shortcuts off should collapse shortcut details');
-shortcutsTrigger.click();
-assert.strictEqual(shortcutsDetails.hidden, true, 'disabled shortcut accordion should not reopen');
-shortcutsToggle.checked = true;
-shortcutsToggle._listeners.change.forEach((listener) => listener({ target: shortcutsToggle }));
-assert.strictEqual(shortcutsTrigger.disabled, false, 're-enabling shortcuts should restore the accordion trigger');
-assert.strictEqual(shortcutsDetails.hidden, true, 're-enabling shortcuts should keep the accordion collapsed');
+assert.deepStrictEqual(shortcutPreferenceWrites[shortcutPreferenceWrites.length - 1], ['columns', 7, true],
+  'the end of a move saves the column count');
+assert.strictEqual(panelState(runtime).shortcuts.columns.value, 7, 'the panel shows the new column count');
+panelActionsForMain.setShortcutColumns(11, TYPED);
+assert.strictEqual(shortcutColumns, 11, 'a typed exact integer should commit');
+panelActionsForMain.setShortcutColumns(99, TYPED);
+assert.strictEqual(shortcutColumns, 16, 'values beyond the range should clamp to the supported range');
+panelActionsForMain.setShortcutsVisible(false);
+assert.strictEqual(shortcutsVisible, false);
+assert.strictEqual(panelState(runtime).shortcuts.enabled, false, 'turning shortcuts off disables their settings');
+assert.strictEqual(panelState(runtime).shortcuts.toggle.checked, false);
+panelActionsForMain.setShortcutsVisible(true);
+assert.strictEqual(panelState(runtime).shortcuts.enabled, true, 're-enabling shortcuts should restore their settings');
+panelActionsForMain.setShortcutAddVisible(false);
+panelActionsForMain.setShortcutDockMagnification(false);
+assert.deepStrictEqual(shortcutPreferenceWrites.slice(-2), [['add', false], ['dock', false]]);
+assert.strictEqual(panelState(runtime).shortcuts.add.toggle.checked, false);
+assert.strictEqual(panelState(runtime).shortcuts.dock.toggle.checked, false);
+assert.strictEqual(panelState(runtime).search.autoFocus.infoLabel, 'Input auto-focus info');
 assert.strictEqual(
-  inputAutoFocusInfoButton.getAttribute('aria-label'),
-  'Input auto-focus info'
-);
-inputAutoFocusInfoButton._listeners.focus.forEach((listener) => listener());
-assert.strictEqual(inputAutoFocusTooltips.length, 1);
-assert.strictEqual(inputAutoFocusTooltips[0].anchor, inputAutoFocusInfoButton);
-assert.strictEqual(
-  inputAutoFocusTooltips[0].text,
+  panelState(runtime).search.autoFocus.infoTooltip,
   'If you prefer to use the browser’s native address bar, turn this option off. The extension URL will no longer appear in the address bar.'
 );
-inputAutoFocusToggle.checked = true;
-inputAutoFocusToggle._listeners.change.forEach((listener) => listener({ target: inputAutoFocusToggle }));
+const tooltipAnchor = documentObj.createElement('button');
+panelActionsForMain.showTooltip(tooltipAnchor, panelState(runtime).search.autoFocus.infoTooltip);
+assert.strictEqual(inputAutoFocusTooltips.length, 1);
+assert.strictEqual(inputAutoFocusTooltips[0].anchor, tooltipAnchor);
+panelActionsForMain.setInputAutoFocus(true);
 assert.deepStrictEqual(inputAutoFocusWrites, [true]);
-assert.strictEqual(inputAutoFocusToggle.getAttribute('aria-checked'), 'true');
-assert.strictEqual(moreSettingsLink.tabIndex, 0, 'more settings link in the sticky header should be tabbable');
+assert.strictEqual(panelState(runtime).search.autoFocus.toggle.checked, true);
 
 const newtabHtml = readPageSource('newtab.html');
 assert.match(
@@ -2281,6 +1521,50 @@ assert.strictEqual(
   zhCNMessages.newtab_input_auto_focus_help.message,
   '如倾向使用浏览器原生地址栏，可关闭该选项。关闭后地址栏中的扩展 URL 将不再显示。'
 );
+
+function effectState(runtime) {
+  return panelState(runtime).wallpaper.effect;
+}
+
+async function testOverlayAndStrengthSnapToTheirMarksWhileDragged() {
+  const storageArea = createMemoryStorage({});
+  const { documentObj: testDocument, windowObj: testWindow, sandbox: testSandbox } =
+    createWallpaperSandbox();
+  const testRuntime = testSandbox.LumnoNewtabWallpaper.createWallpaperRuntime({
+    documentObj: testDocument,
+    windowObj: testWindow,
+    storageArea,
+    storageKeys: { overlay: WALLPAPER_OVERLAY_STORAGE_KEY, effect: WALLPAPER_EFFECT_STORAGE_KEY },
+    t: (_key, fallback) => fallback || '',
+    getRiSvg: () => ''
+  });
+  testRuntime.createControls();
+  openPanel(testRuntime);
+  await testRuntime.bootstrapInitialWallpaperOverlay();
+  await testRuntime.bootstrapInitialWallpaperEffect();
+  const actions = panelActions(testRuntime);
+  const overlay = () => panelState(testRuntime).wallpaper.overlay;
+  assert.deepStrictEqual([overlay().label, overlay().value, overlay().min, overlay().max], ['Mask effect', 50, 0, 100]);
+  actions.setOverlay(53, { dragging: true, final: false });
+  assert.strictEqual(overlay().value, 50, 'a dragged mask slider snaps to the default mark');
+  actions.setOverlay(97, { dragging: true, final: false });
+  assert.strictEqual(overlay().value, 97, 'the cover end only snaps when reached exactly');
+  actions.setOverlay(53, NOT_DRAGGING);
+  assert.strictEqual(overlay().value, 53, 'keys and typed values keep their exact value');
+  actions.setOverlay(148, TYPED);
+  assert.strictEqual(overlay().value, 100, 'typed values clamp to the slider range');
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  assert.deepStrictEqual(clonePlain(storageArea.data[WALLPAPER_OVERLAY_STORAGE_KEY]), { version: 2, light: 100, dark: 50 },
+    'only the mask of the current theme mode changes, saved once the slider settles');
+  assert.strictEqual(storageArea.sets.filter((set) => WALLPAPER_OVERLAY_STORAGE_KEY in set).length, 1,
+    'quick slider moves save once');
+
+  actions.selectEffect('grain');
+  actions.setEffectParameter('strength', 47, { dragging: true, final: false });
+  assert.strictEqual(effectState(testRuntime).sliders.strength.value, 50, 'filter strength snaps while dragged');
+  actions.setEffectParameter('spacing', 47, { dragging: true, final: false });
+  assert.strictEqual(effectState(testRuntime).sliders.spacing.value, 47, 'other filter sliders never snap');
+}
 
 async function testWallpaperSourcesHintWaitsForFinalFocusRoute() {
   const pendingRoute = createWallpaperSandbox();
@@ -2365,7 +1649,7 @@ async function testWallpaperSourcesHintWaitsForFinalFocusRoute() {
     settledRuntime.getControlElement(),
     'the hint should mount beside the appearance button it points at'
   );
-  settledRuntime.getControlElement().children[1].click();
+  openPanel(settledRuntime);
   assert.strictEqual(
     settledRouteDismissals,
     1,
@@ -2382,21 +1666,15 @@ const scopedRuntime = sandbox.LumnoNewtabWallpaper.createWallpaperRuntime({
   getThemeScope: () => 'home'
 });
 scopedRuntime.createControls();
-const scopedControl = scopedRuntime.getControlElement();
-scopedControl.children[1].click();
-const scopedScrollBody = getChildByClassName(scopedControl.children[0], 'x-nt-wallpaper-panel-scroll');
-const scopedAppearanceSection = getChildByClassName(scopedScrollBody, 'x-nt-appearance-section');
-const scopedSearchWidthControl = getChildByClassName(scopedAppearanceSection, 'x-nt-search-width-control');
-const scopedSearchWidthSlider = scopedSearchWidthControl.children[1].children[0];
-const scopedMoreSettingsLink = getChildByClassName(
-  getChildByClassName(scopedControl.children[0], 'x-nt-appearance-header'),
-  'x-nt-appearance-more-settings'
+openPanel(scopedRuntime);
+assert.strictEqual(panelState(scopedRuntime).theme.scope.active, 'home');
+assert.strictEqual(
+  panelState(scopedRuntime).theme.modes.find((mode) => mode.mode === 'system').label,
+  'Follow "Global"',
+  'the New Tab scope offers to follow the global theme instead of the system'
 );
-
-assert.strictEqual(scopedSearchWidthControl.getAttribute('data-visible'), 'true');
-assert.strictEqual(scopedSearchWidthSlider.disabled, false, 'visible search width slider should be interactive');
-assert.strictEqual(scopedSearchWidthSlider.tabIndex, 0, 'visible search width slider should be tabbable');
-assert.strictEqual(scopedMoreSettingsLink.tabIndex, 0, 'more settings link in the sticky header should stay tabbable');
+assert.strictEqual(panelState(scopedRuntime).search.width.value, 920,
+  'the search width slider stays available in the New Tab scope');
 
 let switchingScope = 'global';
 const switchingRuntime = sandbox.LumnoNewtabWallpaper.createWallpaperRuntime({
@@ -2411,40 +1689,21 @@ const switchingRuntime = sandbox.LumnoNewtabWallpaper.createWallpaperRuntime({
   }
 });
 switchingRuntime.createControls();
-const switchingControl = switchingRuntime.getControlElement();
-switchingControl.children[1].click();
-const switchingPanel = switchingControl.children[0];
-const switchingScrollBody = getChildByClassName(switchingPanel, 'x-nt-wallpaper-panel-scroll');
-const switchingAppearanceSection = getChildByClassName(switchingScrollBody, 'x-nt-appearance-section');
-const switchingThemeHeader = getChildByClassName(switchingAppearanceSection, 'x-nt-wallpaper-panel-header');
-const switchingScopeTabs = getChildByClassName(switchingThemeHeader, 'x-nt-appearance-scope-tabs');
-const switchingSearchWidthControl = getChildByClassName(switchingAppearanceSection, 'x-nt-search-width-control');
-const getSwitchingScopeTab = (scope) => switchingScopeTabs.children.find(
-  (child) => child.getAttribute('data-theme-scope') === scope
+openPanel(switchingRuntime);
+const switchingTheme = () => panelState(switchingRuntime).theme;
+assert.strictEqual(switchingTheme().scope.active, 'global');
+assert.strictEqual(switchingTheme().modes.find((mode) => mode.mode === 'system').label, 'Follow system');
+assert.deepStrictEqual(
+  switchingTheme().scope.options.map((option) => [option.value, option.label]),
+  [['global', 'Global'], ['home', 'New Tab']]
 );
-
-assert.strictEqual(switchingSearchWidthControl.getAttribute('data-visible'), 'true');
-assert.ok(
-  getChildByClassName(switchingScopeTabs, 'x-nt-wallpaper-tabs-indicator'),
-  'theme scope tabs should use the shared segmented tab indicator'
-);
-getSwitchingScopeTab('home').click();
-assert.strictEqual(switchingScope, 'home', 'clicking New Tab should switch theme scope');
-assert.strictEqual(getSwitchingScopeTab('home').getAttribute('data-active'), 'true');
-assert.strictEqual(getSwitchingScopeTab('global').getAttribute('data-active'), 'false');
-assert.strictEqual(
-  switchingSearchWidthControl.getAttribute('data-visible'),
-  'true',
-  'search width control should stay visible after switching to New Tab scope'
-);
-getSwitchingScopeTab('global').click();
-assert.strictEqual(switchingScope, 'global', 'clicking Global should switch theme scope back');
-assert.strictEqual(getSwitchingScopeTab('global').getAttribute('data-active'), 'true');
-assert.strictEqual(
-  switchingSearchWidthControl.getAttribute('data-visible'),
-  'true',
-  'search width control should stay visible after switching back to Global scope'
-);
+panelActions(switchingRuntime).selectThemeScope('home');
+assert.strictEqual(switchingScope, 'home', 'choosing New Tab should switch theme scope');
+assert.strictEqual(switchingTheme().scope.active, 'home');
+assert.strictEqual(switchingTheme().modes.find((mode) => mode.mode === 'system').label, 'Follow "Global"');
+panelActions(switchingRuntime).selectThemeScope('global');
+assert.strictEqual(switchingScope, 'global', 'choosing Global should switch theme scope back');
+assert.strictEqual(switchingTheme().scope.active, 'global');
 
 async function testBuiltInWallpaperBootstrapDefersCustomCatalogRead() {
   const localStoreCalls = {};
@@ -2474,15 +1733,18 @@ async function testBuiltInWallpaperBootstrapDefersCustomCatalogRead() {
   assert.deepStrictEqual(localStoreCalls.readByIds, [], 'built-in startup should not query local wallpaper records');
 
   testRuntime.createControls();
-  const control = testRuntime.getControlElement();
-  control.children[1].click();
+  openPanel(testRuntime);
+  assert.strictEqual(panelState(testRuntime).wallpaper.activeTab, 'built-in');
   assert.strictEqual(localStoreCalls.readAll, 0, 'opening the panel on Built-in should keep the catalog deferred');
 
-  getDescendantByAttribute(control.children[0], 'data-wallpaper-tab', 'local').click();
+  panelActions(testRuntime).selectSourceTab('local');
+  assert.strictEqual(panelState(testRuntime).wallpaper.activeTab, 'local');
   assert.strictEqual(localStoreCalls.readAll, 1, 'opening Local should load the full catalog once');
   await Promise.resolve();
-  getDescendantByAttribute(control.children[0], 'data-wallpaper-tab', 'built-in').click();
-  getDescendantByAttribute(control.children[0], 'data-wallpaper-tab', 'local').click();
+  await Promise.resolve();
+  assert.ok(findTile(testRuntime, `${CUSTOM_WALLPAPER_ID_PREFIX}unused`), 'the catalog fills the local tiles');
+  panelActions(testRuntime).selectSourceTab('built-in');
+  panelActions(testRuntime).selectSourceTab('local');
   assert.strictEqual(localStoreCalls.readAll, 1, 'reopening Local should reuse the loaded catalog');
 }
 
@@ -2501,19 +1763,14 @@ async function testWallpaperTileIntentReusesDecodedImagePromise() {
 
   await testRuntime.bootstrapInitialWallpaper();
   testRuntime.createControls();
-  const control = testRuntime.getControlElement();
-  control.children[1].click();
-  const targetTile = getDescendantByAttribute(control.children[0], 'data-wallpaper-id', 'white-shanshui');
-
-  assert.strictEqual(targetTile._listeners.pointerenter.length, 1);
-  assert.strictEqual(targetTile._listeners.focus.length, 1);
-  assert.strictEqual(targetTile._listeners.pointerdown.length, 1);
-  targetTile._listeners.pointerenter[0]();
-  targetTile._listeners.focus[0]();
-  targetTile._listeners.pointerdown[0]();
+  openPanel(testRuntime);
+  // Hovering, focusing and pressing a tile each prime its image.
+  panelActions(testRuntime).primeWallpaper('white-shanshui');
+  panelActions(testRuntime).primeWallpaper('white-shanshui');
+  panelActions(testRuntime).primeWallpaper('white-shanshui');
   assert.strictEqual(imageHarness.requests.length, 1, 'all selection-intent events should share one image request');
 
-  targetTile.click();
+  clickTile(testRuntime, 'white-shanshui');
   assert.strictEqual(imageHarness.requests.length, 1, 'click should reuse the image promise primed by selection intent');
   assert.ok(
     testDocument.documentElement.style
@@ -2521,6 +1778,8 @@ async function testWallpaperTileIntentReusesDecodedImagePromise() {
       .includes('lumno-newtab-monet-coastal-white.webp'),
     'the previous wallpaper should remain visible while the target image decodes'
   );
+  assert.strictEqual(findTile(testRuntime, 'white-shanshui').selected, true,
+    'the chosen tile is highlighted at once');
 
   imageHarness.requests[0].resolveDecode();
   await waitForAsyncWallpaperApply();
@@ -2547,10 +1806,9 @@ async function testRapidWallpaperSelectionNeverAppliesStaleDecode() {
 
   await testRuntime.bootstrapInitialWallpaper();
   testRuntime.createControls();
-  const control = testRuntime.getControlElement();
-  control.children[1].click();
-  getDescendantByAttribute(control.children[0], 'data-wallpaper-id', 'white-shanshui').click();
-  getDescendantByAttribute(control.children[0], 'data-wallpaper-id', 'dark-shanshui-moonlit').click();
+  openPanel(testRuntime);
+  clickTile(testRuntime, 'white-shanshui');
+  clickTile(testRuntime, 'dark-shanshui-moonlit');
   await new Promise((resolve) => setTimeout(resolve, 5));
 
   const firstRequest = imageHarness.requests.find((request) => request.src.includes('white-shanshui.webp'));
@@ -2799,19 +2057,15 @@ async function testWallpaperModeConsistencyDefaultsOnAndCopiesLegacySelectionWhe
 
   await testRuntime.bootstrapInitialWallpaper();
   testRuntime.createControls();
-  const testControl = testRuntime.getControlElement();
-  testControl.children[1].click();
-  const testPanel = testControl.children[0];
-  const modeSyncControl = getDescendantByClassName(testPanel, 'x-nt-wallpaper-mode-sync');
-  const modeSyncToggle = getDescendantByTagName(modeSyncControl, 'input');
-  const modeRow = getDescendantByClassName(testPanel, 'x-nt-wallpaper-mode-row');
+  openPanel(testRuntime);
+  const wallpaper = () => panelState(testRuntime).wallpaper;
 
-  assert.ok(modeSyncControl, 'wallpaper panel should render a light/dark consistency switch below the main toggle');
-  assert.strictEqual(modeSyncToggle.checked, true, 'light/dark consistency should default on for legacy wallpaper values');
-  assert.strictEqual(modeRow.getAttribute('data-visible'), 'false', 'the mode row should stay hidden while consistency is on');
+  assert.strictEqual(wallpaper().modeSync.title, 'Match light and dark mode',
+    'wallpaper panel should render a light/dark consistency switch below the main toggle');
+  assert.strictEqual(wallpaper().modeSync.toggle.checked, true, 'light/dark consistency should default on for legacy wallpaper values');
+  assert.strictEqual(wallpaper().mode.visible, false, 'the mode row should stay hidden while consistency is on');
 
-  modeSyncToggle.checked = false;
-  modeSyncToggle._listeners.change[0]();
+  panelActions(testRuntime).setModeSync(false);
 
   assert.deepStrictEqual(clonePlain(syncStorage.data[WALLPAPER_STORAGE_KEY]), {
     version: WALLPAPER_PREFS_STORAGE_VERSION,
@@ -2830,9 +2084,14 @@ async function testWallpaperModeConsistencyDefaultsOnAndCopiesLegacySelectionWhe
       .includes('lumno-newtab-white-shanshui.webp'),
     'disabling light/dark consistency should keep the current wallpaper image applied'
   );
-  assert.strictEqual(modeRow.getAttribute('data-visible'), 'true', 'the mode row should appear after consistency is disabled');
-  assert.strictEqual(getDescendantByClassName(modeRow, 'x-nt-appearance-setting-title').textContent, 'Mode',
+  assert.strictEqual(wallpaper().modeSync.toggle.checked, false);
+  assert.strictEqual(wallpaper().mode.visible, true, 'the mode row should appear after consistency is disabled');
+  assert.strictEqual(wallpaper().mode.label, 'Mode',
     'the light/dark switch reads as a setting row like Source and Category');
+  assert.deepStrictEqual(
+    wallpaper().mode.tabs.options.map((option) => [option.value, option.label, option.ariaLabel]),
+    [['light', 'Light', 'Edit Light wallpaper'], ['dark', 'Dark', 'Edit Dark wallpaper']]
+  );
 }
 
 async function testDisablingWallpaperModeConsistencyIgnoresStaleLocalDisabledOverride() {
@@ -2863,16 +2122,8 @@ async function testDisablingWallpaperModeConsistencyIgnoresStaleLocalDisabledOve
 
   await testRuntime.bootstrapInitialWallpaper();
   testRuntime.createControls();
-  const testControl = testRuntime.getControlElement();
-  testControl.children[1].click();
-  const testPanel = testControl.children[0];
-  const modeSyncToggle = getDescendantByTagName(
-    getDescendantByClassName(testPanel, 'x-nt-wallpaper-mode-sync'),
-    'input'
-  );
-
-  modeSyncToggle.checked = false;
-  modeSyncToggle._listeners.change[0]();
+  openPanel(testRuntime);
+  panelActions(testRuntime).setModeSync(false);
 
   assert.deepStrictEqual(clonePlain(syncStorage.data[WALLPAPER_STORAGE_KEY]), {
     version: WALLPAPER_PREFS_STORAGE_VERSION,
@@ -2939,12 +2190,16 @@ async function testSplitBuiltInWallpaperSelectionFollowsResolvedTheme() {
   );
 
   testRuntime.createControls();
-  const testControl = testRuntime.getControlElement();
-  testControl.children[1].click();
-  const darkModeTab = getDescendantByAttribute(testControl.children[0], 'data-wallpaper-mode', 'dark');
-  darkModeTab.click();
-  const targetTile = getDescendantByAttribute(testControl.children[0], 'data-wallpaper-id', 'dark-monet-lily-nocturne');
-  targetTile.click();
+  openPanel(testRuntime);
+  assert.strictEqual(panelState(testRuntime).wallpaper.mode.visible, true,
+    'separate light and dark wallpapers show the mode tabs');
+  assert.strictEqual(panelState(testRuntime).wallpaper.mode.tabs.active, 'light');
+  assert.strictEqual(findTile(testRuntime, 'monet-coastal-white').selected, true);
+  panelActions(testRuntime).selectWallpaperMode('dark');
+  assert.strictEqual(panelState(testRuntime).wallpaper.mode.tabs.active, 'dark');
+  assert.strictEqual(findTile(testRuntime, 'dark-shanshui-moonlit').selected, true,
+    'the dark tab highlights the dark wallpaper');
+  clickTile(testRuntime, 'dark-monet-lily-nocturne');
 
   assert.deepStrictEqual(clonePlain(syncStorage.data[WALLPAPER_STORAGE_KEY]), {
     version: WALLPAPER_PREFS_STORAGE_VERSION,
@@ -3050,13 +2305,14 @@ async function testSplitLocalWallpaperSelectionStaysLocalOnly() {
 
   await testRuntime.bootstrapInitialWallpaper();
   testRuntime.createControls();
-  const testControl = testRuntime.getControlElement();
-  testControl.children[1].click();
-  getDescendantByAttribute(testControl.children[0], 'data-wallpaper-mode', 'dark').click();
-  getDescendantByAttribute(testControl.children[0], 'data-wallpaper-tab', 'local').click();
+  openPanel(testRuntime);
+  panelActions(testRuntime).selectWallpaperMode('dark');
+  panelActions(testRuntime).selectSourceTab('local');
   await Promise.resolve();
   await Promise.resolve();
-  getDescendantByAttribute(testControl.children[0], 'data-wallpaper-id', customWallpaperId).click();
+  assert.strictEqual(findTile(testRuntime, customWallpaperId).thumbnailUrl, 'data:image/webp;base64,dark-thumb',
+    'local tiles show the stored thumbnail');
+  clickTile(testRuntime, customWallpaperId);
 
   assert.deepStrictEqual(clonePlain(syncStorage.data[WALLPAPER_STORAGE_KEY]), {
     version: WALLPAPER_PREFS_STORAGE_VERSION,
@@ -3127,42 +2383,41 @@ async function testDeletingLocalWallpapersKeepsTheLocalTabOpen() {
 
   await testRuntime.bootstrapInitialWallpaper();
   testRuntime.createControls();
-  const testControl = testRuntime.getControlElement();
-  testControl.children[1].click();
-  getDescendantByAttribute(testControl.children[0], 'data-wallpaper-tab', 'local').click();
+  openPanel(testRuntime);
+  panelActions(testRuntime).selectSourceTab('local');
   await waitForAsyncWallpaperApply();
-  const body = getDescendantByAttribute(testControl.children[0], 'data-active-tab', 'local');
-  assert.ok(body, 'the local tab should open');
+  const activeTab = () => panelState(testRuntime).wallpaper.activeTab;
+  assert.strictEqual(activeTab(), 'local', 'the local tab should open');
+  assert.deepStrictEqual(panelState(testRuntime).wallpaper.local.tiles.map((tile) => tile.id), [firstId, secondId]);
 
   // Every IndexedDB write publishes an asset revision, which reloads the stored state.
   const deleteWallpaper = async (id) => {
-    getDescendantByAttribute(testControl.children[0], 'data-wallpaper-id', id)
-      .querySelector('.x-nt-wallpaper-delete-button')
-      .click();
+    assert.ok(findTile(testRuntime, id), `${id} should be listed before it is deleted`);
+    panelActions(testRuntime).deleteWallpaper(id);
     await waitForAsyncWallpaperApply();
     testRuntime.handleStorageChange({ [ASSET_REVISION_STORAGE_KEY]: { newValue: id } });
     await waitForAsyncWallpaperApply();
   };
 
   await deleteWallpaper(firstId);
-  assert.strictEqual(body.getAttribute('data-active-tab'), 'local',
+  assert.strictEqual(activeTab(), 'local',
     'deleting an unselected local wallpaper should keep the local tab open');
-  assert.strictEqual(getDescendantByAttribute(testControl.children[0], 'data-wallpaper-id', firstId), null);
+  assert.strictEqual(findTile(testRuntime, firstId), null);
 
-  getDescendantByAttribute(testControl.children[0], 'data-wallpaper-id', secondId).click();
+  clickTile(testRuntime, secondId);
   testRuntime.handleStorageChange({ [LOCAL_WALLPAPER_STORAGE_KEY]: { newValue: localStorageArea.data[LOCAL_WALLPAPER_STORAGE_KEY] } });
   await waitForAsyncWallpaperApply();
   await deleteWallpaper(secondId);
   testRuntime.handleStorageChange({ [LOCAL_WALLPAPER_STORAGE_KEY]: { newValue: localStorageArea.data[LOCAL_WALLPAPER_STORAGE_KEY] } });
   await waitForAsyncWallpaperApply();
-  assert.strictEqual(body.getAttribute('data-active-tab'), 'local',
+  assert.strictEqual(activeTab(), 'local',
     'deleting the selected local wallpaper should keep the local tab open');
 
-  getDescendantByAttribute(testControl.children[0], 'data-wallpaper-tab', 'bing').click();
+  panelActions(testRuntime).selectSourceTab('bing');
   testDocument.body.setAttribute('data-theme', 'dark');
   testRuntime.handleThemeModeChange();
   await waitForAsyncWallpaperApply();
-  assert.strictEqual(body.getAttribute('data-active-tab'), 'bing',
+  assert.strictEqual(activeTab(), 'bing',
     'a theme change that keeps the same selection should not switch source tabs');
 }
 
@@ -3185,30 +2440,24 @@ async function testNewtabFaviconOptionsRenderBelowLogoAndPersistSelection() {
 
   await testRuntime.bootstrapInitialNewtabFavicon();
   testRuntime.createControls();
-  const testControl = testRuntime.getControlElement();
-  testControl.children[1].click();
-  const testPanel = testControl.children[0];
-  const faviconGroup = getDescendantByClassName(testPanel, 'x-nt-favicon-group');
-  const faviconTitle = getDescendantByClassName(testPanel, 'x-nt-favicon-title');
-  const faviconOptions = getDescendantByClassName(testPanel, 'x-nt-favicon-options');
+  openPanel(testRuntime);
+  const favicon = () => panelState(testRuntime).favicon;
+  const faviconModel = panelOf(testRuntime).model.favicons;
 
-  assert.ok(faviconGroup, 'Logo section should render a New Tab favicon group');
-  assert.strictEqual(faviconTitle.textContent, 'New Tab favicon');
-  assert.strictEqual(faviconOptions.children.length, 2, 'favicon selector should reserve two icon slots');
-  assert.strictEqual(faviconOptions.children[0].getAttribute('data-newtab-favicon-id'), 'default');
-  assert.strictEqual(faviconOptions.children[1].getAttribute('data-newtab-favicon-id'), 'alternate');
-  assert.strictEqual(faviconOptions.children[0].getAttribute('data-selected'), 'true');
-  assert.strictEqual(faviconOptions.children[1].getAttribute('data-selected'), 'false');
-
-  const firstIcon = getDescendantByTagName(faviconOptions.children[0], 'img');
+  assert.strictEqual(favicon().title, 'New Tab favicon');
+  assert.deepStrictEqual(
+    favicon().options.map((option) => [option.id, option.selected]),
+    [['default', true], ['alternate', false]],
+    'favicon selector should reserve two icon slots'
+  );
+  assert.strictEqual(favicon().options[1].label, 'Select Alternate favicon');
   assert.ok(
-    firstIcon.src.includes('assets/images/lumno.png'),
+    faviconModel[0].previewUrl.includes('assets/images/lumno.png'),
     'default favicon option should use the current extension icon'
   );
-  const secondIconPreview = getDescendantByClassName(faviconOptions.children[1], 'x-nt-favicon-svg-preview');
-  assert.ok(secondIconPreview, 'alternate favicon option should use an inline SVG preview');
+  assert.ok(faviconModel[1].inlineSvg.startsWith('<svg'), 'alternate favicon option should use an inline SVG preview');
 
-  faviconOptions.children[1].click();
+  panelActions(testRuntime).selectFavicon('alternate');
 
   assert.strictEqual(
     syncStorage.data[NEWTAB_FAVICON_STORAGE_KEY],
@@ -3220,8 +2469,7 @@ async function testNewtabFaviconOptionsRenderBelowLogoAndPersistSelection() {
     'alternate',
     'selecting the alternate favicon should cache it for the next New Tab preload'
   );
-  assert.strictEqual(faviconOptions.children[0].getAttribute('data-selected'), 'false');
-  assert.strictEqual(faviconOptions.children[1].getAttribute('data-selected'), 'true');
+  assert.deepStrictEqual(favicon().options.map((option) => option.selected), [false, true]);
   const faviconLink = testDocument.head.children.find((child) => child.tagName === 'LINK');
   assert.ok(faviconLink, 'selecting a favicon should apply a document icon link');
   assert.strictEqual(faviconLink.getAttribute('rel'), 'icon');
@@ -3367,29 +2615,28 @@ async function testWallpaperEffectInkToneControlPersistsAndFollowsEffectType() {
   });
 
   testRuntime.createControls();
-  testRuntime.getControlElement().children[1].click();
+  openPanel(testRuntime);
   await testRuntime.bootstrapInitialWallpaperEffect();
-  const control = testRuntime.getControlElement();
-  const inkToneControl = getDescendantByClassName(control, 'x-nt-effect-ink-tone-control');
-  const darkButton = getDescendantByAttribute(control, 'data-wallpaper-effect-ink-tone', 'dark');
-  const lightButton = getDescendantByAttribute(control, 'data-wallpaper-effect-ink-tone', 'light');
-  const ditherButton = getEffectOption(control, 'dither');
+  const inkTone = () => effectState(testRuntime).inkTone;
 
   assert.strictEqual(
-    inkToneControl.getAttribute('data-visible'),
-    'true',
+    inkTone().visible,
+    true,
     'halftone should show the shadow/highlight sampling picker beneath the effect tabs'
   );
   assert.strictEqual(
-    darkButton.getAttribute('aria-pressed'),
-    'true',
+    inkTone().tabs.active,
+    'dark',
     'legacy automatic tone should present the expected dark default for the light wallpaper mode'
   );
+  assert.deepStrictEqual(
+    inkTone().tabs.options.map((option) => [option.value, option.label]),
+    [['dark', 'Shadows'], ['light', 'Highlights']]
+  );
 
-  lightButton.click();
+  panelActions(testRuntime).selectInkTone('light');
   await new Promise((resolve) => setTimeout(resolve, 150));
-  assert.strictEqual(lightButton.getAttribute('aria-pressed'), 'true');
-  assert.strictEqual(darkButton.getAttribute('aria-pressed'), 'false');
+  assert.strictEqual(inkTone().tabs.active, 'light');
   assert.strictEqual(storageArea.data[WALLPAPER_EFFECT_STORAGE_KEY].light.inkTone, 'light');
   assert.strictEqual(
     storageArea.data[WALLPAPER_EFFECT_STORAGE_KEY].dark.inkTone,
@@ -3397,22 +2644,22 @@ async function testWallpaperEffectInkToneControlPersistsAndFollowsEffectType() {
     'shared wallpaper modes should persist the chosen ink tone consistently'
   );
 
-  getEffectOption(control, 'ascii').click();
+  panelActions(testRuntime).selectEffect('ascii');
   assert.strictEqual(
-    inkToneControl.getAttribute('data-visible'),
-    'true',
+    inkTone().visible,
+    true,
     'ASCII should keep the shadow/highlight sampling picker visible'
   );
-  ditherButton.click();
+  panelActions(testRuntime).selectEffect('dither');
   assert.strictEqual(
-    inkToneControl.getAttribute('data-visible'),
-    'false',
+    inkTone().visible,
+    false,
     'Dither should use the wallpaper palette instead of the dot or character ink picker'
   );
-  getEffectOption(control, 'grain').click();
+  panelActions(testRuntime).selectEffect('grain');
   assert.strictEqual(
-    inkToneControl.getAttribute('data-visible'),
-    'false',
+    inkTone().visible,
+    false,
     'grain should hide the ink tone picker because it has no dots or characters'
   );
 }
@@ -3431,64 +2678,41 @@ async function testBlocksExposeReliefControls() {
   });
 
   testRuntime.createControls();
-  testRuntime.getControlElement().children[1].click();
+  openPanel(testRuntime);
   await testRuntime.bootstrapInitialWallpaperEffect();
-  const control = testRuntime.getControlElement();
-  const blocksButton = getEffectOption(control, 'blocks');
-  const inkToneControl = getDescendantByClassName(control, 'x-nt-effect-ink-tone-control');
+  const view = panelOf(testRuntime);
 
-  assert.ok(blocksButton, 'the appearance panel should include the Blocks filter');
-  blocksButton.click();
-  assert.strictEqual(blocksButton.getAttribute('data-selected'), 'true');
+  assert.ok(
+    effectState(testRuntime).select.options.some((option) => option.value === 'blocks' && option.label === 'Blocks'),
+    'the appearance panel should include the Blocks filter'
+  );
+  panelActions(testRuntime).selectEffect('blocks');
+  assert.strictEqual(effectState(testRuntime).select.value, 'blocks');
   assert.strictEqual(testDocument.body.getAttribute('data-wallpaper-effect'), 'blocks');
   assert.ok(
-    testRuntime.containsTarget(blocksButton),
+    testRuntime.containsTarget(view.selectMenu),
     'clicks inside the filter menu should not count as outside the appearance panel'
   );
-  getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectSelectHost').children[0].click();
+  view.selectOpen = true;
   assert.strictEqual(testRuntime.closeOpenMenu(), true, 'Escape should close the open filter menu first');
   assert.strictEqual(testRuntime.closeOpenMenu(), false, 'Escape should fall through once the menu is closed');
-  [
-    ['effectSizeControl', 'effectSizeLabel', 'Block size']
-  ].forEach(([controlRef, labelRef, label]) => {
-    assert.strictEqual(
-      getDescendantByAttribute(control, 'data-wallpaper-ref', controlRef).getAttribute('data-visible'),
-      'true',
-      `${label} should be visible for Blocks`
-    );
-    assert.strictEqual(
-      getDescendantByAttribute(control, 'data-wallpaper-ref', labelRef).textContent,
-      label
-    );
-  });
+  const sliders = () => effectState(testRuntime).sliders;
+  assert.strictEqual(sliders().size.visible, true, 'Block size should be visible for Blocks');
+  assert.strictEqual(sliders().size.label, 'Block size');
   assert.strictEqual(
-    inkToneControl.getAttribute('data-visible'),
-    'false',
+    effectState(testRuntime).inkTone.visible,
+    false,
     'Blocks should preserve wallpaper colors instead of exposing an ink-tone override'
   );
-  assert.strictEqual(
-    getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectStrengthControl').getAttribute('data-visible'),
-    'false',
-    'fixed full-height relief should not render a redundant adjustment'
-  );
-  assert.strictEqual(
-    getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectTextureControl').getAttribute('data-visible'),
-    'false',
-    'fixed full-detail color should not render a redundant adjustment'
-  );
-  assert.strictEqual(
-    getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectSpacingControl').getAttribute('data-visible'),
-    'false',
-    'fixed zero block spacing should not render a redundant adjustment'
-  );
-  const sizeSlider = getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectSizeSlider');
-  assert.strictEqual(sizeSlider.max, '5');
-  assert.strictEqual(sizeSlider.step, '1');
-  assert.strictEqual(sizeSlider.getAttribute('data-value-suffix'), null);
-  assert.strictEqual(sizeSlider.closest('.x-nt-range-slider-row').getAttribute('data-value-suffix'), null);
-  assert.strictEqual(sizeSlider.value, '1', 'Blocks should start at the first size level');
-  sizeSlider.value = '5';
-  sizeSlider._listeners.input.forEach((listener) => listener({ target: sizeSlider }));
+  assert.strictEqual(sliders().strength.visible, false, 'fixed full-height relief should not render a redundant adjustment');
+  assert.strictEqual(sliders().texture.visible, false, 'fixed full-detail color should not render a redundant adjustment');
+  assert.strictEqual(sliders().spacing.visible, false, 'fixed zero block spacing should not render a redundant adjustment');
+  assert.strictEqual(sliders().size.max, 5);
+  assert.strictEqual(sliders().size.step, undefined, 'block sizes are whole steps');
+  assert.strictEqual(sliders().size.suffix, '', 'block sizes are levels, not percentages');
+  assert.strictEqual(sliders().size.value, 1, 'Blocks should start at the first size level');
+  panelActions(testRuntime).setEffectParameter('size', 5, NOT_DRAGGING);
+  assert.strictEqual(sliders().size.value, 5);
   await new Promise((resolve) => setTimeout(resolve, 150));
   assert.strictEqual(storageArea.data[WALLPAPER_EFFECT_STORAGE_KEY].light.type, 'blocks');
   assert.strictEqual(storageArea.data[WALLPAPER_EFFECT_STORAGE_KEY].dark.type, 'blocks');
@@ -3533,43 +2757,28 @@ async function testEffectSpecificParametersRoundTrip() {
   });
 
   testRuntime.createControls();
-  testRuntime.getControlElement().children[1].click();
+  openPanel(testRuntime);
   await testRuntime.bootstrapInitialWallpaperEffect();
-  const control = testRuntime.getControlElement();
-  const strengthSlider = getDescendantByAttribute(
-    control,
-    'data-wallpaper-ref',
-    'effectStrengthSlider'
-  );
-  const sizeSlider = getDescendantByAttribute(
-    control,
-    'data-wallpaper-ref',
-    'effectSizeSlider'
-  );
-  assert.strictEqual(strengthSlider.value, '80');
+  const sliders = () => effectState(testRuntime).sliders;
+  const actions = panelActions(testRuntime);
+  assert.strictEqual(sliders().strength.value, 80);
 
-  getEffectOption(control, 'crt').click();
-  assert.strictEqual(strengthSlider.value, '100', 'CRT should expose its dedicated strength');
-  strengthSlider.value = '50';
-  strengthSlider._listeners.input.forEach((listener) => listener({ target: strengthSlider }));
+  actions.selectEffect('crt');
+  assert.strictEqual(sliders().strength.value, 100, 'CRT should expose its dedicated strength');
+  actions.setEffectParameter('strength', 50, NOT_DRAGGING);
 
-  getEffectOption(control, 'grain').click();
-  assert.strictEqual(
-    strengthSlider.value,
-    '80',
-    'Grain strength should survive a round trip through CRT'
-  );
+  actions.selectEffect('grain');
+  assert.strictEqual(sliders().strength.value, 80, 'Grain strength should survive a round trip through CRT');
 
-  getEffectOption(control, 'blocks').click();
-  assert.strictEqual(sizeSlider.value, '1', 'Blocks should expose its dedicated size');
-  sizeSlider.value = '4';
-  sizeSlider._listeners.input.forEach((listener) => listener({ target: sizeSlider }));
+  actions.selectEffect('blocks');
+  assert.strictEqual(sliders().size.value, 1, 'Blocks should expose its dedicated size');
+  actions.setEffectParameter('size', 4, NOT_DRAGGING);
 
-  getEffectOption(control, 'halftone').click();
-  assert.strictEqual(sizeSlider.value, '65', 'generic size should survive a round trip through Blocks');
-  getEffectOption(control, 'blocks').click();
-  assert.strictEqual(sizeSlider.value, '4', 'Blocks size should be retained independently');
-  getEffectOption(control, 'grain').click();
+  actions.selectEffect('halftone');
+  assert.strictEqual(sliders().size.value, 65, 'generic size should survive a round trip through Blocks');
+  actions.selectEffect('blocks');
+  assert.strictEqual(sliders().size.value, 4, 'Blocks size should be retained independently');
+  actions.selectEffect('grain');
 
   await new Promise((resolve) => setTimeout(resolve, 150));
   const persisted = storageArea.data[WALLPAPER_EFFECT_STORAGE_KEY].light;
@@ -3580,6 +2789,67 @@ async function testEffectSpecificParametersRoundTrip() {
   assert.strictEqual(persisted.texture, 25);
   assert.strictEqual(persisted.blockSize, 4);
   assert.strictEqual(persisted.crtStrength, 10);
+}
+
+async function testTimeSettingsFollowTheContentAboveTheSearchBar() {
+  const settings = REAL_WALLPAPER_DEPENDENCIES.LumnoSettings;
+  const storageArea = createMemoryStorage({});
+  const page = { mode: 'brand', weight: 320, seconds: false };
+  const { documentObj: testDocument, windowObj: testWindow, sandbox: testSandbox } = createWallpaperSandbox();
+  const testRuntime = testSandbox.LumnoNewtabWallpaper.createWallpaperRuntime({
+    documentObj: testDocument,
+    windowObj: testWindow,
+    storageArea,
+    getTopContentMode: () => page.mode,
+    setTopContentMode: (mode) => { page.mode = mode; },
+    getTimeFontWeight: () => page.weight,
+    setTimeFontWeight: (weight) => { page.weight = weight; },
+    getTimeSecondsVisible: () => page.seconds,
+    setTimeSecondsVisible: (visible) => { page.seconds = visible; },
+    t: (_key, fallback) => fallback || '',
+    getRiSvg: () => ''
+  });
+  testRuntime.createControls();
+  openPanel(testRuntime);
+  const search = () => panelState(testRuntime).search;
+  assert.strictEqual(search().topContent.tabs.active, 'brand');
+  assert.strictEqual(search().timeWeight.visible, false, 'the brand mark has no font weight setting');
+  assert.strictEqual(search().seconds.visible, false);
+  assert.deepStrictEqual(
+    [search().timeWeight.min, search().timeWeight.max, search().timeWeight.value, search().timeWeight.step],
+    [300, 800, 320, undefined],
+    'the font weight slider moves in whole steps across the supported range'
+  );
+
+  panelActions(testRuntime).selectTopContent('time');
+  assert.strictEqual(page.mode, 'time');
+  assert.strictEqual(storageArea.data[settings.NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY], 'time');
+  assert.strictEqual(search().timeWeight.visible, true, 'the time shows its font weight setting');
+  assert.strictEqual(search().seconds.visible, true, 'the time shows its seconds setting');
+
+  panelActions(testRuntime).setTimeFontWeight(612, NOT_DRAGGING);
+  assert.strictEqual(page.weight, 612);
+  assert.strictEqual(storageArea.data[settings.NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY], 612);
+  assert.strictEqual(search().timeWeight.value, 612);
+  panelActions(testRuntime).setTimeSecondsVisible(true);
+  assert.strictEqual(page.seconds, true);
+  assert.strictEqual(storageArea.data[settings.NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY], true);
+  assert.strictEqual(search().seconds.toggle.checked, true);
+
+  // Another device changes the settings: the page and the panel follow.
+  page.weight = 300;
+  testRuntime.handleStorageChange({ [settings.NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]: { newValue: 9999 } });
+  assert.strictEqual(page.weight, 800, 'a synced weight is clamped before it reaches the page');
+  assert.strictEqual(storageArea.data[settings.NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY], 800,
+    'an out-of-range synced weight is written back clamped');
+  assert.strictEqual(search().timeWeight.value, 800);
+  testRuntime.handleStorageChange({ [settings.NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY]: { newValue: false } });
+  assert.strictEqual(page.seconds, false);
+  assert.strictEqual(search().seconds.toggle.checked, false);
+  testRuntime.handleStorageChange({ [settings.NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY]: { newValue: 'off' } });
+  assert.strictEqual(page.mode, 'off');
+  assert.strictEqual(search().topContent.tabs.active, 'off');
+  assert.strictEqual(search().timeWeight.visible, false);
 }
 
 async function testGlassBlurCanBeEnabledAndDisabled() {
@@ -3616,42 +2886,29 @@ async function testGlassBlurCanBeEnabledAndDisabled() {
   });
 
   testRuntime.createControls();
-  testRuntime.getControlElement().children[1].click();
+  openPanel(testRuntime);
   await testRuntime.bootstrapInitialWallpaperEffect();
-  const control = testRuntime.getControlElement();
-  const blurButton = getEffectOption(control, 'blur');
-  const sizeControl = getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectSizeControl');
-  const spacingControl = getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectSpacingControl');
-  const strengthValueInput = getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectStrengthSliderValueInput');
-  const textureSlider = getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectTextureSlider');
-  const textureLabel = getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectTextureLabel');
-  const textureValueInput = getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectTextureSliderValueInput');
-  const offButton = getEffectOption(control, 'none');
+  const sliders = () => effectState(testRuntime).sliders;
+  const actions = panelActions(testRuntime);
 
-  blurButton.click();
-  assert.strictEqual(blurButton.getAttribute('data-selected'), 'true');
+  actions.selectEffect('blur');
+  assert.strictEqual(effectState(testRuntime).select.value, 'blur');
   assert.strictEqual(testDocument.body.getAttribute('data-wallpaper-effect'), 'blur');
-  assert.strictEqual(
-    getDescendantByAttribute(control, 'data-wallpaper-blur-style', 'standard'),
-    null,
-    'a single standard texture style should not render a redundant style selector'
-  );
-  assert.strictEqual(sizeControl.getAttribute('data-visible'), 'false');
-  assert.strictEqual(spacingControl.getAttribute('data-visible'), 'false');
-  assert.strictEqual(textureSlider.getAttribute('data-wallpaper-dynamic-range'), null);
-  assert.strictEqual(String(textureValueInput.min), '0');
-  assert.strictEqual(String(textureValueInput.max), '100');
-  assert.strictEqual(textureLabel.textContent, 'Texture');
-  textureValueInput.value = '180.75';
-  textureValueInput.blur();
+  assert.strictEqual(sliders().size.visible, false);
+  assert.strictEqual(sliders().spacing.visible, false);
+  assert.strictEqual(sliders().texture.visible, true);
+  assert.strictEqual(sliders().texture.disabled, false);
+  assert.deepStrictEqual([sliders().texture.min, sliders().texture.max], [0, 100]);
+  assert.strictEqual(sliders().texture.label, 'Texture');
+  assert.strictEqual(sliders().strength.label, 'Blur strength');
+  actions.setEffectParameter('texture', 180.75, TYPED);
   await new Promise((resolve) => setTimeout(resolve, 150));
   assert.strictEqual(
     storageArea.data[WALLPAPER_EFFECT_STORAGE_KEY].light.texture,
     100,
     'standard glass texture should clamp typed values to 0–100'
   );
-  strengthValueInput.value = '150';
-  strengthValueInput.blur();
+  actions.setEffectParameter('strength', 150, TYPED);
   await new Promise((resolve) => setTimeout(resolve, 150));
   assert.strictEqual(storageArea.data[WALLPAPER_EFFECT_STORAGE_KEY].light.type, 'blur');
   assert.strictEqual(
@@ -3659,9 +2916,10 @@ async function testGlassBlurCanBeEnabledAndDisabled() {
     100,
     'bounded strength should keep its existing 0–100 contract'
   );
-  offButton.click();
-  assert.strictEqual(offButton.getAttribute('data-selected'), 'true');
+  actions.selectEffect('none');
+  assert.strictEqual(effectState(testRuntime).select.value, 'none');
   assert.strictEqual(testDocument.body.getAttribute('data-wallpaper-effect'), 'none');
+  assert.strictEqual(sliders().strength.visible, false, 'no filter means no filter settings');
   await new Promise((resolve) => setTimeout(resolve, 150));
   assert.strictEqual(storageArea.data[WALLPAPER_EFFECT_STORAGE_KEY].light.type, 'none');
   assert.strictEqual(storageArea.data[WALLPAPER_EFFECT_STORAGE_KEY].dark.type, 'none');
@@ -3708,15 +2966,12 @@ async function testGlassBlurFilterSwitchPreservesTheOutgoingFrame() {
   });
 
   testRuntime.createControls();
-  testRuntime.getControlElement().children[1].click();
+  openPanel(testRuntime);
   await testRuntime.bootstrapInitialWallpaperEffect();
   testDocument.body.setAttribute('data-nt-enter', 'done');
-  const control = testRuntime.getControlElement();
-  const blurButton = getEffectOption(control, 'blur');
-  const grainButton = getEffectOption(control, 'grain');
 
   assert.strictEqual(testDocument.body.getAttribute('data-wallpaper-effect'), 'grain');
-  blurButton.click();
+  panelActions(testRuntime).selectEffect('blur');
   const enteringSnapshot = getDescendantByClassName(
     testDocument.body,
     'x-nt-wallpaper-transition-layer'
@@ -3750,7 +3005,7 @@ async function testGlassBlurFilterSwitchPreservesTheOutgoingFrame() {
   Object.entries(blurSnapshotProperties).forEach(([name, value]) => {
     testDocument.body.style.setProperty(name, value);
   });
-  grainButton.click();
+  panelActions(testRuntime).selectEffect('grain');
   const leavingSnapshot = getDescendantByClassName(
     testDocument.body,
     'x-nt-wallpaper-transition-layer'
@@ -3792,126 +3047,49 @@ async function testCrtFilterPersistsAndShowsDisplayControls() {
   });
 
   testRuntime.createControls();
-  testRuntime.getControlElement().children[1].click();
+  openPanel(testRuntime);
   await testRuntime.bootstrapInitialWallpaperEffect();
-  const control = testRuntime.getControlElement();
-  const crtButton = getEffectOption(control, 'crt');
-  assert.ok(crtButton, 'the wallpaper filter picker should expose CRT');
-  crtButton.click();
+  const sliders = () => effectState(testRuntime).sliders;
+  const actions = panelActions(testRuntime);
+  assert.ok(
+    effectState(testRuntime).select.options.some((option) => option.value === 'crt'),
+    'the wallpaper filter picker should expose CRT'
+  );
+  actions.selectEffect('crt');
   assert.strictEqual(testDocument.body.getAttribute('data-wallpaper-effect'), 'crt');
-  assert.strictEqual(
-    getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectSizeControl').getAttribute('data-visible'),
-    'false',
-    'CRT should use a preset-specific fixed phosphor grille instead of exposing its size'
-  );
-  assert.strictEqual(
-    getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectSpacingControl').getAttribute('data-visible'),
-    'false',
-    'CRT should use a fixed two-pixel scanline instead of exposing spacing'
-  );
-  assert.strictEqual(
-    getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectTextureControl').getAttribute('data-visible'),
-    'false'
-  );
-  assert.strictEqual(
-    getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectStrengthLabel').textContent,
-    'Display intensity'
-  );
-  assert.strictEqual(
-    getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectCrtPresetControl'),
-    null,
-    'RGB-only CRT should not render a redundant style selector'
-  );
-  assert.strictEqual(
-    getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectCrtGrainControl'),
-    null,
-    'electron grain should no longer be rendered as a setting'
-  );
+  assert.strictEqual(sliders().size.visible, false,
+    'CRT should use a preset-specific fixed phosphor grille instead of exposing its size');
+  assert.strictEqual(sliders().spacing.visible, false,
+    'CRT should use a fixed two-pixel scanline instead of exposing spacing');
+  assert.strictEqual(sliders().texture.visible, false);
+  assert.strictEqual(sliders().strength.label, 'Display intensity');
   [
-    ['effectCrtBloomControl', 'effectCrtBloomLabel', 'Bloom'],
-    ['effectCrtRgbOffsetControl', 'effectCrtRgbOffsetLabel', 'RGB offset'],
-    ['effectCrtCurvatureControl', 'effectCrtCurvatureLabel', 'Screen curvature']
-  ].forEach(([controlRef, labelRef, label]) => {
-    assert.strictEqual(
-      getDescendantByAttribute(control, 'data-wallpaper-ref', controlRef).getAttribute('data-visible'),
-      'true'
-    );
-    assert.strictEqual(
-      getDescendantByAttribute(control, 'data-wallpaper-ref', labelRef).textContent,
-      label
-    );
+    ['crtBloom', 'Bloom'],
+    ['crtRgbOffset', 'RGB offset'],
+    ['crtCurvature', 'Screen curvature']
+  ].forEach(([key, label]) => {
+    assert.strictEqual(sliders()[key].visible, true);
+    assert.strictEqual(sliders()[key].label, label);
   });
-  const strengthValueInput = getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectStrengthSliderValueInput');
-  strengthValueInput.value = '50';
-  strengthValueInput.blur();
-  const bloomValueInput = getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectCrtBloomSliderValueInput');
-  bloomValueInput.value = '140';
-  bloomValueInput._listeners.input.forEach((listener) => listener({ target: bloomValueInput }));
-  assert.strictEqual(bloomValueInput.value, '100', 'bounded CRT percentages should clamp while typing');
-  bloomValueInput.blur();
-  const curvatureValueInput = getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectCrtCurvatureSliderValueInput');
-  curvatureValueInput.value = '50';
-  curvatureValueInput.blur();
+  actions.setEffectParameter('strength', 50, TYPED);
+  actions.setEffectParameter('crtBloom', 100, TYPED);
+  actions.setEffectParameter('crtCurvature', 50, TYPED);
   assert.strictEqual(
-    getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectCrtCurvatureSlider').value,
-    '50',
+    sliders().crtCurvature.value,
+    50,
     'fractional physical values should round-trip back to the same UI percentage'
   );
-  const rgbOffsetValueInput = getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectCrtRgbOffsetSliderValueInput');
-  rgbOffsetValueInput.value = '50';
-  rgbOffsetValueInput.blur();
-  assert.strictEqual(String(getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectStrengthSlider').max), '100');
-  assert.strictEqual(String(getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectCrtBloomSlider').max), '100');
-  assert.strictEqual(String(getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectCrtCurvatureSlider').max), '100');
-  [
-    'effectStrengthSlider',
-    'effectCrtBloomSlider',
-    'effectCrtCurvatureSlider'
-  ].forEach((sliderRef) => {
-    const rangeSlider = getDescendantByAttribute(control, 'data-wallpaper-ref', sliderRef);
-    const row = rangeSlider.closest('.x-nt-range-slider-row');
-    assert.strictEqual(
-      row.querySelector('.x-nt-overlay-tick[data-overlay-tick="default"]').textContent,
-      '50%',
-      'CRT percentages should label the actual midpoint instead of implying it is the preset default'
-    );
-    assert.strictEqual(
-      row.querySelector('.x-nt-overlay-tick[data-align="end"]').textContent,
-      '100%'
-    );
+  actions.setEffectParameter('crtRgbOffset', 50, TYPED);
+  ['strength', 'crtBloom', 'crtRgbOffset', 'crtCurvature'].forEach((key) => {
+    assert.strictEqual(sliders()[key].max, 100);
+    assert.strictEqual(sliders()[key].suffix, '%', 'CRT parameter values should visibly use percentage units');
+    assert.strictEqual(sliders()[key].valueText, `${sliders()[key].value}%`);
   });
-  [
-    'effectStrengthSlider',
-    'effectCrtBloomSlider',
-    'effectCrtRgbOffsetSlider',
-    'effectCrtCurvatureSlider'
-  ].forEach((sliderRef) => {
-    const rangeSlider = getDescendantByAttribute(control, 'data-wallpaper-ref', sliderRef);
-    assert.strictEqual(
-      rangeSlider.closest('.x-nt-range-slider-row').getAttribute('data-value-suffix'),
-      '%',
-      'CRT parameter values should visibly use percentage units'
-    );
-    assert.strictEqual(
-      rangeSlider.getAttribute('data-value-suffix'),
-      '%',
-      'CRT slider bubbles should include the percentage suffix'
-    );
-  });
-  const grainButton = getEffectOption(control, 'grain');
-  grainButton.click();
+  actions.selectEffect('grain');
+  assert.strictEqual(sliders().spacing.max, 100, 'non-CRT filter spacing should remain bounded');
   assert.strictEqual(
-    getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectSpacingSlider').getAttribute('data-wallpaper-dynamic-range'),
-    null,
-    'non-CRT filter spacing should remain bounded to prevent accidental values'
-  );
-  assert.strictEqual(
-    getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectSpacingSlider').max,
-    '100'
-  );
-  assert.strictEqual(
-    getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectSpacingSlider').value,
-    '100',
+    sliders().spacing.value,
+    100,
     'legacy out-of-range spacing should render at the safe UI boundary'
   );
   assert.strictEqual(
@@ -3919,20 +3097,11 @@ async function testCrtFilterPersistsAndShowsDisplayControls() {
     100,
     'normalized spacing should remain within the shared slider range'
   );
-  const genericSpacingSlider = getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectSpacingSlider');
-  assert.strictEqual(genericSpacingSlider.getAttribute('data-value-suffix'), '%');
-  assert.strictEqual(genericSpacingSlider.closest('.x-nt-range-slider-row').getAttribute('data-value-suffix'), '%');
-  const genericSpacingInput = getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectSpacingSliderValueInput');
-  genericSpacingInput.value = '240';
-  genericSpacingInput._listeners.input.forEach((listener) => listener({ target: genericSpacingInput }));
-  assert.strictEqual(genericSpacingInput.value, '100', 'other filter spacing should clamp accidental values');
-  genericSpacingInput.blur();
-  crtButton.click();
-  assert.strictEqual(
-    getDescendantByAttribute(control, 'data-wallpaper-ref', 'effectSpacingControl').getAttribute('data-visible'),
-    'false',
-    'returning to CRT should keep the removed spacing control hidden'
-  );
+  assert.strictEqual(sliders().spacing.suffix, '%');
+  actions.setEffectParameter('spacing', 240, TYPED);
+  assert.strictEqual(sliders().spacing.value, 100, 'other filter spacing should clamp accidental values');
+  actions.selectEffect('crt');
+  assert.strictEqual(sliders().spacing.visible, false, 'returning to CRT should keep the removed spacing control hidden');
   await new Promise((resolve) => setTimeout(resolve, 150));
   assert.strictEqual(storageArea.data[WALLPAPER_EFFECT_STORAGE_KEY].light.type, 'crt');
   assert.strictEqual(storageArea.data[WALLPAPER_EFFECT_STORAGE_KEY].dark.type, 'crt');
@@ -3987,54 +3156,43 @@ async function testBingDailySelectionAndManualOverride() {
   });
   await runtime.bootstrapInitialWallpaper();
   runtime.createControls();
-  const control = runtime.getControlElement();
-  control.querySelector('.x-nt-wallpaper-button').click();
-  getDescendantByAttribute(control, 'data-wallpaper-tab', 'bing').click();
+  openPanel(runtime);
+  panelActions(runtime).selectSourceTab('bing');
   await waitForAsyncWallpaperApply();
-  const daily = getDescendantByAttribute(control, 'data-wallpaper-ref', 'bingDailyToggle');
-  daily.checked = true;
-  daily.dispatchEvent(new context.windowObj.Event('change'));
+  const bing = () => panelState(runtime).wallpaper.bing;
+  assert.deepStrictEqual(bing().tiles.map((tile) => tile.id), [id], 'the recent Bing photos are listed');
+  assert.strictEqual(bing().tiles[0].tooltip, 'River · 2026-10-02', 'Bing tiles are named by place and date');
+  panelActions(runtime).setBingDaily(true);
   await waitForAsyncWallpaperApply();
   assert.strictEqual(readPickedWallpaper(prefs).light, 'bing-daily', 'Persist daily intent instead of a fixed image ID');
   assert.strictEqual(prefs.data[WALLPAPER_STORAGE_KEY].light, DEFAULT_WALLPAPER_ID,
     'The shared key keeps a built-in stand-in that older versions accept');
   assert.strictEqual(readPickedWallpaper(prefs).dark, 'dark-linocut-topographic', 'Respect split light/dark settings');
-  assert.strictEqual(daily.checked, true);
-  assert.strictEqual(getDescendantByAttribute(control, 'data-wallpaper-ref', 'bingSelectedMeta').textContent,
-    'River bank · © Photographer', 'Split Bing credits into place and photographer');
-  assert.strictEqual(getDescendantByAttribute(control, 'data-wallpaper-ref', 'bingSelectedTitle').textContent, 'River');
-  assert.strictEqual(getDescendantByAttribute(control, 'data-wallpaper-id', id).getAttribute('data-selected'), 'true',
-    'Daily mode should highlight the dated tile it resolves to');
-  daily.checked = false;
-  daily.dispatchEvent(new context.windowObj.Event('change'));
+  assert.strictEqual(bing().daily.toggle.checked, true);
+  assert.strictEqual(bing().selected.meta, 'River bank · © Photographer', 'Split Bing credits into place and photographer');
+  assert.strictEqual(bing().selected.title, 'River');
+  assert.strictEqual(bing().selected.visible, true);
+  assert.strictEqual(findTile(runtime, id).selected, true, 'Daily mode should highlight the dated tile it resolves to');
+  panelActions(runtime).setBingDaily(false);
   await waitForAsyncWallpaperApply();
   assert.strictEqual(readPickedWallpaper(prefs).light, id, 'Turning off daily should fix the current photo');
-  assert.strictEqual(daily.checked, false);
-  const tile = getDescendantByAttribute(control, 'data-wallpaper-id', id);
-  tile.onclick();
+  assert.strictEqual(bing().daily.toggle.checked, false);
+  clickTile(runtime, id);
   await waitForAsyncWallpaperApply();
   assert.strictEqual(readPickedWallpaper(prefs).light, id);
 
   let completeDownload;
   waitForDownload = new Promise((resolve) => { completeDownload = resolve; });
-  daily.checked = true;
-  daily.dispatchEvent(new context.windowObj.Event('change'));
-  const builtIn = getDescendantByAttribute(control, 'data-wallpaper-id', 'dark-monet-lily-nocturne');
-  builtIn.click();
+  panelActions(runtime).setBingDaily(true);
+  assert.strictEqual(bing().daily.busy, true, 'the daily switch waits while the photo downloads');
+  assert.strictEqual(bing().refresh.disabled, true);
+  clickTile(runtime, 'dark-monet-lily-nocturne');
   completeDownload();
   await waitForAsyncWallpaperApply();
   assert.strictEqual(readPickedWallpaper(prefs).light, 'dark-monet-lily-nocturne',
     'A completed Bing download must not override a newer manual choice');
-  assert.strictEqual(daily.checked, false);
-
-  const accordion = getDescendantByAttribute(control, 'data-wallpaper-ref', 'wallpaperAccordionTrigger');
-  const body = getDescendantByAttribute(control, 'data-wallpaper-ref', 'body');
-  accordion.click();
-  assert.strictEqual(body.getAttribute('data-visible'), 'false', 'Collapsing hides the wallpaper options');
-  assert.strictEqual(accordion.getAttribute('aria-expanded'), 'false');
-  accordion.click();
-  assert.strictEqual(body.getAttribute('data-visible'), 'true', 'Expanding shows the wallpaper options again');
-  assert.strictEqual(accordion.getAttribute('aria-expanded'), 'true');
+  assert.strictEqual(bing().daily.toggle.checked, false);
+  assert.strictEqual(bing().daily.busy, false);
 }
 
 async function testLegacyOnlineWallpaperMigratesToBing() {
@@ -4113,9 +3271,8 @@ function createCuratedRuntime(prefs, options) {
   return { context, runtime, toasts };
 }
 
-function getCuratedTileIds(control) {
-  return getDescendantByAttribute(control, 'data-wallpaper-ref', 'curatedItemsHost').children
-    .map((tile) => tile.getAttribute('data-wallpaper-id'));
+function getCuratedTileIds(runtime) {
+  return panelState(runtime).wallpaper.curated.tiles.map((tile) => tile.id);
 }
 
 async function testCuratedWallpapersSyncAsIdsAndRotateDaily() {
@@ -4124,87 +3281,83 @@ async function testCuratedWallpapersSyncAsIdsAndRotateDaily() {
   const { context, runtime } = createCuratedRuntime(prefs);
   await runtime.bootstrapInitialWallpaper();
   runtime.createControls();
-  const control = runtime.getControlElement();
-  const ref = (name) => getDescendantByAttribute(control, 'data-wallpaper-ref', name);
-  control.querySelector('.x-nt-wallpaper-button').click();
-  getDescendantByAttribute(control, 'data-wallpaper-tab', 'curated').click();
+  const curated = () => panelState(runtime).wallpaper.curated;
+  openPanel(runtime);
+  panelActions(runtime).selectSourceTab('curated');
   await waitForAsyncWallpaperApply();
-  assert.deepStrictEqual(getCuratedTileIds(control),
+  assert.deepStrictEqual(getCuratedTileIds(runtime),
     remote.getCuratedWallpapers('random').slice(0, 9).map((item) => item.id),
     'The curated source opens on the random mix with three full rows');
-  getDescendantByAttribute(control, 'data-curated-category', 'nature').click();
+  panelActions(runtime).selectCuratedCategory('nature');
   await waitForAsyncWallpaperApply();
   const nature = remote.getCuratedWallpapers('nature');
-  assert.deepStrictEqual(getCuratedTileIds(control), nature.slice(0, 9).map((item) => item.id));
+  assert.deepStrictEqual(getCuratedTileIds(runtime), nature.slice(0, 9).map((item) => item.id));
+  assert.strictEqual(curated().category.tabs.active, 'nature');
 
   const picked = nature[1];
-  getDescendantByAttribute(control, 'data-wallpaper-id', picked.id).onclick();
+  clickTile(runtime, picked.id);
   await waitForAsyncWallpaperApply();
   assert.strictEqual(readPickedWallpaper(prefs), picked.id, 'A curated photo syncs as its ID alone');
   assert.strictEqual(prefs.data[WALLPAPER_STORAGE_KEY], DEFAULT_WALLPAPER_ID,
     'The shared key keeps a built-in stand-in that older versions accept');
   assert.ok(context.documentObj.documentElement.style.getPropertyValue('--x-nt-wallpaper-image')
     .includes(picked.thumbnailUrl), 'The photo shows its Picsum thumbnail until this device caches a copy');
-  assert.strictEqual(ref('curatedSelectedTitle').textContent, `Photo by ${picked.name}`,
-    'Bundled credits name the photographer');
-  assert.strictEqual(ref('curatedSelectedLink').href, picked.sourceUrl);
+  assert.strictEqual(curated().selected.title, `Photo by ${picked.name}`, 'Bundled credits name the photographer');
+  assert.strictEqual(curated().selected.url, picked.sourceUrl);
 
-  ref('curatedRefresh').click();
-  assert.deepStrictEqual(getCuratedTileIds(control), nature.slice(9, 18).map((item) => item.id),
+  panelActions(runtime).showMoreCurated();
+  assert.deepStrictEqual(getCuratedTileIds(runtime), nature.slice(9, 18).map((item) => item.id),
     'Showing others pages through the category without moving the chosen photo into it');
-  getDescendantByAttribute(control, 'data-curated-category', 'city').click();
+  panelActions(runtime).selectCuratedCategory('city');
   await waitForAsyncWallpaperApply();
   assert.strictEqual(readPickedWallpaper(prefs), picked.id, 'Browsing another category keeps the wallpaper');
-  assert.deepStrictEqual(getCuratedTileIds(control),
+  assert.deepStrictEqual(getCuratedTileIds(runtime),
     remote.getCuratedWallpapers('city').slice(0, 9).map((item) => item.id));
 
-  const daily = ref('curatedDailyToggle');
-  daily.checked = true;
-  daily.dispatchEvent(new context.windowObj.Event('change'));
+  panelActions(runtime).setCuratedDaily(true);
   await waitForAsyncWallpaperApply();
   const todayCity = remote.getCuratedDailyWallpaper('city', Date.now());
   assert.strictEqual(readPickedWallpaper(prefs), 'curated-daily-city',
     'Daily mode syncs the category, so each device resolves the same photo for the date');
-  assert.strictEqual(daily.checked, true);
-  assert.strictEqual(getDescendantByAttribute(control, 'data-wallpaper-id', todayCity.id).getAttribute('data-selected'),
-    'true', 'The list opens on the page that holds the daily photo');
+  assert.strictEqual(curated().daily.toggle.checked, true);
+  assert.strictEqual(findTile(runtime, todayCity.id).selected, true, 'The list opens on the page that holds the daily photo');
 
   const shownBefore = context.documentObj.documentElement.style.getPropertyValue('--x-nt-wallpaper-image');
-  getDescendantByAttribute(control, 'data-curated-category', 'water').click();
+  panelActions(runtime).selectCuratedCategory('water');
   await waitForAsyncWallpaperApply();
   assert.strictEqual(readPickedWallpaper(prefs), 'curated-daily-city', 'A category tab only browses, even with daily on');
   assert.strictEqual(context.documentObj.documentElement.style.getPropertyValue('--x-nt-wallpaper-image'), shownBefore,
     'Browsing another category keeps the wallpaper');
-  daily.checked = false;
-  daily.dispatchEvent(new context.windowObj.Event('change'));
+  panelActions(runtime).setCuratedDaily(false);
   await waitForAsyncWallpaperApply();
-  daily.checked = true;
-  daily.dispatchEvent(new context.windowObj.Event('change'));
+  panelActions(runtime).setCuratedDaily(true);
   await waitForAsyncWallpaperApply();
   assert.strictEqual(readPickedWallpaper(prefs), 'curated-daily-water',
     'Turning daily on uses the category on screen');
 
   const todayWater = remote.getCuratedDailyWallpaper('water', Date.now());
-  const otherWater = getCuratedTileIds(control).find((tileId) => tileId !== todayWater.id);
-  getDescendantByAttribute(control, 'data-wallpaper-id', otherWater).onclick();
+  const otherWater = getCuratedTileIds(runtime).find((tileId) => tileId !== todayWater.id);
+  clickTile(runtime, otherWater);
   await waitForAsyncWallpaperApply();
   assert.strictEqual(readPickedWallpaper(prefs), 'curated-daily-water', 'Picking a photo keeps daily updates on');
-  assert.strictEqual(daily.checked, true);
+  assert.strictEqual(curated().daily.toggle.checked, true);
   assert.deepStrictEqual(clonePlain(prefs.data[DAILY_WALLPAPER_PICKS_STORAGE_KEY].picks),
     { 'curated-daily-water': otherWater }, 'The pick for today syncs with the daily choice');
   assert.ok(context.documentObj.documentElement.style.getPropertyValue('--x-nt-wallpaper-image')
     .includes(remote.wallpaperFromId(otherWater).thumbnailUrl), 'The picked photo shows instead of the scheduled one');
-  assert.strictEqual(getDescendantByAttribute(control, 'data-wallpaper-id', otherWater).getAttribute('data-selected'), 'true');
-  assert.strictEqual(ref('curatedDailyRestore').hidden, false, 'A restore button appears once today is overridden');
+  assert.strictEqual(findTile(runtime, otherWater).selected, true);
+  assert.strictEqual(curated().daily.restoreVisible, true, 'A restore button appears once today is overridden');
+  const picksWrites = prefs.sets.length;
+  clickTile(runtime, otherWater);
+  assert.strictEqual(prefs.sets.length, picksWrites, 'Choosing the highlighted photo again changes nothing');
 
-  ref('curatedDailyRestore').click();
+  panelActions(runtime).restoreDailyWallpaper();
   await waitForAsyncWallpaperApply();
   assert.strictEqual(prefs.data[DAILY_WALLPAPER_PICKS_STORAGE_KEY], '', 'Restoring drops the pick');
-  assert.strictEqual(ref('curatedDailyRestore').hidden, true);
-  assert.strictEqual(getDescendantByAttribute(control, 'data-wallpaper-id', todayWater.id).getAttribute('data-selected'),
-    'true', 'Restoring shows the scheduled photo again');
+  assert.strictEqual(curated().daily.restoreVisible, false);
+  assert.strictEqual(findTile(runtime, todayWater.id).selected, true, 'Restoring shows the scheduled photo again');
 
-  getDescendantByAttribute(control, 'data-wallpaper-id', otherWater).onclick();
+  clickTile(runtime, otherWater);
   await waitForAsyncWallpaperApply();
   const stalePicks = createMemoryStorage(clonePlain(prefs.data));
   stalePicks.data[DAILY_WALLPAPER_PICKS_STORAGE_KEY] = { day: '2000-1-1', picks: { 'curated-daily-water': otherWater } };
@@ -4214,8 +3367,7 @@ async function testCuratedWallpapersSyncAsIdsAndRotateDaily() {
   assert.ok(nextDay.context.documentObj.documentElement.style.getPropertyValue('--x-nt-wallpaper-image')
     .includes(todayWater.thumbnailUrl), 'A pick from another day no longer counts');
 
-  daily.checked = false;
-  daily.dispatchEvent(new context.windowObj.Event('change'));
+  panelActions(runtime).setCuratedDaily(false);
   await waitForAsyncWallpaperApply();
   assert.strictEqual(readPickedWallpaper(prefs), otherWater,
     'Turning off daily keeps the photo on screen, including today\'s pick');
@@ -4224,13 +3376,12 @@ async function testCuratedWallpapersSyncAsIdsAndRotateDaily() {
   await second.runtime.bootstrapInitialWallpaper();
   second.runtime.createControls();
   await waitForAsyncWallpaperApply();
-  const restored = second.runtime.getControlElement();
-  restored.querySelector('.x-nt-wallpaper-button').click();
+  openPanel(second.runtime);
   await waitForAsyncWallpaperApply();
-  assert.ok(getDescendantByAttribute(restored, 'data-active-tab', 'curated'),
+  assert.strictEqual(panelState(second.runtime).wallpaper.activeTab, 'curated',
     'Another device opens the curated source for a synced curated pick');
-  assert.strictEqual(getDescendantByAttribute(restored, 'data-curated-category', 'water').getAttribute('data-active'),
-    'true', 'The list shows the category of the synced photo');
+  assert.strictEqual(panelState(second.runtime).wallpaper.curated.category.tabs.active, 'water',
+    'The list shows the category of the synced photo');
 }
 
 function createWallpaperImageCacheDouble(records) {
@@ -4276,30 +3427,28 @@ async function testCuratedArtCachesOneDownscaledPrintPerDevice() {
   });
   await runtime.bootstrapInitialWallpaper();
   runtime.createControls();
-  const control = runtime.getControlElement();
   const image = () => context.documentObj.documentElement.style.getPropertyValue('--x-nt-wallpaper-image');
-  control.querySelector('.x-nt-wallpaper-button').click();
-  getDescendantByAttribute(control, 'data-wallpaper-tab', 'curated').click();
-  getDescendantByAttribute(control, 'data-curated-category', 'art').click();
+  openPanel(runtime);
+  panelActions(runtime).selectSourceTab('curated');
+  panelActions(runtime).selectCuratedCategory('art');
   await waitForAsyncWallpaperApply();
   const [first, second] = remote.getCuratedWallpapers('art');
-  assert.strictEqual(getCuratedTileIds(control)[0], first.id);
-  assert.ok(getDescendantByAttribute(control, 'data-wallpaper-id', first.id).getAttribute('data-thumbnail-url')
-    .endsWith('_web.jpg'), 'Tiles use the museum web image');
+  assert.strictEqual(getCuratedTileIds(runtime)[0], first.id);
+  assert.ok(findTile(runtime, first.id).thumbnailUrl.endsWith('_web.jpg'), 'Tiles use the museum web image');
 
-  getDescendantByAttribute(control, 'data-wallpaper-id', first.id).onclick();
+  clickTile(runtime, first.id);
   await waitForAsyncWallpaperApply();
   await waitForAsyncWallpaperApply();
   assert.strictEqual(readPickedWallpaper(prefs), first.id, 'A painting syncs as its ID alone');
   assert.deepStrictEqual(requests, [first.imageUrl], 'The print downloads once');
   assert.ok(cache.images.has(first.id), 'The downscaled print is cached on this device');
   assert.ok(image().includes('data:image/webp;base64,bGluaw=='), 'The wallpaper shows the cached copy');
-  const ref = (name) => getDescendantByAttribute(control, 'data-wallpaper-ref', name);
-  assert.strictEqual(ref('curatedSelectedTitle').textContent, first.title, 'Paintings are credited by title');
-  assert.ok(ref('curatedSelectedMeta').textContent.includes('The Cleveland Museum of Art'));
-  assert.strictEqual(ref('curatedSelectedLink').href, first.sourceUrl);
+  const source = panelState(runtime).wallpaper.curated.selected;
+  assert.strictEqual(source.title, first.title, 'Paintings are credited by title');
+  assert.ok(source.meta.includes('The Cleveland Museum of Art'));
+  assert.strictEqual(source.url, first.sourceUrl);
 
-  getDescendantByAttribute(control, 'data-wallpaper-id', second.id).onclick();
+  clickTile(runtime, second.id);
   await waitForAsyncWallpaperApply();
   await waitForAsyncWallpaperApply();
   assert.deepStrictEqual(Array.from(cache.images.keys()), [second.id],
@@ -4440,13 +3589,12 @@ async function testCuratedPhotoOpensNewTabsFromTheCachedCopy() {
   });
   await runtime.bootstrapInitialWallpaper();
   runtime.createControls();
-  const control = runtime.getControlElement();
-  control.querySelector('.x-nt-wallpaper-button').click();
-  getDescendantByAttribute(control, 'data-wallpaper-tab', 'curated').click();
-  getDescendantByAttribute(control, 'data-curated-category', 'nature').click();
+  openPanel(runtime);
+  panelActions(runtime).selectSourceTab('curated');
+  panelActions(runtime).selectCuratedCategory('nature');
   await waitForAsyncWallpaperApply();
   const photo = remote.getCuratedWallpapers('nature')[0];
-  getDescendantByAttribute(control, 'data-wallpaper-id', photo.id).onclick();
+  clickTile(runtime, photo.id);
   await waitForAsyncWallpaperApply();
   await waitForAsyncWallpaperApply();
   assert.deepStrictEqual(requests, [photo.imageUrl], 'The photo downloads once');
@@ -4560,16 +3708,13 @@ async function testBingPhotoOpensNewTabsFromTheCachedCopy() {
 async function testRandomDailyWallpaperReopensOnTheRandomMix() {
   const remote = require('../src/newtab/remote-content.js');
   const prefs = createMemoryStorage({ [WALLPAPER_STORAGE_KEY]: DEFAULT_WALLPAPER_ID });
-  const { context, runtime } = createCuratedRuntime(prefs);
+  const { runtime } = createCuratedRuntime(prefs);
   await runtime.bootstrapInitialWallpaper();
   runtime.createControls();
-  const control = runtime.getControlElement();
-  control.querySelector('.x-nt-wallpaper-button').click();
-  getDescendantByAttribute(control, 'data-wallpaper-tab', 'curated').click();
+  openPanel(runtime);
+  panelActions(runtime).selectSourceTab('curated');
   await waitForAsyncWallpaperApply();
-  const daily = getDescendantByAttribute(control, 'data-wallpaper-ref', 'curatedDailyToggle');
-  daily.checked = true;
-  daily.dispatchEvent(new context.windowObj.Event('change'));
+  panelActions(runtime).setCuratedDaily(true);
   await waitForAsyncWallpaperApply();
   assert.strictEqual(readPickedWallpaper(prefs), 'curated-daily-random', 'Daily updates can draw from every category');
   const today = remote.getCuratedDailyWallpaper('random', Date.now());
@@ -4577,13 +3722,12 @@ async function testRandomDailyWallpaperReopensOnTheRandomMix() {
   const other = createCuratedRuntime(prefs);
   await other.runtime.bootstrapInitialWallpaper();
   other.runtime.createControls();
-  const otherControl = other.runtime.getControlElement();
-  otherControl.querySelector('.x-nt-wallpaper-button').click();
+  openPanel(other.runtime);
   await waitForAsyncWallpaperApply();
-  assert.strictEqual(getDescendantByAttribute(otherControl, 'data-curated-category', 'random').getAttribute('data-active'),
-    'true', 'A random daily choice reopens on the random mix, not on the photo\'s own category');
-  assert.strictEqual(getDescendantByAttribute(otherControl, 'data-wallpaper-id', today.id).getAttribute('data-selected'),
-    'true', 'The mix opens on the page that holds today\'s photo');
+  assert.strictEqual(panelState(other.runtime).wallpaper.curated.category.tabs.active, 'random',
+    'A random daily choice reopens on the random mix, not on the photo\'s own category');
+  assert.strictEqual(findTile(other.runtime, today.id).selected, true,
+    'The mix opens on the page that holds today\'s photo');
 }
 
 async function testLinkedWallpaperSyncsItsUrlAndCachesTheImage() {
@@ -4603,24 +3747,25 @@ async function testLinkedWallpaperSyncsItsUrlAndCachesTheImage() {
   });
   await runtime.bootstrapInitialWallpaper();
   runtime.createControls();
-  const control = runtime.getControlElement();
-  const ref = (name) => getDescendantByAttribute(control, 'data-wallpaper-ref', name);
-  control.querySelector('.x-nt-wallpaper-button').click();
-  getDescendantByAttribute(control, 'data-wallpaper-tab', 'local').click();
-  ref('urlTile').click();
+  const view = panelOf(runtime);
+  const urlForm = () => panelState(runtime).wallpaper.local.url;
+  openPanel(runtime);
+  panelActions(runtime).selectSourceTab('local');
+  panelActions(runtime).toggleUrlForm();
   await waitForAsyncWallpaperApply();
-  assert.strictEqual(ref('urlForm').hidden, false, 'The link tile opens the link form');
-  const submit = () => ref('urlForm').dispatchEvent({ type: 'submit', preventDefault() {} });
+  assert.strictEqual(urlForm().open, true, 'The link tile opens the link form');
+  assert.strictEqual(view.focused[view.focused.length - 1], 'urlInput', 'Opening the form focuses the field');
 
-  ref('urlInput').value = 'javascript:alert(1)';
-  submit();
+  panelActions(runtime).submitWallpaperUrl('javascript:alert(1)');
   assert.strictEqual(requests.length, 0, 'Only web links are fetched');
-  assert.strictEqual(ref('urlInput').getAttribute('aria-invalid'), 'true');
+  assert.strictEqual(urlForm().invalid, true);
   assert.ok(toasts.some((toast) => toast.isError));
+  panelActions(runtime).clearUrlInvalid();
+  assert.strictEqual(urlForm().invalid, false, 'Editing the link clears the error');
 
   const url = 'https://images.example/photos/Lake%20View.JPG';
-  ref('urlInput').value = ` ${url} `;
-  submit();
+  panelActions(runtime).submitWallpaperUrl(` ${url} `);
+  assert.strictEqual(urlForm().disabled, true, 'The form waits while the image downloads');
   await waitForAsyncWallpaperApply();
   await waitForAsyncWallpaperApply();
   assert.strictEqual(requests[0].url, url);
@@ -4638,14 +3783,16 @@ async function testLinkedWallpaperSyncsItsUrlAndCachesTheImage() {
   assert.strictEqual(cache.images.get(linkId).url, url, 'This device keeps a cached copy');
   assert.ok(context.documentObj.documentElement.style.getPropertyValue('--x-nt-wallpaper-image')
     .includes('data:image/webp;base64,bGluaw=='), 'The wallpaper shows the cached copy');
-  assert.strictEqual(ref('urlForm').hidden, true, 'A successful import closes the form');
-  assert.strictEqual(ref('urlInput').value, '');
-  assert.ok(getDescendantByAttribute(control, 'data-wallpaper-id', linkId), 'The link appears among local tiles');
+  assert.strictEqual(urlForm().open, false, 'A successful import closes the form');
+  assert.strictEqual(urlForm().clearToken, 1, 'A successful import clears the field');
+  assert.strictEqual(urlForm().disabled, false);
+  assert.ok(findTile(runtime, linkId), 'The link appears among local tiles');
+  assert.strictEqual(findTile(runtime, linkId).source, 'local');
 
-  ref('urlTile').click();
+  panelActions(runtime).toggleUrlForm();
   await waitForAsyncWallpaperApply();
   assert.strictEqual(runtime.closeOpenMenu(), true, 'Escape closes the link form before the panel');
-  assert.strictEqual(ref('urlForm').hidden, true);
+  assert.strictEqual(urlForm().open, false);
   assert.strictEqual(runtime.closeOpenMenu(), false);
 
   // Another device receives the link and selection, then caches the image on its own.
@@ -4665,13 +3812,13 @@ async function testLinkedWallpaperSyncsItsUrlAndCachesTheImage() {
   assert.ok(other.context.documentObj.documentElement.style.getPropertyValue('--x-nt-wallpaper-image')
     .includes('data:image/webp;base64,bGluaw=='));
 
-  getDescendantByAttribute(control, 'data-wallpaper-id', linkId)
-    .querySelector('.x-nt-wallpaper-delete-button').click();
+  panelActions(runtime).deleteWallpaper(linkId);
   await waitForAsyncWallpaperApply();
   assert.deepStrictEqual(JSON.parse(JSON.stringify(prefs.data[LINK_WALLPAPERS_STORAGE_KEY])), [],
     'Deleting a link removes it from every synced device');
   assert.strictEqual(readPickedWallpaper(prefs), DEFAULT_WALLPAPER_ID, 'A deleted selected link falls back to the default');
   assert.strictEqual(cache.images.has(linkId), false);
+  assert.strictEqual(findTile(runtime, linkId), null);
 }
 
 Promise.resolve()
@@ -4717,6 +3864,8 @@ Promise.resolve()
   .then(testWallpaperEffectInkToneControlPersistsAndFollowsEffectType)
   .then(testBlocksExposeReliefControls)
   .then(testEffectSpecificParametersRoundTrip)
+  .then(testOverlayAndStrengthSnapToTheirMarksWhileDragged)
+  .then(testTimeSettingsFollowTheContentAboveTheSearchBar)
   .then(testGlassBlurCanBeEnabledAndDisabled)
   .then(testGlassBlurFilterSwitchPreservesTheOutgoingFrame)
   .then(testCrtFilterPersistsAndShowsDisplayControls)

@@ -71,10 +71,10 @@ assert.doesNotMatch(optionsCss, /^\._x_extension_toast_2024_unique_ \{[^}]*backg
 // One indicator implementation: classic scripts call the shared module.
 assert.doesNotMatch(read('src/options/options.js'), /function measure\w*Indicator/,
   'options.js should not measure segmented indicators itself');
-['src/newtab/wallpaper.js', 'src/newtab/quotes.js'].forEach((file) => {
-  assert.match(read(file), /globalThis\.LumnoSegmentedIndicator/,
-    `${file} should position indicators through the shared segmented indicator`);
-});
+assert.match(read('src/newtab/quotes.js'), /globalThis\.LumnoSegmentedIndicator/,
+  'quotes.js should position indicators through the shared segmented indicator');
+// The appearance panel's segmented controls are React components that use the shared
+// hook; react-src/newtab/wallpaper-view.test.tsx checks their indicators move.
 ['react-src/newtab/react-islands-entry.ts', 'react-src/options/options-islands-entry.ts'].forEach((file) => {
   assert.match(read(file), /runtime\.LumnoSegmentedIndicator = createSegmentedIndicatorApi\(\)/,
     `${file} should expose the shared segmented indicator to classic scripts`);
