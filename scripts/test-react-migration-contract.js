@@ -148,11 +148,15 @@ const assertWithinBudget = (actualBytes, budgetKiB, label) => {
 // New Tab moved to 402 KiB / 120 KiB gzip (the total to 794 KiB / 231 KiB gzip) at 1.0.1 for the bookmark and site card sections in the appearance panel.
 // New Tab moved to 409 KiB / 123 KiB gzip (the total to 801 KiB / 234 KiB gzip) at 1.0.1: the appearance panel's controls moved
 // from the classic wallpaper.js (about 84 KiB smaller) into its React view.
+// The total moved to 804 KiB at 1.0.1 for the Search sources ordering controls (drag handle plus
+// keyboard move buttons on the five lists, and the group order panel). Options stays at 290 KiB:
+// its bundle grew by the 2.4 KiB of reorder code, well inside its own ceiling. Gzip is unchanged
+// because the added markup compresses to about 0.6 KiB.
 const bundleBudgets = {
   newtab: { uncompressed: 409, gzip: 123 },
   options: { uncompressed: 290, gzip: 85 },
   overlay: { uncompressed: 274, gzip: 83 },
-  total: { uncompressed: 801, gzip: 234 }
+  total: { uncompressed: 804, gzip: 234 }
 };
 
 const retiredNewtabRendererScripts = [

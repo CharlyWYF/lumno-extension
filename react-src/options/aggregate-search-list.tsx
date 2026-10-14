@@ -9,6 +9,11 @@ import {
   useExclusiveAsyncAction
 } from '../shared/use-exclusive-async-action';
 import { BusyLabel } from '../shared/busy-label';
+import {
+  ReorderControls,
+  createRowDragHandlers,
+  type ReorderCopyModel
+} from './reorder-controls';
 
 export interface AggregateSearchProviderOptionModel {
   available: boolean;
@@ -27,7 +32,7 @@ export interface AggregateSearchItemModel {
   sourceSummary: string;
 }
 
-export interface AggregateSearchCopyModel {
+export interface AggregateSearchCopyModel extends ReorderCopyModel {
   addLabel: string;
   cancelLabel: string;
   confirmLabel: string;
@@ -75,6 +80,7 @@ export interface AggregateSearchSaveResult {
 
 export interface AggregateSearchListControllerOptions {
   onRemove(id: string): void | Promise<void>;
+  onReorder(fromIndex: number, toIndex: number): void;
   onSave(
     id: string | null,
     draft: AggregateSearchDraft
@@ -466,6 +472,8 @@ function AggregateSearchList({
   >(null);
   const addTriggerRef = useRef<HTMLButtonElement>(null);
   const editTriggerRefs = useRef(new Map<string, HTMLButtonElement>());
+  const dragFromIndexRef = useRef<number | null>(null);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const adding = editingId === '__new__';
 
   useLayoutEffect(() => {
@@ -502,17 +510,44 @@ function AggregateSearchList({
   return (
     <>
       <div className="_x_extension_shortcut_list_2024_unique_">
-        {model.items.map((item) => {
+        {model.items.map((item, index) => {
           const expanded = editingId === item.id;
+          const rowDrag = createRowDragHandlers({
+            getFromIndex: () => dragFromIndexRef.current,
+            index,
+            onReorder: (fromIndex, toIndex) => {
+              setDraggingIndex(null);
+              options.onReorder(fromIndex, toIndex);
+            },
+            setFromIndex: (value) => {
+              dragFromIndexRef.current = value;
+              setDraggingIndex(value);
+            }
+          });
           return (
             <div
               className="_x_extension_shortcut_item_2024_unique_"
               data-aggregate-id={item.id}
+              data-dragging={draggingIndex === index ? 'true' : 'false'}
               data-expanded={expanded ? 'true' : 'false'}
+              data-reorder-row="true"
               data-type="aggregate"
               key={item.id}
+              onDragEnd={rowDrag.onDragEnd}
+              onDragOver={rowDrag.onDragOver}
+              onDrop={rowDrag.onDrop}
             >
               <div className="_x_extension_shortcut_item_header_2024_unique_">
+                <ReorderControls
+                  copy={model.copy}
+                  dragStart={rowDrag.onDragStart}
+                  index={index}
+                  onReorder={(fromIndex, toIndex) => {
+                    setDraggingIndex(null);
+                    options.onReorder(fromIndex, toIndex);
+                  }}
+                  total={model.items.length}
+                />
                 <div className="_x_extension_shortcut_item_info_2024_unique_">
                   <div className="_x_extension_shortcut_item_title_2024_unique_">
                     <div className="_x_extension_shortcut_badge_2024_unique_">

@@ -246,9 +246,12 @@ function scanHtmlLine(file, line, lineNumber, state) {
 }
 
 function auditSources() {
+  // Allowlist entries below are written with POSIX separators, so normalize
+  // every walked path before comparing; path.normalize() returns backslashes
+  // on Windows and would report each allowlisted file as unreviewed.
   const files = SOURCE_ROOTS
     .flatMap(walk)
-    .map((file) => path.normalize(file))
+    .map((file) => file.split(path.sep).join('/'))
     .sort();
   const hits = [];
   files.forEach((file) => {

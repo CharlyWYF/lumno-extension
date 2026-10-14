@@ -21,8 +21,11 @@ const model: SiteSearchListRenderModel = {
     editLabel: '编辑',
     keyLabel: '触发词',
     keyPlaceholder: '必填，如有多个用英文逗号分隔',
+    moveDownLabel: '下移',
+    moveUpLabel: '上移',
     nameLabel: '显示名称',
     namePlaceholder: '选填，默认使用触发词',
+    reorderHandleLabel: '拖动排序',
     removeLabel: '移除',
     saveLabel: '保存修改',
     searchEngineCategoryLabel: '搜索引擎',
@@ -60,6 +63,7 @@ function createFixture() {
     kind: 'custom',
     onLocateDuplicate: vi.fn(),
     onRemove: vi.fn(),
+    onReorder: vi.fn(),
     onSave: vi.fn().mockResolvedValue({ ok: true })
   };
   const controller = createSiteSearchListController(host, options);
@@ -192,5 +196,84 @@ describe('Options site-search list React island', () => {
       'https://example.com/?q={query}'
     );
     expect(options.onRemove).toHaveBeenCalledWith('ex', false);
+  });
+
+  it('offers one reorder control per row with keyboard move buttons', () => {
+    const { controller, host, options } = createFixture();
+    act(() => controller.render({
+      ...model,
+      items: [
+        { ...model.items[0], id: 'a', key: 'aa', name: 'A' },
+        { ...model.items[0], id: 'b', key: 'bb', name: 'B' },
+        { ...model.items[0], id: 'c', key: 'cc', name: 'C' }
+      ]
+    }));
+
+    const rows = host.querySelectorAll('[data-reorder-row="true"]');
+    expect(rows.length).toBe(3);
+    // The drag source is the handle, so an open editor never starts a drag.
+    expect(host.querySelectorAll('[data-reorder-handle="true"][draggable="true"]').length).toBe(3);
+
+    const firstUp = rows[0].querySelector<HTMLButtonElement>('[data-reorder-action="up"]');
+    const firstDown = rows[0].querySelector<HTMLButtonElement>('[data-reorder-action="down"]');
+    const lastDown = rows[2].querySelector<HTMLButtonElement>('[data-reorder-action="down"]');
+    expect(firstUp?.disabled).toBe(true);
+    expect(firstDown?.disabled).toBe(false);
+    expect(lastDown?.disabled).toBe(true);
+
+    act(() => firstDown?.click());
+    expect(options.onReorder).toHaveBeenCalledWith(0, 1);
+    act(() => {
+      rows[2].querySelector<HTMLButtonElement>('[data-reorder-action="up"]')?.click();
+    });
+    expect(options.onReorder).toHaveBeenLastCalledWith(2, 1);
+  });
+
+  it('resolves a drag drop into a reorder that accounts for the removed row', () => {
+    const { controller, host, options } = createFixture();
+    act(() => controller.render({
+      ...model,
+      items: [
+        { ...model.items[0], id: 'a', key: 'aa', name: 'A' },
+        { ...model.items[0], id: 'b', key: 'bb', name: 'B' },
+        { ...model.items[0], id: 'c', key: 'cc', name: 'C' }
+      ]
+    }));
+
+    const rows = Array.from(host.querySelectorAll<HTMLElement>('[data-reorder-row="true"]'));
+    const handle = rows[0].querySelector<HTMLElement>('[data-reorder-handle="true"]');
+    const dataTransfer = {
+      dropEffect: '',
+      effectAllowed: '',
+      setData: vi.fn()
+    };
+    act(() => {
+      handle?.dispatchEvent(Object.assign(
+        new Event('dragstart', { bubbles: true }),
+        { dataTransfer }
+      ));
+    });
+
+    // Dropping on the lower half of row 2 means "after row 2", which lands at
+    // index 2 once the dragged row is removed from its original slot.
+    rows[2].getBoundingClientRect = () => ({
+      bottom: 40,
+      height: 20,
+      left: 0,
+      right: 0,
+      top: 20,
+      width: 0,
+      x: 0,
+      y: 20,
+      toJSON: () => ({})
+    });
+    act(() => {
+      rows[2].dispatchEvent(Object.assign(
+        new Event('drop', { bubbles: true, cancelable: true }),
+        { clientY: 35, dataTransfer }
+      ));
+    });
+
+    expect(options.onReorder).toHaveBeenCalledWith(0, 2);
   });
 });

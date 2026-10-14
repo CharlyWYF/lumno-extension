@@ -86,6 +86,10 @@ const expectedSyncKeys = [
   '_x_extension_site_search_disabled_2024_unique_',
   '_x_extension_aggregate_searches_2026_unique_',
   '_x_extension_aggregate_search_auto_group_enabled_2026_unique_',
+  // Additive preference: the reader's custom order for the Search sources
+  // lists and search scope groups. An absent value keeps the alphabetical
+  // default, so no migration is required.
+  '_x_extension_search_source_order_2026_unique_',
   '_x_extension_progress_tracking_enabled_2026_unique_',
   '_x_extension_newtab_open_in_new_tab_2026_unique_',
   '_x_extension_search_blacklist_2026_unique_',
@@ -122,6 +126,12 @@ assert.deepStrictEqual(
 );
 
 const sourceFiles = [];
+// Reviewed contracts below are written with POSIX separators. Windows returns
+// backslashes from path.relative(), so normalize before comparing instead of
+// reporting every path as an unreviewed removal.
+function toPosixPath(file) {
+  return path.relative(repoRoot, file).split(path.sep).join('/');
+}
 function collectSourceFiles(directory) {
   fs.readdirSync(directory, { withFileTypes: true }).forEach((entry) => {
     const entryPath = path.join(directory, entry.name);
@@ -140,18 +150,18 @@ sourceFiles.forEach((file) => {
   assert.doesNotMatch(
     source,
     /chrome\.storage\.(?:sync|local)\.clear\s*\(/,
-    `${path.relative(repoRoot, file)} must not clear a persisted storage area`
+    `${toPosixPath(file)} must not clear a persisted storage area`
   );
   assert.doesNotMatch(
     source,
     /\b(?:syncArea|localArea|bookmarkTopbarSurfaceStorageArea)\.clear\s*\(/,
-    `${path.relative(repoRoot, file)} must not clear an aliased persisted storage area`
+    `${toPosixPath(file)} must not clear an aliased persisted storage area`
   );
   const removeCallPattern = /\b(chrome\.storage\.(?:sync|local)|syncArea|localArea|bookmarkTopbarSurfaceStorageArea)\.remove\s*\(\s*([A-Za-z_$][\w$]*)/g;
   let removeCallMatch = removeCallPattern.exec(source);
   while (removeCallMatch) {
     persistedRemoveCalls.push(
-      `${path.relative(repoRoot, file)}:${removeCallMatch[1]}:${removeCallMatch[2]}`
+      `${toPosixPath(file)}:${removeCallMatch[1]}:${removeCallMatch[2]}`
     );
     removeCallMatch = removeCallPattern.exec(source);
   }
@@ -163,6 +173,9 @@ assert.deepStrictEqual(
     'src/background/background.js:chrome.storage.sync:BOOKMARK_TOPBAR_LOCAL_STORAGE_KEYS',
     'src/background/background.js:chrome.storage.sync:LANGUAGE_MESSAGES_STORAGE_KEY',
     'src/background/background.js:localArea:REMOVED_AI_LOCAL_STORAGE_KEYS',
+    // Legacy site-search icon caches, carried by the same reviewed cleanup as
+    // the favicon service's legacy keys.
+    'src/background/background.js:localArea:legacyKeys',
     'src/background/background.js:syncArea:REMOVED_AI_SYNC_STORAGE_KEYS',
     'src/background/favicon-service.js:localArea:legacyKeys',
     'src/newtab/bookmark-display-settings.js:bookmarkTopbarSurfaceStorageArea:BOOKMARK_TOPBAR_SURFACE_COLOR_STORAGE_KEY',

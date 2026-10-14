@@ -1960,6 +1960,97 @@ body[data-theme="dark"] ._x_extension_shortcut_ghost_2026_unique_ {
   gap: 8px;
   flex-shrink: 0;
 }
+/* Ordering affordance for the Search sources lists: a drag handle for pointer
+   users plus up/down buttons that keep the same operation keyboard-reachable. */
+._x_extension_shortcut_reorder_2026_unique_ {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+._x_extension_shortcut_reorder_handle_2026_unique_,
+._x_extension_shortcut_reorder_button_2026_unique_ {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--lumno-radius-xs);
+  background: transparent;
+  color: var(--panel-subtext);
+}
+._x_extension_shortcut_reorder_button_2026_unique_ {
+  cursor: pointer;
+}
+._x_extension_shortcut_reorder_handle_2026_unique_ {
+  cursor: grab;
+}
+._x_extension_shortcut_reorder_handle_2026_unique_:active {
+  cursor: grabbing;
+}
+._x_extension_shortcut_reorder_handle_2026_unique_:hover,
+._x_extension_shortcut_reorder_button_2026_unique_:not(:disabled):hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--panel-text);
+}
+._x_extension_shortcut_reorder_button_2026_unique_:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+#_x_extension_settings_panel_2024_unique_[data-theme="dark"]
+  ._x_extension_shortcut_reorder_handle_2026_unique_:hover,
+#_x_extension_settings_panel_2024_unique_[data-theme="dark"]
+  ._x_extension_shortcut_reorder_button_2026_unique_:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+._x_extension_shortcut_item_2024_unique_[data-dragging="true"] {
+  opacity: 0.55;
+}
+._x_extension_shortcut_item_2024_unique_[data-expanded="true"]
+  ._x_extension_shortcut_reorder_2026_unique_ {
+  /* An open editor is not a drag target; the buttons keep working. */
+  visibility: hidden;
+}
+/* The search scope group blocks (Aggregate searches, AI search, Search
+   engines, Browser content, Site search) are ordered from this one panel. */
+._x_extension_search_source_group_order_group_2026_unique_ {
+  gap: 8px;
+}
+._x_extension_search_source_group_order_desc_2026_unique_ {
+  margin: 0 0 4px;
+  font-size: var(--lumno-font-size-md);
+  color: var(--panel-subtext);
+}
+._x_extension_search_source_group_order_2026_unique_ {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+._x_extension_search_source_group_order_row_2026_unique_ {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: var(--lumno-radius-lg);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.5);
+}
+._x_extension_search_source_group_order_label_2026_unique_ {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--lumno-font-size-md);
+  color: var(--panel-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#_x_extension_settings_panel_2024_unique_[data-theme="dark"]
+  ._x_extension_search_source_group_order_row_2026_unique_ {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+}
 ._x_extension_shortcut_item_2024_unique_[data-expanded="true"] ._x_extension_shortcut_item_actions_2024_unique_ {
   display: none;
 }

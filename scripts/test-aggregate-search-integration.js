@@ -73,7 +73,8 @@ assert.match(
 );
 assert.match(
   optionsSource,
-  /createAggregateSearchListController\(aggregateSearchList,[\s\S]*?onRemove: handleAggregateSearchRemove,[\s\S]*?onSave: handleAggregateSearchSave/
+  /const aggregateSearchListControllerOptions = \{[\s\S]*?onRemove: handleAggregateSearchRemove,[\s\S]*?onSave: handleAggregateSearchSave[\s\S]*?createAggregateSearchListController\(\s*aggregateSearchList,\s*aggregateSearchListControllerOptions\s*\)/,
+  'aggregate search list options should stay wired to the remove and save handlers, with reorder added on top'
 );
 assert.match(
   optionsSource,

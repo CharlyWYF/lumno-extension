@@ -33,6 +33,82 @@
 
     // The page state object shared with newtab.js and the other modules.
     const pageState = deps.pageState;
+    const SEARCH_SOURCE_ORDER = deps.searchSourceOrder ||
+      (typeof globalThis !== 'undefined' ? globalThis.LumnoSearchSourceOrder : null);
+    const SEARCH_SOURCE_ORDER_STORAGE_KEY = deps.searchSourceOrderStorageKey || '';
+    const readStorageValue = deps.readStorageValue;
+    // Kept as a closure variable rather than page state so the ordering helpers
+    // survive the page-state accessor stripping the source-contract tests use.
+    let searchSourceOrderValue = null;
+    let searchSourceOrderReady = null;
+    let searchSourceOrderRevision = 0;
+
+    // The order record is read once per page and reused for every panel open.
+    // `providers` must be the merged list from getSiteSearchProviders(), not the
+    // cached built-in list: reconciliation drops keys it cannot see, so a
+    // built-in-only list would discard the reader's custom searches.
+    function loadSearchSourceOrder(providers) {
+      if (searchSourceOrderReady) {
+        return searchSourceOrderReady;
+      }
+      const revision = searchSourceOrderRevision;
+      searchSourceOrderReady = (() => {
+        if (!SEARCH_SOURCE_ORDER || !SEARCH_SOURCE_ORDER_STORAGE_KEY ||
+            typeof readStorageValue !== 'function') {
+          return Promise.resolve(null);
+        }
+        const aggregates = pageState.aggregateSearchesCache || [];
+        return Promise.resolve(readStorageValue(SEARCH_SOURCE_ORDER_STORAGE_KEY))
+          .then((value) => SEARCH_SOURCE_ORDER.normalizeOrder(
+            value,
+            Array.isArray(providers) ? providers : getSearchModeProviders(),
+            {
+              getGroupKey: getSearchSourceGroupKey,
+              getName: getSearchSourceName,
+              aggregates
+            }
+          ))
+          .catch(() => null)
+          .then((order) => {
+            // A load that started before the last invalidation must not publish
+            // its stale result over a newer one.
+            if (revision === searchSourceOrderRevision) {
+              searchSourceOrderValue = order || null;
+            }
+            return searchSourceOrderValue;
+          });
+      })();
+      return searchSourceOrderReady;
+    }
+
+    function getSearchSourceOrder() {
+      return searchSourceOrderValue;
+    }
+
+    function setSearchSourceOrder(value) {
+      searchSourceOrderValue = value || null;
+    }
+
+    function invalidateSearchSourceOrder() {
+      searchSourceOrderRevision += 1;
+      searchSourceOrderReady = null;
+      searchSourceOrderValue = null;
+    }
+
+    function getSearchSourceGroupKey(provider) {
+      if (isSearchEngineSiteSearchProvider(provider)) {
+        return 'engine';
+      }
+      if (isAiSiteSearchProvider(provider)) {
+        return 'ai';
+      }
+      return 'site';
+    }
+
+    function getSearchSourceName(provider) {
+      const label = getSiteSearchDisplayName(provider);
+      return String(label || (provider && provider.key) || '');
+    }
 
     function getDefaultSearchModeProvider(providers) {
       return SEARCH_UTILS.getSearchEngineSiteSearchProvider(
@@ -74,7 +150,8 @@
       );
     }
 
-    function buildSearchModeMenuItems() {
+    function buildSearchModeMenuItems(sourceOrder) {
+      const resolvedOrder = sourceOrder === undefined ? searchSourceOrderValue : sourceOrder;
       const engineGroup = t('search_scope_group_engines', '搜索引擎');
       const localGroup = t('search_scope_group_local', '浏览器内容');
       const aiGroup = t('search_scope_group_ai', 'AI 搜索');
@@ -97,6 +174,7 @@
           provider,
           label: definition.name,
           group: aggregateGroup,
+          groupKey: 'aggregate',
           iconClass: 'ri-stack-line',
           searchTerms: [definition.name].concat(definition.sourceRefs || []),
           active: Boolean(
@@ -120,6 +198,7 @@
             provider,
             label: getSiteSearchDisplayName(provider),
             group: isSearchEngine ? engineGroup : (isAi ? aiGroup : siteGroup),
+            groupKey: isSearchEngine ? 'engine' : (isAi ? 'ai' : 'site'),
             iconUrl: getProviderIcon(provider),
             iconClass: isAi ? 'ri-search-ai-line' : 'ri-global-line',
             isAi,
@@ -141,12 +220,25 @@
               ? ['bookmark', 'bookmarks']
               : ['history', 'browsing history']),
           group: localGroup,
+          groupKey: 'local',
           iconClass: getLocalSearchScopeIconClass(sourceType),
           menuIconName: sourceType === 'topSite' ? 'star' : sourceType,
           active: Boolean(pageState.localSearchScopeState && pageState.localSearchScopeState.sourceType === sourceType)
         });
       });
-      return items;
+      return rankSearchModeMenuItems(items, resolvedOrder);
+    }
+
+    // The reader's Search sources order decides both the group block order and
+    // the order inside each block. Without it the surface keeps its own order.
+    function rankSearchModeMenuItems(items, sourceOrder) {
+      const order = sourceOrder === undefined ? searchSourceOrderValue : sourceOrder;
+      if (!SEARCH_SOURCE_ORDER || !order || !SEARCH_SOURCE_ORDER.rankMenuItems) {
+        return items;
+      }
+      return SEARCH_SOURCE_ORDER.rankMenuItems(items, order, {
+        getGroup: (item) => item && item.groupKey
+      });
     }
 
     function getSearchModeMenuItems() {
@@ -154,9 +246,9 @@
         loadSiteSearchIconCache(),
         getSiteSearchProviders(),
         getAggregateSearches()
-      ]).then(buildSearchModeMenuItems);
+      ]).then((results) => loadSearchSourceOrder(results[1])
+        .then((order) => buildSearchModeMenuItems(order)));
     }
-
     function openSearchModeMenuFromDoubleTab() {
       const expectedInputValue = String(pageState.inputParts.input.value || '');
       const activateDefaultProvider = (providers) => {
@@ -449,6 +541,10 @@
       isAggregateSearchDefinitionAvailable,
       getSearchTriggerProviders,
       getSearchModeMenuItems,
+      getSearchSourceOrder,
+      setSearchSourceOrder,
+      invalidateSearchSourceOrder,
+      loadSearchSourceOrder,
       openSearchModeMenuFromDoubleTab,
       selectSearchModeMenuItem,
       getLocalSearchScopeTabHintProvider,

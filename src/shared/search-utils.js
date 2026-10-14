@@ -3318,7 +3318,98 @@
     if (!eligibleTypes.has(suggestion.type) && !suggestion.isTopSite) {
       return null;
     }
-    return (providers || []).find((provider) => providerMatchesSiteSearchSuggestion(provider, suggestion)) || null;
+    const matches = (providers || []).filter(
+      (provider) => providerMatchesSiteSearchSuggestion(provider, suggestion)
+    );
+    if (matches.length === 0) {
+      return null;
+    }
+    if (matches.length === 1) {
+      return matches[0];
+    }
+    // The provider list follows the reader's Search sources order, so a bare
+    // `find` would let one provider borrow another's action whenever two of them
+    // resolve to the same registrable host (Google Maps and the Google engine
+    // both do). Rank the matches by how much of the provider's own template the
+    // suggested URL actually matches, and keep the reader's order only among
+    // equally specific matches.
+    const suggestionHost = getSearchSuggestionHost(suggestion);
+    const suggestionPath = getSearchSuggestionPath(suggestion);
+    let best = matches[0];
+    let bestSpecificity = getSuggestionProviderHostSpecificity(matches[0], suggestionHost, suggestionPath);
+    for (let index = 1; index < matches.length; index += 1) {
+      const specificity = getSuggestionProviderHostSpecificity(
+        matches[index],
+        suggestionHost,
+        suggestionPath
+      );
+      if (specificity > bestSpecificity) {
+        best = matches[index];
+        bestSpecificity = specificity;
+      }
+    }
+    return best;
+  }
+
+  function getSearchSuggestionPath(suggestion) {
+    try {
+      return String(new URL(String(suggestion && suggestion.url || '')).pathname || '/').toLowerCase();
+    } catch (e) {
+      return '/';
+    }
+  }
+
+  function getSiteSearchProviderRawHost(provider) {
+    if (!provider || !provider.template) {
+      return '';
+    }
+    try {
+      const url = String(provider.template).replace(/\{query\}/g, 'test');
+      return String(new URL(url).hostname || '').toLowerCase().replace(/^www\./, '');
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function getSiteSearchProviderTemplatePath(provider) {
+    if (!provider || !provider.template) {
+      return '';
+    }
+    try {
+      const url = String(provider.template).replace(/\{query\}/g, 'test');
+      return getSuggestionPathSegment(String(new URL(url).pathname || '/'));
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function getSuggestionPathSegment(pathname) {
+    const segment = String(pathname || '/')
+      .toLowerCase()
+      .split('/')
+      .filter(Boolean)[0];
+    return segment || '';
+  }
+
+  function getSuggestionProviderHostSpecificity(provider, suggestionHost, suggestionPath) {
+    const providerHost = getSiteSearchProviderHost(provider);
+    if (!providerHost) {
+      return 0;
+    }
+    const templateSegment = getSiteSearchProviderTemplatePath(provider);
+    // 2: the provider's own route appears in the suggested URL, which keeps
+    //    "Google Maps" reachable for a Maps URL even though it shares its host
+    //    with the Google engine.
+    // 1: the provider's host is the suggested host.
+    // 0: the provider only matches on a parent host.
+    // A search engine wins the remaining tie (a bare site root, where a site
+    // search and an engine resolve to the same host), so the result never
+    // depends on where the reader placed the two entries.
+    const tier = (templateSegment &&
+      getSuggestionPathSegment(suggestionPath) === templateSegment)
+      ? 2
+      : (providerHost === String(suggestionHost || '') ? 1 : 0);
+    return tier * 10 + (isSearchEngineSiteSearchProvider(provider) ? 1 : 0);
   }
 
   function findSiteSearchProviderByInput(input, providers) {

@@ -49,4 +49,28 @@ assert.strictEqual(
   'an unavailable preference should fall back to bundled ChatGPT'
 );
 
+// The provider list order becomes the reader's Search sources order once that
+// page is used, so the fallback must not depend on which provider is listed
+// first.
+assert.strictEqual(
+  providerResolver.resolveSelectionQuickActionProvider(
+    [gemini, chatGpt],
+    [],
+    'missing-provider',
+    isInteractive
+  ),
+  chatGpt,
+  'the fallback should stay ChatGPT when it is not the first provider in the list'
+);
+assert.strictEqual(
+  providerResolver.resolveSelectionQuickActionProvider(
+    [gemini],
+    [],
+    'missing-provider',
+    isInteractive
+  ),
+  null,
+  'no fallback should be invented when ChatGPT is not available at all'
+);
+
 console.log('selection quick action provider tests passed');

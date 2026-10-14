@@ -4,6 +4,11 @@ import {
   type ReactRootController
 } from './root-controller';
 import {
+  ReorderControls,
+  createRowDragHandlers,
+  type ReorderCopyModel
+} from './reorder-controls';
+import {
   getAsyncErrorMessage,
   useExclusiveAsyncAction
 } from '../shared/use-exclusive-async-action';
@@ -40,7 +45,8 @@ export interface SiteSearchProviderItemModel {
 }
 
 export interface SiteSearchListCopyModel
-  extends SiteSearchProviderCategoryCopyModel {
+  extends SiteSearchProviderCategoryCopyModel,
+    ReorderCopyModel {
   aliasLabel: string;
   aliasPlaceholder: string;
   cancelLabel: string;
@@ -131,6 +137,7 @@ export interface SiteSearchListControllerOptions {
   kind: string;
   onLocateDuplicate(template: string): void;
   onRemove(key: string, isBuiltin: boolean): void | Promise<void>;
+  onReorder(fromIndex: number, toIndex: number): void;
   onSave(
     key: string,
     isBuiltin: boolean,
@@ -303,6 +310,8 @@ function SiteSearchList({
   options: SiteSearchListControllerOptions;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const dragFromIndexRef = useRef<number | null>(null);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
 
   if (model.items.length === 0) {
     return model.placeholder ? (
@@ -312,22 +321,48 @@ function SiteSearchList({
     ) : null;
   }
 
+  const reorder = (fromIndex: number, toIndex: number) => {
+    setDraggingIndex(null);
+    options.onReorder(fromIndex, toIndex);
+  };
+
   return (
     <>
-      {model.items.map((item) => {
+      {model.items.map((item, index) => {
         const expanded = expandedId === item.id;
+        const rowDrag = createRowDragHandlers({
+          getFromIndex: () => dragFromIndexRef.current,
+          index,
+          onReorder: reorder,
+          setFromIndex: (value) => {
+            dragFromIndexRef.current = value;
+            setDraggingIndex(value);
+          }
+        });
         return (
           <div
             className="_x_extension_shortcut_item_2024_unique_"
+            data-dragging={draggingIndex === index ? 'true' : 'false'}
             data-expanded={expanded ? 'true' : 'false'}
             data-key={item.key}
             data-provider-category={item.category}
             data-provider-id={item.id}
+            data-reorder-row="true"
             data-template={item.normalizedTemplate}
             data-type={item.isBuiltin ? 'builtin' : 'custom'}
             key={item.id}
+            onDragEnd={rowDrag.onDragEnd}
+            onDragOver={rowDrag.onDragOver}
+            onDrop={rowDrag.onDrop}
           >
             <div className="_x_extension_shortcut_item_header_2024_unique_">
+              <ReorderControls
+                copy={model.copy}
+                dragStart={rowDrag.onDragStart}
+                index={index}
+                onReorder={reorder}
+                total={model.items.length}
+              />
               <div className="_x_extension_shortcut_item_info_2024_unique_">
                 <div className="_x_extension_shortcut_item_title_2024_unique_">
                   <div className="_x_extension_shortcut_badge_2024_unique_">

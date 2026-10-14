@@ -314,6 +314,27 @@
   "settings_search_result_priority_title": {
     "message": "搜索结果首位优先级"
   },
+  "settings_search_source_group_order_title": {
+    "message": "搜索范围显示顺序"
+  },
+  "settings_search_source_group_order_desc": {
+    "message": "搜索框面板中分组块的先后顺序"
+  },
+  "settings_search_source_local_order_desc": {
+    "message": "「浏览器内容」分组内条目的先后顺序"
+  },
+  "settings_search_source_order_failed": {
+    "message": "排序保存失败，请重试。"
+  },
+  "settings_search_source_move_up": {
+    "message": "上移"
+  },
+  "settings_search_source_move_down": {
+    "message": "下移"
+  },
+  "settings_search_source_reorder_handle": {
+    "message": "拖动排序"
+  },
   "settings_search_result_tab_position_title": {
     "message": "搜索结果标签页打开位置"
   },
@@ -1323,7 +1344,7 @@
     "message": "内置"
   },
   "shortcuts_group_ai": {
-    "message": "AI"
+    "message": "AI 搜索"
   },
   "shortcuts_group_ai_desc": {
     "message": "输入关键词，按下 Tab 并键入内容（Prompt）后，可跳转至以下 AI 网站并自动填入（需先登录对应网站）"
@@ -1335,7 +1356,7 @@
     "message": "内置"
   },
   "shortcuts_badge_ai": {
-    "message": "AI"
+    "message": "AI 搜索"
   },
   "shortcuts_label_key": {
     "message": "触发词"
@@ -1392,7 +1413,7 @@
     "message": "暂无内置搜索引擎"
   },
   "shortcuts_empty_ai": {
-    "message": "暂无内置 AI"
+    "message": "暂无内置 AI 搜索"
   },
   "toast_saved": {
     "message": "已保存"

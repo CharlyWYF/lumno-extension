@@ -27,6 +27,7 @@
   const COMMUNITY_LINKS = globalThis.LumnoCommunityLinks;
   const SETTINGS = globalThis.LumnoSettings;
   const AGGREGATE_SEARCH_STORE = globalThis.LumnoAggregateSearchStore;
+  const SEARCH_SOURCE_ORDER = globalThis.LumnoSearchSourceOrder;
   const SHORTCUT_FAVICON = globalThis.LumnoShortcutFavicon;
   const panel = document.getElementById('_x_extension_settings_panel_2024_unique_');
   const optionsRoot = document.getElementById('_x_extension_options_root_2024_unique_');
@@ -423,35 +424,579 @@
       kind: 'favicon',
       onRemove: handleFaviconBlacklistRemove
     });
-  function createSiteSearchListController(host, kind) {
-    return optionsSiteSearchListApi.createSiteSearchListController(host, {
-      kind,
-      onLocateDuplicate: locateBuiltinSiteSearchProvider,
-      onRemove: removeSiteSearchItem,
-      onSave: handleSiteSearchProviderSave
+  // Mutable option records: the reorder callbacks are wired below, once the
+  // ordering helpers exist.
+  const siteSearchCustomListControllerOptions = {
+    kind: 'custom',
+    onLocateDuplicate: locateBuiltinSiteSearchProvider,
+    onRemove: removeSiteSearchItem,
+    onSave: handleSiteSearchProviderSave
+  };
+  const siteSearchEngineBuiltinListControllerOptions = {
+    kind: 'builtin-engine',
+    onLocateDuplicate: locateBuiltinSiteSearchProvider,
+    onRemove: removeSiteSearchItem,
+    onSave: handleSiteSearchProviderSave
+  };
+  const siteSearchBuiltinListControllerOptions = {
+    kind: 'builtin-search',
+    onLocateDuplicate: locateBuiltinSiteSearchProvider,
+    onRemove: removeSiteSearchItem,
+    onSave: handleSiteSearchProviderSave
+  };
+  const siteSearchAiBuiltinListControllerOptions = {
+    kind: 'builtin-ai',
+    onLocateDuplicate: locateBuiltinSiteSearchProvider,
+    onRemove: removeSiteSearchItem,
+    onSave: handleSiteSearchProviderSave
+  };
+  const siteSearchCustomListController = optionsSiteSearchListApi.createSiteSearchListController(
+    siteSearchCustomList,
+    siteSearchCustomListControllerOptions
+  );
+  const siteSearchEngineBuiltinListController = optionsSiteSearchListApi.createSiteSearchListController(
+    siteSearchEngineBuiltinList,
+    siteSearchEngineBuiltinListControllerOptions
+  );
+  const siteSearchBuiltinListController = optionsSiteSearchListApi.createSiteSearchListController(
+    siteSearchBuiltinList,
+    siteSearchBuiltinListControllerOptions
+  );
+  const siteSearchAiBuiltinListController = optionsSiteSearchListApi.createSiteSearchListController(
+    siteSearchAiBuiltinList,
+    siteSearchAiBuiltinListControllerOptions
+  );
+  // Declared before the ordering block below, which assigns its onReorder hook.
+  const aggregateSearchListControllerOptions = {
+    onRemove: handleAggregateSearchRemove,
+    onSave: handleAggregateSearchSave
+  };
+  const aggregateSearchListController =
+    optionsAggregateSearchListApi.createAggregateSearchListController(
+      aggregateSearchList,
+      aggregateSearchListControllerOptions
+    );
+
+  // --- Search sources ordering -------------------------------------------------
+  // The four provider lists on this page are one display of a single stored
+  // order. Rebuilding the order from the working lists keeps every provider
+  // (including disabled and not-yet-displayed ones) in the record.
+  const SEARCH_SOURCE_GROUP_LABEL_KEYS = Object.freeze({
+    aggregate: 'search_scope_group_aggregates',
+    ai: 'search_scope_group_ai',
+    engine: 'search_scope_group_engines',
+    local: 'search_scope_group_local',
+    site: 'search_scope_group_sites'
+  });
+
+  function getSearchSourceOrderApi() {
+    return SEARCH_SOURCE_ORDER;
+  }
+
+  function getSearchSourceGroupKey(provider) {
+    if (SEARCH_UTILS.isSearchEngineSiteSearchProvider(provider)) {
+      return 'engine';
+    }
+    if (SEARCH_UTILS.isAiSiteSearchProvider(provider)) {
+      return 'ai';
+    }
+    return 'site';
+  }
+
+  function getSiteSearchReorderCopy() {
+    return {
+      moveDownLabel: getMessage('settings_search_source_move_down', '下移'),
+      moveUpLabel: getMessage('settings_search_source_move_up', '上移'),
+      reorderHandleLabel: getMessage('settings_search_source_reorder_handle', '拖动排序')
+    };
+  }
+
+  function getDefaultSiteSearchProviderList() {
+    const api = getSearchSourceOrderApi();
+    if (!api || typeof api.createDefaultOrder !== 'function') {
+      return [];
+    }
+    return api.createDefaultOrder(defaultSiteSearchProviders, {
+      getGroupKey: getSearchSourceGroupKey,
+      getName: (provider) => String((provider && provider.name) || (provider && provider.key) || ''),
+      aggregates: aggregateSearches
     });
   }
-  const siteSearchCustomListController = createSiteSearchListController(
-    siteSearchCustomList,
-    'custom'
-  );
-  const siteSearchEngineBuiltinListController = createSiteSearchListController(
-    siteSearchEngineBuiltinList,
-    'builtin-engine'
-  );
-  const siteSearchBuiltinListController = createSiteSearchListController(
-    siteSearchBuiltinList,
-    'builtin-search'
-  );
-  const siteSearchAiBuiltinListController = createSiteSearchListController(
-    siteSearchAiBuiltinList,
-    'builtin-ai'
-  );
-  const aggregateSearchListController =
-    optionsAggregateSearchListApi.createAggregateSearchListController(aggregateSearchList, {
-      onRemove: handleAggregateSearchRemove,
-      onSave: handleAggregateSearchSave
+
+  function getActiveSiteSearchOrder() {
+    const api = getSearchSourceOrderApi();
+    if (!api) {
+      return null;
+    }
+    if (!searchSourceOrderState) {
+      const defaults = getDefaultSiteSearchProviderList();
+      return api.normalizeOrder(defaults, defaultSiteSearchProviders, {
+        getGroupKey: getSearchSourceGroupKey,
+        getName: (provider) => String((provider && provider.name) || (provider && provider.key) || ''),
+        aggregates: aggregateSearches
+      });
+    }
+    return searchSourceOrderState;
+  }
+
+  function findReorderTarget(list, target) {
+    if (!Array.isArray(target) || !target.length || !Array.isArray(list)) {
+      return null;
+    }
+    return target
+      .map((entry) => list.find((item) => item === entry) ||
+        list.find((item) => String(item && item.key || '').toLowerCase() ===
+          String(entry && entry.key || '').toLowerCase()))
+      .filter(Boolean);
+  }
+
+  function getSiteSearchProviderDisplayLists() {
+    const customKeys = new Set(customSiteSearchProviders.map(
+      (item) => String(item.key || '').toLowerCase()
+    ));
+    const displayDefaults = defaultSiteSearchProviders.filter((item) => {
+      const key = String(item.key || '').toLowerCase();
+      return key && !customKeys.has(key) && !disabledSiteSearchKeys.has(key);
     });
+    return {
+      ai: displayDefaults.filter((item) => !SEARCH_UTILS.isSearchEngineSiteSearchProvider(item) &&
+        SEARCH_UTILS.isAiSiteSearchProvider(item)),
+      custom: customSiteSearchProviders.slice(),
+      engines: displayDefaults.filter((item) => SEARCH_UTILS.isSearchEngineSiteSearchProvider(item)),
+      sites: displayDefaults.filter((item) => !SEARCH_UTILS.isSearchEngineSiteSearchProvider(item) &&
+        !SEARCH_UTILS.isAiSiteSearchProvider(item))
+    };
+  }
+
+  function reorderSearchSourceList(list, fromIndex, toIndex, options) {
+    const items = Array.isArray(list) ? list.slice() : [];
+    const from = Number(fromIndex);
+    const to = Number(toIndex);
+    const settings = options && typeof options === 'object' ? options : {};
+    if (!Number.isInteger(from) || !Number.isInteger(to) ||
+        from < 0 || from >= items.length || to < 0 || to >= items.length || from === to) {
+      if (typeof settings.commit === 'function') {
+        settings.commit(false);
+      }
+      return items;
+    }
+    const [moved] = items.splice(from, 1);
+    items.splice(to, 0, moved);
+    if (typeof settings.commit === 'function') {
+      settings.commit(true);
+    }
+    return items;
+  }
+
+  // The row the reader sees is the resolved order, so a reorder must be applied
+  // to the same list. `getSiteSearchProviderDisplayLists` returns the underlying
+  // arrays; this wrapper sorts them into the rendered order.
+  function getSortedSiteSearchDisplayLists() {
+    const groups = getSiteSearchProviderDisplayLists();
+    return {
+      ai: sortSearchSourceList(groups.ai),
+      custom: sortSearchSourceList(groups.custom),
+      engines: sortSearchSourceList(groups.engines),
+      sites: sortSearchSourceList(groups.sites)
+    };
+  }
+
+  // Applies a new order to the one list the reader moved a row in and rebuilds
+  // the whole provider record from the rendered lists. Entries that are not
+  // currently rendered (a disabled built-in, a customised built-in, or a
+  // provider the running version does not know) keep their slot at the end of
+  // their group instead of being dropped.
+  function handleSiteSearchReorder(listKind, fromIndex, toIndex, listsOverride) {
+    const api = getSearchSourceOrderApi();
+    if (!api || !searchSourceOrderState) {
+      return;
+    }
+    const groups = listsOverride || getSortedSiteSearchDisplayLists();
+    const listMap = {
+      custom: groups.custom,
+      engine: groups.engines,
+      search: groups.sites,
+      ai: groups.ai
+    };
+    const list = listMap[listKind];
+    if (!Array.isArray(list)) {
+      return;
+    }
+    let changed = false;
+    listMap[listKind] = reorderSearchSourceList(list, fromIndex, toIndex, {
+      commit: (didChange) => {
+        changed = didChange;
+      }
+    });
+    if (!changed) {
+      return;
+    }
+    const ordered = []
+      .concat(listMap.engine || [])
+      .concat(listMap.search || [])
+      .concat(listMap.ai || [])
+      .concat(listMap.custom || []);
+    const known = new Set(ordered.map((item) => String(item && item.key || '').toLowerCase()));
+    const carryOver = defaultSiteSearchProviders
+      .concat(customSiteSearchProviders)
+      .filter((item) => {
+        const key = String(item && item.key || '').toLowerCase();
+        return key && !known.has(key);
+      });
+    const nextOrder = Object.assign({}, searchSourceOrderState, {
+      version: api.SCHEMA_VERSION || 1,
+      providers: ordered.concat(carryOver)
+        .filter((provider) => String(provider && provider.key || '').trim())
+        .map((provider) => ({
+          key: String(provider.key).toLowerCase(),
+          group: getSearchSourceGroupKey(provider)
+        }))
+    });
+    searchSourceOrderState = nextOrder;
+    renderSiteSearchList();
+    renderAggregateSearchList();
+    return persistSearchSourceOrder(nextOrder);
+  }
+
+  function handleAggregateSearchReorder(fromIndex, toIndex) {
+    const api = getSearchSourceOrderApi();
+    if (!api || !searchSourceOrderState) {
+      return;
+    }
+    let changed = false;
+    const nextItems = reorderSearchSourceList(aggregateSearches, fromIndex, toIndex, {
+      commit: (didChange) => {
+        changed = didChange;
+      }
+    });
+    if (!changed) {
+      return;
+    }
+    const nextOrder = Object.assign({}, searchSourceOrderState, {
+      version: api.SCHEMA_VERSION || 1,
+      aggregates: nextItems
+        .map((definition) => String(definition && (definition.id || definition.key) || '').trim())
+        .filter(Boolean)
+    });
+    searchSourceOrderState = nextOrder;
+    // Persist the aggregate order first: if it fails the record must not claim an
+    // order the stored definitions do not have.
+    return saveAggregateSearches(nextItems)
+      .then((savedItems) => {
+        aggregateSearches = Array.isArray(savedItems) ? savedItems : nextItems;
+        renderAggregateSearchList();
+        return persistSearchSourceOrder(nextOrder);
+      })
+      .catch(() => {
+        searchSourceOrderState = null;
+        showToast(getMessage('toast_error', '操作失败，请重试。'), true);
+        if (typeof refreshAggregateSearches === 'function') {
+          return refreshAggregateSearches();
+        }
+        return undefined;
+      });
+  }
+
+  // The group blocks (Aggregate searches, AI search, Search engines, Browser
+  // content, Site search) can be reordered from one control on this page.
+  function getSearchSourceGroupOrderControl() {
+    return document.getElementById('_x_extension_search_source_group_order_2026_unique_');
+  }
+
+  function getSearchSourceGroupOrder() {
+    const api = getSearchSourceOrderApi();
+    const order = getActiveSiteSearchOrder();
+    if (api && order && Array.isArray(order.groups)) {
+      return order.groups.slice();
+    }
+    return api && Array.isArray(api.DEFAULT_GROUP_ORDER)
+      ? api.DEFAULT_GROUP_ORDER.slice()
+      : [];
+  }
+
+  function handleSearchSourceGroupReorder(fromIndex, toIndex) {
+    const api = getSearchSourceOrderApi();
+    if (!api || !searchSourceOrderState) {
+      return Promise.resolve();
+    }
+    let changed = false;
+    const groups = reorderSearchSourceList(getSearchSourceGroupOrder(), fromIndex, toIndex, {
+      commit: (didChange) => {
+        changed = didChange;
+      }
+    });
+    if (!changed) {
+      return;
+    }
+    const nextOrder = Object.assign({}, searchSourceOrderState, {
+      version: api.SCHEMA_VERSION || 1,
+      groups
+    });
+    searchSourceOrderState = nextOrder;
+    renderSearchSourceGroupOrderControl();
+    renderSearchSourceLocalOrderControl();
+    return persistSearchSourceOrder(nextOrder);
+  }
+
+  function loadSearchSourceOrderValue() {
+    if (!SETTINGS.readStorageValue) {
+      return Promise.resolve(undefined);
+    }
+    // A read failure must stay a failure: it is indistinguishable from "no
+    // record yet" at the call site, and the caller must not write a default
+    // over a value another device already synced.
+    return SETTINGS.readStorageValue(
+      storageArea,
+      chrome,
+      SEARCH_SOURCE_ORDER_STORAGE_KEY
+    );
+  }
+
+  // Reconciles the stored order against every provider this page knows about,
+  // so a custom search keeps its slot and the alphabetical default applies the
+  // first time. The resolved record is never written back here: it is
+  // deterministic, so every device derives the same default, and writing it
+  // could overwrite an order another device has already synced.
+  function applyLoadedSearchSourceOrder(value, providerList) {
+    const api = getSearchSourceOrderApi();
+    if (!api) {
+      searchSourceOrderState = null;
+      return;
+    }
+    const available = (Array.isArray(providerList) && providerList.length
+      ? providerList
+      : defaultSiteSearchProviders.concat(customSiteSearchProviders));
+    const isStored = Boolean(value && typeof value === 'object' &&
+      Number(value.version) === Number(api.SCHEMA_VERSION));
+    searchSourceOrderState = isStored
+      ? api.normalizeOrder(value, available, {
+        getGroupKey: getSearchSourceGroupKey,
+        getName: (provider) => String((provider && provider.name) || (provider && provider.key) || ''),
+        aggregates: aggregateSearches
+      })
+      : api.resolveInitialOrder(available, {
+        getGroupKey: getSearchSourceGroupKey,
+        getName: (provider) => String((provider && provider.name) || (provider && provider.key) || ''),
+        aggregates: aggregateSearches
+      });
+  }
+
+  // The settings page must render the same order the background publishes, so
+  // it delegates to the shared "group block first, then position inside the
+  // block" sort instead of ranking by the record's storage index alone.
+  function sortSearchSourceList(items) {
+    const api = getSearchSourceOrderApi();
+    if (!api || !searchSourceOrderState || !Array.isArray(items) ||
+        typeof api.sortProviders !== 'function') {
+      return Array.isArray(items) ? items : [];
+    }
+    return api.sortProviders(items, searchSourceOrderState);
+  }
+
+  function persistSearchSourceOrder(order) {
+    const api = getSearchSourceOrderApi();
+    if (!api || !SETTINGS.writeStorageValue) {
+      return Promise.resolve();
+    }
+    return SETTINGS.writeStorageValue(
+      rawStorageArea,
+      chrome,
+      SEARCH_SOURCE_ORDER_STORAGE_KEY,
+      order
+    ).catch(() => {
+      // Showing a new order that never reached storage is worse than showing the
+      // stored one, so reload what is actually persisted.
+      showToast(getMessage('settings_search_source_order_failed', '排序保存失败，请重试。'), true);
+      return loadSearchSourceOrderValue()
+        .then((value) => applyLoadedSearchSourceOrder(value))
+        .then(() => {
+          if (siteSearchProvidersLoaded) {
+            renderSiteSearchList();
+            renderAggregateSearchList();
+            renderSearchSourceGroupOrderControl();
+            renderSearchSourceLocalOrderControl();
+          }
+        })
+        .catch(() => undefined);
+    });
+  }
+
+  function renderSearchSourceGroupOrderControl() {
+    const host = getSearchSourceGroupOrderControl();
+    if (!host) {
+      return;
+    }
+    const groups = getSearchSourceGroupOrder();
+    host.textContent = '';
+    groups.forEach((group, index) => {
+      const row = document.createElement('div');
+      row.className = '_x_extension_search_source_group_order_row_2026_unique_';
+      row.setAttribute('data-reorder-row', 'true');
+      row.setAttribute('data-search-source-group', group);
+      const label = document.createElement('span');
+      label.className = '_x_extension_search_source_group_order_label_2026_unique_';
+      let key = 'search_scope_group_sites';
+      if (group === 'aggregate') {
+        key = 'search_scope_group_aggregates';
+      } else if (group === 'ai') {
+        key = 'search_scope_group_ai';
+      } else if (group === 'engine') {
+        key = 'search_scope_group_engines';
+      } else if (group === 'local') {
+        key = 'search_scope_group_local';
+      }
+      label.textContent = getMessage(key, group);
+      row.appendChild(label);
+      const groupOrderControls = [
+        {
+          action: 'up',
+          delta: -1,
+          icon: 'ri-arrow-up-s-line',
+          fallback: getMessage('settings_search_source_move_up', '上移')
+        },
+        {
+          action: 'down',
+          delta: 1,
+          icon: 'ri-arrow-down-s-line',
+          fallback: getMessage('settings_search_source_move_down', '下移')
+        }
+      ];
+      groupOrderControls.forEach((control) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = '_x_extension_shortcut_reorder_button_2026_unique_';
+        button.setAttribute('data-reorder-action', control.action);
+        button.setAttribute('aria-label', control.fallback);
+        button.disabled = control.delta < 0 ? index === 0 : index === groups.length - 1;
+        const icon = document.createElement('i');
+        icon.className = `ri-icon ri-size-14 ${control.icon}`;
+        icon.setAttribute('aria-hidden', 'true');
+        button.appendChild(icon);
+        button.addEventListener('click', () => {
+          handleSearchSourceGroupReorder(index, index + control.delta);
+        });
+        row.appendChild(button);
+      });
+      host.appendChild(row);
+    });
+  }
+
+  // The browser content block (recent, bookmarks, history) is ordered from its
+  // own panel; it has no provider list to render in.
+  function getSearchSourceLocalLabel(sourceType) {
+    if (sourceType === 'bookmark') {
+      return getMessage('search_tag_bookmark', '书签');
+    }
+    if (sourceType === 'history') {
+      return getMessage('search_tag_history', '历史');
+    }
+    if (sourceType === 'topSite') {
+      return getMessage('search_tag_top_site', '常用');
+    }
+    return String(sourceType || '');
+  }
+
+  function getSearchSourceLocalControl() {
+    return document.getElementById('_x_extension_search_source_local_order_2026_unique_');
+  }
+
+  function getSearchSourceLocalOrder() {
+    const order = getActiveSiteSearchOrder();
+    if (order && Array.isArray(order.local) && order.local.length) {
+      return order.local.slice();
+    }
+    const api = getSearchSourceOrderApi();
+    return api && Array.isArray(api.LOCAL_SOURCE_TYPES) ? api.LOCAL_SOURCE_TYPES.slice() : [];
+  }
+
+  function handleSearchSourceLocalReorder(fromIndex, toIndex) {
+    const api = getSearchSourceOrderApi();
+    if (!api || !searchSourceOrderState) {
+      return;
+    }
+    let changed = false;
+    const local = reorderSearchSourceList(getSearchSourceLocalOrder(), fromIndex, toIndex, {
+      commit: (didChange) => {
+        changed = didChange;
+      }
+    });
+    if (!changed) {
+      return;
+    }
+    const nextOrder = Object.assign({}, searchSourceOrderState, {
+      version: api.SCHEMA_VERSION || 1,
+      local
+    });
+    searchSourceOrderState = nextOrder;
+    renderSearchSourceLocalOrderControl();
+    return persistSearchSourceOrder(nextOrder);
+  }
+
+  function renderSearchSourceLocalOrderControl() {
+    const host = getSearchSourceLocalControl();
+    if (!host) {
+      return;
+    }
+    const local = getSearchSourceLocalOrder();
+    host.textContent = '';
+    local.forEach((sourceType, index) => {
+      const row = document.createElement('div');
+      row.className = '_x_extension_search_source_group_order_row_2026_unique_';
+      row.setAttribute('data-reorder-row', 'true');
+      row.setAttribute('data-search-source-local', sourceType);
+      const label = document.createElement('span');
+      label.className = '_x_extension_search_source_group_order_label_2026_unique_';
+      label.textContent = getSearchSourceLocalLabel(sourceType);
+      row.appendChild(label);
+      const localOrderControls = [
+        {
+          action: 'up',
+          delta: -1,
+          icon: 'ri-arrow-up-s-line',
+          fallback: getMessage('settings_search_source_move_up', '上移')
+        },
+        {
+          action: 'down',
+          delta: 1,
+          icon: 'ri-arrow-down-s-line',
+          fallback: getMessage('settings_search_source_move_down', '下移')
+        }
+      ];
+      localOrderControls.forEach((control) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = '_x_extension_shortcut_reorder_button_2026_unique_';
+        button.setAttribute('data-reorder-action', control.action);
+        button.setAttribute('aria-label', control.fallback);
+        button.disabled = control.delta < 0 ? index === 0 : index === local.length - 1;
+        const icon = document.createElement('i');
+        icon.className = `ri-icon ri-size-14 ${control.icon}`;
+        icon.setAttribute('aria-hidden', 'true');
+        button.appendChild(icon);
+        button.addEventListener('click', () => {
+          handleSearchSourceLocalReorder(index, index + control.delta);
+        });
+        row.appendChild(button);
+      });
+      host.appendChild(row);
+    });
+  }
+
+  siteSearchCustomListControllerOptions.onReorder = (fromIndex, toIndex) => {
+    handleSiteSearchReorder('custom', fromIndex, toIndex);
+  };
+  siteSearchEngineBuiltinListControllerOptions.onReorder = (fromIndex, toIndex) => {
+    handleSiteSearchReorder('engine', fromIndex, toIndex);
+  };
+  siteSearchBuiltinListControllerOptions.onReorder = (fromIndex, toIndex) => {
+    handleSiteSearchReorder('search', fromIndex, toIndex);
+  };
+  siteSearchAiBuiltinListControllerOptions.onReorder = (fromIndex, toIndex) => {
+    handleSiteSearchReorder('ai', fromIndex, toIndex);
+  };
+  aggregateSearchListControllerOptions.onReorder = (fromIndex, toIndex) => {
+    handleAggregateSearchReorder(fromIndex, toIndex);
+  };
   const siteSearchFormController =
     optionsSettingsFormsApi.createSiteSearchFormController(siteSearchForm, {
       onSave: handleReactSiteSearchFormSave
@@ -657,6 +1202,7 @@
     SITE_SEARCH_DISABLED_STORAGE_KEY,
     AGGREGATE_SEARCH_STORAGE_KEY,
     AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY,
+    SEARCH_SOURCE_ORDER_STORAGE_KEY,
     SEARCH_BLACKLIST_STORAGE_KEY,
     FAVICON_REQUEST_BLACKLIST_STORAGE_KEY,
     SYNC_META_STORAGE_KEY,
@@ -699,6 +1245,9 @@
   let helpCenterSearchEnabled = null;
   let siteSearchProvidersLoaded = false;
   let aggregateSearches = [];
+  // The reader's Search sources order, resolved against the available
+  // providers. Null until loaded, which keeps the alphabetical default.
+  let searchSourceOrderState = null;
   let aggregateSearchesReady = false;
   let aggregateSearchStateCoordinator = null;
   let languageApplyRequestId = 0;
@@ -2234,6 +2783,17 @@
     { area: 'local' }
   );
   storageChanges.on([SYNC_META_STORAGE_KEY, ...SYNC_KEYS], refreshSyncStatus);
+  // Another window or device changed the Search sources order. Adopt it instead
+  // of holding a stale record that the next drag would write back over it.
+  storageChanges.on(SEARCH_SOURCE_ORDER_STORAGE_KEY, (changes) => {
+    applyLoadedSearchSourceOrder(changes[SEARCH_SOURCE_ORDER_STORAGE_KEY].newValue);
+    if (siteSearchProvidersLoaded) {
+      renderSiteSearchList();
+      renderAggregateSearchList();
+      renderSearchSourceGroupOrderControl();
+      renderSearchSourceLocalOrderControl();
+    }
+  });
 
   function closeActivePopconfirm() {
     if (activePopconfirm) {
@@ -3648,7 +4208,8 @@
         'shortcuts_template_help',
         '1.打开你想添加的网站\n2.输入任一搜索词，触发搜索\n3.将搜索结果页面 url 粘贴在此处\n4.将关键词替换为{query}'
       ),
-      templateLabel: getMessage('shortcuts_label_template', '搜索模板')
+      templateLabel: getMessage('shortcuts_label_template', '搜索模板'),
+      ...getSiteSearchReorderCopy()
     };
   }
 
@@ -3825,6 +4386,12 @@
       ...item,
       _xIsCustom: false
     }));
+
+    // The stored order decides the row order of every list on this page.
+    customItems.splice(0, customItems.length, ...sortSearchSourceList(customItems));
+    engineItems.splice(0, engineItems.length, ...sortSearchSourceList(engineItems));
+    searchItems.splice(0, searchItems.length, ...sortSearchSourceList(searchItems));
+    aiItems.splice(0, aiItems.length, ...sortSearchSourceList(aiItems));
 
     renderSiteSearchListController(
       siteSearchEngineBuiltinListController,
@@ -4034,7 +4601,8 @@
       unavailableSourceLabel: getMessage(
         'aggregate_search_unavailable_name',
         '不可用的搜索源（{source}）'
-      )
+      ),
+      ...getSiteSearchReorderCopy()
     };
   }
 
@@ -4480,11 +5048,12 @@
 
   async function loadSiteSearchProviderSnapshot() {
     const defaults = await loadDefaultSiteSearchProviders();
-    const [custom, disabled] = await Promise.all([
+    const [custom, disabled, orderValue] = await Promise.all([
       loadCustomSiteSearchProviders(defaults),
-      loadDisabledSiteSearchKeys()
+      loadDisabledSiteSearchKeys(),
+      loadSearchSourceOrderValue()
     ]);
-    return { custom, defaults, disabled };
+    return { custom, defaults, disabled, orderValue };
   }
 
   function getSiteSearchProviderRefreshCoordinator() {
@@ -4496,8 +5065,14 @@
           customSiteSearchProviderIdsReady = true;
           disabledSiteSearchKeys = prepared.disabledKeys;
           siteSearchProvidersLoaded = true;
+          applyLoadedSearchSourceOrder(
+            prepared.orderValue,
+            prepared.defaults.concat(prepared.custom)
+          );
           renderSiteSearchList();
           renderAggregateSearchList();
+          renderSearchSourceGroupOrderControl();
+          renderSearchSourceLocalOrderControl();
         },
         load: loadSiteSearchProviderSnapshot,
         onError(error) {

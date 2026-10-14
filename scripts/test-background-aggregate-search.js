@@ -189,7 +189,44 @@ function createSiteSearchProviderCacheHarness() {
     SEARCH_UTILS: {
       getDefaultSiteSearchProviders() {
         return [];
+      },
+      isSearchEngineSiteSearchProvider() {
+        return false;
+      },
+      isAiSiteSearchProvider() {
+        return false;
       }
+    },
+    // The cache-race harness exercises publication and invalidation, not
+    // ordering, so the order record resolves to an empty one here.
+    SEARCH_SOURCE_ORDER: {
+      normalizeOrder(value, providers) {
+        return {
+          version: 1,
+          groups: [],
+          providers: (Array.isArray(providers) ? providers : []).map((provider) => ({
+            key: String(provider && provider.key || '').toLowerCase(),
+            group: 'site'
+          })),
+          local: [],
+          aggregates: []
+        };
+      },
+      sortProviders(providers) {
+        return Array.isArray(providers) ? providers : [];
+      }
+    },
+    SEARCH_SOURCE_ORDER_STORAGE_KEY: '_x_extension_search_source_order_2026_unique_',
+    SETTINGS: {
+      readStorageValue() {
+        return Promise.resolve(undefined);
+      }
+    },
+    loadAggregateSearchDefinitions() {
+      return Promise.resolve([]);
+    },
+    loadSearchSourceOrder(_providers, _aggregates) {
+      return Promise.resolve(null);
     },
     fetch() {
       const request = createDeferred();

@@ -2,6 +2,8 @@ Tags: Release
 
 ## Features
 
+- 搜索源支持自定义排序：可在设置中拖动或使用上/下移按钮排列站内搜索、搜索引擎、AI 搜索、聚合搜索与浏览器内容，并调整搜索框面板中分组块的先后顺序；排序结果会同步到搜索框面板，且随配置一起同步与导出。默认按名称首字母排序，因此 AI 搜索排在搜索引擎与站内搜索之前。
+- 将搜索源中的「AI」统一更正为「AI 搜索」，与搜索框面板的分组名称保持一致。
 - 新增动态视频／阅读进度卡片：在 New Tab 固定剧集或小说页面后，可开启进度跟踪，卡片会随同一作品的后续集数、章节更新，并支持查看和恢复近期历史。可在常规设置及卡片上的跟踪按钮中控制。特别感谢 @JIANG-R98（JIANG）对动态更新卡片功能的建议与支持！
 - 新增 WebDAV 同步，支持坚果云和自定义服务器、多连接管理，以及配置、快捷方式图标和自定义壁纸的同步；遇到冲突可查看本地与服务器差异后选择保留版本。
 - 新增每日一言，中文界面可选择文学或诗词，调整位置和字号，并查看出处；新增 Bing 每日壁纸与近期壁纸浏览。感谢 #53 的建议。
@@ -23,6 +25,8 @@ Tags: Release
 
 ## Features
 
+- Added custom ordering for search sources. Drag a row or use the up and down buttons to arrange site searches, search engines, AI search, aggregate searches and browser content, and reorder the group blocks in the search scope panel. The panel follows the saved order, and the order syncs and exports with the rest of the settings. Groups and providers sort alphabetically by name by default, so AI search comes before Search engines and Site search.
+- Renamed the search sources "AI" label to "AI search" so it matches the search scope group name.
 - Added dynamic watching and reading progress cards. Pin an episode or novel page in New Tab and enable tracking to follow later episodes or chapters of the same work, with recent history that can be reviewed and restored. Controls are available in General settings and on each card. Special thanks to @JIANG-R98 (JIANG) for the suggestions and support behind dynamic progress cards!
 - Added WebDAV sync with Nutstore and custom servers, multiple connections, and syncing for settings, shortcut icons, and custom wallpapers. Compare local and server changes before resolving conflicts.
 - Added daily quotes for Chinese UI languages, with literature and poetry categories, adjustable placement and font size, and source information. Added Bing daily wallpapers and a recent-wallpaper gallery. Thanks for the suggestion in #53.

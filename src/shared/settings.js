@@ -90,6 +90,10 @@
   const AGGREGATE_SEARCH_STORAGE_KEY = '_x_extension_aggregate_searches_2026_unique_';
   const AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY =
     '_x_extension_aggregate_search_auto_group_enabled_2026_unique_';
+  // One flat record holds the reader's custom order for every Search sources
+  // list plus the search scope group order. Only short keys are stored, so the
+  // record stays well inside the 8 KB Chrome Sync item budget.
+  const SEARCH_SOURCE_ORDER_STORAGE_KEY = '_x_extension_search_source_order_2026_unique_';
   const PROGRESS_TRACKING_ENABLED_STORAGE_KEY = '_x_extension_progress_tracking_enabled_2026_unique_';
   // Which New Tab surfaces open a plain click in a new foreground tab instead of the New Tab itself.
   const NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY = '_x_extension_newtab_open_in_new_tab_2026_unique_';
@@ -235,6 +239,7 @@
     SITE_SEARCH_DISABLED_STORAGE_KEY,
     AGGREGATE_SEARCH_STORAGE_KEY,
     AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY,
+    SEARCH_SOURCE_ORDER_STORAGE_KEY,
     PROGRESS_TRACKING_ENABLED_STORAGE_KEY,
     NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY,
     SEARCH_BLACKLIST_STORAGE_KEY,
@@ -1346,6 +1351,7 @@
     SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY,
     AGGREGATE_SEARCH_STORAGE_KEY,
     AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY,
+    SEARCH_SOURCE_ORDER_STORAGE_KEY,
     PROGRESS_TRACKING_ENABLED_STORAGE_KEY,
     BOOKMARK_TOPBAR_LOCAL_STORAGE_KEYS,
     BOOKMARK_TOPBAR_WEBDAV_STORAGE_KEYS,

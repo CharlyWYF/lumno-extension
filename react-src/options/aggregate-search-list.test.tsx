@@ -26,8 +26,11 @@ const model: AggregateSearchListRenderModel = {
     keySpaceError: '触发词不能包含空格。',
     maxSourcesError: '最多 10 个',
     minSourcesError: '至少 2 个',
+    moveDownLabel: '下移',
+    moveUpLabel: '上移',
     nameLabel: '名称',
     nameRequiredError: '请输入名称',
+    reorderHandleLabel: '拖动排序',
     removeLabel: '移除',
     saveLabel: '保存',
     selectedCountLabel: '已选 {count}/{max}',
@@ -70,6 +73,7 @@ function createFixture(renderModel = model) {
   document.body.appendChild(host);
   const options = {
     onRemove: vi.fn().mockResolvedValue(undefined),
+    onReorder: vi.fn(),
     onSave: vi.fn().mockResolvedValue({ ok: true })
   };
   const controller = createAggregateSearchListController(host, options);
@@ -642,5 +646,35 @@ describe('Options aggregate-search React island', () => {
     });
 
     expect(options.onRemove).toHaveBeenCalledWith(item.id);
+  });
+
+  it('offers one reorder control per aggregate row with move buttons', () => {
+    const item = {
+      id: 'one',
+      key: 'one',
+      name: 'One',
+      sourceRefs: ['builtin:gg', 'builtin:bi'],
+      sourceSummary: '2 sources'
+    };
+    const { controller, host, options } = createFixture({
+      ...model,
+      items: [
+        item,
+        { ...item, id: 'two', key: 'two', name: 'Two' }
+      ]
+    });
+
+    const rows = host.querySelectorAll('[data-reorder-row="true"]');
+    expect(rows.length).toBe(2);
+    expect(host.querySelectorAll('[data-reorder-handle="true"][draggable="true"]').length).toBe(2);
+    const firstUp = rows[0].querySelector<HTMLButtonElement>('[data-reorder-action="up"]');
+    const lastDown = rows[1].querySelector<HTMLButtonElement>('[data-reorder-action="down"]');
+    expect(firstUp?.disabled).toBe(true);
+    expect(lastDown?.disabled).toBe(true);
+
+    act(() => {
+      rows[0].querySelector<HTMLButtonElement>('[data-reorder-action="down"]')?.click();
+    });
+    expect(options.onReorder).toHaveBeenCalledWith(0, 1);
   });
 });

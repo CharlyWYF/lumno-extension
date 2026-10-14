@@ -176,6 +176,12 @@
   const SETTINGS = settingsRuntimeApi;
   const BROWSER_PROFILE = globalThis.LumnoBrowserProfile;
   const SHORTCUT_KEY_MATCHER = globalThis.LumnoShortcutKeyMatcher;
+  const SEARCH_SOURCE_ORDER = globalThis.LumnoSearchSourceOrder;
+  // One flat preference record holds every custom Search sources order,
+  // including the search scope group order.
+  const SEARCH_SOURCE_ORDER_STORAGE_KEY = SETTINGS.SEARCH_SOURCE_ORDER_STORAGE_KEY ||
+    (SEARCH_SOURCE_ORDER && SEARCH_SOURCE_ORDER.STORAGE_KEY) ||
+    '_x_extension_search_source_order_2026_unique_';
   const THEME_STORAGE_KEY = '_x_extension_theme_mode_2024_unique_';
   const LANGUAGE_STORAGE_KEY = '_x_extension_language_2024_unique_';
   const RECENT_MODE_STORAGE_KEY = '_x_extension_recent_mode_2024_unique_';
@@ -5464,6 +5470,7 @@
     isAggregateSearchDefinitionAvailable,
     getSearchTriggerProviders,
     getSearchModeMenuItems,
+    invalidateSearchSourceOrder,
     openSearchModeMenuFromDoubleTab,
     selectSearchModeMenuItem,
     getLocalSearchScopeTabHintProvider,
@@ -5497,11 +5504,77 @@
     clearSiteSearchPrefix,
     setSiteSearchPrefix,
     getThemeForProvider,
-    getTopSiteMatchCandidate,
-    getSiteSearchTriggerCandidate,
-    getLocalSearchScopeCandidate,
-    getShortcutRules: (...args) => getShortcutRules(...args),
-    pageState
+    searchSourceOrder: SEARCH_SOURCE_ORDER,
+    searchSourceOrderStorageKey: SEARCH_SOURCE_ORDER_STORAGE_KEY,
+    readStorageValue: (key) => SETTINGS.readStorageValue(storageArea, chrome, key),
+    pageState: {
+      get defaultSearchEngineState() {
+        return defaultSearchEngineState;
+      },
+      get siteSearchProvidersCache() {
+        return siteSearchProvidersCache;
+      },
+      get aggregateSearchesCache() {
+        return aggregateSearchesCache;
+      },
+      get siteSearchState() {
+        return siteSearchState;
+      },
+      set siteSearchState(value) {
+        siteSearchState = value;
+      },
+      get enabledSearchResultSourceTypes() {
+        return enabledSearchResultSourceTypes;
+      },
+      get localSearchScopeState() {
+        return localSearchScopeState;
+      },
+      set localSearchScopeState(value) {
+        localSearchScopeState = value;
+      },
+      get inputParts() {
+        return inputParts;
+      },
+      get inputModeController() {
+        return inputModeController;
+      },
+      get latestRawQuery() {
+        return latestRawQuery;
+      },
+      set latestRawQuery(value) {
+        latestRawQuery = value;
+      },
+      get latestQuery() {
+        return latestQuery;
+      },
+      set latestQuery(value) {
+        latestQuery = value;
+      },
+      get suggestionRequestSeq() {
+        return suggestionRequestSeq;
+      },
+      set suggestionRequestSeq(value) {
+        suggestionRequestSeq = value;
+      },
+      get localSearchScopeTriggerState() {
+        return localSearchScopeTriggerState;
+      },
+      set localSearchScopeTriggerState(value) {
+        localSearchScopeTriggerState = value;
+      },
+      get siteSearchTriggerState() {
+        return siteSearchTriggerState;
+      },
+      set siteSearchTriggerState(value) {
+        siteSearchTriggerState = value;
+      },
+      get inlineSearchState() {
+        return inlineSearchState;
+      },
+      set inlineSearchState(value) {
+        inlineSearchState = value;
+      }
+    }
   });
 
   const NEWTAB_SEARCH_NAVIGATION = globalThis.LumnoNewtabSearchNavigation;
@@ -6815,16 +6888,32 @@
     }
   });
 
-  storageChanges.on([
-    SITE_SEARCH_STORAGE_KEY,
-    SITE_SEARCH_DISABLED_STORAGE_KEY,
-    pageState.AGGREGATE_SEARCH_STORAGE_KEY
-  ], (changes) => {
-    if (changes[pageState.AGGREGATE_SEARCH_STORAGE_KEY]) {
-      pageState.aggregateSearchesLoadVersion += 1;
-      pageState.aggregateSearchesLoadPromise = null;
-      pageState.aggregateSearchesCache = AGGREGATE_SEARCH_STORE.normalizeAggregateSearches(
-        changes[pageState.AGGREGATE_SEARCH_STORAGE_KEY].newValue
+  addStorageChangeListener((changes, areaName) => {
+    if (!isPrimaryStorageAreaName(areaName) || !(
+      changes[SITE_SEARCH_STORAGE_KEY] ||
+      changes[SITE_SEARCH_DISABLED_STORAGE_KEY] ||
+      changes[AGGREGATE_SEARCH_STORAGE_KEY] ||
+      changes[SEARCH_SOURCE_ORDER_STORAGE_KEY]
+    )) {
+      return;
+    }
+    if (changes[SEARCH_SOURCE_ORDER_STORAGE_KEY]) {
+      // The next scope panel open re-reads the order instead of serving a stale
+      // group or item order.
+      NEWTAB_SEARCH_MODES.invalidateSearchSourceOrder();
+      if (!(
+        changes[SITE_SEARCH_STORAGE_KEY] ||
+        changes[SITE_SEARCH_DISABLED_STORAGE_KEY] ||
+        changes[AGGREGATE_SEARCH_STORAGE_KEY]
+      )) {
+        return;
+      }
+    }
+    if (changes[AGGREGATE_SEARCH_STORAGE_KEY]) {
+      aggregateSearchesLoadVersion += 1;
+      aggregateSearchesLoadPromise = null;
+      aggregateSearchesCache = AGGREGATE_SEARCH_STORE.normalizeAggregateSearches(
+        changes[AGGREGATE_SEARCH_STORAGE_KEY].newValue
       );
       if (isAggregateSearchProvider(pageState.siteSearchState)) {
         const currentId = String(pageState.siteSearchState.aggregateId || '');

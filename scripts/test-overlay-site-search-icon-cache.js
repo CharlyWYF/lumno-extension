@@ -200,14 +200,14 @@ assert.match(
 
 assert.match(
   newtabSource,
-  /function getSearchModeMenuItems\(\) \{[\s\S]*?Promise\.all\(\[[\s\S]*?loadSiteSearchIconCache\(\)[\s\S]*?getAggregateSearches\(\)[\s\S]*?\]\)\.then\(buildSearchModeMenuItems\);/,
-  'newtab should finish the icon cache and aggregate configuration reads before rendering its provider menu'
+  /function getSearchModeMenuItems\(\) \{[\s\S]*?Promise\.all\(\[[\s\S]*?loadSiteSearchIconCache\(\)[\s\S]*?getAggregateSearches\(\)[\s\S]*?\]\)\.then\(\(results\) => loadSearchSourceOrder\(/,
+  'newtab should finish the icon cache and aggregate configuration reads before resolving the search source order and rendering its provider menu'
 );
 
 assert.match(
   overlaySource,
-  /function getSearchModeMenuItems\(\) \{[\s\S]*?Promise\.all\(\[[\s\S]*?loadSiteSearchIconCache\(\)[\s\S]*?getAggregateSearches\(\)[\s\S]*?\]\)\.then\(buildSearchModeMenuItems\);/,
-  'opening the shortcut panel should wait for unfinished icon and aggregate configuration reads'
+  /function getSearchModeMenuItems\(\) \{[\s\S]*?Promise\.all\(\[[\s\S]*?loadSiteSearchIconCache\(\)[\s\S]*?getAggregateSearches\(\)[\s\S]*?\]\)\.then\(\(results\) => loadSearchSourceOrder\(/,
+  'opening the shortcut panel should wait for unfinished icon and aggregate configuration reads before resolving the search source order'
 );
 
 assert.match(

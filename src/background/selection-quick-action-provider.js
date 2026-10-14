@@ -32,12 +32,14 @@
   ) {
     const visible = getInteractiveProviders(visibleProviders, isInteractive);
     const bundled = getInteractiveProviders(bundledProviders, isInteractive);
+    // Every fallback is key-based. The provider list order is the reader's
+    // Search sources order, so an index-based fallback would silently change
+    // which site a selection action opens once they reorder that page.
+    const fallbackKey = 'gpt';
     return findProvider(visible, requestedKey) ||
       findProvider(bundled, requestedKey) ||
-      findProvider(visible, 'gpt') ||
-      findProvider(bundled, 'gpt') ||
-      visible[0] ||
-      bundled[0] ||
+      findProvider(visible, fallbackKey) ||
+      findProvider(bundled, fallbackKey) ||
       null;
   }
 

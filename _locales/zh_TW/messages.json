@@ -314,6 +314,27 @@
   "settings_search_result_priority_title": {
     "message": "搜尋結果首位優先順序"
   },
+  "settings_search_source_group_order_title": {
+    "message": "搜尋範圍顯示順序"
+  },
+  "settings_search_source_group_order_desc": {
+    "message": "搜尋框面板中分組區塊的先後順序"
+  },
+  "settings_search_source_local_order_desc": {
+    "message": "「瀏覽器內容」分組內項目的先後順序"
+  },
+  "settings_search_source_order_failed": {
+    "message": "排序儲存失敗，請重試。"
+  },
+  "settings_search_source_move_up": {
+    "message": "上移"
+  },
+  "settings_search_source_move_down": {
+    "message": "下移"
+  },
+  "settings_search_source_reorder_handle": {
+    "message": "拖曳排序"
+  },
   "settings_search_result_tab_position_title": {
     "message": "搜尋結果分頁開啟位置"
   },
@@ -1314,7 +1335,7 @@
     "message": "內建"
   },
   "shortcuts_group_ai": {
-    "message": "AI"
+    "message": "AI 搜尋"
   },
   "shortcuts_group_ai_desc": {
     "message": "輸入關鍵字，按下 Tab 並輸入內容（Prompt）後，可前往以下 AI 網站並自動填入（需先登入對應網站）"
@@ -1326,7 +1347,7 @@
     "message": "內建"
   },
   "shortcuts_badge_ai": {
-    "message": "AI"
+    "message": "AI 搜尋"
   },
   "shortcuts_duplicate_tag": {
     "message": "與內置重複"
@@ -1392,7 +1413,7 @@
     "message": "沒有內建搜尋引擎"
   },
   "shortcuts_empty_ai": {
-    "message": "沒有內建 AI"
+    "message": "沒有內建 AI 搜尋"
   },
   "toast_saved": {
     "message": "已儲存"

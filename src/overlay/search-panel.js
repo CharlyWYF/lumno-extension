@@ -228,6 +228,10 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
   const AGGREGATE_SEARCH_STORAGE_KEY = overlayStorageKeys.aggregateSearches ||
     AGGREGATE_SEARCH_STORE.STORAGE_KEY ||
     '_x_extension_aggregate_searches_2026_unique_';
+  const SEARCH_SOURCE_ORDER = globalThis.LumnoSearchSourceOrder;
+  const SEARCH_SOURCE_ORDER_STORAGE_KEY = overlayStorageKeys.searchSourceOrder ||
+    (SEARCH_SOURCE_ORDER && SEARCH_SOURCE_ORDER.STORAGE_KEY) ||
+    '_x_extension_search_source_order_2026_unique_';
   const SITE_SEARCH_ICON_CACHE_STORAGE_KEY = overlayStorageKeys.siteSearchIconCache ||
     SHORTCUT_FAVICON.SITE_SEARCH_STORAGE_KEY ||
     '_x_extension_site_search_icon_cache_canonical_2026_unique_';
@@ -2647,6 +2651,9 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     let aggregateSearchesCache = null;
     let aggregateSearchesLoadPromise = null;
     let aggregateSearchesLoadVersion = 0;
+    let searchSourceOrderValue = null;
+    let searchSourceOrderReady = null;
+    let searchSourceOrderRevision = 0;
     let aggregateSearchRequestController = null;
     let pendingProviderReload = false;
     const siteSearchIconCacheOptions = SHORTCUT_FAVICON.SITE_SEARCH_CACHE_OPTIONS || {
@@ -4836,6 +4843,22 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       if (!isPrimaryStorageAreaName(areaName) || !(
         changes[SITE_SEARCH_STORAGE_KEY] ||
         changes[SITE_SEARCH_DISABLED_STORAGE_KEY] ||
+        changes[AGGREGATE_SEARCH_STORAGE_KEY] ||
+        changes[SEARCH_SOURCE_ORDER_STORAGE_KEY]
+      )) {
+        return;
+      }
+      if (changes[SEARCH_SOURCE_ORDER_STORAGE_KEY]) {
+        // Refresh an already-open scope menu so a new order applies without
+        // closing and reopening the overlay.
+        invalidateSearchSourceOrder();
+        if (inputModeController && typeof inputModeController.refreshModeMenu === 'function') {
+          inputModeController.refreshModeMenu();
+        }
+      }
+      if (!(
+        changes[SITE_SEARCH_STORAGE_KEY] ||
+        changes[SITE_SEARCH_DISABLED_STORAGE_KEY] ||
         changes[AGGREGATE_SEARCH_STORAGE_KEY]
       )) {
         return;
@@ -5145,7 +5168,8 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       );
     }
 
-    function buildSearchModeMenuItems() {
+    function buildSearchModeMenuItems(sourceOrder) {
+      const resolvedOrder = sourceOrder === undefined ? searchSourceOrderValue : sourceOrder;
       const engineGroup = t('search_scope_group_engines', '搜索引擎');
       const localGroup = t('search_scope_group_local', '浏览器内容');
       const aiGroup = t('search_scope_group_ai', 'AI 搜索');
@@ -5168,6 +5192,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
           provider,
           label: definition.name,
           group: aggregateGroup,
+          groupKey: 'aggregate',
           iconClass: 'ri-stack-line',
           searchTerms: [definition.name].concat(definition.sourceRefs || []),
           active: Boolean(
@@ -5191,6 +5216,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
             provider,
             label: getSiteSearchDisplayName(provider),
             group: isSearchEngine ? engineGroup : (isAi ? aiGroup : siteGroup),
+            groupKey: isSearchEngine ? 'engine' : (isAi ? 'ai' : 'site'),
             iconUrl: getPageRenderableProviderIcon(provider),
             iconClass: isAi ? 'ri-search-ai-line' : 'ri-global-line',
             isAi,
@@ -5203,6 +5229,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         label: t('search_open_tabs_only_entry', '搜索已打开标签页'),
         searchTerms: ['open tabs', 'tabs', 'browser'],
         group: localGroup,
+        groupKey: 'local',
         iconClass: 'ri-window-line',
         menuIconName: 'browser',
         active: openTabsSearchModeActive
@@ -5222,12 +5249,77 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
               ? ['bookmark', 'bookmarks']
               : ['history', 'browsing history']),
           group: localGroup,
+          groupKey: 'local',
           iconClass: getLocalSearchScopeIconClass(sourceType),
           menuIconName: sourceType === 'topSite' ? 'star' : sourceType,
           active: Boolean(localSearchScopeState && localSearchScopeState.sourceType === sourceType)
         });
       });
-      return items;
+      return rankSearchModeMenuItems(items, resolvedOrder);
+    }
+
+    // The reader's Search sources order decides both the group block order and
+    // the order inside each block. Without it the overlay keeps its own order.
+    function rankSearchModeMenuItems(items, sourceOrder) {
+      const order = sourceOrder === undefined ? searchSourceOrderValue : sourceOrder;
+      if (!SEARCH_SOURCE_ORDER || !order || !SEARCH_SOURCE_ORDER.rankMenuItems) {
+        return items;
+      }
+      return SEARCH_SOURCE_ORDER.rankMenuItems(items, order, {
+        getGroup: (item) => item && item.groupKey
+      });
+    }
+
+    // Read once per overlay lifetime and reused for each panel open. `providers`
+    // must be the merged list from getSiteSearchProviders(); reconciliation
+    // drops keys it cannot see, so a built-in-only list would discard the
+    // reader's custom searches.
+    function loadSearchSourceOrder(providers) {
+      if (searchSourceOrderReady) {
+        return searchSourceOrderReady;
+      }
+      const revision = searchSourceOrderRevision;
+      searchSourceOrderReady = (() => {
+        if (!SEARCH_SOURCE_ORDER) {
+          return Promise.resolve(null);
+        }
+        const aggregates = aggregateSearchesCache || [];
+        return getStorageValuesAsync([SEARCH_SOURCE_ORDER_STORAGE_KEY])
+          .then((result) => SEARCH_SOURCE_ORDER.normalizeOrder(
+            result && result[SEARCH_SOURCE_ORDER_STORAGE_KEY],
+            Array.isArray(providers) ? providers : getSearchModeProviders(),
+            {
+              getGroupKey: getSearchSourceGroupKey,
+              getName: getSiteSearchDisplayName,
+              aggregates
+            }
+          ))
+          .catch(() => null)
+          .then((order) => {
+            // A load that started before the last invalidation must not publish
+            // its stale result over a newer one.
+            if (revision === searchSourceOrderRevision) {
+              searchSourceOrderValue = order || null;
+            }
+            return searchSourceOrderValue;
+          });
+      })();
+      return searchSourceOrderReady;
+    }
+    function invalidateSearchSourceOrder() {
+      searchSourceOrderRevision += 1;
+      searchSourceOrderReady = null;
+      searchSourceOrderValue = null;
+    }
+
+    function getSearchSourceGroupKey(provider) {
+      if (isSearchEngineSiteSearchProvider(provider)) {
+        return 'engine';
+      }
+      if (isAiSiteSearchProvider(provider)) {
+        return 'ai';
+      }
+      return 'site';
     }
 
     function getSearchModeMenuItems() {
@@ -5237,7 +5329,8 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
           : loadSiteSearchIconCache(),
         getSiteSearchProviders(),
         getAggregateSearches()
-      ]).then(buildSearchModeMenuItems);
+      ]).then((results) => loadSearchSourceOrder(results[1])
+        .then((order) => buildSearchModeMenuItems(order)));
     }
 
     function openSearchModeMenuFromDoubleTab() {

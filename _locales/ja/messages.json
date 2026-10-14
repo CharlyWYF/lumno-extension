@@ -314,6 +314,27 @@
   "settings_search_result_priority_title": {
     "message": "検索結果の先頭表示優先度"
   },
+  "settings_search_source_group_order_title": {
+    "message": "検索範囲の表示順"
+  },
+  "settings_search_source_group_order_desc": {
+    "message": "検索パネル内のグループの並び順"
+  },
+  "settings_search_source_local_order_desc": {
+    "message": "「ブラウザ内検索」グループ内の項目の並び順"
+  },
+  "settings_search_source_order_failed": {
+    "message": "並び順を保存できませんでした。もう一度お試しください。"
+  },
+  "settings_search_source_move_up": {
+    "message": "上へ移動"
+  },
+  "settings_search_source_move_down": {
+    "message": "下へ移動"
+  },
+  "settings_search_source_reorder_handle": {
+    "message": "ドラッグで並べ替え"
+  },
   "settings_search_result_tab_position_title": {
     "message": "検索結果のタブを開く位置"
   },
@@ -1323,7 +1344,7 @@
     "message": "内蔵"
   },
   "shortcuts_group_ai": {
-    "message": "AI"
+    "message": "AI検索"
   },
   "shortcuts_group_ai_desc": {
     "message": "検索語を入力してTabを押し、質問文を入力すると、以下のAIサイトへ移動して自動入力します（事前に各サイトへのログインが必要です）"
@@ -1335,7 +1356,7 @@
     "message": "内蔵"
   },
   "shortcuts_badge_ai": {
-    "message": "AI"
+    "message": "AI検索"
   },
   "shortcuts_label_key": {
     "message": "起動ワード"
@@ -1392,7 +1413,7 @@
     "message": "内蔵検索エンジンはありません"
   },
   "shortcuts_empty_ai": {
-    "message": "内蔵AIはありません"
+    "message": "内蔵のAI検索はありません"
   },
   "toast_saved": {
     "message": "保存しました"

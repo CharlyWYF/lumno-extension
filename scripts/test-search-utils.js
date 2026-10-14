@@ -1280,5 +1280,41 @@ assert.strictEqual(
   'display text should drop control, BOM, private-use and lone-surrogate code points'
 );
 assert.strictEqual(search.sanitizeDisplayText(undefined), '');
+// The provider list can arrive in the reader's Search sources order, which puts
+// the search engines before or after the site searches. Resolving a suggestion
+// to a provider must not depend on that order, and Google Maps must stay
+// reachable next to the Google engine that shares its host.
+{
+  const registry = JSON.parse(fs.readFileSync(
+    path.join(repoRoot, 'assets/data/site-search.json'),
+    'utf8'
+  )).items;
+  const pick = (key) => registry.find((item) => item.key === key);
+  const providerOrder = ['gg', 'maps', 'yt', 'zh'].map(pick);
+  const reversedOrder = providerOrder.slice().reverse();
+  const cases = [
+    ['https://maps.google.com/maps', 'maps', 'a Maps URL'],
+    ['https://www.google.com/maps/place/x', 'maps', 'a Maps route'],
+    ['https://www.google.com/search?q=x', 'gg', 'a Google results page'],
+    ['https://www.google.com/', 'gg', 'the Google root'],
+    ['https://www.youtube.com/feed', 'yt', 'a YouTube page'],
+    ['https://www.zhihu.com/question/1', 'zh', 'a Zhihu page']
+  ];
+  cases.forEach(([url, expectedKey, label]) => {
+    const suggestion = { type: 'topSite', url };
+    const forward = search.findProviderForSiteSearchSuggestion(suggestion, providerOrder);
+    const reversed = search.findProviderForSiteSearchSuggestion(suggestion, reversedOrder);
+    assert.strictEqual(
+      forward && forward.key,
+      expectedKey,
+      `${label} should resolve to ${expectedKey}`
+    );
+    assert.strictEqual(
+      reversed && reversed.key,
+      expectedKey,
+      `${label} should resolve the same way whatever the provider order is`
+    );
+  });
+}
 
 console.log('search utils tests passed');

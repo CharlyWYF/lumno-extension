@@ -314,6 +314,27 @@
   "settings_search_result_priority_title": {
     "message": "First Search Result Priority"
   },
+  "settings_search_source_group_order_title": {
+    "message": "Search scope order"
+  },
+  "settings_search_source_group_order_desc": {
+    "message": "The order of the group blocks in the search scope panel"
+  },
+  "settings_search_source_local_order_desc": {
+    "message": "The order of the entries inside the Browser content block"
+  },
+  "settings_search_source_order_failed": {
+    "message": "The new order could not be saved. Try again."
+  },
+  "settings_search_source_move_up": {
+    "message": "Move up"
+  },
+  "settings_search_source_move_down": {
+    "message": "Move down"
+  },
+  "settings_search_source_reorder_handle": {
+    "message": "Drag to reorder"
+  },
   "settings_search_result_tab_position_title": {
     "message": "Search result tab position"
   },
@@ -1323,7 +1344,7 @@
     "message": "Built-in"
   },
   "shortcuts_group_ai": {
-    "message": "AI"
+    "message": "AI search"
   },
   "shortcuts_group_ai_desc": {
     "message": "Enter a keyword, press Tab, then type your prompt to open one of these AI sites and fill it in automatically (sign in to the site first)"
@@ -1335,7 +1356,7 @@
     "message": "Built-in"
   },
   "shortcuts_badge_ai": {
-    "message": "AI"
+    "message": "AI search"
   },
   "shortcuts_label_key": {
     "message": "Keyword"
@@ -1392,7 +1413,7 @@
     "message": "No built-in search engines"
   },
   "shortcuts_empty_ai": {
-    "message": "No built-in AI providers"
+    "message": "No built-in AI search providers"
   },
   "toast_saved": {
     "message": "Saved"

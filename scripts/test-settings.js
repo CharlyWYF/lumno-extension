@@ -19,7 +19,12 @@ assert.strictEqual(settings.addStorageChangeListener({
   storage: { onChanged: { addListener() {} } }
 }, null), false);
 
-assert.strictEqual(settings.CHROME_SYNC_STORAGE_KEYS.length, 77);
+// The Search sources order record added one additive preference. An absent
+// value keeps the alphabetical default, so this bump carries no migration.
+assert.strictEqual(settings.CHROME_SYNC_STORAGE_KEYS.length, 78);
+assert(
+  settings.CHROME_SYNC_STORAGE_KEYS.includes('_x_extension_search_source_order_2026_unique_')
+);
 assert.strictEqual(
   new Set(settings.CHROME_SYNC_STORAGE_KEYS).size,
   settings.CHROME_SYNC_STORAGE_KEYS.length
