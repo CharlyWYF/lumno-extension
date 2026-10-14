@@ -79,6 +79,16 @@
     return /^chrome:\/\/favicon2\//i.test(String(url || '').trim());
   }
 
+  // Services that receive only the site origin answer for the whole site.
+  function isOriginScopedFaviconProxyUrl(url) {
+    try {
+      const parsed = new URL(String(url || '').trim());
+      return parsed.protocol === 'https:' && isFaviconProxyUrl(url) && !getFaviconIsPageUrl(parsed);
+    } catch (e) {
+      return false;
+    }
+  }
+
   function isSafeVirtualFaviconRequestUrl(url) {
     const raw = String(url || '').trim();
     if (!raw) {
@@ -327,8 +337,20 @@
     }
   }
 
+  // Third-party icon services only learn which site is shown, never the page:
+  // paths and queries can carry document ids, intranet paths or tokens.
+  function getFaviconServiceSiteUrl(pageUrl) {
+    try {
+      const parsed = new URL(String(pageUrl || '').trim());
+      return (parsed.protocol === 'http:' || parsed.protocol === 'https:') ? `${parsed.origin}/` : '';
+    } catch (e) {
+      return '';
+    }
+  }
+
   function getGstaticFaviconUrl(pageUrl, options) {
-    if (!pageUrl || !/^https?:\/\//i.test(pageUrl)) {
+    const siteUrl = getFaviconServiceSiteUrl(pageUrl);
+    if (!siteUrl) {
       return '';
     }
     const size = Number.isFinite(Number(options && options.size))
@@ -340,7 +362,7 @@
       faviconUrl.searchParams.set('client', 'SOCIAL');
       faviconUrl.searchParams.set('type', 'FAVICON');
       faviconUrl.searchParams.set('fallback_opts', 'TYPE,SIZE,URL');
-      faviconUrl.searchParams.set('url', pageUrl);
+      faviconUrl.searchParams.set('url', siteUrl);
       faviconUrl.searchParams.set('size', String(size));
       return faviconUrl.toString();
     } catch (e) {
@@ -1286,7 +1308,10 @@
     const domainMatch = Boolean(sourceOptions && sourceOptions.allowDomainProxy === true &&
       isFaviconIsUrl(url) && requestPage &&
       new URL(requestPage).hostname === new URL(targetPage).hostname);
-    return !domainMatch &&
+    const originMatch = Boolean(requestPage && isOriginScopedFaviconProxyUrl(url) &&
+      getFaviconServiceSiteUrl(requestPage) === requestPage &&
+      getFaviconServiceSiteUrl(targetPage) === requestPage);
+    return !domainMatch && !originMatch &&
       (!requestPage || getFaviconPersistCacheKey(requestPage) !== getFaviconPersistCacheKey(targetPage));
   }
 
@@ -1833,6 +1858,7 @@
     getExtensionFaviconUrl,
     getGstaticFaviconUrl,
     getFaviconIsUrl,
+    getFaviconServiceSiteUrl,
     getChromeFaviconUrl,
     getCanonicalFaviconHost,
     getCanonicalPageUrlForFavicon,

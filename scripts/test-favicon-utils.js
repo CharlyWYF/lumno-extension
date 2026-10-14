@@ -232,8 +232,14 @@ assert.strictEqual(utils.getExtensionFaviconUrl('chrome://extensions/', {
 }), '');
 assert.strictEqual(
   utils.getGstaticFaviconUrl('https://example.com/a b'),
-  'https://t2.gstatic.cn/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE%2CSIZE%2CURL&url=https%3A%2F%2Fexample.com%2Fa+b&size=128'
+  'https://t2.gstatic.cn/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE%2CSIZE%2CURL&url=https%3A%2F%2Fexample.com%2F&size=128'
 );
+assert.strictEqual(
+  new URL(utils.getGstaticFaviconUrl('https://user:pw@wiki.corp.example:8443/doc/42?token=secret#part')).searchParams.get('url'),
+  'https://wiki.corp.example:8443/',
+  'the third-party icon service should learn only the site origin, never the path, query, fragment or credentials'
+);
+assert.strictEqual(utils.getGstaticFaviconUrl('file:///Users/someone/a.html'), '');
 assert.strictEqual(
   utils.getChromeFaviconUrl('chrome://newtab/'),
   'chrome://favicon2/?pageUrl=chrome%3A%2F%2Fnewtab%2F&size=128'
@@ -330,16 +336,34 @@ const differentFaviconPages = [
 ];
 for (const getSource of [
   (page) => strictResolver.getExtensionFaviconUrl(page),
-  (page) => strictResolver.getChromeFaviconUrl(page),
-  (page) => strictResolver.getGstaticFaviconUrl(page)
+  (page) => strictResolver.getChromeFaviconUrl(page)
 ]) {
   differentFaviconPages.forEach((page) => {
     assert.strictEqual(strictResolver.getSafeFaviconCandidateUrl(getSource(page), nestedFaviconPage), '',
-      'different paths, parameters, schemes, ports and subdomains must not share proxy artwork');
+      'different paths, parameters, schemes, ports and subdomains must not share browser-cache artwork');
   });
   assert.ok(strictResolver.getSafeFaviconCandidateUrl(getSource(`${nestedFaviconPage}#intro`), nestedFaviconPage),
     'fragments on the same document may reuse its icon');
 }
+// The third-party service only learns the site origin, so its artwork is
+// shared by the pages of one origin and nothing else.
+differentFaviconPages.forEach((page) => {
+  const sameOrigin = new URL(page).origin === new URL(nestedFaviconPage).origin;
+  const accepted = Boolean(strictResolver.getSafeFaviconCandidateUrl(
+    strictResolver.getGstaticFaviconUrl(page),
+    nestedFaviconPage
+  ));
+  assert.strictEqual(accepted, sameOrigin,
+    `${page}: Gstatic artwork is shared within an origin but never across schemes, ports or subdomains`);
+});
+assert.strictEqual(
+  strictResolver.getSafeFaviconCandidateUrl(
+    `https://t2.gstatic.cn/faviconV2?url=${encodeURIComponent('https://chrome.google.com/webstore/')}`,
+    nestedFaviconPage
+  ),
+  '',
+  'a stored full-page Gstatic source still belongs to that page only'
+);
 const oldChromeSource = `chrome://favicon2/?url=${encodeURIComponent(nestedFaviconPage)}&fallbackToHost=1`;
 const normalizedChromeSource = new URL(strictResolver.getSafeFaviconCandidateUrl(oldChromeSource, nestedFaviconPage));
 assert.strictEqual(normalizedChromeSource.protocol, 'chrome-extension:',
@@ -354,10 +378,12 @@ const overriddenResolver = utils.createFaviconUrlResolver({
   getChromeFaviconUrl: () => strictResolver.getChromeFaviconUrl('https://foo.example.com/'),
   getGstaticFaviconUrl: () => strictResolver.getGstaticFaviconUrl('https://foo.example.com/')
 });
-for (const name of ['getExtensionFaviconUrl', 'getChromeFaviconUrl', 'getGstaticFaviconUrl']) {
+for (const name of ['getExtensionFaviconUrl', 'getChromeFaviconUrl']) {
   assert.strictEqual(utils.getPageUrlFromFaviconProxyUrl(overriddenResolver[name](automaticPageUrl)), automaticPageUrl,
-    'custom callbacks must not collapse a requested page to its origin');
+    'custom callbacks must not collapse a requested browser-cache page to its origin');
 }
+assert.strictEqual(utils.getPageUrlFromFaviconProxyUrl(overriddenResolver.getGstaticFaviconUrl(automaticPageUrl)),
+  'https://foo.example.com/', 'the third-party service is only ever asked about the site origin');
 const customProviderIcon = 'https://cdn.example.com/custom-search.png';
 assert.strictEqual(strictResolver.resolveFaviconSource(automaticIconUrl, automaticPageUrl), automaticBrowserUrl,
   'tab icon URLs should resolve through Chrome even with enhanced fetching enabled');
@@ -393,8 +419,8 @@ assert.strictEqual(strictResolver.getShortcutFaviconCandidateUrl(automaticPageUr
 assert.strictEqual(strictResolver.getShortcutFaviconCandidateUrl(automaticPageUrl, automaticBrowserUrl), '',
   'shortcut artwork must not derive from the live Chrome cache');
 const stableFetchUrl = strictResolver.getShortcutFaviconFetchUrl(`${automaticPageUrl}?unread=3#section`);
-assert.strictEqual(new URL(stableFetchUrl).searchParams.get('url'), 'https://foo.example.com/account?unread=3',
-  'shortcut acquisition must preserve the full page path and query, removing only the fragment');
+assert.strictEqual(new URL(stableFetchUrl).searchParams.get('url'), 'https://foo.example.com/',
+  'shortcut acquisition through the third-party service must send only the site origin');
 assert.strictEqual(new URL(automaticBrowserUrl).searchParams.get('fallbackToHost'), '0',
   'browser-cache requests must disable matching an unrelated icon from the same host');
 assert.deepStrictEqual(Array.from(strictResolver.getShortcutFaviconFetchCandidates(automaticPageUrl), (item) => item.kind),
