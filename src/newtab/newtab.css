@@ -713,7 +713,7 @@ body[data-zen-mode="true"] .x-lumno-feature-hint--update-notice-newtab {
    section above the bottom dock and bookmarks bar while it can leave the
    grid; pointer capture keeps delivering events to the tile. */
 body[data-drag-source="shortcut"] .x-nt-shortcuts-section {
-  z-index: 10001;
+  z-index: var(--lumno-z-drag-lift);
   pointer-events: none;
 }
 .x-nt-shortcut-tile:focus-visible {
@@ -872,11 +872,12 @@ body[data-theme="dark"] .x-nt-shortcut-group-empty:hover .x-nt-shortcut-icon {
   border-radius: var(--lumno-radius-lg);
 }
 /* A scrolling section would clip the dragged tile, so it is lifted out as a
-   fixed element while this placeholder keeps its slot. */
+   fixed element while this placeholder keeps its slot. It still stacks inside
+   the lifted section, so it stays under menus with the rest of the drag. */
 .x-nt-shortcut-tile[data-shortcut-lifted="true"] {
   position: fixed;
   margin: 0;
-  z-index: 10002;
+  z-index: var(--lumno-z-drag-lift);
 }
 .x-nt-shortcut-drag-placeholder {
   width: var(--x-nt-shortcut-tile-size, 64px);
@@ -895,7 +896,7 @@ body[data-drag-source="shortcut-group"] {
 }
 .x-nt-shortcut-group-ghost {
   position: fixed;
-  z-index: 10050;
+  z-index: var(--lumno-z-drag-ghost);
   width: max-content;
   margin: 0;
   padding: 0 6px;
@@ -910,7 +911,7 @@ body[data-theme="dark"] .x-nt-shortcut-group-ghost {
 }
 .x-nt-shortcut-group-drop-line {
   position: fixed;
-  z-index: 10050;
+  z-index: var(--lumno-z-drag-ghost);
   height: 2px;
   border-radius: 1px;
   background: var(--x-nt-bookmark-heading-color, #000000);
@@ -1170,7 +1171,7 @@ body[data-theme="dark"] .x-nt-shortcut-favicon-mask[data-builtin-monochrome="tru
   width: 1px;
   height: 1px;
   pointer-events: none;
-  z-index: 10040;
+  z-index: var(--lumno-z-context-menu);
 }
 .x-nt-shortcut-context-menu ._x_extension_select_trigger_2024_unique_ {
   width: 1px;
@@ -1958,7 +1959,7 @@ body[data-theme="dark"] .x-nt-section-mode-select[data-open="true"] ._x_extensio
 }
 .x-nt-bookmark-card-drag-preview {
   position: fixed;
-  z-index: 2147483645 !important;
+  z-index: var(--lumno-z-drag-ghost) !important;
   margin: 0;
   background: rgba(255, 255, 255, 0.96);
   border-color: rgba(37, 99, 235, 0.38);
@@ -2426,7 +2427,7 @@ body[data-theme="dark"] .x-nt-folder-preview-favicon--fallback {
   top: env(safe-area-inset-top);
   left: 0;
   right: 0;
-  z-index: 10000;
+  z-index: var(--lumno-z-topbar);
   height: 36px;
   padding: 4px;
   display: none;
@@ -2975,7 +2976,7 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
   all: unset;
   position: fixed;
   inset: 0;
-  z-index: 10002;
+  z-index: var(--lumno-z-menu);
   width: 100vw;
   height: 100vh;
   overflow: visible;
@@ -2985,11 +2986,12 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
   line-height: 1;
   color: #1f2937;
 }
+/* Tooltips over the bookmark menus. */
 .x-nt-bookmark-cursor-tooltip {
-  --x-extension-tooltip-z-index: 10003;
+  --x-extension-tooltip-z-index: calc(var(--lumno-z-menu) + 1);
 }
 .x-nt-shortcut-tooltip {
-  --x-extension-tooltip-z-index: 10004;
+  --x-extension-tooltip-z-index: calc(var(--lumno-z-menu) + 2);
 }
 .x-nt-shortcut-tooltip[data-shortcut-origin-label] ._x_extension_tooltip_line_2026_unique_:last-child {
   display: inline;
@@ -3001,7 +3003,7 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
   white-space: nowrap;
 }
 .x-nt-bookmark-cascade-copy-tooltip {
-  --x-extension-tooltip-z-index: 10005;
+  --x-extension-tooltip-z-index: calc(var(--lumno-z-menu) + 3);
 }
 .x-nt-bookmark-cascade-debug-svg {
   position: fixed;
@@ -3255,7 +3257,7 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
 }
 .x-nt-bookmark-cascade-drag-preview {
   position: fixed;
-  z-index: 2147483645;
+  z-index: var(--lumno-z-drag-ghost);
   margin: 0;
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(37, 99, 235, 0.34);

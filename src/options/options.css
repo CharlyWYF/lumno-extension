@@ -321,7 +321,7 @@ body[data-theme="light"] {
   min-width: 0;
   position: sticky;
   top: var(--tabs-sticky-top);
-  z-index: 30;
+  z-index: var(--lumno-z-sticky);
   isolation: isolate;
   background: transparent;
   transition: none;
@@ -2305,7 +2305,7 @@ body[data-theme="dark"] ._x_extension_shortcut_ghost_2026_unique_ {
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 9998;
+  z-index: var(--lumno-z-modal);
   opacity: 0;
   padding:
     max(16px, env(safe-area-inset-top))

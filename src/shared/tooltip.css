@@ -33,7 +33,7 @@
   text-align: left;
   box-sizing: border-box;
   pointer-events: none;
-  z-index: var(--x-extension-tooltip-z-index, 10000);
+  z-index: var(--x-extension-tooltip-z-index, var(--lumno-z-tooltip, 10000));
   box-shadow: var(
     --x-extension-tooltip-shadow,
     0 16px 36px rgba(17, 24, 39, 0.08), 0 3px 10px rgba(17, 24, 39, 0.05)
@@ -90,7 +90,7 @@ body[data-theme="dark"] ._x_extension_tooltip_2026_unique_,
  * with the page's own headings, paragraphs, lists and tables, beside the result list.
  */
 ._x_extension_tooltip_2026_unique_._x_extension_help_passage_2026_unique_ {
-  --x-extension-tooltip-z-index: 2147483647;
+  --x-extension-tooltip-z-index: var(--lumno-z-max, 2147483647);
   --x-extension-help-passage-ink: #1f2328;
   --x-extension-help-passage-accent: #0a78c2;
   position: fixed;

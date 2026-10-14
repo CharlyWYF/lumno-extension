@@ -6,7 +6,8 @@
 .x-nt-recent-history-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10050;
+  /* Over the recent card's context menu that opens it. */
+  z-index: calc(var(--lumno-z-dialog) + 10);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -237,7 +237,7 @@ body[data-nt-suggestions-open="true"] .x-lumno-feature-hint--newtab-help-center-
   width: 760px;
   max-width: calc(100vw - 24px);
   margin: 0;
-  z-index: 2147483647;
+  z-index: var(--lumno-z-max, 2147483647);
   filter: blur(6px);
   transform: translateX(-50%) translateY(calc(-100% + 2px)) scale(var(--x-ov-visible-scale, 1)) scale(0.985);
   transform-origin: center bottom;

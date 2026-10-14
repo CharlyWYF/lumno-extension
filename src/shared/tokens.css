@@ -57,13 +57,32 @@
   --lumno-accordion-open: 50ms cubic-bezier(0.41, 0.1, 0.67, 0.52);
   --lumno-accordion-close: 135ms cubic-bezier(0.2, 0.55, 0.5, 1) 85ms;
 
-  /* Layers: in-flow stacking first, then page chrome, then floating surfaces. */
+  /*
+   * Layers, in the order they cover each other: in-flow stacking first, then page
+   * chrome, then floating surfaces. A surface that must sit just above a layer
+   * adds to that layer's token in calc() rather than inventing a new number.
+   */
   --lumno-z-raised: 1;
   --lumno-z-overlay: 2;
   --lumno-z-sticky: 30;
+  /* Options' confirm mask stays under the dropdowns a confirm may open. */
+  --lumno-z-modal: 9998;
+  /* New Tab's top bookmarks bar. */
+  --lumno-z-topbar: 10000;
   --lumno-z-dropdown: 10000;
   --lumno-z-tooltip: 10000;
+  /* A shortcut being dragged, with the area it moves in: over the bars, under menus. */
+  --lumno-z-drag-lift: 10001;
+  /* Bookmark folder menus, which a drag may open and drop into. */
+  --lumno-z-menu: 10002;
+  --lumno-z-context-menu: 10040;
+  --lumno-z-dialog: 10040;
+  /* Tooltips and menus that open from inside a dialog. */
+  --lumno-z-dialog-menu: 10060;
   --lumno-z-toast: 10080;
+  /* What follows the pointer during a drag: previews, ghosts and drop lines. */
+  --lumno-z-drag-ghost: 2147483645;
+  --lumno-z-max: 2147483647;
 
   /* Color: text */
   --lumno-color-text: #111827;
