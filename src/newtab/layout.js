@@ -152,8 +152,6 @@
       '--x-nt-suggestions-viewport-fit-max-height';
     const visibleAttribute = 'data-visible';
     const suggestionsOpenAttribute = 'data-nt-suggestions-open';
-    // The last promotion probe, reused while the layout it measured holds.
-    let dockPromotionProbe = null;
     const getTopInsetPx = typeof options.getTopInsetPx === 'function'
       ? options.getTopInsetPx
       : function() {
@@ -344,22 +342,6 @@
         return false;
       }
       return section.style.getPropertyValue('display') !== 'none';
-    }
-
-    // What a promotion probe depends on besides the densities themselves.
-    function getDockDensityLayoutContext(shortcutSection, shortcutVisible) {
-      const viewportWidth = Math.max(0, windowObj.innerWidth || 0);
-      const viewportHeight = Math.max(0, windowObj.innerHeight || 0);
-      if (!shortcutVisible || !shortcutSection) {
-        return `${viewportWidth}:${viewportHeight}:hidden`;
-      }
-      const shortcutRect = shortcutSection.getBoundingClientRect();
-      const sectionWidth = Math.round(Math.max(0, Number(shortcutRect && shortcutRect.width) || 0));
-      let tileCount = -1;
-      if (typeof shortcutSection.querySelectorAll === 'function') {
-        tileCount = shortcutSection.querySelectorAll('.x-nt-shortcut-tile').length;
-      }
-      return `${viewportWidth}:${viewportHeight}:${sectionWidth}:${tileCount}`;
     }
 
     function getDockDensityForAvailableHeight(availableHeight, mobileFlow) {
@@ -817,20 +799,7 @@
       const dockDensity = nextDockDensity(previousDockDensity, measuredDensity, {
         mobileFlow,
         holdPromotion: Boolean(callbacks && callbacks.stabilizeDockDensity),
-        isPromotionStable: (candidate) => {
-          const shortcutSection = getShortcutSection();
-          const context = getDockDensityLayoutContext(shortcutSection, isSectionVisible(shortcutSection));
-          if (!dockPromotionProbe || dockPromotionProbe.context !== context ||
-              dockPromotionProbe.from !== previousDockDensity || dockPromotionProbe.candidate !== candidate) {
-            dockPromotionProbe = {
-              context,
-              from: previousDockDensity,
-              candidate,
-              stable: isDockDensityPromotionStable(body, bottomDock, candidate, viewportHeight)
-            };
-          }
-          return dockPromotionProbe.stable;
-        }
+        isPromotionStable: (candidate) => isDockDensityPromotionStable(body, bottomDock, candidate, viewportHeight)
       });
       body.setAttribute('data-nt-bottom-dock-density', dockDensity);
       bottomDock.setAttribute('data-density', dockDensity);
