@@ -2,6 +2,7 @@ import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import optionsHtml from '../../src/options/options.html?raw';
 import optionsSource from '../../src/options/options.js?raw';
+import panelMotionSource from '../../src/options/options-panel-motion.js?raw';
 import settingBindingsSource from '../../src/options/options-setting-bindings.js?raw';
 import toggleSettingsSource from '../../src/options/options-toggle-settings.js?raw';
 import siteSearchSource from '../../src/options/options-site-search.js?raw';
@@ -66,6 +67,7 @@ const PAGE_SCRIPTS = [
   browserProfileSource,
   shortcutReferenceSource,
   webdavOptionsSource,
+  panelMotionSource,
   settingBindingsSource,
   toggleSettingsSource,
   siteSearchSource,

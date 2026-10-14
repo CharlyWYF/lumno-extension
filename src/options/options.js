@@ -601,193 +601,17 @@
     return SETTINGS.addStorageChangeListener(chrome, listener);
   }
 
-  function getFocusedSettingsPanelAnchor() {
-    const activeElement = document.activeElement;
-    if (!activeElement || activeElement === document.body || !panel.contains(activeElement) ||
-        typeof activeElement.getBoundingClientRect !== 'function') {
-      return null;
-    }
-    const rect = activeElement.getBoundingClientRect();
-    return rect.width > 0 || rect.height > 0 ? activeElement : null;
-  }
-
-  function setOptionsPanelFocusAnchorReserve(anchor, reserve) {
-    const nextReserve = Number.isFinite(reserve) ? Math.max(0, Math.ceil(reserve)) : 0;
-    optionsPanelFocusAnchor = nextReserve > 0 ? anchor : null;
-    optionsPanelFocusAnchorReserve = nextReserve;
-    if (nextReserve > 0) {
-      optionsRoot.style.setProperty('--settings-focus-anchor-reserve', `${nextReserve}px`);
-      return;
-    }
-    optionsRoot.style.removeProperty('--settings-focus-anchor-reserve');
-  }
-
-  function clearOptionsPanelFocusAnchorReserve() {
-    setOptionsPanelFocusAnchorReserve(null, 0);
-  }
-
-  function releaseOptionsPanelFocusAnchorReserve(event) {
-    const anchor = optionsPanelFocusAnchor;
-    const target = event && event.target;
-    if (!anchor || !target || target === anchor ||
-        (typeof anchor.contains === 'function' && anchor.contains(target))) {
-      return;
-    }
-    clearOptionsPanelFocusAnchorReserve();
-  }
-
-  function primeOptionsPanelFocusAnchorReserve(anchor, beforeHeight) {
-    if (!anchor) {
-      return;
-    }
-    setOptionsPanelFocusAnchorReserve(
-      anchor,
-      Math.max(optionsPanelFocusAnchorReserve, Number.isFinite(beforeHeight) ? beforeHeight : 0)
-    );
-  }
-
-  function stabilizeOptionsPanelFocusAnchor(anchor, focusTop, minimumHeightReduction) {
-    if (!anchor || !Number.isFinite(focusTop) || !anchor.isConnected) {
-      clearOptionsPanelFocusAnchorReserve();
-      return;
-    }
-    const heightReduction = Number.isFinite(minimumHeightReduction)
-      ? Math.max(0, minimumHeightReduction)
-      : 0;
-    for (let pass = 0; pass < 2; pass += 1) {
-      const nextFocusTop = anchor.getBoundingClientRect().top;
-      const focusOffset = nextFocusTop - focusTop;
-      if (Number.isFinite(focusOffset) && Math.abs(focusOffset) > 0.5) {
-        window.scrollBy(0, focusOffset);
-      }
-      const baseDocumentHeight = Math.max(
-        0,
-        document.documentElement.scrollHeight - optionsPanelFocusAnchorReserve - heightReduction
-      );
-      const requiredReserve = Math.max(
-        0,
-        window.scrollY + window.innerHeight - baseDocumentHeight + 2
-      );
-      setOptionsPanelFocusAnchorReserve(anchor, requiredReserve);
-    }
-  }
-
-  function cancelOptionsPanelHeightAnimation() {
-    const animation = optionsPanelHeightAnimation;
-    optionsPanelHeightAnimation = null;
-    if (animation) {
-      animation.onfinish = null;
-      animation.cancel();
-    }
-    panel.style.removeProperty('height');
-    panel.removeAttribute('data-height-animating');
-    clearOptionsPanelFocusAnchorReserve();
-  }
-
-  function shouldAnimateOptionsPanelHeight() {
-    if (!document.documentElement ||
-        document.documentElement.getAttribute('data-lumno-options-ready') !== 'true' ||
-        typeof panel.animate !== 'function') {
-      return false;
-    }
-    if (typeof panel.getClientRects === 'function' && panel.getClientRects().length === 0) {
-      return false;
-    }
-    return !(typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  }
-
+  const PANEL_MOTION = globalThis.LumnoOptionsPanelMotion;
+  const panelHeightAnimator = PANEL_MOTION.createPanelHeightAnimator({
+    documentObj: document,
+    panel,
+    reserveHost: optionsRoot,
+    windowObj: window
+  });
+  const { setConditionalSettingsElementVisibility } = PANEL_MOTION;
   function animateOptionsPanelHeight(mutateLayout) {
-    if (typeof mutateLayout !== 'function') {
-      return false;
-    }
-    const animationInProgress = Boolean(optionsPanelHeightAnimation);
-    const previousFocusAnchor = optionsPanelFocusAnchor;
-    const previousFocusAnchorReserve = optionsPanelFocusAnchorReserve;
-    const beforeHeight = panel.getBoundingClientRect().height;
-    const focusAnchor = getFocusedSettingsPanelAnchor();
-    const focusTop = focusAnchor ? focusAnchor.getBoundingClientRect().top : null;
-    primeOptionsPanelFocusAnchorReserve(focusAnchor, beforeHeight);
-    panel.setAttribute('data-height-animating', 'true');
-
-    const layoutChanged = mutateLayout() !== false;
-    if (!layoutChanged) {
-      setOptionsPanelFocusAnchorReserve(previousFocusAnchor, previousFocusAnchorReserve);
-      if (!animationInProgress) {
-        panel.removeAttribute('data-height-animating');
-      }
-      return false;
-    }
-
-    if (optionsPanelHeightAnimation) {
-      const previousAnimation = optionsPanelHeightAnimation;
-      optionsPanelHeightAnimation = null;
-      previousAnimation.onfinish = null;
-      previousAnimation.cancel();
-    }
-    panel.style.removeProperty('height');
-    const afterHeight = panel.getBoundingClientRect().height;
-    const canAnimateHeight = shouldAnimateOptionsPanelHeight() &&
-      Number.isFinite(beforeHeight) && Number.isFinite(afterHeight) &&
-      Math.abs(afterHeight - beforeHeight) >= 0.5;
-
-    stabilizeOptionsPanelFocusAnchor(
-      focusAnchor,
-      focusTop,
-      canAnimateHeight ? Math.max(0, afterHeight - beforeHeight) : 0
-    );
-
-    if (!canAnimateHeight) {
-      panel.removeAttribute('data-height-animating');
-      return true;
-    }
-
-    panel.style.height = `${afterHeight}px`;
-    const animation = panel.animate(
-      [
-        { height: `${beforeHeight}px` },
-        { height: `${afterHeight}px` }
-      ],
-      {
-        duration: OPTIONS_PANEL_HEIGHT_ANIMATION_DURATION_MS,
-        easing: OPTIONS_PANEL_HEIGHT_ANIMATION_EASING,
-        fill: 'both'
-      }
-    );
-    optionsPanelHeightAnimation = animation;
-    animation.onfinish = () => {
-      if (optionsPanelHeightAnimation !== animation) {
-        return;
-      }
-      optionsPanelHeightAnimation = null;
-      animation.onfinish = null;
-      animation.cancel();
-      panel.style.removeProperty('height');
-      panel.removeAttribute('data-height-animating');
-      stabilizeOptionsPanelFocusAnchor(focusAnchor, focusTop, 0);
-    };
-    return true;
+    return panelHeightAnimator.animate(mutateLayout);
   }
-
-  function setConditionalSettingsElementVisibility(element, visible, visibleDisplay) {
-    if (!element) {
-      return false;
-    }
-    const shouldShow = Boolean(visible);
-    const wasVisible = visibleDisplay
-      ? element.style.display !== 'none'
-      : !element.hidden;
-    if (visibleDisplay) {
-      element.style.setProperty('display', shouldShow ? visibleDisplay : 'none');
-    } else {
-      element.hidden = !shouldShow;
-    }
-    element.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
-    return wasVisible !== shouldShow;
-  }
-
-  document.addEventListener('pointerdown', releaseOptionsPanelFocusAnchorReserve, true);
-  document.addEventListener('focusin', releaseOptionsPanelFocusAnchorReserve, true);
 
   const {
     THEME_STORAGE_KEY,
@@ -852,11 +676,6 @@
     normalizeItems: normalizeBlacklistItems,
     normalizeMatchModes: normalizeBlacklistMatchModes
   } = blacklistModel;
-  const OPTIONS_PANEL_HEIGHT_ANIMATION_DURATION_MS = 280;
-  const OPTIONS_PANEL_HEIGHT_ANIMATION_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
-  let optionsPanelHeightAnimation = null;
-  let optionsPanelFocusAnchor = null;
-  let optionsPanelFocusAnchorReserve = 0;
   let currentMessages = null;
   let currentLanguageMode = 'system';
   const webDavSettingsController = globalThis.LumnoWebDavOptions.createController({ chromeApi: chrome, getMessage,
@@ -3168,7 +2987,7 @@
 
   function setActiveTab(tabKey) {
     const nextTabKey = normalizeSettingsTabKey(tabKey);
-    cancelOptionsPanelHeightAnimation();
+    panelHeightAnimator.cancel();
     currentActiveSettingsTab = nextTabKey;
     renderSettingsNavigation(nextTabKey);
     tabContents.forEach((content) => {
