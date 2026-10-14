@@ -370,8 +370,12 @@
         if (contract.canonical(value) !== contract.canonical(current[key])) ownWrites.set(ownWriteKey(areaName, key), contract.canonical(value));
       });
     }
-    function expireOwnWrites() {
+    // Events may arrive after the write's callback; nothing written means
+    // nothing to wait for.
+    function expireOwnWrites(wrote) {
       if (ownWritesTimer) clearTimeout(ownWritesTimer);
+      ownWritesTimer = null;
+      if (!wrote) { ownWrites.clear(); return; }
       ownWritesTimer = setTimeout(() => { ownWrites.clear(); ownWritesTimer = null; }, 2000);
       if (ownWritesTimer && typeof ownWritesTimer.unref === 'function') ownWritesTimer.unref();
     }
@@ -405,6 +409,7 @@
           [contract.OVERFLOW_KEY]: payload[contract.OVERFLOW_KEY], [contract.ICONS_KEY]: icons,
           [settings.ASSET_REVISION_STORAGE_KEY]: cryptoApi.randomUUID(),
           ...(runtime.isActiveAreaName('local') && chromeFallbackArea ? { [settings.LOCAL_PRIMARY_STORAGE_KEY]: false } : {}) };
+        let wrote = false;
         try {
           await expectOwnWrites(chromeFallbackArea || localPrefsArea, chromeFallbackArea ? 'sync' : 'local',
             { ...Object.fromEntries(remove.map((key) => [key, undefined])), ...synced });
@@ -415,11 +420,12 @@
           await privateStore.put('pendingApply', { state, captured, activate, nextSession });
           await wallpaperStore.replaceAll(wallpapers);
           if (captured.generation !== generation) fail('local-changed');
+          wrote = true;
           if (remove.length) await storage(chromeFallbackArea || localPrefsArea, 'remove', remove);
           await storage(chromeFallbackArea || localPrefsArea, 'set', synced);
           if (removed.length) await storage(localPrefsArea, 'remove', removed);
           await storage(localPrefsArea, 'set', localValues);
-        } finally { expireOwnWrites(); }
+        } finally { expireOwnWrites(wrote); }
         // Credentials and the merge baseline belong to the same server and must
         // commit atomically; separate records could pair a new server with an old base.
         await privateStore.put('session', nextSession);
