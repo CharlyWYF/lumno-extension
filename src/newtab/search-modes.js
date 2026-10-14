@@ -24,10 +24,14 @@
       clearSearchSuggestions,
       clearSiteSearchPrefix,
       setSiteSearchPrefix,
-      getThemeForProvider
+      getThemeForProvider,
+      getTopSiteMatchCandidate,
+      getSiteSearchTriggerCandidate,
+      getLocalSearchScopeCandidate,
+      getShortcutRules
     } = deps;
 
-    // Page state still owned by newtab.js; read and written through accessors.
+    // The page state object shared with newtab.js and the other modules.
     const pageState = deps.pageState;
 
     function getDefaultSearchModeProvider(providers) {
@@ -324,7 +328,123 @@
       clearAutocomplete();
     }
 
+    // Fills the input with the inline autocomplete's completion.
+    function acceptAutocompleteCompletion() {
+      const completion = pageState.autocompleteState.completion;
+      pageState.inputParts.input.value = completion;
+      pageState.inputParts.input.setSelectionRange(completion.length, completion.length);
+      pageState.latestRawQuery = completion;
+      pageState.latestQuery = completion.trim();
+      pageState.autocompleteState = null;
+      pageState.inputParts.input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    // Tab in the search box: toggles or opens the mode menu, turns a typed
+    // trigger into a site search or local scope, or takes the inline
+    // completion. True when it handled the key.
+    function handleSearchTabKey(event) {
+      if (!event || event.defaultPrevented) {
+        return false;
+      }
+      if (pageState.inputModeController &&
+          typeof pageState.inputModeController.handleModeMenuTabFocusToggle === 'function' &&
+          pageState.inputModeController.handleModeMenuTabFocusToggle(event)) {
+        return true;
+      }
+      if (pageState.inputModeController &&
+          typeof pageState.inputModeController.shouldOpenModeMenuForActiveModeOnTab === 'function' &&
+          pageState.inputModeController.shouldOpenModeMenuForActiveModeOnTab(event)) {
+        pageState.inputModeController.openModeMenu('none');
+        return true;
+      }
+      if (pageState.siteSearchState || pageState.localSearchScopeState) {
+        return false;
+      }
+      const rawValue = pageState.inputParts.input.value;
+      const rawTrigger = pageState.latestRawQuery || rawValue;
+      const triggerInput = (rawTrigger || rawValue).trim();
+      if (!triggerInput && pageState.inputModeController &&
+          typeof pageState.inputModeController.shouldOpenModeMenuOnDoubleTab === 'function') {
+        const shouldOpenModeMenu = pageState.inputModeController.shouldOpenModeMenuOnDoubleTab(event);
+        if (shouldOpenModeMenu) {
+          openSearchModeMenuFromDoubleTab();
+        }
+        return Boolean(event.defaultPrevented);
+      }
+      if (pageState.siteSearchTriggerState &&
+          pageState.siteSearchTriggerState.rawInput === triggerInput &&
+          pageState.siteSearchTriggerState.provider) {
+        event.preventDefault();
+        activateSiteSearch(pageState.siteSearchTriggerState.provider);
+        return true;
+      }
+      if (pageState.localSearchScopeTriggerState &&
+          pageState.localSearchScopeTriggerState.rawInput === triggerInput &&
+          pageState.localSearchScopeTriggerState.scope) {
+        event.preventDefault();
+        return activateLocalSearchScope(pageState.localSearchScopeTriggerState.scope);
+      }
+      if (triggerInput) {
+        event.preventDefault();
+        const siteProviders = (pageState.siteSearchProvidersCache && pageState.siteSearchProvidersCache.length > 0)
+          ? pageState.siteSearchProvidersCache
+          : defaultSiteSearchProviders;
+        const providers = getSearchTriggerProviders(
+          siteProviders,
+          pageState.aggregateSearchesCache
+        );
+        const topSiteMatch = getTopSiteMatchCandidate(pageState.currentSuggestions, triggerInput);
+        const directProvider = getSiteSearchTriggerCandidate(triggerInput, providers, topSiteMatch);
+        if (directProvider) {
+          activateSiteSearch(directProvider);
+          return true;
+        }
+        const cachedRules = window._x_extension_shortcut_rules_2024_unique_;
+        const directLocalScope = getLocalSearchScopeCandidate(triggerInput, cachedRules);
+        if (pageState.siteSearchProvidersCache && directLocalScope) {
+          activateLocalSearchScope(directLocalScope);
+          return true;
+        }
+        Promise.all([
+          getSiteSearchProviders(),
+          getAggregateSearches(),
+          getShortcutRules()
+        ]).then(([items, definitions, rules]) => {
+          if (pageState.siteSearchState || pageState.localSearchScopeState ||
+              String(pageState.inputParts.input.value || '').trim() !== triggerInput) {
+            return;
+          }
+          const asyncTopSiteMatch = getTopSiteMatchCandidate(pageState.currentSuggestions, triggerInput);
+          const asyncProvider = getSiteSearchTriggerCandidate(
+            triggerInput,
+            getSearchTriggerProviders(items, definitions),
+            asyncTopSiteMatch
+          );
+          if (asyncProvider) {
+            activateSiteSearch(asyncProvider);
+            return;
+          }
+          const asyncLocalScope = getLocalSearchScopeCandidate(triggerInput, rules);
+          if (asyncLocalScope) {
+            activateLocalSearchScope(asyncLocalScope);
+            return;
+          }
+          if (pageState.autocompleteState && pageState.autocompleteState.completion) {
+            acceptAutocompleteCompletion();
+          }
+        });
+        return true;
+      }
+      if (pageState.autocompleteState && pageState.autocompleteState.completion) {
+        event.preventDefault();
+        acceptAutocompleteCompletion();
+        return true;
+      }
+      return false;
+    }
+
     return {
+      handleSearchTabKey,
       getSearchModeProviders,
       isAggregateSearchDefinitionAvailable,
       getSearchTriggerProviders,

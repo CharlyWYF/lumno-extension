@@ -73,7 +73,7 @@ function createRuntime() {
     detachShortcutDragDocumentListeners() {}, flushShortcutDragMove() {},
     clearBookmarkDragPageSwitch() {}, clearBookmarkDragFolderSwitch() {}, clearDragDropTarget() {},
     closeBookmarkCascadeMenu() {}, getDragClickGuard: () => ({ armAfterDrag() {} }), renderCurrentBookmarkPage() {},
-    flushDeferredShortcutRender() {},
+    flushDeferredShortcutRender() {}, getShortcutDropSettleMs: () => 0,
     refreshOpenBookmarkCascadeMenu() {}, settleShortcutDragTile() {},
     persistShortcutOrder: () => Promise.resolve(true), renderShortcuts() {},
     animateShortcutLayoutChange(change) { return change(); },

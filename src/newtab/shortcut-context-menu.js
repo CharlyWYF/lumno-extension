@@ -36,7 +36,7 @@
       confirmDeleteShortcutGroupWithSites
     } = deps;
 
-    // Page state still owned by newtab.js; read and written through accessors.
+    // The page state object shared with newtab.js and the other modules.
     const pageState = deps.pageState;
 
     const SHORTCUT_CONTEXT_MENU_MIN_WIDTH_PX = 124;
@@ -286,6 +286,11 @@
       });
     }
 
+    dismissStack.register('shortcut-context-menu', {
+      isOpen: () => Boolean(pageState.shortcutContextMenuTarget || isShortcutContextMenuOpen()),
+      close: () => closeShortcutContextMenu()
+    });
+
     function handleShortcutContextMenuDocumentFocusIn(event) {
       if (pageState.shortcutContextMenuTarget && !isShortcutContextMenuNode(event.target)) {
         closeShortcutContextMenu();
@@ -390,10 +395,6 @@
       pageState.shortcutContextMenu.select.value = defaultValue;
       pageState.shortcutContextMenuSelectController.sync(pageState.shortcutContextMenu.control);
       pageState.shortcutContextMenuSelectController.setOpen(pageState.shortcutContextMenu.control, true);
-      dismissStack.push('shortcut-context-menu', {
-        isOpen: () => Boolean(pageState.shortcutContextMenuTarget || isShortcutContextMenuOpen()),
-        close: () => closeShortcutContextMenu()
-      });
     }
 
     function handleShortcutContextMenu(event) {

@@ -19,7 +19,7 @@
       hideCursorTooltip
     } = deps;
 
-    // Page state still owned by newtab.js; read and written through accessors.
+    // The page state object shared with newtab.js and the other modules.
     const pageState = deps.pageState;
 
     const BOOKMARK_CONTEXT_MENU_REMOVE_VALUE = 'remove';
@@ -266,12 +266,13 @@
         );
       }
       pageState.bookmarkContextMenuSelectController.setOpen(pageState.bookmarkContextMenu.control, true);
-      // Opened over a folder menu, it is the layer Escape closes first.
-      root.LumnoNewtabDismissStack.getDismissStack().push('bookmark-context-menu', {
-        isOpen: isBookmarkContextMenuOpen,
-        close: () => closeBookmarkContextMenu()
-      });
     }
+
+    // Opened over a folder menu, it is the layer Escape closes first.
+    root.LumnoNewtabDismissStack.getDismissStack().register('bookmark-context-menu', {
+      isOpen: isBookmarkContextMenuOpen,
+      close: () => closeBookmarkContextMenu()
+    });
 
     function handleBookmarkItemContextMenu(payload) {
       const event = payload && payload.event;

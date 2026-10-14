@@ -11,9 +11,10 @@
   // on whatever is under the pointer, which would open the site or toggle
   // the folder the drag just dropped. One policy for every drag on the page:
   //
-  //   After a drag is released, the single click that follows is swallowed,
-  //   wherever it lands, if it comes within DRAG_CLICK_GUARD_MS. A new press
-  //   before that click ends the guard, so a deliberate next click still works.
+  //   After a drag is released, the single pointer click that follows is
+  //   swallowed, wherever it lands, if it comes within DRAG_CLICK_GUARD_MS.
+  //   A new press before that click ends the guard, so a deliberate next
+  //   click still works; keyboard activations always pass.
   //
   // A drag canceled while the pointer is still held (Escape) waits for that
   // pointer's release first, then guards the same way.
@@ -28,8 +29,16 @@
     let waitingPointerId = null;
     let listening = false;
 
+    // Enter or Space on a focused control also fires a click, with no
+    // press count and no pointer type; a release that fired no click (its
+    // target was removed) must not swallow that.
+    function isPointerClick(event) {
+      return Number(event.detail) > 0 ||
+        (typeof event.pointerType === 'string' && event.pointerType !== '');
+    }
+
     function handleClick(event) {
-      if (!armedUntil) {
+      if (!armedUntil || !isPointerClick(event)) {
         return;
       }
       const active = now() <= armedUntil;

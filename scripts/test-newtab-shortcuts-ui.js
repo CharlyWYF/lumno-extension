@@ -2330,11 +2330,6 @@ assertContains(
   'shortcut drop settling should keep the dragged tile visually above the row'
 );
 
-assertContains(
-  newtabJs,
-  'const shortcutContextMenuSelectController =',
-  'shortcut context menu should resolve a reusable select-menu controller'
-);
 
 assertContains(
   newtabJs,
@@ -2721,9 +2716,10 @@ assert.ok(
 );
 [
   'const suggestionItems = [];',
-  'let selectedIndex = -1;',
-  'let suggestionsView = null;',
-  'let inputParts = null;'
+  // Page state set at the top level of newtab.js (the helper drops `pageState.`).
+  '\n  selectedIndex = -1;',
+  '\n  suggestionsView = null;',
+  '\n  inputParts = null;'
 ].forEach((marker) => {
   const markerIndex = newtabJs.indexOf(marker);
   assert.ok(

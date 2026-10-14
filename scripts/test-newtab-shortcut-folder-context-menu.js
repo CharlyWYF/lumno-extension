@@ -81,6 +81,12 @@ function assertShortcutContextMenuFolderVisuals() {
     'handleShortcutContextMenuDocumentPointerDown',
     'handleShortcutContextMenuDocumentFocusIn'
   ].map((name) => getFunctionSource(newtabJs, name)).join('\n'), sandbox);
+  // Escape reaches the menu through the page's dismiss stack, the way the
+  // context menu registers itself there.
+  sandbox.dismissStack.register('shortcut-context-menu', {
+    isOpen: () => Boolean(sandbox.shortcutContextMenuTarget || sandbox.isShortcutContextMenuOpen()),
+    close: () => sandbox.closeShortcutContextMenu()
+  });
 
   sandbox.openShortcutContextMenu({ kind: 'shortcut', shortcutId: 'folder', tile: folder });
   assert.deepStrictEqual(folder.animations, [true], 'opening a folder context menu should open its icon');

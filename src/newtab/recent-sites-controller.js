@@ -32,7 +32,7 @@
       openProgressHistory
     } = deps;
 
-    // Page state still owned by newtab.js; read and written through accessors.
+    // The page state object shared with newtab.js and the other modules.
     const pageState = deps.pageState;
 
     const MAX_HIDDEN_RECENT_SITES = 60;
@@ -212,6 +212,12 @@
       handleRecentContextMenuAction(option.getAttribute('data-value'));
     }
 
+    // Escape closes the menu through the page's dismiss stack.
+    root.LumnoNewtabDismissStack.getDismissStack().register('recent-context-menu', {
+      isOpen: () => Boolean(pageState.recentContextMenuTarget || isRecentContextMenuOpen()),
+      close: () => closeRecentContextMenu()
+    });
+
     function handleRecentContextMenuDocumentPointerDown(event) {
       if (!pageState.recentContextMenuTarget || isRecentContextMenuNode(event.target)) {
         return;
@@ -294,11 +300,6 @@
         );
       }
       pageState.recentContextMenuSelectController.setOpen(pageState.recentContextMenu.control, true);
-      // Escape closes the menu through the page's dismiss stack.
-      root.LumnoNewtabDismissStack.getDismissStack().push('recent-context-menu', {
-        isOpen: () => Boolean(pageState.recentContextMenuTarget || isRecentContextMenuOpen()),
-        close: () => closeRecentContextMenu()
-      });
     }
 
     function handleRecentCardContextMenu(payload) {
