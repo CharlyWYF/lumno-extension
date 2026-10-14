@@ -104,19 +104,27 @@
     }
     const watchedKeys = [...settings.CHROME_SYNC_STORAGE_KEYS, contract.ICONS_KEY, ...contract.LOCAL_PREFERENCE_KEYS,
       contract.OVERFLOW_KEY, settings.ASSET_REVISION_STORAGE_KEY];
-    function storage(area, method, value) {
+    const storageRetryDelayMs = opts.storageRetryDelayMs ?? 2500;
+    // A write refused by the browser sync write quota is retried once, after
+    // the quota has had time to refill.
+    function storage(area, method, value, retried = false) {
       return new Promise((resolve, reject) => {
         if (!area) { resolve(method === 'get' ? {} : undefined); return; }
         let finished = false;
-        const done = (result) => {
+        const done = (result, failure) => {
           if (finished) return;
           finished = true;
-          const lastError = chromeApi.runtime && chromeApi.runtime.lastError;
-          if (lastError) reject(new Error('local-storage-failed')); else resolve(result);
+          const lastError = failure || (chromeApi.runtime && chromeApi.runtime.lastError);
+          if (!lastError) { resolve(result); return; }
+          if (method !== 'get' && !retried && settings.isStorageRateLimitError && settings.isStorageRateLimitError(lastError)) {
+            setTimeout(() => storage(area, method, value, true).then(resolve, reject), storageRetryDelayMs);
+            return;
+          }
+          reject(Object.assign(clientApi.error('local-storage-failed'), { reason: String(lastError.message || lastError) }));
         };
         try {
-          const pending = area[method](value, done);
-          if (pending && typeof pending.then === 'function') pending.then(done).catch(reject);
+          const pending = area[method](value, (result) => done(result));
+          if (pending && typeof pending.then === 'function') pending.then((result) => done(result)).catch((error) => done(undefined, error || new Error('storage-failed')));
         } catch (error) { reject(error); }
       });
     }
@@ -218,6 +226,9 @@
     }
     async function captureInternal() {
       await runtime.ready;
+      // Unknown mode means the settings could be read from the wrong area;
+      // uploading that copy would replace the real ones on other devices.
+      if (runtime.isModeKnown && !runtime.isModeKnown()) fail('local-storage-failed');
       const capturedGeneration = generation;
       const local = await storage(localPrefsArea, 'get', watchedKeys);
       const values = runtime.isActiveAreaName('local') ? local : await storage(chromeFallbackArea, 'get', settings.CHROME_SYNC_STORAGE_KEYS);

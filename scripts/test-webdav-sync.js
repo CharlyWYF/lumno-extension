@@ -1213,6 +1213,50 @@ async function testBackgroundRounds() {
   for (let wait = 0; wait < 50 && !logged.length; wait += 1) await new Promise((resolve) => setTimeout(resolve, 10));
   assert(logged.some(([message]) => /WebDAV sync failed/.test(message)), 'an unrecorded background failure reaches the log');
   broken.chrome.storage.local.set = originalSet;
+
+  // When the storage mode cannot be read, the settings might come from the
+  // wrong area; they are never uploaded as this device's copy.
+  const unreadableServer = createServer();
+  const unreadable = createDevice(unreadableServer, { sync: { [theme]: 'light' } }, [], (options) => {
+    const originalGet = options.chrome.storage.local.get;
+    options.chrome.storage.local.get = (keys, callback) => {
+      if (Array.isArray(keys) && keys.length === 1 && keys[0] === settings.LOCAL_PRIMARY_STORAGE_KEY) {
+        options.chrome.runtime.lastError = { message: 'IO error' };
+        callback(undefined);
+        options.chrome.runtime.lastError = null;
+        return;
+      }
+      originalGet(keys, callback);
+    };
+    const warn = console.warn;
+    console.warn = () => {};
+    const runtime = settings.createProviderStorageRuntime(options.chrome, { modeRetryDelaysMs: [] });
+    runtime.ready.finally(() => { console.warn = warn; });
+    return quiet(options);
+  });
+  await assert.rejects(unreadable.controller.handle({ operation: 'connect', config }), /local-storage-failed/);
+  assert.strictEqual(unreadableServer.files.has('/dav/lumno/v1/state.json'), false, 'nothing is published from an unknown storage mode');
+
+  // Applying a remote copy rides out a burst that exhausted the sync write quota.
+  const burstServer = createServer();
+  burstServer.replaceState(empty({ [theme]: 'dark' }));
+  const burst = createDevice(burstServer, { sync: { [theme]: 'light' } }, [], (options) =>
+    quiet({ ...options, storageRetryDelayMs: 0 }));
+  const syncSet = burst.chrome.storage.sync.set;
+  let refusals = 1;
+  burst.chrome.storage.sync.set = (payload, callback) => {
+    if (refusals > 0) {
+      refusals -= 1;
+      burst.chrome.runtime.lastError = { message: 'This request exceeds the MAX_WRITE_OPERATIONS_PER_MINUTE quota.' };
+      callback();
+      burst.chrome.runtime.lastError = null;
+      return;
+    }
+    syncSet(payload, callback);
+  };
+  await burst.controller.handle({ operation: 'connect', config, decision: 'remote' });
+  assert.strictEqual(refusals, 0);
+  assert.strictEqual(burst.chrome.storage.sync.values[theme], 'dark', 'a write refused by the quota is retried once');
 }
 if (require.main === module) run().catch((error) => { console.error(error); process.exitCode = 1; });
 module.exports = { createServer, createDevice, config, empty, set };
