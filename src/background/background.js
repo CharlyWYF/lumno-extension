@@ -1199,35 +1199,7 @@ function migrateStorageIfNeeded(keys) {
   if (isPrimaryStorageAreaName('local')) {
     return;
   }
-  chrome.storage.local.get(keys, (localResult) => {
-    const hasLocal = keys.some((key) => typeof localResult[key] !== 'undefined');
-    if (!hasLocal) {
-      return;
-    }
-    storageArea.get(keys, (syncResult) => {
-      const missingSyncValues = {};
-      keys.forEach((key) => {
-        if (typeof localResult[key] !== 'undefined' && typeof syncResult[key] === 'undefined') {
-          missingSyncValues[key] = localResult[key];
-        }
-      });
-      const missingKeys = Object.keys(missingSyncValues);
-      if (missingKeys.length === 0) {
-        return;
-      }
-      storageArea.get(missingKeys, (latestSyncResult) => {
-        const stillMissingSyncValues = {};
-        missingKeys.forEach((key) => {
-          if (typeof latestSyncResult[key] === 'undefined') {
-            stillMissingSyncValues[key] = missingSyncValues[key];
-          }
-        });
-        if (Object.keys(stillMissingSyncValues).length > 0) {
-          storageArea.set(stillMissingSyncValues);
-        }
-      });
-    });
-  });
+  SETTINGS.migrateLocalSettingsToSync(chrome.storage.local, storageArea, keys);
 }
 
 function shouldIgnoreDuplicateHotkey(tabId) {

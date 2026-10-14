@@ -432,16 +432,6 @@ localeNames.forEach((locale) => {
     );
   });
 });
-[
-  ['new tab', newtabSource],
-  ['background', backgroundSource]
-].forEach(([surface, source]) => {
-  const migrationSource = getFunctionSource(source, 'migrateStorageIfNeeded');
-  assert(
-    /storageArea\.get\(missingKeys,\s*\(latestSyncResult\)/.test(migrationSource),
-    `${surface} migration should recheck sync storage before writing a formerly missing value`
-  );
-});
 {
   const key = '_x_extension_bookmark_view_mode_2026_unique_';
   const writes = [];
@@ -465,6 +455,7 @@ localeNames.forEach((locale) => {
     'chrome',
     'isPrimaryStorageAreaName',
     'providerStorageRuntime',
+    'SETTINGS',
     `${getFunctionSource(newtabSource, 'migrateStorageIfNeeded')}
     return migrateStorageIfNeeded;`
   );
@@ -473,7 +464,7 @@ localeNames.forEach((locale) => {
       local: localArea,
       sync: syncArea
     }
-  }, (areaName) => areaName === 'sync', null);
+  }, (areaName) => areaName === 'sync', null, settings);
   migrateStorageIfNeeded([key]);
   assert.deepStrictEqual(
     writes,
@@ -483,7 +474,7 @@ localeNames.forEach((locale) => {
   let finishModeRead;
   syncReadCount = 0;
   const waitingMigration = createMigration(syncArea, { storage: { local: localArea, sync: syncArea } },
-    (areaName) => areaName === 'local', { ready: { then(callback) { finishModeRead = callback; } } });
+    (areaName) => areaName === 'local', { ready: { then(callback) { finishModeRead = callback; } } }, settings);
   waitingMigration([key]);
   assert.strictEqual(syncReadCount, 0, 'migration waits for this device to choose its storage source');
   finishModeRead();
