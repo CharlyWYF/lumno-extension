@@ -153,7 +153,6 @@ Lumno 为 Chromium 浏览器开发，同时提供 Firefox 版。Zen、LibreWolf�
 | `about:` 页面在标签切换器中 | 表现不同 | 显示浏览器 logo 而不是页面预览，因为 Firefox 只返回这些页面的模糊截图 |
 | 新标签页搜索框聚焦 | 表现不同 | Firefox 会把新标签页的焦点给地址栏；开启自动聚焦后，Lumno 会重新打开该标签页，让焦点落在搜索框 |
 | 「前往快捷键设置」 | 表现不同 | 打开附加组件管理器，需在齿轮菜单中选择「管理扩展快捷键」 |
-| 评分邀请和评价入口 | 隐藏 | 暂未接入 Firefox 附加组件的评价页 |
 | 设置同步 | 表现不同 | 使用 Firefox 同步而非 Chrome 同步。WebDAV 同步可在 Chrome 与 Firefox 之间进行，包括同一台电脑上同时打开两者 |
 
 **Chromium 系浏览器。** Brave、Arc、Vivaldi、Opera 等使用 Chrome 应用商店的版本，功能与 Chrome 相同，但部分浏览器会占用或改写扩展快捷键。在 Dia 中，新标签页功能暂不可用，聚焦搜索可正常使用；如果快捷键无效，请在浏览器的快捷键设置中把「Open command bar」从 In Dia 改为 Global。

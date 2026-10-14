@@ -153,7 +153,6 @@ Lumno is built for Chromium browsers and also ships a Firefox build. Browsers bu
 | Tab switcher on `about:` pages | Works differently | Shows the browser's logo instead of a page preview, because Firefox only returns a blurred capture of those pages |
 | New Tab search box focus | Works differently | Firefox focuses the address bar on new tabs; with auto focus on, Lumno reopens the tab so focus lands in its search box |
 | "Open shortcut settings" | Works differently | Opens the Add-ons Manager; choose **Manage Extension Shortcuts** from the gear menu |
-| Rating prompts and review links | Hidden | Not linked to the Firefox Add-ons review page yet |
 | Settings sync | Works differently | Uses Firefox Sync instead of Chrome sync. WebDAV sync works across Chrome and Firefox, including both open on the same computer |
 
 **Chromium-based browsers.** Brave, Arc, Vivaldi, Opera and others use the Chrome Web Store build with the same features as Chrome, though some reserve or remap extension shortcuts. In Dia, the New Tab page is unavailable but the command bar works; if its shortcut does nothing, set "Open command bar" from **In Dia** to **Global** in the browser's shortcut settings.

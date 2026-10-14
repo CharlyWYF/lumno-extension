@@ -16,7 +16,8 @@
   // store this copy was installed from.
   const STORE_ACCENT_RGB = Object.freeze({
     chrome: Object.freeze([66, 133, 244]),
-    edge: Object.freeze([0, 120, 212])
+    edge: Object.freeze([0, 120, 212]),
+    firefox: Object.freeze([255, 113, 57])
   });
   const ACTION_MESSAGE_BY_ID = Object.freeze({
     openShortcuts: 'openExtensionShortcutsPage',

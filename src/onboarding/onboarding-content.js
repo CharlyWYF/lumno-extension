@@ -1212,9 +1212,7 @@
           }),
           secondary: Object.freeze({
             actionId: 'openChromeWebStore',
-            label: text.finish.ratingAction,
-            // No addons.mozilla.org listing to rate yet.
-            browserOnly: 'chromium'
+            label: text.finish.ratingAction
           }),
           ghost: Object.freeze({
             actionId: 'openOptions',

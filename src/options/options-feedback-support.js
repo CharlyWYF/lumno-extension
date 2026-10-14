@@ -92,7 +92,6 @@
           label: getMessage('settings_feedback_support_contact_author_action', '联系作者'),
           labelKey: 'settings_feedback_support_contact_author_action'
         }
-      // Firefox has no store listing to review yet (empty review URL).
       ].filter((item) => Boolean(item.href))
     };
   }

@@ -311,8 +311,8 @@
       if (destroyed || suppressed) {
         return false;
       }
-      // The invitation is built around rating Lumno; skip it where there is no
-      // store listing to rate (Firefox, until addons.mozilla.org lists Lumno).
+      // The invitation is built around rating Lumno; skip it if there is no
+      // store page to rate.
       if (!getReviewUrl()) {
         return false;
       }

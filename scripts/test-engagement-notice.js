@@ -327,6 +327,72 @@ function createEligibleState(surface, now) {
   );
   resumedController.destroy();
 
+  {
+    // Firefox installs rate Lumno on Firefox Add-ons, so they get the prompt too.
+    const previousChrome = globalThis.chrome;
+    globalThis.chrome = { runtime: { id: 'lumno@kubai087' } };
+    try {
+      assert.strictEqual(
+        engagementNotice.getReviewUrl(),
+        'https://addons.mozilla.org/firefox/addon/lumno-command-bar-new-tab/reviews/',
+        'the rating action should open the Firefox Add-ons review page in Firefox'
+      );
+      const firefoxStore = {
+        [engagementNotice.ENGAGEMENT_NOTICE_STORAGE_KEY]: createEligibleState('overlay', now)
+      };
+      const firefoxAttributes = {};
+      const firefoxController = engagementNotice.createEngagementNotice({
+        chromeApi: {
+          runtime: { lastError: null },
+          storage: {
+            local: {
+              get(keys, callback) {
+                callback(Object.fromEntries(keys.map((key) => [key, firefoxStore[key]])));
+              },
+              set(values, callback) {
+                Object.assign(firefoxStore, values);
+                if (callback) {
+                  callback();
+                }
+              }
+            }
+          }
+        },
+        delayMs: 0,
+        documentObj: { defaultView: fakeWindow },
+        featureHints: {
+          createFeatureHint() {
+            return {
+              destroy() {},
+              dismiss() {},
+              element: {
+                setAttribute(name, value) {
+                  firefoxAttributes[name] = String(value);
+                }
+              },
+              setVisible(visible) {
+                firefoxAttributes['data-visible'] = visible ? 'true' : 'false';
+              },
+              updateLanguage() {}
+            };
+          }
+        },
+        now: () => now,
+        surface: 'overlay'
+      });
+      await flushMicrotasks();
+      await flushMicrotasks();
+      assert.strictEqual(
+        firefoxAttributes['data-visible'],
+        'true',
+        'an eligible Firefox user should see the rating prompt'
+      );
+      firefoxController.destroy();
+    } finally {
+      globalThis.chrome = previousChrome;
+    }
+  }
+
   const newtabSource = readNewtabRuntimeSource();
   const overlaySource = fs.readFileSync('src/overlay/search-panel.js', 'utf8');
   const newtabReactEntrySource = fs.readFileSync(

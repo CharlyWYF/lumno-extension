@@ -39,6 +39,20 @@ function model(webLocale, helpCenterSearchEnabled) {
   assert.strictEqual(model('ja', null).help.ask, null, 'and until the providers have loaded');
 }
 
+// "Rate Lumno" opens the review page of the store this copy came from.
+{
+  const reviewHref = () => model('en', false).items.find((item) => item.key === 'chrome-review').href;
+  const previousChrome = globalThis.chrome;
+  try {
+    globalThis.chrome = { runtime: { id: 'nggfkkbmogmadfoikakkfegkoilfcfao' } };
+    assert.strictEqual(reviewHref(), links.chromeReview);
+    globalThis.chrome = { runtime: { id: 'lumno@kubai087' } };
+    assert.strictEqual(reviewHref(), 'https://addons.mozilla.org/firefox/addon/lumno-command-bar-new-tab/reviews/');
+  } finally {
+    globalThis.chrome = previousChrome;
+  }
+}
+
 // The section renders the bundled links at once and the remote ones once loaded.
 (async () => {
   const rendered = [];

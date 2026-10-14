@@ -419,8 +419,7 @@ assert.deepStrictEqual(
     secondary: {
       actionId: 'openChromeWebStore',
       label: '为我们评分',
-      icon: '',
-      browserOnly: 'chromium'
+      icon: ''
     },
     ghost: {
       actionId: 'openOptions',

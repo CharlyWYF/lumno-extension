@@ -269,15 +269,64 @@ const { readNewtabRuntimeSource } = require('./helpers/newtab-source');
   );
 
   {
-    // Firefox installs carry Gecko IDs and have no addons.mozilla.org listing yet.
+    // Firefox installs carry Gecko IDs and come from Firefox Add-ons.
     const geckoId = 'lumno@kubai087';
     assert.strictEqual(communityLinks.isFirefoxInstall(geckoId), true);
     assert.strictEqual(communityLinks.isFirefoxInstall('{3f2a1b4c-0d5e-4f6a-8b7c-9d0e1f2a3b4c}'), true);
     assert.strictEqual(communityLinks.isFirefoxInstall(chromeStoreId), false);
-    assert.strictEqual(communityLinks.getReviewUrl(communityLinks.FALLBACK_LINKS, geckoId), '',
-      'Firefox installs offer no review page until a listing exists');
-    assert.strictEqual(communityLinks.getStoreListing(geckoId).url, 'https://lumno.kubai.design/',
-      'store entry points fall back to the website on Firefox');
+    assert.strictEqual(communityLinks.isFirefoxInstall(edgeStoreId), false);
+    assert.strictEqual(
+      communityLinks.getReviewUrl(communityLinks.FALLBACK_LINKS, geckoId),
+      'https://addons.mozilla.org/firefox/addon/lumno-command-bar-new-tab/reviews/',
+      'Firefox installs should review on Firefox Add-ons'
+    );
+    assert.deepStrictEqual(
+      communityLinks.getStoreListing(geckoId),
+      {
+        id: 'firefox',
+        name: 'Firefox Add-ons',
+        host: 'addons.mozilla.org',
+        url: 'https://addons.mozilla.org/firefox/addon/lumno-command-bar-new-tab/'
+      },
+      'Firefox installs should open the Firefox Add-ons listing'
+    );
+    assert.strictEqual(
+      communityLinks.getReviewUrl(null, geckoId),
+      communityLinks.FALLBACK_LINKS.firefoxReview,
+      'Firefox installs should keep the bundled review URL without loaded links'
+    );
+    assert.strictEqual(
+      communityLinks.getReviewUrl(remoteReviews, geckoId),
+      communityLinks.FALLBACK_LINKS.firefoxReview,
+      'a remote file without a Firefox review URL should leave Firefox on the bundled one'
+    );
+    for (const key of ['firefoxReview', 'firefox_review', 'firefox_addons_review']) {
+      assert.strictEqual(
+        communityLinks.getReviewUrl(
+          communityLinks.normalizeLinksPayload({ links: { [key]: 'https://example.com/firefox-review' } }),
+          geckoId
+        ),
+        'https://example.com/firefox-review',
+        `the remote configuration should be able to override the Firefox review URL via ${key}`
+      );
+    }
+    assert.strictEqual(
+      communityLinks.normalizeLinksPayload({ links: { firefoxReview: 'http://example.com' } }).firefoxReview,
+      communityLinks.FALLBACK_LINKS.firefoxReview,
+      'insecure remote Firefox review URLs should fall back'
+    );
+
+    globalThis.chrome = { runtime: { id: geckoId } };
+    try {
+      assert.strictEqual(
+        communityLinks.getReviewUrl(communityLinks.FALLBACK_LINKS),
+        communityLinks.FALLBACK_LINKS.firefoxReview,
+        'a running Firefox install should resolve its own review page'
+      );
+      assert.strictEqual(communityLinks.getStoreListing().id, 'firefox');
+    } finally {
+      globalThis.chrome = previousChrome;
+    }
   }
 
   console.log('community links tests passed');

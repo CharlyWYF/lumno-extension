@@ -20,6 +20,8 @@
   // Store, including Edge users who installed from it, and keyed dev builds)
   // runs under the Chrome Web Store ID.
   const EDGE_ADDONS_EXTENSION_ID = 'pfbklkaefmfamjpibfiapaiihlddhchc';
+  // Firefox and its forks (Zen, LibreWolf, Floorp) install from Firefox Add-ons.
+  const FIREFOX_ADDONS_URL = 'https://addons.mozilla.org/firefox/addon/lumno-command-bar-new-tab/';
   const STORE_LISTINGS = Object.freeze({
     chrome: Object.freeze({
       id: 'chrome',
@@ -33,13 +35,11 @@
       host: 'microsoftedge.microsoft.com',
       url: `https://microsoftedge.microsoft.com/addons/detail/${EDGE_ADDONS_EXTENSION_ID}`
     }),
-    // No addons.mozilla.org listing yet: Firefox points at the website and has
-    // no review page (see getReviewUrl) until one is published.
     firefox: Object.freeze({
       id: 'firefox',
-      name: 'lumno.kubai.design',
-      host: 'lumno.kubai.design',
-      url: `${WEB_ORIGIN}/`
+      name: 'Firefox Add-ons',
+      host: 'addons.mozilla.org',
+      url: FIREFOX_ADDONS_URL
     })
   });
   const FALLBACK_LINKS = Object.freeze({
@@ -47,6 +47,7 @@
     githubIssue: 'https://github.com/kubai087/lumno-extension/issues/new',
     chromeReview: 'https://chromewebstore.google.com/detail/lumno-%E8%81%9A%E7%84%A6%E6%90%9C%E7%B4%A2%E6%96%B0%E6%A0%87%E7%AD%BE%E9%A1%B5/nggfkkbmogmadfoikakkfegkoilfcfao/reviews?utm_source=item-share-cb',
     edgeReview: STORE_LISTINGS.edge.url,
+    firefoxReview: `${FIREFOX_ADDONS_URL}reviews/`,
     wechatQr: `${WEB_ORIGIN}/qrcode-20260730.webp`,
     communityByLocale: Object.freeze({
       'zh-CN': 'wechat',
@@ -117,6 +118,12 @@
         links.edgeAddonsReview ||
         links.edge_addons_review
       ) || FALLBACK_LINKS.edgeReview,
+      firefoxReview: normalizeHttpsUrl(
+        links.firefoxReview ||
+        links.firefox_review ||
+        links.firefoxAddonsReview ||
+        links.firefox_addons_review
+      ) || FALLBACK_LINKS.firefoxReview,
       wechatQr: normalizeHttpsUrl(links.wechatQr || links.wechat_qr) ||
         FALLBACK_LINKS.wechatQr,
       communityByLocale: normalizeCommunityMap(
@@ -201,7 +208,7 @@
   function getReviewUrl(links, extensionId) {
     const source = links && typeof links === 'object' ? links : FALLBACK_LINKS;
     if (isFirefoxInstall(extensionId)) {
-      return '';
+      return source.firefoxReview || FALLBACK_LINKS.firefoxReview;
     }
     return isEdgeAddonsInstall(extensionId)
       ? (source.edgeReview || FALLBACK_LINKS.edgeReview)
@@ -309,6 +316,7 @@
     EDGE_ADDONS_EXTENSION_ID,
     FALLBACK_LINKS,
     FETCH_TIMEOUT_MS,
+    FIREFOX_ADDONS_URL,
     STORE_LISTINGS,
     WEB_ORIGIN,
     buildFreshQrUrl,
