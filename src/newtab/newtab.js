@@ -5528,6 +5528,7 @@
   });
 
   const NEWTAB_SEARCH_NAVIGATION = globalThis.LumnoNewtabSearchNavigation;
+  const { getNextSuggestionIndex } = NEWTAB_SEARCH_NAVIGATION;
   const {
     getShortcutRules,
     buildKeywordSuggestions,
@@ -5540,7 +5541,8 @@
     openSearchResultUrl,
     openMatchedTabSuggestion,
     refreshTabsForSearchContext,
-    resolveQuickNavigation
+    resolveQuickNavigation,
+    submitSearchQuery
   } = NEWTAB_SEARCH_NAVIGATION.createSearchNavigation({
     formatMessage,
     getExtensionResourceUrl,
@@ -5552,6 +5554,21 @@
     getSurfaceOpenDisposition,
     recordSearchSuggestionSelection,
     navigateToUrl,
+    suggestionItems,
+    getAutoHighlightIndex: (...args) => getAutoHighlightIndex(...args),
+    renderSuggestions: (...args) => renderSuggestions(...args),
+    isSlashCommandInput: (...args) => isSlashCommandInput(...args),
+    getCommandMatch: (...args) => getCommandMatch(...args),
+    isModeCommand: (...args) => isModeCommand(...args),
+    isZenCommand: (...args) => isZenCommand(...args),
+    getNextThemeMode: (...args) => getNextThemeMode(...args),
+    setVisibleThemeMode: (...args) => setVisibleThemeMode(...args),
+    setZenModeEnabled: (...args) => setZenModeEnabled(...args),
+    activateSiteSearch,
+    focusSearchInputPreservingScroll: (...args) => focusSearchInputPreservingScroll(...args),
+    openCommunityQrDialog,
+    runSiteSearchProviderQuery,
+    navigateToQuery,
     pageState
   });
 
@@ -6021,38 +6038,14 @@
           return;
         }
         event.preventDefault();
-        let didWrap = false;
-        if (suggestionNavigationKey === 'ArrowDown') {
-          if (pageState.selectedIndex === -1) {
-            const autoIndex = getAutoHighlightIndex();
-            pageState.selectedIndex = autoIndex >= 0
-              ? (autoIndex + 1) % suggestionItems.length
-              : 0;
-            didWrap = autoIndex >= 0 && pageState.selectedIndex === 0;
-          } else {
-            const previousIndex = pageState.selectedIndex;
-            pageState.selectedIndex = (pageState.selectedIndex + 1) % suggestionItems.length;
-            didWrap = previousIndex === suggestionItems.length - 1 && pageState.selectedIndex === 0;
-          }
-        } else {
-          if (pageState.selectedIndex === 0) {
-            pageState.selectedIndex = suggestionItems.length - 1;
-            didWrap = true;
-          } else if (pageState.selectedIndex === -1) {
-            const autoIndex = getAutoHighlightIndex();
-            if (autoIndex > 0) {
-              pageState.selectedIndex = autoIndex - 1;
-            } else if (autoIndex === 0) {
-              pageState.selectedIndex = suggestionItems.length - 1;
-              didWrap = true;
-            } else {
-              pageState.selectedIndex = suggestionItems.length - 1;
-              didWrap = true;
-            }
-          } else {
-            pageState.selectedIndex = pageState.selectedIndex - 1;
-          }
-        }
+        const next = getNextSuggestionIndex(
+          suggestionNavigationKey === 'ArrowDown' ? 1 : -1,
+          pageState.selectedIndex,
+          suggestionItems.length,
+          pageState.selectedIndex === -1 ? getAutoHighlightIndex() : -1
+        );
+        pageState.selectedIndex = next.index;
+        const didWrap = next.didWrap;
         updateSelection();
         scrollSelectedSuggestionIntoView(
           suggestionNavigationKey === 'ArrowDown' ? 'down' : 'up',
@@ -6072,147 +6065,7 @@
         return;
       }
       searchInputHistoryController.record(query);
-      const commandMatch = pageState.localSearchScopeState ? null : getCommandMatch(query);
-      if (commandMatch && pageState.selectedIndex === -1) {
-        if (commandMatch.command.type === 'commandNewTab') {
-          chrome.runtime.sendMessage({ action: 'openNewTab' });
-          return;
-        }
-        if (commandMatch.command.type === 'commandSettings') {
-          chrome.runtime.sendMessage({ action: 'openOptionsPage' });
-          return;
-        }
-      }
-      if (!pageState.localSearchScopeState && isModeCommand(query)) {
-        setVisibleThemeMode(getNextThemeMode(pageState.currentThemeMode));
-        return;
-      }
-      if (!pageState.localSearchScopeState && isZenCommand(query)) {
-        setZenModeEnabled(!pageState.zenModeEnabled);
-        return;
-      }
-      const executeSuggestion = (selectedSuggestion, event, activeSuggestionIndex) => {
-        if (!selectedSuggestion) {
-          return false;
-        }
-        const activeItem = Number.isInteger(activeSuggestionIndex)
-          ? suggestionItems[activeSuggestionIndex]
-          : null;
-        if (selectedSuggestion.type === 'modeSwitch') {
-          setVisibleThemeMode(selectedSuggestion.nextMode);
-          return true;
-        }
-        if (selectedSuggestion.type === 'zenSwitch') {
-          setZenModeEnabled(selectedSuggestion.nextEnabled);
-          return true;
-        }
-        if (selectedSuggestion.type === 'commandNewTab') {
-          chrome.runtime.sendMessage({ action: 'openNewTab' });
-          return true;
-        }
-        if (selectedSuggestion.type === 'commandSettings') {
-          chrome.runtime.sendMessage({ action: 'openOptionsPage' });
-          return true;
-        }
-        if (selectedSuggestion.type === 'siteSearchPrompt' && selectedSuggestion.provider) {
-          activateSiteSearch(selectedSuggestion.provider);
-          focusSearchInputPreservingScroll();
-          return true;
-        }
-        if (selectedSuggestion.type === 'helpFeedback' && selectedSuggestion.feedbackKey === 'community') {
-          openCommunityQrDialog(selectedSuggestion.url);
-          return true;
-        }
-        if (selectedSuggestion.provider && selectedSuggestion.searchQuery) {
-          return runSiteSearchProviderQuery(
-            selectedSuggestion.provider,
-            selectedSuggestion.searchQuery,
-            getSearchResultDisposition(event)
-          );
-        }
-        if (shouldSwitchMatchedTabSuggestion(selectedSuggestion, activeSuggestionIndex)) {
-          openMatchedTabSuggestion(selectedSuggestion, event, activeItem, query);
-          return true;
-        }
-        if (shouldOpenSearchResultInBackgroundTab(event) && selectedSuggestion.url) {
-          return openSearchResultUrl(selectedSuggestion, query, event);
-        }
-        if (selectedSuggestion.forceSearch && selectedSuggestion.searchQuery) {
-          navigateToQuery(selectedSuggestion.searchQuery, true, getSearchResultDisposition(event));
-          return true;
-        }
-        if (selectedSuggestion.url) {
-          return openSearchResultUrl(selectedSuggestion, query, event);
-        }
-        return false;
-      };
-      if (pageState.selectedIndex >= 0 && pageState.currentSuggestions[pageState.selectedIndex]) {
-        if (executeSuggestion(pageState.currentSuggestions[pageState.selectedIndex], event, pageState.selectedIndex)) {
-          return;
-        }
-      } else {
-        const autoIndex = getAutoHighlightIndex();
-        if (autoIndex >= 0 && pageState.currentSuggestions[autoIndex]) {
-          if (executeSuggestion(pageState.currentSuggestions[autoIndex], event, autoIndex)) {
-            return;
-          }
-        }
-      }
-      if (!pageState.localSearchScopeState && isSlashCommandInput(query)) {
-        renderSuggestions([], query);
-        return;
-      }
-      if (pageState.localSearchScopeState) {
-        return;
-      }
-      if (pageState.siteSearchState) {
-        if (runSiteSearchProviderQuery(
-          pageState.siteSearchState,
-          query,
-          getSearchResultDisposition(event)
-        )) {
-          return;
-        }
-      }
-      const currentRawInput = (pageState.latestRawQuery || pageState.inputParts.input.value || '').trim();
-      if (pageState.inlineSearchState && pageState.inlineSearchState.isAuto &&
-          pageState.inlineSearchState.rawInput === currentRawInput) {
-        if (pageState.inlineSearchState.provider && pageState.inlineSearchState.query) {
-          if (runSiteSearchProviderQuery(
-            pageState.inlineSearchState.provider,
-            pageState.inlineSearchState.query,
-            getSearchResultDisposition(event)
-          )) {
-            return;
-          }
-        } else if (pageState.inlineSearchState.url) {
-          openSearchResultUrl({
-            url: pageState.inlineSearchState.url,
-            title: pageState.inlineSearchState.url,
-            type: 'inlineSiteSearch'
-          }, query, event);
-          return;
-        }
-      }
-      if (pageState.autocompleteState && pageState.autocompleteState.url) {
-        openSearchResultUrl({
-          url: pageState.autocompleteState.url,
-          title: pageState.autocompleteState.title || '',
-          type: 'autocomplete'
-        }, query, event);
-        return;
-      }
-      resolveQuickNavigation(query).then((targetUrl) => {
-        if (targetUrl) {
-          openSearchResultUrl({
-            url: targetUrl,
-            title: query,
-            type: 'quickNavigation'
-          }, query, event);
-          return;
-        }
-        navigateToQuery(query, false, getSearchResultDisposition(event));
-      });
+      submitSearchQuery(query, event);
     }
   });
   markNewtabStartupMilestone('search-input-created');

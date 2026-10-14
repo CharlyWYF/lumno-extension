@@ -74,7 +74,11 @@ assert.strictEqual(
   2,
   'the overlay opens the dialog from the help search row by click and by Enter'
 );
-assert.match(newtabSource, /feedbackKey === 'community'\) \{\s*openCommunityQrDialog\(/, 'Enter on the new tab opens the dialog');
+assert.match(
+  require('./helpers/newtab-source').readNewtabRuntimeSource(),
+  /feedbackKey === 'community'\) \{\s*openCommunityQrDialog\(/,
+  'Enter on the new tab opens the dialog'
+);
 assert.match(suggestionsControllerSource, /feedbackKey === 'community' &&[\s\S]{0,80}openCommunityQrDialog\(suggestion\.url\)/, 'a click on the new tab opens the dialog');
 assert.match(overlaySource, /if \(isWechat\) \{\s*openOverlayCommunityQrDialog\(url\);/, 'the overlay engagement notice opens the dialog');
 assert.match(newtabSource, /if \(isWechat\) \{\s*openCommunityQrDialog\(url\);/, 'the new tab engagement notice opens the dialog');

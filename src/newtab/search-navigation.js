@@ -11,7 +11,22 @@
       isBackgroundOpenEvent,
       getSurfaceOpenDisposition,
       recordSearchSuggestionSelection,
-      navigateToUrl
+      navigateToUrl,
+      suggestionItems,
+      getAutoHighlightIndex,
+      renderSuggestions,
+      isSlashCommandInput,
+      getCommandMatch,
+      isModeCommand,
+      isZenCommand,
+      getNextThemeMode,
+      setVisibleThemeMode,
+      setZenModeEnabled,
+      activateSiteSearch,
+      focusSearchInputPreservingScroll,
+      openCommunityQrDialog,
+      runSiteSearchProviderQuery,
+      navigateToQuery
     } = deps;
 
     // The page state object shared with newtab.js and the other modules.
@@ -288,7 +303,156 @@
       });
     }
 
+    // Enter in the search box: a typed command, the highlighted (or
+    // automatically highlighted) suggestion, the active search scope, an
+    // inline or autocompleted site, a quick-navigation target, and last a
+    // web search.
+    function submitSearchQuery(query, event) {
+      const commandMatch = pageState.localSearchScopeState ? null : getCommandMatch(query);
+      if (commandMatch && pageState.selectedIndex === -1) {
+        if (commandMatch.command.type === 'commandNewTab') {
+          chrome.runtime.sendMessage({ action: 'openNewTab' });
+          return;
+        }
+        if (commandMatch.command.type === 'commandSettings') {
+          chrome.runtime.sendMessage({ action: 'openOptionsPage' });
+          return;
+        }
+      }
+      if (!pageState.localSearchScopeState && isModeCommand(query)) {
+        setVisibleThemeMode(getNextThemeMode(pageState.currentThemeMode));
+        return;
+      }
+      if (!pageState.localSearchScopeState && isZenCommand(query)) {
+        setZenModeEnabled(!pageState.zenModeEnabled);
+        return;
+      }
+      const executeSuggestion = (selectedSuggestion, event, activeSuggestionIndex) => {
+        if (!selectedSuggestion) {
+          return false;
+        }
+        const activeItem = Number.isInteger(activeSuggestionIndex)
+          ? suggestionItems[activeSuggestionIndex]
+          : null;
+        if (selectedSuggestion.type === 'modeSwitch') {
+          setVisibleThemeMode(selectedSuggestion.nextMode);
+          return true;
+        }
+        if (selectedSuggestion.type === 'zenSwitch') {
+          setZenModeEnabled(selectedSuggestion.nextEnabled);
+          return true;
+        }
+        if (selectedSuggestion.type === 'commandNewTab') {
+          chrome.runtime.sendMessage({ action: 'openNewTab' });
+          return true;
+        }
+        if (selectedSuggestion.type === 'commandSettings') {
+          chrome.runtime.sendMessage({ action: 'openOptionsPage' });
+          return true;
+        }
+        if (selectedSuggestion.type === 'siteSearchPrompt' && selectedSuggestion.provider) {
+          activateSiteSearch(selectedSuggestion.provider);
+          focusSearchInputPreservingScroll();
+          return true;
+        }
+        if (selectedSuggestion.type === 'helpFeedback' && selectedSuggestion.feedbackKey === 'community') {
+          openCommunityQrDialog(selectedSuggestion.url);
+          return true;
+        }
+        if (selectedSuggestion.provider && selectedSuggestion.searchQuery) {
+          return runSiteSearchProviderQuery(
+            selectedSuggestion.provider,
+            selectedSuggestion.searchQuery,
+            getSearchResultDisposition(event)
+          );
+        }
+        if (shouldSwitchMatchedTabSuggestion(selectedSuggestion, activeSuggestionIndex)) {
+          openMatchedTabSuggestion(selectedSuggestion, event, activeItem, query);
+          return true;
+        }
+        if (shouldOpenSearchResultInBackgroundTab(event) && selectedSuggestion.url) {
+          return openSearchResultUrl(selectedSuggestion, query, event);
+        }
+        if (selectedSuggestion.forceSearch && selectedSuggestion.searchQuery) {
+          navigateToQuery(selectedSuggestion.searchQuery, true, getSearchResultDisposition(event));
+          return true;
+        }
+        if (selectedSuggestion.url) {
+          return openSearchResultUrl(selectedSuggestion, query, event);
+        }
+        return false;
+      };
+      if (pageState.selectedIndex >= 0 && pageState.currentSuggestions[pageState.selectedIndex]) {
+        if (executeSuggestion(pageState.currentSuggestions[pageState.selectedIndex], event, pageState.selectedIndex)) {
+          return;
+        }
+      } else {
+        const autoIndex = getAutoHighlightIndex();
+        if (autoIndex >= 0 && pageState.currentSuggestions[autoIndex]) {
+          if (executeSuggestion(pageState.currentSuggestions[autoIndex], event, autoIndex)) {
+            return;
+          }
+        }
+      }
+      if (!pageState.localSearchScopeState && isSlashCommandInput(query)) {
+        renderSuggestions([], query);
+        return;
+      }
+      if (pageState.localSearchScopeState) {
+        return;
+      }
+      if (pageState.siteSearchState) {
+        if (runSiteSearchProviderQuery(
+          pageState.siteSearchState,
+          query,
+          getSearchResultDisposition(event)
+        )) {
+          return;
+        }
+      }
+      const currentRawInput = (pageState.latestRawQuery || pageState.inputParts.input.value || '').trim();
+      if (pageState.inlineSearchState && pageState.inlineSearchState.isAuto &&
+          pageState.inlineSearchState.rawInput === currentRawInput) {
+        if (pageState.inlineSearchState.provider && pageState.inlineSearchState.query) {
+          if (runSiteSearchProviderQuery(
+            pageState.inlineSearchState.provider,
+            pageState.inlineSearchState.query,
+            getSearchResultDisposition(event)
+          )) {
+            return;
+          }
+        } else if (pageState.inlineSearchState.url) {
+          openSearchResultUrl({
+            url: pageState.inlineSearchState.url,
+            title: pageState.inlineSearchState.url,
+            type: 'inlineSiteSearch'
+          }, query, event);
+          return;
+        }
+      }
+      if (pageState.autocompleteState && pageState.autocompleteState.url) {
+        openSearchResultUrl({
+          url: pageState.autocompleteState.url,
+          title: pageState.autocompleteState.title || '',
+          type: 'autocomplete'
+        }, query, event);
+        return;
+      }
+      resolveQuickNavigation(query).then((targetUrl) => {
+        if (targetUrl) {
+          openSearchResultUrl({
+            url: targetUrl,
+            title: query,
+            type: 'quickNavigation'
+          }, query, event);
+          return;
+        }
+        navigateToQuery(query, false, getSearchResultDisposition(event));
+      });
+    }
+
     return {
+      submitSearchQuery,
       getShortcutRules,
       buildKeywordSuggestions,
       getDirectUrlSuggestion,
@@ -304,5 +468,35 @@
     };
   }
 
-  root.LumnoNewtabSearchNavigation = { createSearchNavigation };
+  // Arrow keys move the highlighted suggestion one step (`direction` 1 or
+  // -1) and wrap around the list. With nothing selected yet, the step starts
+  // from the automatically highlighted suggestion (`autoIndex`, -1 if none).
+  function getNextSuggestionIndex(direction, selectedIndex, itemCount, autoIndex) {
+    const count = Math.max(0, Math.floor(Number(itemCount) || 0));
+    if (!count) {
+      return { index: -1, didWrap: false };
+    }
+    const last = count - 1;
+    const auto = Number.isInteger(autoIndex) ? autoIndex : -1;
+    if (direction > 0) {
+      if (selectedIndex === -1) {
+        const index = auto >= 0 ? (auto + 1) % count : 0;
+        return { index, didWrap: auto >= 0 && index === 0 };
+      }
+      const index = (selectedIndex + 1) % count;
+      return { index, didWrap: selectedIndex === last && index === 0 };
+    }
+    if (selectedIndex === 0) {
+      return { index: last, didWrap: true };
+    }
+    if (selectedIndex === -1) {
+      return auto > 0 ? { index: auto - 1, didWrap: false } : { index: last, didWrap: true };
+    }
+    return { index: selectedIndex - 1, didWrap: false };
+  }
+
+  root.LumnoNewtabSearchNavigation = { createSearchNavigation, getNextSuggestionIndex };
+  if (typeof module === 'object' && module.exports) {
+    module.exports = root.LumnoNewtabSearchNavigation;
+  }
 })(globalThis);
