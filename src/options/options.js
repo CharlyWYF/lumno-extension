@@ -28,7 +28,6 @@
   const SETTINGS = globalThis.LumnoSettings;
   const AGGREGATE_SEARCH_STORE = globalThis.LumnoAggregateSearchStore;
   const SHORTCUT_FAVICON = globalThis.LumnoShortcutFavicon;
-  const LUMNO_FEEDBACK_SUPPORT_LINKS_FALLBACK = COMMUNITY_LINKS.FALLBACK_LINKS;
   const panel = document.getElementById('_x_extension_settings_panel_2024_unique_');
   const optionsRoot = document.getElementById('_x_extension_options_root_2024_unique_');
   const tabsRow = document.querySelector('._x_extension_settings_tabs_row_2024_unique_');
@@ -163,8 +162,16 @@
     windowObj: window,
     duration: 2200
   });
-  const feedbackSupportController =
-    optionsFeedbackSupportApi.createFeedbackSupportController(feedbackSupportHost);
+  const feedbackSupportSection = globalThis.LumnoOptionsFeedbackSupportSection.createFeedbackSupportSection({
+    communityLinks: COMMUNITY_LINKS,
+    controller: optionsFeedbackSupportApi.createFeedbackSupportController(feedbackSupportHost),
+    getLocale: () => (currentLanguageMode === 'system' ? getSystemLocale() : normalizeLocale(currentLanguageMode)),
+    getMessage,
+    helpIconUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
+      ? chrome.runtime.getURL('assets/images/site-search/glyph-lm.png')
+      : '../../assets/images/site-search/glyph-lm.png',
+    isHelpCenterSearchEnabled: () => helpCenterSearchEnabled
+  });
   function createOptionsInfoButtonController(host) {
     return optionsInfoButtonApi.createInfoButtonController(host);
   }
@@ -949,7 +956,6 @@
     return `${safePrefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
   }
 
-  let feedbackSupportLinks = LUMNO_FEEDBACK_SUPPORT_LINKS_FALLBACK;
   let currentThemeMode = 'system';
   let currentRecentMode = 'most';
   let currentNewtabWidthMode = 'wide';
@@ -1445,133 +1451,12 @@
     return fallback || '';
   }
 
-  function getFeedbackSupportWebLocale() {
-    const locale = currentLanguageMode === 'system'
-      ? getSystemLocale()
-      : normalizeLocale(currentLanguageMode);
-    if (locale === 'zh_CN') {
-      return 'zh-CN';
-    }
-    if (locale === 'zh_TW') {
-      return 'zh-TW';
-    }
-    if (locale === 'ja') {
-      return 'ja';
-    }
-    return 'en';
-  }
-
-  function getFeedbackSupportCommunityChannel() {
-    return COMMUNITY_LINKS.getCommunityChannel(
-      feedbackSupportLinks,
-      getFeedbackSupportWebLocale()
-    );
-  }
-
   function renderFeedbackSupport() {
-    if (!feedbackSupportController) {
-      return;
-    }
-    const links = feedbackSupportLinks || LUMNO_FEEDBACK_SUPPORT_LINKS_FALLBACK;
-    const channel = getFeedbackSupportCommunityChannel();
-    const communityIsWechat = channel === 'wechat';
-    feedbackSupportController.render({
-      heading: getMessage('settings_feedback_support_section_title', '反馈与支持'),
-      headingKey: 'settings_feedback_support_section_title',
-      help: {
-        ask: helpCenterSearchEnabled !== true ? null : {
-          caption: getMessage('settings_help_center_ask_caption', '在新标签页或命令栏输入 lm 或「帮助中心」，按 Tab，再写下你的问题。'),
-          captionKey: 'settings_help_center_ask_caption',
-          iconUrl: chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
-            ? chrome.runtime.getURL('assets/images/site-search/glyph-lm.png')
-            : '../../assets/images/site-search/glyph-lm.png',
-          label: getMessage('settings_help_center_ask_action', '在搜索框中提问'),
-          labelKey: 'settings_help_center_ask_action',
-          prefix: 'lm',
-          providerName: getMessage('site_search_name_lumno_help', 'Lumno 帮助中心'),
-          query: getMessage('settings_help_center_ask_demo_query', '怎么修改快捷键'),
-          results: [
-            {
-              detail: getMessage('settings_help_center_ask_demo_result_1_detail', '修改快捷键'),
-              title: getMessage('settings_help_center_ask_demo_result_1_title', '快捷键')
-            },
-            {
-              detail: getMessage('settings_help_center_ask_demo_result_2_detail', '快捷键没反应怎么办？'),
-              title: getMessage('settings_help_center_ask_demo_result_2_title', '常见问题')
-            }
-          ]
-        },
-        description: getMessage('settings_help_center_desc', '不清楚某个功能怎么用？每个功能的用法都写在这里。'),
-        descriptionKey: 'settings_help_center_desc',
-        href: COMMUNITY_LINKS.getHelpUrl(getFeedbackSupportWebLocale()),
-        label: getMessage('settings_help_center_action', '查看'),
-        labelKey: 'settings_help_center_action',
-        title: getMessage('settings_help_center_title', '帮助中心'),
-        titleKey: 'settings_help_center_title'
-      },
-      items: [
-        // Chinese readers get the WeChat group; elsewhere "contact the author" (X) below is the community entry.
-        ...(communityIsWechat
-          ? [{
-              href: links.wechatQr,
-              iconClass: 'ri-wechat-line',
-              key: 'community',
-              label: getMessage('settings_feedback_support_wechat_action', '加入反馈群'),
-              labelKey: 'settings_feedback_support_wechat_action',
-              qr: {
-                alt: getMessage('newtab_feedback_wechat_qr_alt', 'Lumno 微信群二维码'),
-                closeLabel: getMessage('newtab_feedback_wechat_close_tooltip', '关闭'),
-                imageUrl: links.wechatQr,
-                title: getMessage('newtab_feedback_wechat_panel_title', 'Bug 反馈 & 新功能提需')
-              }
-            }]
-          : []),
-        {
-          href: COMMUNITY_LINKS.getReviewUrl(links),
-          iconClass: 'ri-star-line',
-          key: 'chrome-review',
-          label: getMessage(
-            'settings_feedback_support_review_action',
-            '为 Lumno 评分'
-          ),
-          labelKey: 'settings_feedback_support_review_action'
-        },
-        {
-          href: links.githubIssue,
-          iconClass: 'ri-github-line',
-          key: 'github-issue',
-          label: getMessage(
-            'settings_feedback_support_github_issue_action',
-            '创建 Issue'
-          ),
-          labelKey: 'settings_feedback_support_github_issue_action'
-        },
-        {
-          href: links.x,
-          iconClass: 'ri-twitter-x-line',
-          key: 'contact-author',
-          label: getMessage(
-            'settings_feedback_support_contact_author_action',
-            '联系作者'
-          ),
-          labelKey: 'settings_feedback_support_contact_author_action'
-        }
-      // Firefox has no store listing to review yet (empty review URL).
-      ].filter((item) => Boolean(item.href))
-    });
-  }
-
-  function loadFeedbackSupportLinks() {
-    return COMMUNITY_LINKS.load()
-      .then((links) => {
-        feedbackSupportLinks = links || LUMNO_FEEDBACK_SUPPORT_LINKS_FALLBACK;
-        renderFeedbackSupport();
-        return feedbackSupportLinks;
-      });
+    feedbackSupportSection.render();
   }
 
   renderFeedbackSupport();
-  loadFeedbackSupportLinks();
+  feedbackSupportSection.loadLinks();
 
   function formatTemplate(text, params) {
     return String(text || '').replace(/\{(\w+)\}/g, (match, key) => {

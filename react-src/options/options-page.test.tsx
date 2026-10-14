@@ -9,6 +9,7 @@ import aggregateSearchSource from '../../src/options/options-aggregate-search.js
 import syncTransferSource from '../../src/options/options-sync-transfer.js?raw';
 import shortcutKeysSource from '../../src/options/options-shortcut-keys.js?raw';
 import blacklistSource from '../../src/options/options-blacklist.js?raw';
+import feedbackSupportSource from '../../src/options/options-feedback-support.js?raw';
 import webdavOptionsSource from '../../src/options/webdav-options.js?raw';
 import settingsSource from '../../src/shared/settings.js?raw';
 import blacklistUtilsSource from '../../src/shared/blacklist-utils.js?raw';
@@ -71,7 +72,8 @@ const PAGE_SCRIPTS = [
   aggregateSearchSource,
   syncTransferSource,
   shortcutKeysSource,
-  blacklistSource
+  blacklistSource,
+  feedbackSupportSource
 ];
 
 const addedListeners: Array<[EventTarget, string, EventListenerOrEventListenerObject, unknown]> = [];
@@ -253,6 +255,10 @@ describe('Options page storage wiring', () => {
     expect(synced[settings.SIMPLE_MODE_ENABLED_STORAGE_KEY]).toBe(false);
     expect(synced[settings.AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY]).toBe(true);
     expect(synced[settings.MOTION_EFFECTS_ENABLED_STORAGE_KEY]).toBe(false);
+    expect(document.getElementById('_x_extension_feedback_support_2026_unique_')?.textContent)
+      .toContain((enMessages as Messages).settings_help_center_title.message);
+    // The WebDAV controller is created in the page's own declaration order.
+    expect(document.getElementById('lumno-webdav-list')?.childElementCount).toBeGreaterThan(0);
     // Ready once the startup values have been painted.
     await vi.waitFor(() => {
       expect(document.documentElement.getAttribute('data-lumno-options-ready')).toBe('true');

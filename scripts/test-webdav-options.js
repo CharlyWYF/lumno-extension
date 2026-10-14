@@ -44,17 +44,14 @@ async function run() {
   const messages = JSON.parse(fs.readFileSync('_locales/en/messages.json', 'utf8'));
   window.chrome = chrome;
   chrome.i18n = { getMessage: (key) => messages[key]?.message || '' };
-  // Exercise the real host's declaration order and translation callback. A
-  // standalone widget fixture misses errors that abort the whole settings page.
-  const optionsSource = fs.readFileSync('src/options/options.js', 'utf8');
-  const start = optionsSource.indexOf('  let currentMessages = null;');
-  const bootstrap = optionsSource.slice(start, optionsSource.indexOf('  if (searchResultSourceTypeController)', start));
-  const getMessageSource = optionsSource.slice(optionsSource.indexOf('  function getMessage(key, fallback) {'),
-    optionsSource.indexOf('  function getFeedbackSupportWebLocale() {'));
-  let controller;
-  assert.doesNotThrow(() => {
-    controller = window.eval(`(() => { function animateOptionsPanelHeight() {} ${getMessageSource}\n${bootstrap}\nreturn webDavSettingsController; })()`);
-  }, 'WebDAV initialization must not read a host variable before it is initialized');
+  // react-src/options/options-page.test.tsx boots the whole Options page, so
+  // the host's declaration order is covered there; here the controller gets
+  // the same options the page passes.
+  const controller = window.LumnoWebDavOptions.createController({
+    animateLayout() {},
+    chromeApi: chrome,
+    getMessage: (key, fallback) => messages[key]?.message || fallback
+  });
   await controller.refresh();
   assert.strictEqual(renderModel.ready, true);
   assert.strictEqual(renderModel.connections.length, 0);
