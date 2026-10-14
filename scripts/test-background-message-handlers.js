@@ -151,7 +151,39 @@ async function testAggregateSearchIgnoresPageSuppliedTargets() {
   );
 }
 
+async function testLocaleMessagesAreCachedAndCanBeNarrowed() {
+  const fetched = [];
+  const harness = loadBackground({
+    fetch: async (url) => {
+      fetched.push(String(url));
+      return {
+        json: async () => ({
+          copy_page_url_success: { message: 'Copied' },
+          unrelated_key: { message: 'Other' }
+        })
+      };
+    }
+  });
+  const narrowed = await harness.sendMessage({
+    action: 'getLocaleMessages',
+    locale: 'en',
+    keys: ['copy_page_url_success', 'missing_key']
+  });
+  // Objects built inside the background's vm realm compare by value only.
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(narrowed)), {
+    messages: { copy_page_url_success: { message: 'Copied' } }
+  }, 'a caller naming its keys should receive only those messages');
+  const full = await harness.sendMessage({ action: 'getLocaleMessages', locale: 'en' });
+  assert.deepStrictEqual(Object.keys(full.messages).sort(), ['copy_page_url_success', 'unrelated_key']);
+  assert.strictEqual(
+    fetched.filter((url) => url.endsWith('_locales/en/messages.json')).length,
+    1,
+    'a locale file should be read once per worker lifetime'
+  );
+}
+
 (async () => {
+  await testLocaleMessagesAreCachedAndCanBeNarrowed();
   await testSiteSearchProviderLoadFailureStillAnswers();
   await testOpenNewTabUsesBrowserNewtab();
   await testOpenOptionsPageKeepsRequestedHash();

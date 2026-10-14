@@ -3509,18 +3509,6 @@ const TAB_MESSAGE_HANDLERS = Object.freeze({
     );
     return true;
   },
-  reportTabVisible(request, sender, sendResponse) {
-    const senderTab = sender && sender.tab ? sender.tab : null;
-    if (senderTab && typeof senderTab.id === 'number') {
-      const at = Number(request && request.at);
-      const reportedAt = Number.isFinite(at) ? at : Date.now();
-      recordTabSwitchEvent(senderTab.id, reportedAt);
-      recordRecentSwitcherTab(senderTab, reportedAt);
-      scheduleSwitcherThumbnailCapture(senderTab, 'visible');
-    }
-    sendResponse({ ok: true });
-    return;
-  },
   notifyOverlayClosed(request, sender, sendResponse) {
     const senderTab = sender && sender.tab ? sender.tab : null;
     if (senderTab && typeof senderTab.id === 'number') {
@@ -4049,19 +4037,46 @@ const SELECTION_QUICK_ACTION_MESSAGE_HANDLERS = Object.freeze({
   }
 });
 
+// Parsed _locales files by locale. They only change with the extension, which
+// restarts this worker, so each is read once per worker lifetime.
+const localeMessagesByLocale = new Map();
+
+function loadLocaleMessages(rawLocale) {
+  const locale = SETTINGS.normalizeLocale(rawLocale);
+  if (localeMessagesByLocale.has(locale)) {
+    return localeMessagesByLocale.get(locale);
+  }
+  const loading = fetch(chrome.runtime.getURL(`_locales/${locale}/messages.json`))
+    .then((response) => response.json())
+    .then((messages) => (messages && typeof messages === 'object' ? messages : {}))
+    .catch(() => {
+      localeMessagesByLocale.delete(locale);
+      return {};
+    });
+  localeMessagesByLocale.set(locale, loading);
+  return loading;
+}
+
+// A page script that names the few strings it shows gets only those.
+function pickLocaleMessages(messages, keys) {
+  if (!Array.isArray(keys)) {
+    return messages;
+  }
+  const picked = {};
+  keys.forEach((key) => {
+    if (typeof key === 'string' && Object.prototype.hasOwnProperty.call(messages, key)) {
+      picked[key] = messages[key];
+    }
+  });
+  return picked;
+}
+
 // Locale messages and permission probes.
 const LOCALE_AND_PERMISSION_MESSAGE_HANDLERS = Object.freeze({
   getLocaleMessages(request, sender, sendResponse) {
-    const locale = SETTINGS.normalizeLocale(request.locale);
-    const localePath = chrome.runtime.getURL(`_locales/${locale}/messages.json`);
-    fetch(localePath, { cache: 'no-store' })
-      .then((response) => response.json())
-      .then((messages) => {
-        sendResponse({ messages: messages || {} });
-      })
-      .catch(() => {
-        sendResponse({ messages: {} });
-      });
+    loadLocaleMessages(request && request.locale).then((messages) => {
+      sendResponse({ messages: pickLocaleMessages(messages, request && request.keys) });
+    });
     return true;
   },
   getFileSchemeAccessStatus(request, sender, sendResponse) {
