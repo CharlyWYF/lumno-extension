@@ -224,17 +224,18 @@
     'compose'
   ]);
 
+  // data: and javascript: are deliberately absent: typed or pasted, they would
+  // open attacker-chosen content or script as a top-level page, so the input
+  // is searched for instead.
   const DIRECT_NAVIGATION_SINGLE_COLON_PROTOCOLS = new Set([
     'about:',
     'bitcoin:',
     'blob:',
-    'data:',
     'ethereum:',
     'filesystem:',
     'geo:',
     'ipfs:',
     'ipns:',
-    'javascript:',
     'magnet:',
     'mailto:',
     'sms:',
@@ -471,6 +472,26 @@
       return `https://${normalizedInput}`;
     }
     return normalizedInput;
+  }
+
+  // Input that names a page or a local resource rather than words to search:
+  // any scheme URL (such as the prefilled current page), a host, an IP, or a
+  // file path. It can carry intranet hosts, tokens or local paths, so it never
+  // goes to a remote suggestion provider.
+  function isUrlLikeSearchQuery(input) {
+    const value = String(input || '').trim();
+    if (!value) {
+      return false;
+    }
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(value) || /^(?:[a-z]:)?[\\/]/i.test(value)) {
+      return true;
+    }
+    const protocol = getDirectNavigationProtocol(value);
+    if (protocol && (DIRECT_NAVIGATION_SINGLE_COLON_PROTOCOLS.has(protocol) ||
+        protocol === 'data:' || protocol === 'javascript:' || protocol === 'file:')) {
+      return true;
+    }
+    return Boolean(getDirectNavigationUrl(value));
   }
 
   function splitSearchTerms(value) {
@@ -3529,6 +3550,7 @@
     getSearchTermCoverageStats,
     getStrongNavigationMatchScore,
     getDirectNavigationUrl,
+    isUrlLikeSearchQuery,
     getDefaultSiteSearchProviders,
     findSearchOpenTabMatchIndex,
     findSiteSearchProviderForPageUrl,
