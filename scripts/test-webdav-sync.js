@@ -1352,6 +1352,33 @@ async function testBackgroundRounds() {
   assert.strictEqual(selfServer.state().data[theme], 'light', 'a later edit back to the earlier value still syncs');
   await applying.controller.handle({ operation: 'pause' });
 
+  // Publishing reads the state once under the lock, keeps a bounded number of
+  // snapshots per device and does not download media the server already has.
+  const leanServer = createServer();
+  const wallpaperBytes = fs.readFileSync('assets/wallpapers/lumno-newtab-seurat-coast-white-thumb.webp');
+  const wallpaperDigest = require('crypto').createHash('sha256').update(wallpaperBytes).digest('hex');
+  const wallpaperPath = `/dav/lumno/v1/assets/${wallpaperDigest}.webp`;
+  leanServer.files.set(wallpaperPath, { bytes: new Uint8Array(wallpaperBytes), etag: '"asset"' });
+  const lean = createDevice(leanServer, { sync: { [theme]: 'light' } }, [{ id: 'custom-wallpaper-lean', key: 'custom-wallpaper-lean',
+    name: 'Lean', width: 0, height: 0, updatedAt: 1, imageDataUrl: `data:image/webp;base64,${wallpaperBytes.toString('base64')}`,
+    thumbnailDataUrl: `data:image/webp;base64,${wallpaperBytes.toString('base64')}` }], quiet);
+  await lean.controller.handle({ operation: 'connect', config });
+  assert(leanServer.requests.some((request) => request.path === wallpaperPath && request.method === 'HEAD'));
+  assert(!leanServer.requests.some((request) => request.path === wallpaperPath && ['GET', 'PUT'].includes(request.method)),
+    'a content-addressed asset of the right size is neither downloaded nor uploaded again');
+  const snapshotPaths = () => [...leanServer.files.keys()].filter((path) => path.includes('/snapshots/'));
+  for (let index = 0; index < 13; index += 1) {
+    await set(lean.chrome.storage.sync, { [theme]: `theme-${index}` });
+    const before = leanServer.requests.length;
+    await lean.controller.handle({ operation: 'sync' });
+    const stateReads = leanServer.requests.slice(before).filter((request) => request.path.endsWith('/state.json') && request.method === 'GET');
+    assert.strictEqual(stateReads.length, 3, 'one read to merge, one under the lock and one to verify the write');
+  }
+  assert.strictEqual(snapshotPaths().length, 10, 'only the latest ten snapshots of this device are kept');
+  assert.strictEqual(JSON.parse(new TextDecoder().decode(leanServer.files.get(snapshotPaths().find((path) =>
+    path.endsWith(`-${(13 - 1) % 10}.json`))).bytes)).data[theme], 'theme-11', 'the newest snapshot holds the state it replaced');
+  await lean.controller.handle({ operation: 'pause' });
+
   // When the storage mode cannot be read, the settings might come from the
   // wrong area; they are never uploaded as this device's copy.
   const unreadableServer = createServer();

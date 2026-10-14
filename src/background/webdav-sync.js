@@ -14,6 +14,8 @@
   // Synced connection hints stay far below chrome.storage.sync's 8 KB item quota.
   const MAX_HINTS = 10;
   const MAX_HINT_BYTES = 600;
+  // Server snapshots of replaced remote states kept per device and connection.
+  const SNAPSHOT_SLOTS = 10;
   // Contract failures in this device's own data; capture reports them as
   // local-<code> so the settings card never blames the remote copy.
   const LOCAL_DATA_CODES = ['invalid-state', 'state-too-large', 'invalid-shortcuts', 'invalid-icon', 'invalid-wallpaper',
@@ -300,6 +302,10 @@
         if (knownAssets && contract.equal(knownAssets[digest], asset)) continue;
         const bytes = await getAsset(digest, asset, client);
         const existing = await client.request(assetPath(digest, asset.mime), 'HEAD', undefined, {}, 65536);
+        // Asset files are named by the SHA-256 of their content and only ever
+        // written whole, so a file of the expected size needs no download.
+        // Without a size, or with another one, its content is checked.
+        if (existing.status === 200 && existing.size === asset.size) continue;
         if (existing.status === 200) {
           const downloaded = await client.request(assetPath(digest, asset.mime), 'GET', undefined, {}, asset.size);
           if (downloaded.status !== 200 || downloaded.bytes.byteLength !== asset.size || await hash(downloaded.bytes) !== digest) fail('asset-integrity');
@@ -510,16 +516,24 @@
     async function publish(state, remote, client, capturedGeneration) {
       if (capturedGeneration !== generation) fail('local-changed');
       await uploadAssets(state, client, remote && remote.state.assets);
-      if (remote) {
-        const archived = await client.request(`snapshots/${cryptoApi.randomUUID()}.json`, 'PUT', JSON.stringify(remote.state),
-          { 'If-None-Match': '*', 'Content-Type': 'application/json' });
-        if (![200, 201, 204].includes(archived.status)) fail('write-failed');
-      }
+      if (remote) await archiveSnapshot(remote.state, client);
       if (capturedGeneration !== generation) fail('local-changed');
-      await writeState(client, state, remote);
-      const verified = await readRemote(client);
-      if (!verified || !contract.equal(state, verified.state)) fail('remote-changed');
-      return verified;
+      // The client already read the state back under the lock and compared it.
+      const written = await writeState(client, state, remote);
+      return { state: contract.validateState(written.state), etag: written.etag };
+    }
+    // Each device keeps its last SNAPSHOT_SLOTS copies of the server state it
+    // replaced, overwriting the oldest, so snapshots never pile up. Older
+    // clients' randomly named snapshots are left alone.
+    async function archiveSnapshot(remoteState, client) {
+      const saved = await privateStore.get('snapshotRing');
+      const ring = saved && /^[-\w]{1,80}$/.test(saved.device || '') && Number.isInteger(saved.next)
+        ? saved : { device: cryptoApi.randomUUID(), next: 0 };
+      const slot = ((ring.next % SNAPSHOT_SLOTS) + SNAPSHOT_SLOTS) % SNAPSHOT_SLOTS;
+      const archived = await client.request(`snapshots/${ring.device}-${slot}.json`, 'PUT', JSON.stringify(remoteState),
+        { 'Content-Type': 'application/json' });
+      if (![200, 201, 204].includes(archived.status)) fail('write-failed');
+      await privateStore.put('snapshotRing', { device: ring.device, next: (slot + 1) % SNAPSHOT_SLOTS });
     }
     // Answers to the first-join choice: keep one side, or merge wallpapers onto the server's copy.
     const INITIAL_DECISIONS = ['local', 'remote', 'merge'];
@@ -866,7 +880,7 @@
     const workers = new Map();
     const probeCache = opts.probeCache || createProbeCache();
     const recordKeys = ['session', 'pendingApply', 'recoveryBlocked', 'conflict', 'replacementBackup', 'replacementBackupMeta', 'migrationBackup', 'migrationBackupMeta',
-      'staleLock'];
+      'staleLock', 'snapshotRing'];
     let ids = [];
     let registryChain = Promise.resolve();
     let hintChain = Promise.resolve();
