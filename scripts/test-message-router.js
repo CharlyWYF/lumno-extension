@@ -73,7 +73,7 @@ function testRouterModule() {
 // keep reaching a background handler.
 const EXPECTED_BACKGROUND_ACTIONS = [
   'webdav',
-  'switchToTab', 'reportTabVisible', 'notifyTopFrameDocumentStarted', 'notifyOverlayClosed',
+  'switchToTab', 'notifyTopFrameDocumentStarted', 'notifyOverlayClosed',
   'updateOverlayLoadingSession', 'getTabsForOverlay', 'trackSearchTab', 'closeOtherTabsForOverlay',
   'swapNewtabForFocus',
   'getShowSearchShortcut', 'getCopyCurrentUrlCommandShortcut', 'copyCurrentPageUrl',

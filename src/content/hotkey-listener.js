@@ -4,10 +4,14 @@
   }
   window._x_extension_hotkey_listener_2024_unique_ = true;
 
-  const TAB_VISIBLE_REPORT_MIN_INTERVAL_MS = 800;
-  const PAGE_TOAST_STYLE_ID = '_x_extension_page_toast_style_2026_unique_';
   const PAGE_TOAST_ID = '_x_extension_page_toast_2026_unique_';
+  const PAGE_TOAST_FONT_FACE_STYLE_ID = '_x_extension_page_toast_font_face_2026_unique_';
   const PAGE_TOAST_SHOW_DURATION_MS = 2000;
+  const PAGE_TOAST_MESSAGE_KEYS = Object.freeze([
+    'copy_page_url_failed_retry',
+    'copy_page_url_success',
+    'copy_page_url_failed_permission'
+  ]);
   const LANGUAGE_STORAGE_KEY = '_x_extension_language_2024_unique_';
   const SETTINGS = globalThis.LumnoSettings;
   const providerStorageRuntime = SETTINGS.createProviderStorageRuntime(chrome);
@@ -16,13 +20,11 @@
     : ((chrome && chrome.storage && chrome.storage.sync)
         ? chrome.storage.sync
         : (chrome && chrome.storage ? chrome.storage.local : null));
-  const storageAreaName = providerStorageRuntime ? providerStorageRuntime.name : (storageArea
-    ? (storageArea === (chrome && chrome.storage ? chrome.storage.sync : null) ? 'sync' : 'local')
-    : null);
-  let lastVisibleReportAt = 0;
   let pageToastTimer = null;
-  let currentMessages = null;
-  let currentLanguageMode = 'system';
+  let pageToastParts = null;
+  // Toast strings by locale, fetched only when a toast in a user-chosen
+  // language is first shown. chrome.i18n already serves the browser language.
+  const toastMessagesByLocale = new Map();
 
   function applyNoTranslate(element) {
     if (!element || typeof element.setAttribute !== 'function') {
@@ -38,9 +40,9 @@
     return element;
   }
 
-  function getMessage(key, fallback) {
-    if (currentMessages && currentMessages[key] && currentMessages[key].message) {
-      return currentMessages[key].message;
+  function getMessage(messages, key, fallback) {
+    if (messages && messages[key] && messages[key].message) {
+      return messages[key].message;
     }
     try {
       if (chrome && chrome.i18n && typeof chrome.i18n.getMessage === 'function') {
@@ -55,245 +57,263 @@
     return fallback;
   }
 
-  function hydrateLocaleMessages() {
+  function readLanguageMode() {
     if (!storageArea || typeof storageArea.get !== 'function') {
-      return;
+      return Promise.resolve('system');
     }
-    storageArea.get([LANGUAGE_STORAGE_KEY], (result) => {
-      if (chrome.runtime && chrome.runtime.lastError) {
-        return;
-      }
-      currentLanguageMode = result && result[LANGUAGE_STORAGE_KEY]
-        ? String(result[LANGUAGE_STORAGE_KEY])
-        : 'system';
-      refreshLocaleMessages();
-    });
-  }
-
-  function normalizeLocale(value) {
-    return SETTINGS.normalizeLocale(value);
-  }
-
-  function getTargetLocale() {
-    if (currentLanguageMode && currentLanguageMode !== 'system') {
-      return normalizeLocale(currentLanguageMode);
-    }
-    try {
-      if (chrome && chrome.i18n && typeof chrome.i18n.getUILanguage === 'function') {
-        return normalizeLocale(chrome.i18n.getUILanguage());
-      }
-    } catch (e) {
-      // Ignore i18n failures in page context.
-    }
-    return normalizeLocale(navigator.language || 'en');
-  }
-
-  function refreshLocaleMessages() {
-    const targetLocale = getTargetLocale();
-    if (!chrome || !chrome.runtime || typeof chrome.runtime.sendMessage !== 'function') {
-      return;
-    }
-    chrome.runtime.sendMessage({ action: 'getLocaleMessages', locale: targetLocale }, (response) => {
-      if (chrome.runtime && chrome.runtime.lastError) {
-        return;
-      }
-      if (response && response.messages) {
-        currentMessages = response.messages;
+    return new Promise((resolve) => {
+      try {
+        storageArea.get([LANGUAGE_STORAGE_KEY], (result) => {
+          if (chrome.runtime && chrome.runtime.lastError) {
+            resolve('system');
+            return;
+          }
+          resolve(result && result[LANGUAGE_STORAGE_KEY]
+            ? String(result[LANGUAGE_STORAGE_KEY])
+            : 'system');
+        });
+      } catch (e) {
+        resolve('system');
       }
     });
   }
 
-  const HOTKEY_LISTENER_DEBUG_ENABLED = false;
-
-  function logHotkeyListenerDebug(stage, payload) {
-    if (!HOTKEY_LISTENER_DEBUG_ENABLED) {
-      return;
-    }
-    try {
-      const detail = payload && typeof payload === 'object' ? payload : {};
-      console.log(`[Lumno][hotkey-listener] ${stage}`, detail);
-    } catch (e) {
-      // Ignore logging errors.
-    }
+  function requestToastMessages(locale) {
+    return new Promise((resolve) => {
+      try {
+        chrome.runtime.sendMessage({
+          action: 'getLocaleMessages',
+          locale,
+          keys: PAGE_TOAST_MESSAGE_KEYS
+        }, (response) => {
+          if (chrome.runtime && chrome.runtime.lastError) {
+            resolve(null);
+            return;
+          }
+          resolve(response && response.messages ? response.messages : null);
+        });
+      } catch (e) {
+        resolve(null);
+      }
+    });
   }
 
-  function ensureRemixIconStyles() {
-    if (!chrome || !chrome.runtime || !chrome.runtime.getURL) {
-      return;
+  function loadToastMessages() {
+    return readLanguageMode().then((languageMode) => {
+      if (!languageMode || languageMode === 'system') {
+        return null;
+      }
+      const locale = SETTINGS.normalizeLocale(languageMode);
+      if (toastMessagesByLocale.has(locale)) {
+        return toastMessagesByLocale.get(locale);
+      }
+      return requestToastMessages(locale).then((messages) => {
+        if (messages) {
+          toastMessagesByLocale.set(locale, messages);
+        }
+        return messages;
+      });
+    });
+  }
+
+  const PAGE_TOAST_STYLES = `
+    .toast {
+      position: fixed;
+      top: max(24px, calc(env(safe-area-inset-top) + 12px));
+      left: 50%;
+      transform: translateX(-50%) translateY(-18px) scale(0.96);
+      background: rgba(17, 24, 39, 0.92);
+      color: #f9fafb;
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      line-height: 1.35;
+      max-width: min(560px, calc(100vw - 32px));
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+      opacity: 0;
+      filter: blur(8px);
+      pointer-events: none;
+      transition: opacity 180ms ease, filter 220ms ease, transform 220ms ease;
+      z-index: 2147483647;
+      display: inline-flex;
+      isolation: isolate;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    if (document.getElementById('_x_extension_remixicon_css_2024_unique_')) {
-      return;
+    .toast::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: -40%;
+      width: 40%;
+      background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0),
+        rgba(255, 255, 255, 0.26),
+        rgba(255, 255, 255, 0)
+      );
+      opacity: 0;
+      transform: translateX(0);
+      pointer-events: none;
     }
+    .toast[data-show="true"] {
+      opacity: 1;
+      filter: blur(0);
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+    .toast[data-show="true"]::after {
+      animation: toast-sheen 900ms ease-out 120ms 1 both;
+    }
+    @keyframes toast-sheen {
+      0% {
+        opacity: 0;
+        transform: translateX(0);
+      }
+      24% {
+        opacity: 0.5;
+      }
+      100% {
+        opacity: 0;
+        transform: translateX(360%);
+      }
+    }
+    .toast-icon {
+      flex: 0 0 auto;
+      width: 16px;
+      height: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 0;
+      font-family: "lumno-remixicon";
+      font-size: 16px;
+      font-style: normal;
+      line-height: 1;
+      -webkit-font-smoothing: antialiased;
+      transform: translateX(0);
+    }
+    .toast-icon::before {
+      content: "\\f0f6";
+    }
+    .toast-text {
+      display: inline-block;
+      margin: 0;
+      padding: 0;
+      line-height: 1.35;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      transform: translateX(0);
+    }
+    .toast[data-show="true"] .toast-icon {
+      animation: toast-icon-gather 320ms cubic-bezier(0.22, 1, 0.36, 1) 220ms 1 both;
+    }
+    .toast[data-show="true"] .toast-text {
+      animation: toast-text-gather 320ms cubic-bezier(0.22, 1, 0.36, 1) 220ms 1 both;
+    }
+    @keyframes toast-icon-gather {
+      0% {
+        transform: translateX(-6px);
+      }
+      100% {
+        transform: translateX(0);
+      }
+    }
+    @keyframes toast-text-gather {
+      0% {
+        transform: translateX(6px);
+      }
+      100% {
+        transform: translateX(0);
+      }
+    }
+  `;
+
+  // Chrome ignores @font-face inside shadow roots, so the icon face alone is
+  // declared on the page, under a Lumno-only family name. Linking
+  // remixicon.css instead would let its "[class^=ri-]" rule restyle the page's
+  // own elements; the toast draws its one glyph inside its shadow root.
+  function ensurePageToastFontFace() {
     const host = document.head || document.documentElement;
-    if (!host) {
+    if (!host || document.getElementById(PAGE_TOAST_FONT_FACE_STYLE_ID) ||
+        !chrome || !chrome.runtime || typeof chrome.runtime.getURL !== 'function') {
       return;
     }
-    const link = document.createElement('link');
-    link.id = '_x_extension_remixicon_css_2024_unique_';
-    link.rel = 'stylesheet';
-    link.href = chrome.runtime.getURL('assets/remixicon/fonts/remixicon.css');
-    host.appendChild(link);
+    const fontUrl = String(chrome.runtime.getURL('assets/remixicon/fonts/remixicon.woff2'))
+      .replace(/["\\\n\r\f]/g, '\\$&');
+    const style = document.createElement('style');
+    style.id = PAGE_TOAST_FONT_FACE_STYLE_ID;
+    style.textContent = [
+      '@font-face {',
+      '  font-family: "lumno-remixicon";',
+      `  src: url("${fontUrl}") format("woff2");`,
+      '  font-display: swap;',
+      '}'
+    ].join('\n');
+    host.appendChild(style);
   }
 
   function ensurePageToast() {
-    ensureRemixIconStyles();
+    if (pageToastParts && pageToastParts.host.isConnected) {
+      return pageToastParts;
+    }
     const root = document.documentElement || document.body;
     if (!root) {
       return null;
     }
-    if (!document.getElementById(PAGE_TOAST_STYLE_ID)) {
-      const style = document.createElement('style');
-      style.id = PAGE_TOAST_STYLE_ID;
-      style.textContent = `
-        #${PAGE_TOAST_ID} {
-          position: fixed;
-          top: max(24px, calc(env(safe-area-inset-top) + 12px));
-          left: 50%;
-          transform: translateX(-50%) translateY(-18px) scale(0.96);
-          background: rgba(17, 24, 39, 0.92);
-          color: #f9fafb;
-          padding: 10px 14px;
-          border-radius: 999px;
-          font-size: 12px;
-          line-height: 1.35;
-          max-width: min(560px, calc(100vw - 32px));
-          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-          opacity: 0;
-          filter: blur(8px);
-          pointer-events: none;
-          transition: opacity 180ms ease, filter 220ms ease, transform 220ms ease;
-          z-index: 2147483647;
-          display: inline-flex;
-          isolation: isolate;
-          justify-content: center;
-          align-items: center;
-          gap: 8px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        }
-        #${PAGE_TOAST_ID}::after {
-          content: "";
-          position: absolute;
-          top: 0;
-          bottom: 0;
-          left: -40%;
-          width: 40%;
-          background: linear-gradient(
-            90deg,
-            rgba(255, 255, 255, 0),
-            rgba(255, 255, 255, 0.26),
-            rgba(255, 255, 255, 0)
-          );
-          opacity: 0;
-          transform: translateX(0);
-          pointer-events: none;
-        }
-        #${PAGE_TOAST_ID}[data-show="true"] {
-          opacity: 1;
-          filter: blur(0);
-          transform: translateX(-50%) translateY(0) scale(1);
-        }
-        #${PAGE_TOAST_ID}[data-show="true"]::after {
-          animation: _x_extension_page_toast_sheen_2026_unique_ 900ms ease-out 120ms 1 both;
-        }
-        @keyframes _x_extension_page_toast_sheen_2026_unique_ {
-          0% {
-            opacity: 0;
-            transform: translateX(0);
-          }
-          24% {
-            opacity: 0.5;
-          }
-          100% {
-            opacity: 0;
-            transform: translateX(360%);
-          }
-        }
-        #${PAGE_TOAST_ID} ._x_extension_page_toast_icon_2026_unique_ {
-          flex: 0 0 auto;
-          width: 16px;
-          height: 16px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          margin: 0;
-          padding: 0;
-          font-size: 16px;
-          line-height: 1;
-          transform: translateX(0);
-        }
-        #${PAGE_TOAST_ID} ._x_extension_page_toast_text_2026_unique_ {
-          display: inline-block;
-          margin: 0;
-          padding: 0;
-          line-height: 1.35;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          transform: translateX(0);
-        }
-        #${PAGE_TOAST_ID}[data-show="true"] ._x_extension_page_toast_icon_2026_unique_ {
-          animation: _x_extension_page_toast_icon_gather_2026_unique_ 320ms cubic-bezier(0.22, 1, 0.36, 1) 220ms 1 both;
-        }
-        #${PAGE_TOAST_ID}[data-show="true"] ._x_extension_page_toast_text_2026_unique_ {
-          animation: _x_extension_page_toast_text_gather_2026_unique_ 320ms cubic-bezier(0.22, 1, 0.36, 1) 220ms 1 both;
-        }
-        @keyframes _x_extension_page_toast_icon_gather_2026_unique_ {
-          0% {
-            transform: translateX(-6px);
-          }
-          100% {
-            transform: translateX(0);
-          }
-        }
-        @keyframes _x_extension_page_toast_text_gather_2026_unique_ {
-          0% {
-            transform: translateX(6px);
-          }
-          100% {
-            transform: translateX(0);
-          }
-        }
-      `;
-      root.appendChild(style);
-    }
-    let toast = document.getElementById(PAGE_TOAST_ID);
-    if (!toast) {
-      toast = document.createElement('div');
-      toast.id = PAGE_TOAST_ID;
-      toast.setAttribute('aria-live', 'polite');
-      toast.setAttribute('role', 'status');
-      toast.setAttribute('data-show', 'false');
-      applyNoTranslate(toast);
-      root.appendChild(toast);
-    }
-    return toast;
+    ensurePageToastFontFace();
+    const host = document.createElement('div');
+    host.id = PAGE_TOAST_ID;
+    [
+      ['all', 'initial'],
+      ['position', 'fixed'],
+      ['top', '0'],
+      ['left', '0'],
+      ['width', '0'],
+      ['height', '0'],
+      ['z-index', '2147483647']
+    ].forEach(([property, value]) => {
+      host.style.setProperty(property, value, 'important');
+    });
+    applyNoTranslate(host);
+    const shadow = host.attachShadow({ mode: 'closed' });
+    const style = document.createElement('style');
+    style.textContent = PAGE_TOAST_STYLES;
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.setAttribute('aria-live', 'polite');
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('data-show', 'false');
+    const icon = document.createElement('span');
+    icon.className = 'toast-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    const text = document.createElement('span');
+    text.className = 'toast-text';
+    toast.appendChild(icon);
+    toast.appendChild(text);
+    shadow.appendChild(style);
+    shadow.appendChild(toast);
+    root.appendChild(host);
+    pageToastParts = { host, toast, text };
+    return pageToastParts;
   }
 
   function showPageToast(message, isError) {
-    const toast = ensurePageToast();
-    if (!toast) {
+    const parts = ensurePageToast();
+    if (!parts) {
       return;
     }
+    const { toast, text } = parts;
     if (pageToastTimer) {
       window.clearTimeout(pageToastTimer);
       pageToastTimer = null;
-    }
-    let icon = toast.querySelector('i._x_extension_page_toast_icon_2026_unique_');
-    let text = toast.querySelector('span._x_extension_page_toast_text_2026_unique_');
-    if (!icon || !text) {
-      toast.textContent = '';
-      icon = document.createElement('i');
-      icon.className = '_x_extension_page_toast_icon_2026_unique_ _x_extension_svg_2024_unique_ ri-icon ri-size-16 ri-share-circle-line';
-      icon.setAttribute('aria-hidden', 'true');
-      text = document.createElement('span');
-      text.className = '_x_extension_page_toast_text_2026_unique_';
-      applyNoTranslate(icon);
-      applyNoTranslate(text);
-      toast.appendChild(icon);
-      toast.appendChild(text);
     }
     text.textContent = String(message || '');
     if (isError) {
@@ -308,6 +328,12 @@
       toast.setAttribute('data-show', 'false');
       pageToastTimer = null;
     }, PAGE_TOAST_SHOW_DURATION_MS);
+  }
+
+  function showLocalizedPageToast(pickMessage, isError) {
+    return loadToastMessages().catch(() => null).then((messages) => {
+      showPageToast(pickMessage(messages), isError);
+    });
   }
 
   function fallbackCopyText(text) {
@@ -334,11 +360,10 @@
     return copied;
   }
 
-  async function copyCurrentPageUrlWithToast() {
+  async function copyCurrentPageUrl() {
     const url = location && location.href ? location.href : '';
     if (!url) {
-      showPageToast(getMessage('copy_page_url_failed_retry', '复制失败，请重试。'), true);
-      return false;
+      return 'failed-retry';
     }
     try {
       if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
@@ -346,80 +371,31 @@
       } else if (!fallbackCopyText(url)) {
         throw new Error('fallback-copy-failed');
       }
-      showPageToast(getMessage('copy_page_url_success', '已复制当前页面链接'));
-      return true;
+      return 'copied';
     } catch (error) {
-      if (fallbackCopyText(url)) {
-        showPageToast(getMessage('copy_page_url_success', '已复制当前页面链接'));
-        return true;
-      }
-      showPageToast(getMessage('copy_page_url_failed_permission', '复制失败，请检查剪贴板权限。'), true);
+      return fallbackCopyText(url) ? 'copied' : 'failed-permission';
+    }
+  }
+
+  // The copy runs first, while the page still holds the command's focus; the
+  // toast strings are resolved afterwards.
+  async function copyCurrentPageUrlWithToast() {
+    const result = await copyCurrentPageUrl();
+    if (result === 'copied') {
+      await showLocalizedPageToast((messages) => getMessage(messages, 'copy_page_url_success', '已复制当前页面链接'), false);
+      return true;
+    }
+    if (result === 'failed-retry') {
+      await showLocalizedPageToast((messages) => getMessage(messages, 'copy_page_url_failed_retry', '复制失败，请重试。'), true);
       return false;
     }
+    await showLocalizedPageToast((messages) => getMessage(messages, 'copy_page_url_failed_permission', '复制失败，请检查剪贴板权限。'), true);
+    return false;
   }
 
-  function reportTabVisible(reason) {
-    if (document.visibilityState !== 'visible') {
-      return;
-    }
-    const now = Date.now();
-    if ((now - lastVisibleReportAt) < TAB_VISIBLE_REPORT_MIN_INTERVAL_MS) {
-      return;
-    }
-    lastVisibleReportAt = now;
-    try {
-      chrome.runtime.sendMessage({
-        action: 'reportTabVisible',
-        at: now,
-        reason: String(reason || '')
-      });
-    } catch (e) {
-      // Ignore runtime bridge failures.
-    }
-  }
-
-  hydrateLocaleMessages();
-  if (chrome && chrome.storage && chrome.storage.onChanged) {
-    chrome.storage.onChanged.addListener((changes, areaName) => {
-      if (providerStorageRuntime
-        ? !providerStorageRuntime.isActiveAreaName(areaName)
-        : storageAreaName && areaName !== storageAreaName) {
-        return;
-      }
-      if (!changes) {
-        return;
-      }
-      if (changes[LANGUAGE_STORAGE_KEY]) {
-        currentLanguageMode = changes[LANGUAGE_STORAGE_KEY].newValue
-          ? String(changes[LANGUAGE_STORAGE_KEY].newValue)
-          : 'system';
-        refreshLocaleMessages();
-      }
-    });
-  }
-
-  logHotkeyListenerDebug('listener-ready', {
-    href: location && location.href ? location.href : ''
-  });
-  // The configured search shortcut is matched by shortcut-key-observer.js,
-  // which runs in every frame including this one. A capturing focus listener
-  // on window also sees each element focus inside the page, which is not a
-  // tab becoming visible.
-  window.addEventListener('focus', (event) => {
-    if (event && event.target !== window) {
-      return;
-    }
-    reportTabVisible('focus');
-  }, true);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      reportTabVisible('visibility');
-    }
-  }, true);
-  window.addEventListener('pageshow', () => {
-    reportTabVisible('pageshow');
-  }, true);
-
+  // This script only answers the copy-URL command: the search shortcut lives in
+  // shortcut-key-observer.js and switcher thumbnails follow the browser's own
+  // tab events, so nothing here messages the background while a page loads.
   if (chrome && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (!request) {

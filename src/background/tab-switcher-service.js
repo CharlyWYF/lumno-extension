@@ -787,9 +787,20 @@ const tabSwitcherHostTabIdByWindowId = new Map();
 
 const TAB_SWITCHER_LIMIT = 5;
 
-const TAB_SWITCHER_CAPTURE_DELAY_MS = 220;
+// Background captures (tab activation, window focus, load complete) wait for
+// the tab to stay active this long, so cycling through tabs with Ctrl+Tab or a
+// held Alt+Q captures only the tab the user stops on.
+const TAB_SWITCHER_CAPTURE_SETTLE_MS = 800;
 
-const TAB_SWITCHER_PRIORITY_CAPTURE_DELAY_MS = 90;
+// An activation or window focus does not re-capture a tab whose thumbnail of
+// the same URL is younger than this; a finished load always re-captures.
+const TAB_SWITCHER_THUMBNAIL_FRESH_MS = 60 * 1000;
+
+const TAB_SWITCHER_CAPTURE_REASON_LOAD_COMPLETE = 'updated-complete';
+
+// Opening the switcher waits at most this long for a fresh shot of the
+// current tab; a slower capture is patched into the open switcher.
+const TAB_SWITCHER_OPEN_CAPTURE_BUDGET_MS = 120;
 
 const TAB_SWITCHER_CAPTURE_HIDE_PAINT_WAIT_MS = 48;
 
@@ -819,8 +830,11 @@ let tabSwitcherThumbnailCaptureChain = Promise.resolve(false);
 
 let tabSwitcherLastCaptureAt = 0;
 
-// Recent-tab switcher state: hydrated from storage on wake, debounced write
-// flushed on runtime.onSuspend.
+// Recent-tab switcher state: hydrated from storage on wake, written after a
+// short debounce. That timer is what saves the state: Chrome does not reliably
+// dispatch runtime.onSuspend to MV3 service workers (an idle worker lives far
+// longer than the debounce anyway), while Firefox's event pages do get it, so
+// the onSuspend flush only covers an event page unloaded with a write pending.
 let tabSwitcherStateLoaded = false;
 
 let tabSwitcherStateLoadPromise = null;
@@ -906,6 +920,11 @@ function ensureTabSwitcherStateLoaded() {
 
 function persistTabSwitcherState() {
   tabSwitcherStatePersistTimer = null;
+  if (!tabSwitcherStateLoaded) {
+    // Writing now would replace the stored state with only this wake's
+    // changes; the load merges them and schedules the write itself.
+    return Promise.resolve(false);
+  }
   return setTabSwitcherStateToStorage(recentTabTracker.exportState());
 }
 
@@ -926,6 +945,7 @@ function flushPendingTabSwitcherState() {
     return Promise.resolve(false);
   }
   clearTimeout(tabSwitcherStatePersistTimer);
+  tabSwitcherStatePersistTimer = null;
   return persistTabSwitcherState().catch((error) => {
     warnBackgroundFailure('Failed to save the recent-tab switcher state.')(error);
     return false;
@@ -987,13 +1007,29 @@ function isSwitcherThumbnailRefreshNeeded(state) {
   return !status;
 }
 
+// Opening the switcher takes a fresh shot of the current tab, unless the page
+// is still loading or Chrome's two-captures-per-second limit would refuse it.
 function shouldPreCaptureActiveSwitcherThumbnailBeforePayload(tab) {
   const isActive = tab && tab.active === true;
   if (!isActive || tab.status === 'loading' || !canCaptureSwitcherThumbnail(tab)) {
     return false;
   }
   const state = getSwitcherThumbnailStateForPayload(tab, getResolvedTabUrl(tab));
-  return isSwitcherThumbnailRefreshNeeded(state);
+  if (state && state.status === 'restricted') {
+    return false;
+  }
+  return (Date.now() - tabSwitcherLastCaptureAt) >= TAB_SWITCHER_CAPTURE_MIN_INTERVAL_MS ||
+    isSwitcherThumbnailRefreshNeeded(state);
+}
+
+function waitForSwitcherOpenCapture(captureReady) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, TAB_SWITCHER_OPEN_CAPTURE_BUDGET_MS);
+    Promise.resolve(captureReady).catch(() => false).then(() => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
 }
 
 function findSwitcherTabById(tabList, tabId) {
@@ -1660,7 +1696,74 @@ function captureSwitcherThumbnailNow(request) {
   }, request && request.reason).catch(() => {});
 }
 
+function hasFreshSwitcherThumbnail(tab, now) {
+  const state = recentTabTracker.getThumbnailState(tab.id, getResolvedTabUrl(tab));
+  const capturedAt = Number(state && state.capturedAt) || 0;
+  // getThumbnailState drops the image when the tab's URL changed since.
+  return Boolean(state && state.dataUrl) &&
+    capturedAt > 0 &&
+    (now - capturedAt) < TAB_SWITCHER_THUMBNAIL_FRESH_MS;
+}
+
+function isSwitcherThumbnailCaptureWanted(tab, reason, now) {
+  return reason === TAB_SWITCHER_CAPTURE_REASON_LOAD_COMPLETE ||
+    !hasFreshSwitcherThumbnail(tab, now);
+}
+
+function isSwitcherWindowFocused(windowId) {
+  if (!chrome.windows || typeof chrome.windows.get !== 'function') {
+    return Promise.resolve(true);
+  }
+  return new Promise((resolve) => {
+    try {
+      chrome.windows.get(windowId, (win) => {
+        if (chrome.runtime && chrome.runtime.lastError) {
+          resolve(false);
+          return;
+        }
+        resolve(Boolean(win && win.focused !== false));
+      });
+    } catch (error) {
+      resolve(false);
+    }
+  });
+}
+
+// Re-checked when the settle timer fires: the tab must still be the active tab
+// of a focused window, on a URL whose thumbnail is still wanted.
+function getSettledSwitcherCaptureTab(request) {
+  if (!tabSwitcherEnabledCache || typeof chrome.tabs.get !== 'function') {
+    return Promise.resolve(null);
+  }
+  return new Promise((resolve) => {
+    chrome.tabs.get(request.tabId, (freshTab) => {
+      if ((chrome.runtime && chrome.runtime.lastError) ||
+          !freshTab ||
+          freshTab.active !== true ||
+          freshTab.windowId !== request.windowId ||
+          !canCaptureSwitcherThumbnail(freshTab) ||
+          !isSwitcherThumbnailCaptureWanted(freshTab, request.reason, Date.now())) {
+        resolve(null);
+        return;
+      }
+      isSwitcherWindowFocused(freshTab.windowId).then((focused) => {
+        resolve(focused ? freshTab : null);
+      });
+    });
+  });
+}
+
 function scheduleSwitcherThumbnailCapture(tab, reason) {
+  if (!backgroundSettingsLoaded) {
+    whenBackgroundSettingsReady(() => {
+      scheduleSwitcherThumbnailCapture(tab, reason);
+    });
+    return;
+  }
+  // Thumbnails exist only for the switcher's previews.
+  if (!tabSwitcherEnabledCache) {
+    return;
+  }
   if (!canCaptureSwitcherThumbnail(tab)) {
     logSwitcherThumbnailCaptureFailure(tab, getSwitcherThumbnailCaptureFailureReason(tab), reason);
     return;
@@ -1669,27 +1772,53 @@ function scheduleSwitcherThumbnailCapture(tab, reason) {
     logSwitcherThumbnailCaptureFailure(tab, 'capture-api-unavailable', reason);
     return;
   }
-  const hasPriority = consumeSwitcherThumbnailPriority(tab, reason);
-  reason = hasPriority ? `priority-${reason || 'visible'}` : reason;
-  clearScheduledSwitcherThumbnailCapture(tab.id);
-  markSwitcherThumbnailStatus(tab, 'pending', reason, '');
+  const requestReason = String(reason || '');
   const now = Date.now();
-  const delay = hasPriority ? TAB_SWITCHER_PRIORITY_CAPTURE_DELAY_MS : TAB_SWITCHER_CAPTURE_DELAY_MS;
+  if (!isSwitcherThumbnailCaptureWanted(tab, requestReason, now)) {
+    return;
+  }
+  const hasPriority = consumeSwitcherThumbnailPriority(tab, requestReason);
+  clearScheduledSwitcherThumbnailCapture(tab.id);
   const request = {
     tabId: tab.id,
     windowId: tab.windowId,
-    reason: reason || '',
+    reason: requestReason,
+    captureReason: hasPriority ? `priority-${requestReason || 'visible'}` : requestReason,
     requestedAt: now
   };
   const timer = setTimeout(() => {
-    tabSwitcherThumbnailTimersByTabId.delete(tab.id);
-    // Capture failures are already logged by captureSwitcherThumbnailForTab.
-    enqueueSwitcherThumbnailCapture({
-      id: request.tabId,
-      windowId: request.windowId
-    }, request.reason).catch(() => {});
-  }, delay);
+    tabSwitcherThumbnailTimersByTabId.delete(request.tabId);
+    getSettledSwitcherCaptureTab(request).then((settledTab) => {
+      if (!settledTab) {
+        return;
+      }
+      // Capture failures are already logged by captureSwitcherThumbnailForTab.
+      enqueueSwitcherThumbnailCapture(settledTab, request.captureReason).catch(() => {});
+    }).catch(() => {});
+  }, TAB_SWITCHER_CAPTURE_SETTLE_MS);
   tabSwitcherThumbnailTimersByTabId.set(tab.id, timer);
+}
+
+function clearSwitcherThumbnailsForDisabledSwitcher() {
+  tabSwitcherThumbnailTimersByTabId.forEach((timer) => clearTimeout(timer));
+  tabSwitcherThumbnailTimersByTabId.clear();
+  tabSwitcherThumbnailPriorityByTabId.clear();
+  return ensureTabSwitcherStateLoaded().catch(() => false).then(() => {
+    if (!recentTabTracker.clearThumbnails()) {
+      return false;
+    }
+    if (tabSwitcherStatePersistTimer !== null) {
+      clearTimeout(tabSwitcherStatePersistTimer);
+    }
+    return persistTabSwitcherState();
+  }).catch(warnBackgroundFailure('Failed to clear the recent-tab switcher thumbnails.'));
+}
+
+function applyTabSwitcherEnabledSetting(enabled) {
+  tabSwitcherEnabledCache = enabled === true;
+  if (!tabSwitcherEnabledCache) {
+    clearSwitcherThumbnailsForDisabledSwitcher();
+  }
 }
 
 function normalizeSwitcherTabForPayload(tab, currentTabId) {
@@ -2213,15 +2342,28 @@ function triggerTabSwitcherForTab(tab, source, commandObservedAt) {
         }
       };
       clearScheduledSwitcherThumbnailCapture(activeTab.id);
+      let openCaptureReady = Promise.resolve(false);
       if (shouldTrackSwitcherTab(activeTab)) {
         recordRecentSwitcherTab(activeTab);
         if (shouldPreCaptureActiveSwitcherThumbnailBeforePayload(activeTab)) {
-          captureSwitcherThumbnailForTab(
+          // A capture that finishes after the switcher opened is patched in.
+          openCaptureReady = captureSwitcherThumbnailForTab(
             activeTab,
             TAB_SWITCHER_CAPTURE_REASON_COMMAND_IMMEDIATE
           ).catch(() => false);
         }
       }
+      return waitForSwitcherOpenCapture(openCaptureReady).then(() => ({
+        tabList,
+        activeTab,
+        shortcut,
+        finishOpeningAndArmShortcutRelease
+      }));
+    }).then((openContext) => {
+      if (!openContext) {
+        return;
+      }
+      const { tabList, activeTab, shortcut, finishOpeningAndArmShortcutRelease } = openContext;
       const items = getRecentTabsForSwitcher(tabList, activeTab.id);
       markSwitcherThumbnailPriorityForItems(items, tabList, 'command-payload');
       if (!items.length) {
