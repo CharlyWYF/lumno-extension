@@ -539,9 +539,9 @@
       const target = { kind: 'shortcut-folder', surface: 'folder', element: tile,
         folderId: tile.getAttribute('data-bookmark-drop-folder-id'),
         title: tile.getAttribute('data-shortcut-title') || '' };
-      const valid = state === pageState.shortcutDragState
-        ? isValidExternalBookmarkDropTarget(state, target)
-        : isValidBookmarkFolderDropTarget(state, target);
+      const valid = state === pageState.bookmarkDragState
+        ? isValidBookmarkFolderDropTarget(state, target)
+        : isValidExternalBookmarkDropTarget(state, target);
       return valid ? target : { kind: 'blocked', surface: 'folder' };
     }
 
@@ -620,6 +620,12 @@
           getShortcutStoreOptions()
         )
         : null;
+      return getShortcutInsertionDropTarget(record, pointerX, pointerY);
+    }
+
+    // Where `record` would join the shortcuts under the pointer, with the
+    // line to show there; null (and a blocked cursor) when it cannot.
+    function getShortcutInsertionDropTarget(record, pointerX, pointerY) {
       const slot = getShortcutInsertionSlotAt(pointerX, pointerY, null);
       const canMove = Boolean(NEWTAB_CROSS_SURFACE_DRAG.planBookmarkToShortcut({
         shortcuts: pageState.newtabShortcuts,
@@ -782,14 +788,16 @@
           }
           const nextShortcuts = planShortcuts(sourceShortcut, destinationShortcut);
           if (!nextShortcuts) throw new Error('Shortcuts changed during the transfer.');
-          if (!await persistShortcutState(nextShortcuts, destinationShortcut)) {
+          // A bookmark-only transfer leaves the shortcuts alone.
+          if ((sourceShortcut || destinationShortcut) &&
+              !await persistShortcutState(nextShortcuts, destinationShortcut)) {
             if (rollbackBookmark) {
               await rollbackBookmark();
               rollbackBookmark = null;
             }
             return false;
           }
-          shortcutsSaved = true;
+          shortcutsSaved = Boolean(sourceShortcut || destinationShortcut);
           // Save the destination before removing the source. Folder aliases keep
           // the original tree, including every nested bookmark id.
           if (!to) await bookmarksRuntime.remove(bookmarkId);
@@ -1795,36 +1803,43 @@
         }).finally(() => { pageState.bookmarkMoveHistoryBusy = false; });
         return true;
       }
-      if (record.kind === 'shortcut-delete') {
+      if (record.kind === 'shortcut-delete' || record.kind === 'shortcut-add') {
+        // Undoing a removal puts the shortcut back; undoing an addition takes it out.
+        const restores = (record.kind === 'shortcut-delete') === isUndo;
         const snapshot = record.snapshot;
         const exists = pageState.newtabShortcuts.some((item) => item.id === snapshot.id ||
           (snapshot.type === 'folder'
             ? !snapshot.folderRef && !item.folderRef && item.type === 'folder' && item.folderId === snapshot.folderId
             : item.url === snapshot.url));
-        if (isUndo && (exists || pageState.newtabShortcuts.length >= MAX_NEWTAB_SHORTCUTS)) {
+        if (restores && (exists || pageState.newtabShortcuts.length >= MAX_NEWTAB_SHORTCUTS)) {
           pageState.bookmarkMoveHistoryBusy = false;
           showToast(t('toast_error', 'Operation failed. Please try again.'), true);
           return true;
         }
         const next = pageState.newtabShortcuts.slice();
-        if (isUndo) {
+        if (restores) {
           next.splice(Math.min(record.index, next.length), 0, snapshot);
         } else {
           const index = next.findIndex((item) => item.id === snapshot.id);
           if (index >= 0) next.splice(index, 1);
         }
-        const iconChange = isUndo && record.iconDataUrl
+        const iconChange = restores && record.iconDataUrl
           ? { shortcutId: snapshot.id, action: 'replace', dataUrl: record.iconDataUrl }
           : undefined;
+        const messages = record.kind === 'shortcut-add'
+          ? (isUndo
+            ? ['newtab_shortcuts_add_undone', 'Shortcut add undone · {shortcut} to redo']
+            : ['newtab_shortcuts_add_redone', 'Shortcut added again · {shortcut} to undo'])
+          : (isUndo
+            ? ['newtab_shortcuts_remove_undone', 'Shortcut restored · {shortcut} to redo']
+            : ['newtab_shortcuts_remove_redone', 'Shortcut removed · {shortcut} to undo']);
         persistShortcuts(next, '', iconChange).then((saved) => {
           if (!saved) return;
           if (isUndo) bookmarkMoveHistory.commitUndo();
           else bookmarkMoveHistory.commitRedo();
-          showToast(formatMessage(
-            isUndo ? 'newtab_shortcuts_remove_undone' : 'newtab_shortcuts_remove_redone',
-            isUndo ? 'Shortcut restored · {shortcut} to redo' : 'Shortcut removed · {shortcut} to undo',
-            { shortcut: isUndo ? getBookmarkRedoShortcutLabel() : getBookmarkUndoShortcutLabel() }
-          ));
+          showToast(formatMessage(messages[0], messages[1], {
+            shortcut: isUndo ? getBookmarkRedoShortcutLabel() : getBookmarkUndoShortcutLabel()
+          }));
         }).finally(() => { pageState.bookmarkMoveHistoryBusy = false; });
         return true;
       }
@@ -2280,6 +2295,7 @@
       getExternalBookmarkSurfacePoint,
       isValidExternalBookmarkDropTarget,
       getShortcutFolderDropTargetAt,
+      getShortcutInsertionDropTarget,
       getExternalBookmarkDropTarget,
       isPointOverShortcutDropSurface,
       applyBookmarkShortcutTransfer,

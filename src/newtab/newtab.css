@@ -1671,51 +1671,116 @@ body[data-nt-enter="run"] .x-nt-bookmark-cascade-debug-control {
 .x-nt-recent-header-bar .x-nt-section-mode-select ._x_extension_select_trigger_2024_unique_ {
   color: var(--x-nt-recent-heading-color, #000000);
 }
-/* A heading mode switch reads like the bookmark heading at rest; its chevron and fill
-   appear only while it is pointed at, focused or open. */
-.x-nt-section-mode-select.x-nt-section-mode-select--heading {
-  width: auto;
-  min-width: 0;
+/* The recent heading is its own display mode switch: at rest only the current mode's name
+   shows, flush with the section edge; pointed at, focused or tapped, the other modes grow
+   in to its right on a rounded track with a raised, sliding pill. */
+.x-nt-recent-mode-switch {
+  --x-nt-recent-mode-inset: 3px;
+  --x-nt-recent-mode-pad-x: 10px;
+  --x-nt-recent-mode-pad-y: 6px;
+  --x-nt-recent-mode-track-bg: rgb(15 23 42 / 5%);
+  --x-nt-recent-mode-track-border: rgb(15 23 42 / 6%);
+  --x-nt-recent-mode-track-blur: none;
+  --x-nt-recent-mode-pill-bg: #ffffff;
+  --x-nt-recent-mode-pill-shadow: 0 1px 2px rgb(15 23 42 / 8%), 0 2px 8px rgb(15 23 42 / 8%);
+  --x-nt-recent-mode-expanded-ink: var(--x-nt-recent-heading-color, #000000);
+  --x-nt-recent-mode-muted-opacity: 0.5;
+  flex: 0 0 auto;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: var(--x-nt-recent-mode-inset);
+  margin: calc(-1 * (var(--x-nt-recent-mode-inset) + var(--x-nt-recent-mode-pad-y)))
+    calc(-1 * (var(--x-nt-recent-mode-inset) + var(--x-nt-recent-mode-pad-x)));
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: inset 0 0 0 0.5px transparent;
+  color: var(--x-nt-recent-heading-color, #000000);
+  transition: background-color var(--lumno-duration-md) ease,
+    color var(--lumno-duration-md) ease,
+    box-shadow var(--lumno-duration-md) ease,
+    backdrop-filter var(--lumno-duration-md) ease;
+  z-index: 12;
 }
-.x-nt-section-mode-select--heading ._x_extension_select_trigger_2024_unique_ {
-  width: auto;
-  min-width: 0;
-  height: auto;
-  gap: 2px;
-  padding: 3px 5px;
-  margin: -3px -5px;
-  border-width: 0;
-  border-radius: var(--lumno-radius-sm);
+.x-nt-recent-mode-switch[data-expanded="true"] {
+  color: var(--x-nt-recent-mode-expanded-ink);
+  background: var(--x-nt-recent-mode-track-bg);
+  box-shadow: inset 0 0 0 0.5px var(--x-nt-recent-mode-track-border);
+  -webkit-backdrop-filter: var(--x-nt-recent-mode-track-blur);
+  backdrop-filter: var(--x-nt-recent-mode-track-blur);
+}
+body[data-theme="dark"] .x-nt-recent-mode-switch {
+  --x-nt-recent-mode-track-bg: rgb(255 255 255 / 6%);
+  --x-nt-recent-mode-track-border: rgb(255 255 255 / 8%);
+  --x-nt-recent-mode-pill-bg: rgb(255 255 255 / 14%);
+  --x-nt-recent-mode-pill-shadow: 0 1px 2px rgb(0 0 0 / 24%);
+}
+.x-nt-recent-mode-switch-indicator {
+  position: absolute;
+  top: var(--x-nt-recent-mode-inset);
+  bottom: var(--x-nt-recent-mode-inset);
+  left: var(--x-nt-recent-mode-inset);
+  width: 0;
+  border-radius: 999px;
+  background: var(--x-nt-recent-mode-pill-bg);
+  box-shadow: var(--x-nt-recent-mode-pill-shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform var(--lumno-duration-xl) var(--lumno-ease-emphasized),
+    width var(--lumno-duration-xl) var(--lumno-ease-emphasized),
+    opacity var(--lumno-duration-sm) ease;
+}
+.x-nt-recent-mode-switch[data-expanded="true"] .x-nt-recent-mode-switch-indicator {
+  opacity: 1;
+}
+.x-nt-recent-mode-switch-option {
+  all: unset;
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  width: var(--x-nt-recent-mode-option-width, auto);
+  padding: var(--x-nt-recent-mode-pad-y) var(--x-nt-recent-mode-pad-x);
+  overflow: hidden;
+  border-radius: 999px;
+  cursor: pointer;
   font-family: "Open Sans", "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI",
     "Helvetica Neue", Arial, sans-serif;
   font-size: var(--x-nt-dock-heading-size, 14px);
   font-weight: 500;
   line-height: 1;
+  white-space: nowrap;
+  color: inherit;
+  transition: width var(--lumno-duration-xl) var(--lumno-ease-emphasized),
+    padding var(--lumno-duration-xl) var(--lumno-ease-emphasized),
+    opacity var(--lumno-duration-md) ease;
 }
-.x-nt-section-mode-select--heading ._x_extension_select_label_2024_unique_ {
-  padding-right: 0;
-}
-.x-nt-section-mode-select--heading ._x_extension_select_icon_2024_unique_ {
-  position: static;
+.x-nt-recent-mode-switch-label {
   flex: 0 0 auto;
-  transform: none;
+}
+/* Collapsed, every mode but the current one folds to nothing. */
+.x-nt-recent-mode-switch[data-expanded="false"] .x-nt-recent-mode-switch-option[aria-checked="false"] {
+  width: 0;
+  padding-left: 0;
+  padding-right: 0;
   opacity: 0;
-  transition: opacity var(--lumno-duration-sm) ease, transform var(--lumno-duration-md) ease;
+  pointer-events: none;
 }
-.x-nt-section-mode-select--heading:hover ._x_extension_select_icon_2024_unique_,
-.x-nt-section-mode-select--heading[data-open="true"] ._x_extension_select_icon_2024_unique_,
-.x-nt-section-mode-select--heading
-  ._x_extension_select_trigger_2024_unique_:focus-visible
-  ._x_extension_select_icon_2024_unique_ {
-  opacity: 0.6;
+.x-nt-recent-mode-switch[data-expanded="true"] .x-nt-recent-mode-switch-option[aria-checked="false"] {
+  opacity: var(--x-nt-recent-mode-muted-opacity);
 }
-.x-nt-section-mode-select--heading[data-open="true"] ._x_extension_select_icon_2024_unique_ {
-  transform: rotate(180deg);
+.x-nt-recent-mode-switch[data-expanded="true"] .x-nt-recent-mode-switch-option[aria-checked="false"]:hover {
+  opacity: 0.85;
 }
-@media (hover: none) {
-  .x-nt-section-mode-select--heading ._x_extension_select_icon_2024_unique_ {
-    opacity: 0.6;
-  }
+.x-nt-recent-mode-switch-option:focus-visible {
+  outline: 2px solid var(--lumno-color-focus-ring);
+  outline-offset: -2px;
+}
+.x-nt-recent-mode-switch[data-instant="true"],
+.x-nt-recent-mode-switch[data-instant="true"] * {
+  transition: none !important;
 }
 .x-nt-section-mode-select:hover ._x_extension_select_trigger_2024_unique_,
 .x-nt-section-mode-select[data-open="true"] ._x_extension_select_trigger_2024_unique_ {
@@ -1961,6 +2026,68 @@ body[data-drag-source] * {
 }
 body[data-drag-blocked="true"] {
   --x-nt-drag-cursor: not-allowed;
+}
+/* A dragged recent card stays in place, faded, while a copy of it shrinks
+   into a site icon on the pointer (recent-card-drag.js). */
+.x-nt-recent-card[data-recent-dragging="true"] .x-nt-recent-card-visual,
+.x-nt-recent-card[data-recent-dragging="true"]:hover .x-nt-recent-card-visual {
+  opacity: 0.4;
+  transform: scale(0.97);
+  box-shadow: var(--x-nt-recent-card-shadow);
+  transition: transform var(--lumno-duration-xl) cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity var(--lumno-duration-xl) ease, box-shadow var(--lumno-duration-xl) ease;
+}
+.x-nt-recent-card[data-recent-dragging="true"] .x-nt-recent-pin,
+.x-nt-recent-card[data-recent-dragging="true"] .x-nt-recent-track {
+  opacity: 0;
+}
+.x-nt-recent-drag-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  will-change: transform;
+}
+.x-nt-recent-drag-ghost-body {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+}
+.x-nt-recent-drag-ghost .x-nt-recent-drag-ghost-snapshot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.x-nt-recent-drag-ghost-snapshot .x-nt-recent-card-visual {
+  height: 100%;
+  transition: none;
+}
+.x-nt-recent-drag-ghost-snapshot .x-nt-recent-inner {
+  transition: none;
+}
+.x-nt-recent-drag-ghost-icon {
+  position: absolute;
+  inset: 0;
+  width: 44px;
+  height: 44px;
+  margin: auto;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+.x-nt-recent-drag-ghost-icon .x-nt-recent-drag-ghost-favicon {
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  border-radius: 6px;
+  object-fit: contain;
 }
 .x-nt-bookmark-card[data-bookmark-dragging="true"],
 .x-nt-bookmark-card[data-bookmark-dropping="true"] {
@@ -4547,6 +4674,11 @@ body[data-wallpaper-active="true"] {
   --x-nt-wallpaper-icon-solid-bg-press: rgb(2 6 23);
   --x-nt-wallpaper-icon-solid-ink: rgb(248 250 252);
   --x-nt-wallpaper-icon-solid-ink-hover: rgb(248 250 252);
+  --x-nt-wallpaper-glass-bg: rgb(15 23 42 / 42%);
+  --x-nt-wallpaper-glass-border: rgb(255 255 255 / 12%);
+  --x-nt-wallpaper-glass-pill-bg: rgb(255 255 255 / 22%);
+  --x-nt-wallpaper-glass-pill-shadow: 0 1px 2px rgb(15 23 42 / 20%);
+  --x-nt-wallpaper-glass-ink: rgb(255 255 255);
 }
 body[data-wallpaper-active="true"] [data-wallpaper-ink="light"] {
   --x-nt-wallpaper-adaptive-ink: rgb(248 250 252 / 88%);
@@ -4559,6 +4691,11 @@ body[data-wallpaper-active="true"] [data-wallpaper-ink="light"] {
   --x-nt-wallpaper-icon-solid-bg-press: rgb(2 6 23);
   --x-nt-wallpaper-icon-solid-ink: rgb(248 250 252);
   --x-nt-wallpaper-icon-solid-ink-hover: rgb(248 250 252);
+  --x-nt-wallpaper-glass-bg: rgb(15 23 42 / 42%);
+  --x-nt-wallpaper-glass-border: rgb(255 255 255 / 12%);
+  --x-nt-wallpaper-glass-pill-bg: rgb(255 255 255 / 22%);
+  --x-nt-wallpaper-glass-pill-shadow: 0 1px 2px rgb(15 23 42 / 20%);
+  --x-nt-wallpaper-glass-ink: rgb(255 255 255);
 }
 body[data-wallpaper-active="true"] [data-wallpaper-ink="dark"] {
   --x-nt-wallpaper-adaptive-ink: rgb(15 23 42 / 78%);
@@ -4571,6 +4708,11 @@ body[data-wallpaper-active="true"] [data-wallpaper-ink="dark"] {
   --x-nt-wallpaper-icon-solid-bg-press: rgb(203 213 225);
   --x-nt-wallpaper-icon-solid-ink: rgb(30 41 59);
   --x-nt-wallpaper-icon-solid-ink-hover: rgb(30 41 59);
+  --x-nt-wallpaper-glass-bg: rgb(255 255 255 / 58%);
+  --x-nt-wallpaper-glass-border: rgb(15 23 42 / 6%);
+  --x-nt-wallpaper-glass-pill-bg: rgb(255 255 255);
+  --x-nt-wallpaper-glass-pill-shadow: 0 1px 2px rgb(15 23 42 / 8%), 0 2px 8px rgb(15 23 42 / 10%);
+  --x-nt-wallpaper-glass-ink: rgb(15 23 42);
 }
 body[data-wallpaper-active="true"]
   .x-nt-section-mode-select
@@ -4600,7 +4742,7 @@ body[data-wallpaper-active="true"] .x-nt-bookmarks-title-wrap .x-nt-section-mode
 body[data-wallpaper-active="true"] .x-nt-bookmarks-title-wrap .x-nt-bookmarks-crumb[aria-current="page"],
 body[data-wallpaper-active="true"] .x-nt-bookmarks-pager .x-nt-bookmarks-pager-btn,
 body[data-wallpaper-active="true"] .x-nt-recent-heading,
-body[data-wallpaper-active="true"] .x-nt-recent-header-bar .x-nt-section-mode-select ._x_extension_select_trigger_2024_unique_,
+body[data-wallpaper-active="true"] .x-nt-recent-mode-switch,
 body[data-wallpaper-active="true"] .x-nt-feedback-button:not([data-wallpaper-overlay-cover="true"]),
 body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button:not([data-wallpaper-overlay-cover="true"]),
 body[data-wallpaper-active="true"] .x-nt-wallpaper-button:not([data-wallpaper-overlay-cover="true"]) {
@@ -4669,22 +4811,28 @@ body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-wallpaper-icon-bg
   filter: none;
   text-shadow: none;
 }
-/* The recent heading switch still reads as its heading at rest; the solid fill shows only
-   while it is pointed at or open. */
-body[data-wallpaper-active="true"] [data-wallpaper-icon-bg="true"]
-  .x-nt-section-mode-select--heading:not(:hover):not([data-open="true"])
-  ._x_extension_select_trigger_2024_unique_ {
-  background: transparent;
-  color: var(--x-nt-wallpaper-adaptive-ink);
-  text-shadow: 0 1px 1px var(--x-nt-wallpaper-adaptive-shadow),
-    0 0 12px var(--x-nt-wallpaper-adaptive-halo);
+/* On the wallpaper the expanded recent mode switch is frosted glass rather than a sampled
+   solid: a dark veil with a light pill over dark wallpapers, a white veil with a white pill
+   over light ones. The header's drop-shadow filter would hide the glass's backdrop, and the
+   track already keeps the text legible, so both shadows go while it is open. */
+body[data-wallpaper-active="true"] .x-nt-recent-mode-switch {
+  --x-nt-recent-mode-track-bg: var(--x-nt-wallpaper-glass-bg);
+  --x-nt-recent-mode-track-border: var(--x-nt-wallpaper-glass-border);
+  --x-nt-recent-mode-track-blur: blur(14px) saturate(1.4);
+  --x-nt-recent-mode-pill-bg: var(--x-nt-wallpaper-glass-pill-bg);
+  --x-nt-recent-mode-pill-shadow: var(--x-nt-wallpaper-glass-pill-shadow);
+  --x-nt-recent-mode-expanded-ink: var(--x-nt-wallpaper-glass-ink);
+  --x-nt-recent-mode-muted-opacity: 0.6;
+}
+body[data-wallpaper-active="true"] .x-nt-recent-header-bar:has(.x-nt-recent-mode-switch[data-expanded="true"]) {
+  filter: none;
+}
+body[data-wallpaper-active="true"] .x-nt-recent-mode-switch[data-expanded="true"] {
+  color: var(--x-nt-recent-mode-expanded-ink);
+  text-shadow: none;
 }
 /* Text controls on the wallpaper fill like the wallpaper and feedback buttons while pointed
    at or open: with the wallpaper's own tone where it is busy, else with the ink's plain fill. */
-body[data-wallpaper-active="true"] [data-wallpaper-icon-bg]:not([data-wallpaper-overlay-cover="true"])
-  .x-nt-section-mode-select--heading:hover ._x_extension_select_trigger_2024_unique_,
-body[data-wallpaper-active="true"] [data-wallpaper-icon-bg]:not([data-wallpaper-overlay-cover="true"])
-  .x-nt-section-mode-select--heading[data-open="true"] ._x_extension_select_trigger_2024_unique_,
 body[data-wallpaper-active="true"] [data-wallpaper-icon-bg]:not([data-wallpaper-overlay-cover="true"])
   .x-nt-shortcut-group-more:hover,
 body[data-wallpaper-active="true"] [data-wallpaper-icon-bg]:not([data-wallpaper-overlay-cover="true"])

@@ -3,6 +3,8 @@
   function createSectionLoaders(deps) {
     const {
       isShortcutDragActive,
+      isRecentCardDragActive,
+      resumeRecentCardDragAfterFolderSwitch,
       isBookmarkTopbarMode,
       scheduleShortcutDragMove,
       updateBookmarkDragLayoutCache,
@@ -54,7 +56,8 @@
     // stays hidden when it would cover shortcuts: the shortcut area would
     // then shrink and scroll under the pointer.
     function isDragActive() {
-      return Boolean((pageState.bookmarkDragState && pageState.bookmarkDragState.isDragging) || isShortcutDragActive());
+      return Boolean((pageState.bookmarkDragState && pageState.bookmarkDragState.isDragging) ||
+        isShortcutDragActive() || isRecentCardDragActive());
     }
 
     function getShortcutAreaLimit() {
@@ -90,7 +93,8 @@
       const keepEmptyRootVisibleForDrag = Boolean(
         isAtRoot &&
         normalizedItems.length === 0 &&
-        ((pageState.bookmarkDragState && pageState.bookmarkDragState.isDragging) || isShortcutDragActive())
+        ((pageState.bookmarkDragState && pageState.bookmarkDragState.isDragging) ||
+          isShortcutDragActive() || isRecentCardDragActive())
       );
       if (pageState.bookmarkGrid) {
         if (keepEmptyRootVisibleForDrag) {
@@ -111,6 +115,7 @@
         pageState.shortcutDragState.folderSwitchPendingId = '';
         scheduleShortcutDragMove(pageState.shortcutDragState, pageState.shortcutDragState.pendingPointerX, pageState.shortcutDragState.pendingPointerY);
       }
+      resumeRecentCardDragAfterFolderSwitch(pageState.bookmarkCurrentFolderId);
       if (pageState.bookmarkDragState &&
           pageState.bookmarkDragState.isDragging &&
           pageState.bookmarkDragState.folderSwitchPendingId ===

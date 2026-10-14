@@ -335,27 +335,64 @@ describe('Recent Sites React island', () => {
     }]);
     const card = view.getCards()[0];
 
-    act(() => {
-      card.dispatchEvent(new MouseEvent('pointerdown', {
-        bubbles: true,
-        button: 0,
-        ctrlKey: true
-      }));
-    });
+    const controlPress = () => {
+      act(() => {
+        card.dispatchEvent(new MouseEvent('pointerdown', {
+          bubbles: true,
+          button: 0,
+          ctrlKey: true
+        }));
+        card.dispatchEvent(new MouseEvent('click', {
+          bubbles: true,
+          button: 0,
+          ctrlKey: true
+        }));
+      });
+    };
+    controlPress();
     expect(opened).not.toHaveBeenCalled();
 
     platform.mockReturnValue('Win32');
-    act(() => {
-      card.dispatchEvent(new MouseEvent('pointerdown', {
-        bubbles: true,
-        button: 0,
-        ctrlKey: true
-      }));
-    });
+    controlPress();
     expect(opened).toHaveBeenCalledWith('https://example.com/', {
       openInBackgroundTab: true
     });
     platform.mockRestore();
+  });
+
+  it('opens on the click that ends a press, which a drag can take over', () => {
+    const opened = vi.fn();
+    const pressed = vi.fn();
+    const { view } = createView({
+      openUrl: opened,
+      onCardPointerDown: pressed
+    });
+    renderItems(view, [{
+      title: 'Example',
+      url: 'https://example.com/'
+    }]);
+    const card = view.getCards()[0];
+
+    act(() => {
+      card.dispatchEvent(new MouseEvent('pointerdown', {
+        bubbles: true,
+        button: 0
+      }));
+    });
+    expect(pressed).toHaveBeenCalledTimes(1);
+    expect(pressed.mock.calls[0][0].element).toBe(card);
+    expect(pressed.mock.calls[0][0].item.url).toBe('https://example.com/');
+    expect(opened).not.toHaveBeenCalled();
+
+    // The click after a drag is swallowed by the page-wide drag click guard
+    // (drag-click-guard.js) before it reaches the card.
+    act(() => {
+      card.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }));
+      card.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0 }));
+    });
+    expect(opened).toHaveBeenCalledWith('https://example.com/', {
+      openInBackgroundTab: false
+    });
   });
 
   it('offers a progress tracking switch on pinned cards', async () => {

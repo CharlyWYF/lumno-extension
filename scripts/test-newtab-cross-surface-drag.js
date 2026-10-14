@@ -540,7 +540,8 @@ assert.ok(
     .includes('!isBookmarkCascadeSurfaceAtPoint(pointerX, pointerY)'),
   'an open cascade menu above the shortcuts should keep its own drop targets'
 );
-const shortcutDropTargetSource = getFunctionSource(newtabJs, 'getBookmarkDragShortcutDropTarget');
+const shortcutDropTargetSource = getFunctionSource(newtabJs, 'getBookmarkDragShortcutDropTarget') +
+  getFunctionSource(newtabJs, 'getShortcutInsertionDropTarget');
 assert.ok(
   shortcutDropTargetSource.includes("type: 'folder', folderId: node.id") &&
     shortcutDropTargetSource.includes('maxShortcuts: MAX_NEWTAB_SHORTCUTS') &&

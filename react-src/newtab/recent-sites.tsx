@@ -48,6 +48,7 @@ export interface RecentCardElement extends HTMLDivElement {
   _xTitleText?: string;
   _xPinButton?: HTMLButtonElement | null;
   _xDisposeRecentCard?: () => void;
+  // Set while a drag of the card ends, so its click does not open the site.
 }
 
 export interface RecentSitesViewOptions {
@@ -133,6 +134,13 @@ export interface RecentSitesViewOptions {
   // True while a card context menu is open or has just closed, so presses
   // meant for the menu do not open the card underneath.
   isActivationSuppressed?: () => boolean;
+  // A primary press on the card, which may become a drag onto the shortcuts
+  // or the bookmarks. The card opens on the click that ends a press.
+  onCardPointerDown?: (payload: {
+    event: PointerEvent;
+    item: RecentSiteItem;
+    element: RecentCardElement;
+  }) => void;
   // Progress tracking: 'available' on a pinned card that is not tracked,
   // '' where tracking does not apply.
   getProgressState?: (item: RecentSiteItem) => RecentProgressState;
@@ -220,6 +228,7 @@ interface NormalizedRecentSitesOptions {
   isActivationSuppressed: NonNullable<
     RecentSitesViewOptions['isActivationSuppressed']
   >;
+  onCardPointerDown: NonNullable<RecentSitesViewOptions['onCardPointerDown']>;
   getProgressState: NonNullable<RecentSitesViewOptions['getProgressState']>;
   toggleProgressTracking: NonNullable<RecentSitesViewOptions['toggleProgressTracking']>;
 }
@@ -279,7 +288,7 @@ function shouldOpenUrlInBackground(event: ActivationEvent | null): boolean {
 // On macOS a Control-click is a right-click: it opens the context menu, not
 // the card in a background tab.
 function isMacContextClick(
-  event: ReactPointerEvent<RecentCardElement>,
+  event: { ctrlKey: boolean },
   windowObj: Window
 ): boolean {
   const navigatorObj = windowObj.navigator;
@@ -420,6 +429,10 @@ function normalizeOptions(
       typeof rawOptions.isActivationSuppressed === 'function'
         ? rawOptions.isActivationSuppressed
         : () => false,
+    onCardPointerDown:
+      typeof rawOptions.onCardPointerDown === 'function'
+        ? rawOptions.onCardPointerDown
+        : () => {},
     getProgressState:
       typeof rawOptions.getProgressState === 'function'
         ? rawOptions.getProgressState
@@ -793,14 +806,18 @@ function RecentSiteCard({
       suppressClickRef.current = true;
       return;
     }
+    suppressClickRef.current = false;
     isCardPointerActiveRef.current = true;
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
     } catch {
       // Pointer capture is an optimization; navigation does not depend on it.
     }
-    suppressClickRef.current = true;
-    navigateFromCard(event);
+    options.onCardPointerDown({
+      event: event.nativeEvent,
+      item,
+      element: event.currentTarget
+    });
   }
 
   function handlePointerLeave(): void {
@@ -821,6 +838,9 @@ function RecentSiteCard({
     if (suppressClickRef.current) {
       suppressClickRef.current = false;
       event.preventDefault();
+      return;
+    }
+    if (isMacContextClick(event, options.windowObj)) {
       return;
     }
     navigateFromCard(event);

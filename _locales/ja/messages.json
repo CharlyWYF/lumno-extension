@@ -2531,6 +2531,15 @@
   "newtab_shortcuts_remove_redone": {
     "message": "ショートカットを再び削除しました · {shortcut} で元に戻す"
   },
+  "newtab_shortcuts_add_undone": {
+    "message": "ショートカットの追加を取り消しました · {shortcut} でやり直す"
+  },
+  "newtab_shortcuts_add_redone": {
+    "message": "ショートカットを再び追加しました · {shortcut} で元に戻す"
+  },
+  "newtab_recent_added_to_folder": {
+    "message": "「{folder}」に追加しました"
+  },
   "newtab_shortcuts_open_folder": {
     "message": "フォルダを開く"
   },
