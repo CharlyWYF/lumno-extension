@@ -200,11 +200,6 @@ vm.runInContext(fs.readFileSync(preloadPath, 'utf8'), sandbox, {
     'chrome-extension://lumno/assets/images/settings-bg-dark.webp'
   );
   assert(
-    optionsSource.includes('cacheOptionsThemeMode(storedMode);') &&
-      optionsSource.includes('cacheOptionsThemeMode(nextMode);'),
-    'Options should keep the synchronous theme cache current after reads and changes'
-  );
-  assert(
     html.includes('data-tab="general" data-active="true"') &&
       html.includes('data-content="general" data-active="true"'),
     'Options should statically paint the default General route'

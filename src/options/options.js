@@ -615,7 +615,6 @@
 
   const {
     THEME_STORAGE_KEY,
-    OPTIONS_THEME_PRELOAD_STORAGE_KEY,
     LANGUAGE_STORAGE_KEY,
     RECENT_MODE_STORAGE_KEY,
     RECENT_COUNT_STORAGE_KEY,
@@ -692,8 +691,6 @@
   const isMacPlatform = shortcutPlatform === 'mac';
   const OPTIONS_TARGET_SITE_SEARCH_AI = 'site-search-ai';
   const OPTIONS_TARGET_DOCUMENT_PIP = 'document-pip';
-  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-  let mediaListenerAttached = false;
   let defaultSiteSearchProviders = [];
   let customSiteSearchProviders = [];
   let customSiteSearchProviderIdsReady = true;
@@ -775,7 +772,6 @@
     return `${safePrefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
   }
 
-  let currentThemeMode = 'system';
   let currentRecentMode = 'most';
   let currentNewtabWidthMode = 'wide';
   let currentOverlaySizeMode = 'standard';
@@ -2693,7 +2689,7 @@
       refreshSyncStatus();
       refreshShortcutsStatus();
       renderShortcutReferenceList();
-      updateThemeButtons(currentThemeMode);
+      themeSection.render();
       setNewtabWidthTabState(currentNewtabWidthMode);
       setOverlaySizeTabState(currentOverlaySizeMode);
       setOverlayEnterAnimationTabState(currentOverlayEnterAnimation);
@@ -3147,59 +3143,6 @@
     });
   }
 
-  function applyResolvedTheme(resolvedTheme) {
-    document.body.setAttribute('data-theme', resolvedTheme);
-    panel.setAttribute('data-theme', resolvedTheme);
-    document.documentElement.style.colorScheme = resolvedTheme;
-    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeColorMeta) {
-      themeColorMeta.setAttribute('content', resolvedTheme === 'dark' ? '#111111' : '#f1f5f9');
-    }
-  }
-
-  function resolveTheme(mode) {
-    if (mode === 'dark') {
-      return 'dark';
-    }
-    if (mode === 'light') {
-      return 'light';
-    }
-    return mediaQuery.matches ? 'dark' : 'light';
-  }
-
-  function getThemeStorageUpdate(mode) {
-    return SETTINGS.createGlobalThemeModeStorageUpdate(mode);
-  }
-
-  function updateThemeButtons(mode) {
-    const nextMode = mode === 'dark' || mode === 'light' ? mode : 'system';
-    currentThemeMode = nextMode;
-    updateOverlayPageThemeAdaptationVisibility(nextMode);
-    themePickerController.render({
-      activeMode: nextMode,
-      options: [
-        {
-          mode: 'system',
-          labelKey: 'settings_theme_system',
-          label: getMessage('settings_theme_system', '跟随系统'),
-          previewSrc: '../../assets/images/system.svg'
-        },
-        {
-          mode: 'light',
-          labelKey: 'settings_theme_light',
-          label: getMessage('settings_theme_light', '浅色'),
-          previewSrc: '../../assets/images/light.svg'
-        },
-        {
-          mode: 'dark',
-          labelKey: 'settings_theme_dark',
-          label: getMessage('settings_theme_dark', '深色'),
-          previewSrc: '../../assets/images/dark.svg'
-        }
-      ]
-    });
-  }
-
   function updateOverlayPageThemeAdaptationVisibility(mode) {
     const nextMode = mode === 'dark' || mode === 'light' ? mode : 'system';
     const visible = nextMode === 'system';
@@ -3213,96 +3156,29 @@
     });
   }
 
-  function onMediaChange() {
-    if (!storageArea) {
-      return;
-    }
-    storageArea.get([THEME_STORAGE_KEY], (result) => {
-      const mode = result[THEME_STORAGE_KEY] || 'system';
-      if (mode === 'system') {
-        applyResolvedTheme(resolveTheme(mode));
-      }
-    });
-  }
-
   function setThemeMode(mode) {
-    if (!storageArea) {
-      return;
-    }
-    const updates = getThemeStorageUpdate(mode);
-    const nextMode = updates[THEME_STORAGE_KEY];
-    cacheOptionsThemeMode(nextMode);
-    storageArea.set(updates, () => {
-      updateThemeButtons(nextMode);
-      applyResolvedTheme(resolveTheme(nextMode));
-      if (nextMode === 'system' && !mediaListenerAttached) {
-        mediaQuery.addEventListener('change', onMediaChange);
-        mediaListenerAttached = true;
-        return;
-      }
-      if (nextMode !== 'system' && mediaListenerAttached) {
-        mediaQuery.removeEventListener('change', onMediaChange);
-        mediaListenerAttached = false;
-      }
-    });
+    themeSection.setMode(mode);
   }
-
-  function getStoredThemeMode() {
-    return new Promise((resolve) => {
-      if (!storageArea) {
-        resolve('system');
-        return;
-      }
-      storageArea.get([THEME_STORAGE_KEY], (result) => {
-        resolve((result && result[THEME_STORAGE_KEY]) || 'system');
-      });
-    });
-  }
-
-  function cacheOptionsThemeMode(mode) {
-    const nextMode = mode === 'dark' || mode === 'light' ? mode : 'system';
-    try {
-      if (window.localStorage) {
-        window.localStorage.setItem(OPTIONS_THEME_PRELOAD_STORAGE_KEY, nextMode);
-      }
-    } catch (e) {
-      // The early theme preloader falls back to the system theme when caching is unavailable.
-    }
-  }
-
-  // theme-preload.js has already painted the cached (or system) theme and
-  // marked the page ready before this runs, so there is nothing to fall back
-  // to while the stored preference loads.
-  async function initTheme() {
-    const storedMode = await getStoredThemeMode();
-    cacheOptionsThemeMode(storedMode);
-    updateThemeButtons(storedMode);
-    applyResolvedTheme(resolveTheme(storedMode));
-    if (storedMode === 'system' && !mediaListenerAttached) {
-      mediaQuery.addEventListener('change', onMediaChange);
-      mediaListenerAttached = true;
-    }
-    document.documentElement.setAttribute('data-theme-ready', 'true');
-  }
-
-  initTheme();
-  storageChanges.on(THEME_STORAGE_KEY, (changes) => {
-    const nextMode = changes[THEME_STORAGE_KEY].newValue || 'system';
-    updateThemeButtons(nextMode);
-    applyResolvedTheme(resolveTheme(nextMode));
-  });
 
   function playThemeOptionClickEffect(button) {
-    if (!button) {
-      return;
-    }
-    button.classList.remove('x-theme-clicking');
-    void button.offsetWidth;
-    button.classList.add('x-theme-clicking');
-    window.setTimeout(() => {
-      button.classList.remove('x-theme-clicking');
-    }, 260);
+    THEME.playThemeOptionClickEffect(button, window);
   }
+
+  const THEME = globalThis.LumnoOptionsTheme;
+  const themeSection = THEME.createThemeSection({
+    documentObj: document,
+    getMessage,
+    onModeShown: updateOverlayPageThemeAdaptationVisibility,
+    panel,
+    picker: themePickerController,
+    settings: SETTINGS,
+    storageArea,
+    windowObj: window
+  });
+  themeSection.init();
+  storageChanges.on(THEME_STORAGE_KEY, (changes) => {
+    themeSection.applyStorageChange(changes[THEME_STORAGE_KEY].newValue);
+  });
 
   themeButtons.forEach((button) => {
     button.addEventListener('click', function() {
