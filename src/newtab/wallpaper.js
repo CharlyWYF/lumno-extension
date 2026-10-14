@@ -202,6 +202,9 @@
         return '<i class="ri-icon ' + size + ' ' + id + '" aria-hidden="true"></i>';
       };
     const showToast = typeof options.showToast === 'function' ? options.showToast : function() {};
+    const surfaceTransparency = globalThis.LumnoSurfaceTransparency?.createRuntime({
+      documentObj: document, chromeObj: chrome, storageArea, t, showToast
+    });
     const beginToast = typeof options.beginToast === 'function'
       ? options.beginToast
       : function() {
@@ -2571,7 +2574,7 @@
 
     function bootstrapInitialWallpaperOverlay() {
       if (initialWallpaperOverlayReadyPromise) {
-        return initialWallpaperOverlayReadyPromise;
+        return initialWallpaperOverlayReadyPromise.then(() => surfaceTransparency?.ready);
       }
       initialWallpaperOverlayReadyPromise = new Promise((resolve) => {
         if (!storageArea) {
@@ -2593,7 +2596,7 @@
           resolve();
         });
       });
-      return initialWallpaperOverlayReadyPromise;
+      return initialWallpaperOverlayReadyPromise.then(() => surfaceTransparency?.ready);
     }
 
     function normalizeWallpaperEffectPrefs(value) {
@@ -6077,6 +6080,7 @@
     }
 
     function updateWallpaperLanguageStrings() {
+      surfaceTransparency?.updateLanguage();
       updateWallpaperButtonLanguageStrings();
       updateWallpaperAppearanceLanguageStrings();
       updateWallpaperOverlayControlUi();
@@ -6373,6 +6377,7 @@
       customWallpaperUrlSubmit = refs.urlSubmit;
       const quoteRuntime = options.getQuoteRuntime && options.getQuoteRuntime();
       if (quoteRuntime) quoteRuntime.bindSettings(refs, wallpaperViewController);
+      surfaceTransparency?.bindSettings(refs);
       const sectionSettings = options.getSectionPanelSettings && options.getSectionPanelSettings();
       if (sectionSettings) {
         sectionSettings.bindSettings(refs, wallpaperViewController, {

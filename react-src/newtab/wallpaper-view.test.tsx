@@ -75,6 +75,14 @@ describe('New Tab React wallpaper view', () => {
     expect(controller.getRefs().builtInGrid).toBeTruthy();
     expect(controller.getRefs().quoteEnabledToggle.getAttribute('role')).toBe('switch');
     expect(controller.getRefs().quoteBody.hidden).toBe(true);
+    for (const name of ['search', 'shortcut']) {
+      const slider = controller.getRefs()[`${name}TransparencySlider`];
+      expect(slider.getAttribute('type')).toBe('range');
+      expect(slider.getAttribute('min')).toBe('0');
+      expect(slider.getAttribute('max')).toBe('100');
+      expect(controller.getRefs()[`${name}TransparencyValue`]).toBeTruthy();
+      expect(controller.getRefs()[`${name}TransparencyReset`]).toBeTruthy();
+    }
     expect(controller.getRefs().quoteFileInput.getAttribute('accept')).toContain('.txt');
     expect(controller.getRefs().quoteFileInput.getAttribute('accept')).toContain('.md');
     const quoteTabGroups = controller.getRefs().quoteBody.querySelectorAll('.x-nt-segmented-tabs');
@@ -198,7 +206,7 @@ describe('New Tab React wallpaper view', () => {
     const sliderRows = controller.control.querySelectorAll<HTMLElement>(
       '.x-nt-range-slider-row'
     );
-    expect(sliderRows).toHaveLength(16);
+    expect(sliderRows).toHaveLength(18);
     sliderRows.forEach((row) => {
       const slider = row.querySelector<HTMLInputElement>('input[type="range"]');
       const valueInput = row.querySelector<HTMLInputElement>('input[type="number"]');

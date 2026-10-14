@@ -49,6 +49,22 @@ const DEFAULT_EFFECT_INK_TONES: EffectInkToneItem[] = [
 
 const ref = (name: string) => ({ 'data-wallpaper-ref': name });
 
+function TransparencyControl({ name }: { name: 'search' | 'shortcut' }) {
+  return <div className="x-nt-overlay-control">
+    <RangeSliderField
+      label={<span {...ref(`${name}TransparencyLabel`)} className="x-nt-appearance-setting-title" />}
+      {...ref(`${name}TransparencySlider`)}
+      className="x-nt-overlay-slider-wrap"
+      inputClass="x-nt-overlay-slider"
+      min="0" max="100" step="1" defaultValue="0" data-value-suffix="%"
+      rowClassName="x-nt-range-slider-row"
+      valueInputProps={{ ...ref(`${name}TransparencyValue`), defaultValue: '0', inputMode: 'numeric' }}
+      resetButtonProps={{ ...ref(`${name}TransparencyReset`), disabled: true }}
+    />
+    <p {...ref(`${name}TransparencyHint`)} className="x-nt-surface-transparency-hint" />
+  </div>;
+}
+
 function Switch({
   ariaLabel,
   name
@@ -625,6 +641,7 @@ function WallpaperPanel({ model }: { model: Record<string, any> }) {
                   marks={tickMarks(model.searchWidth.ticks)}
                 />
               </div>
+              <TransparencyControl name="search" />
               <div className="x-nt-appearance-setting-row">
                 <span className="x-nt-appearance-setting-title-group">
                   <span
@@ -758,6 +775,7 @@ function WallpaperPanel({ model }: { model: Record<string, any> }) {
                 role="region"
               >
                 <div className="x-nt-shortcuts-accordion-details-inner">
+                  <TransparencyControl name="shortcut" />
                   <div className="x-nt-appearance-setting-row">
                     <span
                       {...ref('shortcutAddTitle')}

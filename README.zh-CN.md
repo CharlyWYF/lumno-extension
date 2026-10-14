@@ -41,7 +41,7 @@
   </a>
 </p>
 
-<p align="center">当前版本：<code>1.0.6</code>（自定义分支）</p>
+<p align="center">当前版本：<code>1.0.7</code>（自定义分支）</p>
 
 本分支在“最近访问 / 最常访问”的显示模式中增加“自定义”。选择后点击“管理网站”，即可添加、编辑、移除和调整网站顺序，最多保存 24 个网站，超出当前行数时可翻页。列表保存在本设备。详见[自定义网站说明](docs/custom-recent-sites.md)。
 
@@ -52,6 +52,8 @@
 1.0.5 将图钉补齐到三种书签视图及嵌套菜单；“每日句子”可导入本地 Markdown 句库；关闭其他标签页前提供明确取消／确认。详见[交互更新说明](docs/navigation-1.0.5.md)。
 
 1.0.6 支持 TXT 和 MD 句库，每个非空正文行独立作为一句。详见[每行一句的导入说明](docs/quotes-import-1.0.6.md)。
+
+1.0.7 增加搜索框和快捷方式图标底衬的独立透明度调节。详见[透明度设置](docs/surface-transparency.md)。
 
 <img width="1200" height="480" alt="Lumno Chrome 命令栏插件：在任意网页搜索标签页、书签和历史记录" src="./assets/images/readme/banner.webp" decoding="async" />
 

@@ -19,7 +19,8 @@ assert.strictEqual(settings.addStorageChangeListener({
   storage: { onChanged: { addListener() {} } }
 }, null), false);
 
-assert.strictEqual(settings.CHROME_SYNC_STORAGE_KEYS.length, 77);
+assert.strictEqual(settings.CHROME_SYNC_STORAGE_KEYS.length, 78);
+assert(settings.CHROME_SYNC_STORAGE_KEYS.includes(settings.NEWTAB_SURFACE_TRANSPARENCY_STORAGE_KEY));
 assert.strictEqual(
   new Set(settings.CHROME_SYNC_STORAGE_KEYS).size,
   settings.CHROME_SYNC_STORAGE_KEYS.length

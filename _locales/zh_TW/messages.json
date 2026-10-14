@@ -1,4 +1,9 @@
 {
+  "newtab_search_transparency": { "message": "搜尋框透明度" },
+  "newtab_shortcut_transparency": { "message": "底襯透明度" },
+  "newtab_transparency_hint": { "message": "0% 保留原底色，100% 完全透明；不影響文字與圖示。" },
+  "newtab_transparency_reset": { "message": "重設透明度" },
+  "newtab_transparency_save_error": { "message": "透明度儲存失敗，請重試。" },
   "shortcut_bookmarks_choose": {
     "message": "從書籤選擇"
   },

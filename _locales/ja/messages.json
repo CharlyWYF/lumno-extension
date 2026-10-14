@@ -1,4 +1,9 @@
 {
+  "newtab_search_transparency": { "message": "検索ボックスの透明度" },
+  "newtab_shortcut_transparency": { "message": "アイコン背景の透明度" },
+  "newtab_transparency_hint": { "message": "0% は元の背景、100% は完全に透明です。文字とアイコンは変わりません。" },
+  "newtab_transparency_reset": { "message": "透明度をリセット" },
+  "newtab_transparency_save_error": { "message": "透明度を保存できませんでした。もう一度お試しください。" },
   "shortcut_bookmarks_choose": {
     "message": "ブックマークから選択"
   },

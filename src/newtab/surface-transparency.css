@@ -1,0 +1,24 @@
+/* Scale only the surface paint, never the controls, labels or favicon artwork.
+   At zero the original theme and adaptive wallpaper styling are unchanged. */
+body[data-search-transparency][data-lumno-page="newtab"]:not([data-nt-suggestions-open="true"]) #_x_extension_newtab_root_2024_unique_ {
+  background: color-mix(in srgb, var(--x-nt-panel-bg) calc(var(--x-nt-search-surface-strength) * 100%), transparent);
+  border-color: color-mix(in srgb, var(--x-nt-search-shell-border) calc(var(--x-nt-search-surface-strength) * 100%), transparent);
+  backdrop-filter: blur(calc(var(--x-nt-panel-blur, 24px) * var(--x-nt-search-surface-strength)));
+  -webkit-backdrop-filter: blur(calc(var(--x-nt-panel-blur, 24px) * var(--x-nt-search-surface-strength)));
+}
+body[data-search-transparency="100"]:not([data-nt-suggestions-open="true"]) #_x_extension_newtab_root_2024_unique_ {
+  box-shadow: none;
+}
+body[data-shortcut-transparency] .x-nt-shortcut-icon:not(.x-nt-shortcut-icon--add) {
+  background: color-mix(in srgb, var(--x-nt-shortcut-wallpaper-icon-bg, var(--x-nt-shortcut-icon-bg, rgba(241, 245, 249, 0.9))) calc(var(--x-nt-shortcut-surface-strength) * 100%), transparent);
+}
+body[data-theme="dark"][data-shortcut-transparency] .x-nt-shortcut-icon:not(.x-nt-shortcut-icon--add) {
+  background: color-mix(in srgb, var(--x-nt-shortcut-wallpaper-icon-bg, var(--x-nt-shortcut-icon-bg, rgba(255, 255, 255, 0.09))) calc(var(--x-nt-shortcut-surface-strength) * 100%), transparent);
+}
+.x-nt-surface-transparency-hint {
+  margin: 6px 0 0;
+  color: var(--x-nt-muted);
+  font-size: var(--lumno-font-size-sm, 12px);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}

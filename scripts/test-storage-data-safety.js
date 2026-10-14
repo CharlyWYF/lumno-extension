@@ -18,6 +18,8 @@ const expectedSyncKeys = [
   '_x_extension_newtab_input_auto_focus_enabled_2026_unique_',
   // Additive preference: missing values leave daily quotes disabled.
   '_x_extension_newtab_quote_prefs_2026_unique_',
+  // Additive appearance preference: absent values retain original surfaces.
+  '_x_extension_newtab_surface_transparency_2026_unique_',
   '_x_extension_newtab_theme_mode_2026_unique_',
   '_x_extension_newtab_theme_scope_2026_unique_',
   '_x_extension_newtab_zen_mode_2026_unique_',

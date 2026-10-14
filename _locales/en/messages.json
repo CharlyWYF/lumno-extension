@@ -1,4 +1,9 @@
 {
+  "newtab_search_transparency": { "message": "Search box transparency" },
+  "newtab_shortcut_transparency": { "message": "Icon background transparency" },
+  "newtab_transparency_hint": { "message": "0% keeps the original background; 100% is fully transparent. Text and icons stay unchanged." },
+  "newtab_transparency_reset": { "message": "Reset transparency" },
+  "newtab_transparency_save_error": { "message": "Could not save transparency. Try again." },
   "shortcut_bookmarks_choose": {
     "message": "Choose from bookmarks"
   },
