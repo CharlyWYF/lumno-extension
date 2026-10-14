@@ -5,7 +5,7 @@
 <h1 align="center">Lumno: Command Bar & New Tab for Chrome</h1>
 
 <p align="center">
-  A free, open-source, Spotlight-style command bar and customizable new tab page for Chrome, Edge, Brave, Arc and other Chromium browsers, with a build for Firefox, Zen and other Firefox-based browsers.
+  A free, open-source, Spotlight-style command bar and customizable new tab page for Chrome, Edge and Firefox, plus Brave, Arc and other Chromium browsers and Firefox-based browsers like Zen.
   <br />
   Search open tabs, bookmarks and history, jump to any URL, and launch site or AI search from one keyboard shortcut.
 </p>
@@ -38,6 +38,9 @@
   </a><br />
   <a href="https://microsoftedge.microsoft.com/addons/detail/pfbklkaefmfamjpibfiapaiihlddhchc">
     <img src="./assets/images/readme/microsoft-edge-addons-badge.png" alt="Get Lumno from Microsoft Edge Add-ons" width="200" />
+  </a><br />
+  <a href="https://addons.mozilla.org/firefox/addon/lumno-command-bar-new-tab/">
+    <img src="./assets/images/readme/firefox-get-the-addon-badge.png" alt="Get Lumno from Firefox Add-ons" width="200" />
   </a>
 </p>
 
@@ -120,7 +123,7 @@ Firefox already uses `Cmd+Shift+K` / `Ctrl+Shift+K` and similar keys, so the Fir
 | Google Chrome | [Chrome Web Store](https://chromewebstore.google.com/detail/nggfkkbmogmadfoikakkfegkoilfcfao) |
 | Microsoft Edge | [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/pfbklkaefmfamjpibfiapaiihlddhchc) |
 | Brave, Arc, Vivaldi, Opera and other Chromium browsers | [Chrome Web Store](https://chromewebstore.google.com/detail/nggfkkbmogmadfoikakkfegkoilfcfao) |
-| Firefox 140+, Zen, LibreWolf, Floorp and other Firefox-based browsers | Not yet listed on Firefox Add-ons; build it from source (see [Development](#development)) |
+| Firefox 140+, Zen, LibreWolf, Floorp and other Firefox-based browsers | [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/lumno-command-bar-new-tab/) |
 
 To install from source:
 
@@ -150,7 +153,7 @@ Lumno is built for Chromium browsers and also ships a Firefox build. Browsers bu
 | Tab switcher on `about:` pages | Works differently | Shows the browser's logo instead of a page preview, because Firefox only returns a blurred capture of those pages |
 | New Tab search box focus | Works differently | Firefox focuses the address bar on new tabs; with auto focus on, Lumno reopens the tab so focus lands in its search box |
 | "Open shortcut settings" | Works differently | Opens the Add-ons Manager; choose **Manage Extension Shortcuts** from the gear menu |
-| Rating prompts and review links | Hidden | Until Lumno is listed on Firefox Add-ons |
+| Rating prompts and review links | Hidden | Not linked to the Firefox Add-ons review page yet |
 | Settings sync | Works differently | Uses Firefox Sync instead of Chrome sync. WebDAV sync works across Chrome and Firefox, including both open on the same computer |
 
 **Chromium-based browsers.** Brave, Arc, Vivaldi, Opera and others use the Chrome Web Store build with the same features as Chrome, though some reserve or remap extension shortcuts. In Dia, the New Tab page is unavailable but the command bar works; if its shortcut does nothing, set "Open command bar" from **In Dia** to **Global** in the browser's shortcut settings.

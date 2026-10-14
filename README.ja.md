@@ -5,7 +5,7 @@
 <h1 align="center">Lumno：Chrome 向けコマンドバー & 新しいタブ拡張機能</h1>
 
 <p align="center">
-  無料・オープンソースの Chrome / Edge 拡張機能。Spotlight 風のコマンドバーとカスタマイズできるミニマルな新しいタブを、Brave や Arc などの Chromium ブラウザでも使えます。Firefox や Zen などの Firefox 系ブラウザ向けのビルドもあります。
+  無料・オープンソースの Chrome / Edge / Firefox 拡張機能。Spotlight 風のコマンドバーとカスタマイズできるミニマルな新しいタブを、Brave や Arc などの Chromium ブラウザや、Zen などの Firefox 系ブラウザでも使えます。
   <br />
   ひとつのショートカットでタブ、ブックマーク、履歴を検索し、URL へ移動し、サイト内検索や AI 検索を呼び出せます。
 </p>
@@ -38,6 +38,9 @@
   </a><br />
   <a href="https://microsoftedge.microsoft.com/addons/detail/pfbklkaefmfamjpibfiapaiihlddhchc">
     <img src="./assets/images/readme/microsoft-edge-addons-badge.png" alt="Microsoft Edge アドオンで Lumno を入手" width="200" />
+  </a><br />
+  <a href="https://addons.mozilla.org/firefox/addon/lumno-command-bar-new-tab/">
+    <img src="./assets/images/readme/firefox-get-the-addon-badge.png" alt="Firefox アドオンで Lumno を入手" width="200" />
   </a>
 </p>
 
@@ -120,7 +123,7 @@ Firefox は `Cmd+Shift+K` / `Ctrl+Shift+K` などをすでに使っているた�
 | Google Chrome | [Chrome ウェブストア](https://chromewebstore.google.com/detail/nggfkkbmogmadfoikakkfegkoilfcfao) |
 | Microsoft Edge | [Microsoft Edge アドオン](https://microsoftedge.microsoft.com/addons/detail/pfbklkaefmfamjpibfiapaiihlddhchc) |
 | Brave、Arc、Vivaldi、Opera などの Chromium ブラウザ | [Chrome ウェブストア](https://chromewebstore.google.com/detail/nggfkkbmogmadfoikakkfegkoilfcfao) |
-| Firefox 140 以降、Zen、LibreWolf、Floorp などの Firefox 系ブラウザ | Firefox Add-ons には未掲載のため、ソースからビルドしてください（[開発](#開発)を参照） |
+| Firefox 140 以降、Zen、LibreWolf、Floorp などの Firefox 系ブラウザ | [Firefox アドオン](https://addons.mozilla.org/firefox/addon/lumno-command-bar-new-tab/) |
 
 ソースからインストールする場合：
 
@@ -150,7 +153,7 @@ Lumno は Chromium ブラウザ向けに開発しており、Firefox 版も用�
 | タブスイッチャーでの `about:` ページ | 動作が異なる | Firefox はこれらのページをぼかした画像でしか返さないため、プレビューの代わりにブラウザのロゴを表示 |
 | 新しいタブの検索ボックスへのフォーカス | 動作が異なる | Firefox は新しいタブでアドレスバーにフォーカスするため、自動フォーカスがオンのとき Lumno はタブを開き直して検索ボックスにフォーカスする |
 | 「ショートカット設定を開く」 | 動作が異なる | アドオンマネージャーが開くので、歯車メニューから「拡張機能のショートカットキーの管理」を選ぶ |
-| 評価の案内とレビューへのリンク | 非表示 | Firefox Add-ons に掲載されるまで |
+| 評価の案内とレビューへのリンク | 非表示 | Firefox アドオンのレビューページにはまだ対応していない |
 | 設定の同期 | 動作が異なる | Chrome の同期ではなく Firefox Sync を使う。WebDAV 同期は Chrome と Firefox の間でも使え、同じパソコンで両方を開いていても動作する |
 
 **Chromium 系ブラウザ。** Brave、Arc、Vivaldi、Opera などは Chrome ウェブストア版を使い、機能は Chrome と同じですが、拡張機能のショートカットを予約または変更するブラウザもあります。Dia では新しいタブ機能は使えませんが、コマンドバーは使えます。ショートカットが効かない場合は、ブラウザのショートカット設定で「Open command bar」を In Dia から Global に変更してください。

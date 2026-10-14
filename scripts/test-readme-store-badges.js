@@ -7,7 +7,8 @@ const packageJson = require(path.join('..', 'package.json'));
 const escapedVersion = String(packageJson.version || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const badgeAssets = [
   'chrome-web-store-large-bordered.png',
-  'microsoft-edge-addons-badge.png'
+  'microsoft-edge-addons-badge.png',
+  'firefox-get-the-addon-badge.png'
 ];
 
 const widths = badgeAssets.map((name) => {
@@ -18,16 +19,16 @@ const widths = badgeAssets.map((name) => {
   return Number(match[1]);
 });
 
-assert.strictEqual(widths[0], widths[1], 'store badges must use the same width');
+assert.ok(widths.every((width) => width === widths[0]), 'store badges must use the same width');
 
 assert.ok(
-  /chrome-web-store-large-bordered\.png[\s\S]*?<\/a><br \/>[\s\S]*?microsoft-edge-addons-badge\.png/.test(readme),
-  'store badges must be stacked vertically with Chrome first'
+  /chrome-web-store-large-bordered\.png[\s\S]*?<\/a><br \/>[\s\S]*?microsoft-edge-addons-badge\.png[\s\S]*?<\/a><br \/>[\s\S]*?firefox-get-the-addon-badge\.png/.test(readme),
+  'store badges must be stacked vertically: Chrome, Edge, then Firefox'
 );
 
 assert.ok(
   new RegExp(
-    `microsoft-edge-addons-badge\\.png[\\s\\S]*?<p align="center">Current version: <code>${escapedVersion}<\\/code><\\/p>`
+    `firefox-get-the-addon-badge\\.png[\\s\\S]*?<p align="center">Current version: <code>${escapedVersion}<\\/code><\\/p>`
   ).test(readme),
   'the current version must be centered below the store badges'
 );

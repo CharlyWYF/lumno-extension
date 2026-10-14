@@ -5,7 +5,7 @@
 <h1 align="center">Lumno：Chrome 聚焦搜索命令栏 & 新标签页插件</h1>
 
 <p align="center">
-  免费开源的 Chrome / Edge 浏览器扩展：类 Spotlight 的命令栏 + 可自定义的极简新标签页，支持 Brave、Arc 等 Chromium 浏览器，并提供适用于 Firefox、Zen 等 Firefox 系浏览器的版本。
+  免费开源的 Chrome / Edge / Firefox 浏览器扩展：类 Spotlight 的命令栏 + 可自定义的极简新标签页，也支持 Brave、Arc 等 Chromium 浏览器和 Zen 等 Firefox 系浏览器。
   <br />
   一个快捷键搜索标签页、书签和历史记录，直达网址，并调用站内搜索与 AI 搜索。
 </p>
@@ -38,6 +38,9 @@
   </a><br />
   <a href="https://microsoftedge.microsoft.com/addons/detail/pfbklkaefmfamjpibfiapaiihlddhchc">
     <img src="./assets/images/readme/microsoft-edge-addons-badge.png" alt="在 Microsoft Edge 加载项获取 Lumno" width="200" />
+  </a><br />
+  <a href="https://addons.mozilla.org/firefox/addon/lumno-command-bar-new-tab/">
+    <img src="./assets/images/readme/firefox-get-the-addon-badge.png" alt="在 Firefox 附加组件获取 Lumno" width="200" />
   </a>
 </p>
 
@@ -120,7 +123,7 @@ Firefox 已占用 `Cmd+Shift+K` / `Ctrl+Shift+K` 等按键，因此 Firefox 版�
 | Google Chrome | [Chrome 应用商店](https://chromewebstore.google.com/detail/nggfkkbmogmadfoikakkfegkoilfcfao) |
 | Microsoft Edge | [Microsoft Edge 加载项](https://microsoftedge.microsoft.com/addons/detail/pfbklkaefmfamjpibfiapaiihlddhchc) |
 | Brave、Arc、Vivaldi、Opera 等 Chromium 浏览器 | [Chrome 应用商店](https://chromewebstore.google.com/detail/nggfkkbmogmadfoikakkfegkoilfcfao) |
-| Firefox 140+、Zen、LibreWolf、Floorp 等 Firefox 系浏览器 | 尚未上架 Firefox 附加组件商店，可从源码构建（见[开发](#开发)） |
+| Firefox 140+、Zen、LibreWolf、Floorp 等 Firefox 系浏览器 | [Firefox 附加组件](https://addons.mozilla.org/firefox/addon/lumno-command-bar-new-tab/) |
 
 从源码安装：
 
@@ -150,7 +153,7 @@ Lumno 为 Chromium 浏览器开发，同时提供 Firefox 版。Zen、LibreWolf�
 | `about:` 页面在标签切换器中 | 表现不同 | 显示浏览器 logo 而不是页面预览，因为 Firefox 只返回这些页面的模糊截图 |
 | 新标签页搜索框聚焦 | 表现不同 | Firefox 会把新标签页的焦点给地址栏；开启自动聚焦后，Lumno 会重新打开该标签页，让焦点落在搜索框 |
 | 「前往快捷键设置」 | 表现不同 | 打开附加组件管理器，需在齿轮菜单中选择「管理扩展快捷键」 |
-| 评分邀请和评价入口 | 隐藏 | 等 Lumno 上架 Firefox 附加组件商店后恢复 |
+| 评分邀请和评价入口 | 隐藏 | 暂未接入 Firefox 附加组件的评价页 |
 | 设置同步 | 表现不同 | 使用 Firefox 同步而非 Chrome 同步。WebDAV 同步可在 Chrome 与 Firefox 之间进行，包括同一台电脑上同时打开两者 |
 
 **Chromium 系浏览器。** Brave、Arc、Vivaldi、Opera 等使用 Chrome 应用商店的版本，功能与 Chrome 相同，但部分浏览器会占用或改写扩展快捷键。在 Dia 中，新标签页功能暂不可用，聚焦搜索可正常使用；如果快捷键无效，请在浏览器的快捷键设置中把「Open command bar」从 In Dia 改为 Global。
