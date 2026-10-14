@@ -3,16 +3,17 @@
   "version": "1.0.1",
   "private": true,
   "engines": {
-    "node": "20.x"
+    "node": "22.x"
   },
   "scripts": {
     "build:react": "vite build --config vite.react.config.mjs && vite build --config vite.overlay-react.config.mjs",
     "typecheck:react": "tsc --project tsconfig.react.json --noEmit",
     "test": "npm run build:react && npm run test:legacy && npm run test:react",
-    "verify": "npm test && npm run check",
+    "verify": "npm test && npm run check:static",
     "test:legacy": "node scripts/run-tests.js",
     "test:react": "vitest run --config vitest.react.config.ts",
-    "check": "npm run check:js && npm run check:names && npm run check:bookmarks && npm run typecheck:react && npm run build:react && npm run check:react-bundle && npm run check:manifest",
+    "check": "npm run build:react && npm run check:static",
+    "check:static": "npm run check:js && npm run check:names && npm run check:bookmarks && npm run typecheck:react && npm run check:react-bundle && npm run check:manifest",
     "check:bookmarks": "node --check src/newtab/bookmarks-runtime.js && node --check src/newtab/bookmark-cascade-menu.js",
     "check:react-bundle": "node --check src/react/newtab-islands.js && node --check src/react/options-islands.js && node --check src/react/onboarding-islands.js && node --check src/react/overlay-islands.js && node --check src/react/react-shared.js && node --check src/react/tab-switcher-shared.js && node --check src/react/react-runtime.js",
     "check:js": "node scripts/check-js-syntax.js",
@@ -107,6 +108,7 @@
     "jsdom": "^27.0.0",
     "typescript": "^5.9.0",
     "vite": "^7.0.0",
-    "vitest": "^3.2.0"
+    "vitest": "^3.2.0",
+    "ws": "^8.21.1"
   }
 }
