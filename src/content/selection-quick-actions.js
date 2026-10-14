@@ -11,8 +11,8 @@
   const TOAST = globalThis.LumnoToast;
   const SETTINGS = globalThis.LumnoSettings;
 
-  const ENABLED_STORAGE_KEY = '_x_extension_selection_quick_actions_enabled_2026_unique_';
-  const LANGUAGE_STORAGE_KEY = '_x_extension_language_2024_unique_';
+  const ENABLED_STORAGE_KEY = SETTINGS.SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY;
+  const LANGUAGE_STORAGE_KEY = SETTINGS.LANGUAGE_STORAGE_KEY;
   const HOST_ID = '_x_extension_selection_quick_actions_host_2026_unique_';
   const DEVELOPMENT_EXTENSION_ID = 'kkcjcneagmlhpeaafngjdlpcfjakejgb';
   const RUNTIME_REVISION = 'selection-toolbar-v32';
