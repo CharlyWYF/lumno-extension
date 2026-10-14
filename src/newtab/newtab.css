@@ -87,7 +87,7 @@ body.x-nt-bottom-layout:not(.x-nt-mobile-flow) {
   --x-nt-bg: #ffffff;
   --x-nt-text: #111827;
   --x-nt-subtext: #6b7280;
-  --x-nt-link: #2563eb;
+  --x-nt-link: rgb(var(--lumno-color-accent-rgb));
   --x-nt-placeholder: #9ca3af;
   --x-nt-input-bg: transparent;
   --x-nt-input-border: transparent;
@@ -197,7 +197,7 @@ body.x-nt-bottom-layout:not(.x-nt-mobile-flow) {
   --x-nt-bookmark-hover-shadow-alpha-3: 0.075;
   --x-nt-bookmark-hover-shadow-alpha-4: 0.085;
   --x-nt-bookmark-folder-hover-border: rgba(59, 130, 246, 0.22);
-  --x-nt-bookmark-folder-drop-border: rgba(37, 99, 235, 0.78);
+  --x-nt-bookmark-folder-drop-border: rgb(var(--lumno-color-accent-rgb) / 0.78);
   --x-nt-bookmark-pager-hover-bg: rgba(17, 24, 39, 0.08);
   --x-nt-insert-indicator: #7a8491;
   /* Wallpaper and feedback buttons without a wallpaper behind them. */
@@ -268,8 +268,8 @@ body.x-nt-bottom-layout:not(.x-nt-mobile-flow) {
   --x-nt-cascade-item-hover-ink: #263140;
   --x-nt-cascade-item-hover-bg: rgba(15, 23, 42, 0.07);
   --x-nt-cascade-drop-ink: #1d4ed8;
-  --x-nt-cascade-drop-bg: rgba(37, 99, 235, 0.11);
-  --x-nt-cascade-drop-ring: rgba(37, 99, 235, 0.24);
+  --x-nt-cascade-drop-bg: rgb(var(--lumno-color-accent-rgb) / 0.11);
+  --x-nt-cascade-drop-ring: rgb(var(--lumno-color-accent-rgb) / 0.24);
   --x-nt-cascade-icon-ink: #64748b;
   --x-nt-cascade-copy-ink: #64748b;
   --x-nt-cascade-copy-hover-ink: #334155;
@@ -2048,9 +2048,9 @@ body[data-theme="dark"] .x-nt-section-mode-select[data-open="true"] ._x_extensio
 }
 .x-nt-bookmarks-heading[data-bookmark-drop-target="true"],
 .x-nt-bookmarks-crumb[data-bookmark-drop-target="true"] {
-  color: #2563eb;
-  background: rgba(37, 99, 235, 0.11);
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.28);
+  color: rgb(var(--lumno-color-accent-rgb));
+  background: rgb(var(--lumno-color-accent-rgb) / 0.11);
+  box-shadow: inset 0 0 0 1px rgb(var(--lumno-color-accent-rgb) / 0.28);
 }
 .x-nt-bookmarks-crumb-sep {
   color: var(--x-nt-subtext, #6b7280);
@@ -2086,7 +2086,7 @@ body[data-theme="dark"] .x-nt-section-mode-select[data-open="true"] ._x_extensio
   background: var(--x-nt-bookmark-pager-hover-bg, rgba(17, 24, 39, 0.08));
 }
 .x-nt-bookmarks-pager-btn[data-bookmark-drag-page-target="true"]:not([aria-disabled="true"]) {
-  color: #2563eb;
+  color: rgb(var(--lumno-color-accent-rgb));
   background: var(--x-nt-bookmark-pager-hover-bg, rgba(17, 24, 39, 0.08));
 }
 .x-nt-bookmarks-pager-btn:focus-visible {
@@ -2146,7 +2146,7 @@ body[data-theme="dark"] .x-nt-section-mode-select[data-open="true"] ._x_extensio
   z-index: var(--lumno-z-drag-ghost) !important;
   margin: 0;
   background: rgba(255, 255, 255, 0.96);
-  border-color: rgba(37, 99, 235, 0.38);
+  border-color: rgb(var(--lumno-color-accent-rgb) / 0.38);
   box-shadow: 0 12px 26px rgba(15, 23, 42, 0.2);
   pointer-events: none;
   opacity: 0.94;
@@ -2283,7 +2283,7 @@ body[data-drag-blocked="true"] {
   box-shadow: none;
 }
 .x-nt-bookmark-card--folder[data-bookmark-drop-target="true"]::before {
-  background: rgba(37, 99, 235, 0.08);
+  background: rgb(var(--lumno-color-accent-rgb) / 0.08);
   opacity: 1;
 }
 [data-insert-line-position]::after {
@@ -2488,7 +2488,7 @@ img[data-favicon-load-state="loaded"] {
 }
 .x-nt-bookmark-copy-action:hover,
 .x-nt-bookmark-copy-action:focus-visible {
-  color: color-mix(in srgb, var(--x-nt-bookmark-title, #475569) 72%, #2563eb);
+  color: color-mix(in srgb, var(--x-nt-bookmark-title, #475569) 72%, rgb(var(--lumno-color-accent-rgb)));
 }
 .x-nt-bookmark-card[data-bookmark-copy-action-visible="true"] .x-nt-bookmark-title {
   box-sizing: border-box;
@@ -2588,8 +2588,8 @@ body[data-theme="dark"] .x-nt-folder-preview-favicon--fallback {
   --x-nt-bookmarks-topbar-action-bg: transparent;
   --x-nt-bookmarks-topbar-action-hover: rgba(15, 23, 42, 0.065);
   --x-nt-bookmarks-topbar-item-hover: rgba(15, 23, 42, 0.065);
-  --x-nt-bookmarks-topbar-folder-hover: rgba(37, 99, 235, 0.075);
-  --x-nt-bookmarks-topbar-drop-border: rgba(37, 99, 235, 0.58);
+  --x-nt-bookmarks-topbar-folder-hover: rgb(var(--lumno-color-accent-rgb) / 0.075);
+  --x-nt-bookmarks-topbar-drop-border: rgb(var(--lumno-color-accent-rgb) / 0.58);
   all: unset;
   /* Keep the bar in page coordinates so zooming and panning move it
      together with the rest of the new-tab content. */
@@ -3063,7 +3063,7 @@ body[data-wallpaper-active="true"]
 }
 body[data-wallpaper-active="true"]
   .x-nt-bookmarks-topbar[data-wallpaper-ink="dark"]:not([data-surface-mode="custom"]) {
-  --x-nt-bookmarks-topbar-folder-hover: rgba(37, 99, 235, 0.09);
+  --x-nt-bookmarks-topbar-folder-hover: rgb(var(--lumno-color-accent-rgb) / 0.09);
 }
 body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmarks-topbar
   .x-nt-bookmarks-topbar-actions
@@ -3144,7 +3144,7 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
 }
 .x-nt-bookmark-cascade-safe-triangle {
   fill: rgba(59, 130, 246, 0.16);
-  stroke: rgba(37, 99, 235, 0.78);
+  stroke: rgb(var(--lumno-color-accent-rgb) / 0.78);
   stroke-width: 1.5;
   stroke-dasharray: 6 4;
   vector-effect: non-scaling-stroke;
@@ -3163,7 +3163,7 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
   box-sizing: border-box;
   color: #1d4ed8;
   background: rgba(239, 246, 255, 0.94);
-  border: 1px solid rgba(37, 99, 235, 0.32);
+  border: 1px solid rgb(var(--lumno-color-accent-rgb) / 0.32);
   box-shadow: 0 8px 18px rgba(30, 64, 175, 0.14);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -3382,7 +3382,7 @@ body[data-wallpaper-active="true"][data-bookmark-view-mode="top"] .x-nt-bookmark
   z-index: var(--lumno-z-drag-ghost);
   margin: 0;
   background: rgba(255, 255, 255, 0.98);
-  border: 1px solid rgba(37, 99, 235, 0.34);
+  border: 1px solid rgb(var(--lumno-color-accent-rgb) / 0.34);
   box-shadow: 0 12px 26px rgba(15, 23, 42, 0.18);
   pointer-events: none;
   opacity: 0.98;
@@ -4252,19 +4252,19 @@ body[data-theme="dark"] .x-nt-recent-track.x-nt-recent-track--active {
     color var(--lumno-duration-md) ease;
 }
 .x-nt-bookmark-cascade-debug-button {
-  --x-nt-corner-hover-bg: rgba(37, 99, 235, 0.08);
-  --x-nt-corner-hover-border: rgba(37, 99, 235, 0.16);
-  --x-nt-corner-hover-ring: rgba(37, 99, 235, 0.04);
+  --x-nt-corner-hover-bg: rgb(var(--lumno-color-accent-rgb) / 0.08);
+  --x-nt-corner-hover-border: rgb(var(--lumno-color-accent-rgb) / 0.16);
+  --x-nt-corner-hover-ring: rgb(var(--lumno-color-accent-rgb) / 0.04);
   --x-nt-corner-hover-ink: #1d4ed8;
-  --x-nt-corner-open-bg: rgba(37, 99, 235, 0.12);
-  --x-nt-corner-open-border: rgba(37, 99, 235, 0.24);
-  --x-nt-corner-open-ring: rgba(37, 99, 235, 0.06);
+  --x-nt-corner-open-bg: rgb(var(--lumno-color-accent-rgb) / 0.12);
+  --x-nt-corner-open-border: rgb(var(--lumno-color-accent-rgb) / 0.24);
+  --x-nt-corner-open-ring: rgb(var(--lumno-color-accent-rgb) / 0.06);
   --x-nt-corner-open-ink: #1d4ed8;
-  --x-nt-corner-press-bg: rgba(37, 99, 235, 0.16);
-  --x-nt-corner-press-border: rgba(37, 99, 235, 0.28);
+  --x-nt-corner-press-bg: rgb(var(--lumno-color-accent-rgb) / 0.16);
+  --x-nt-corner-press-border: rgb(var(--lumno-color-accent-rgb) / 0.28);
   --x-nt-corner-press-shadow:
     inset 0 1px 2px rgba(30, 64, 175, 0.12),
-    inset 0 0 0 1px rgba(37, 99, 235, 0.06);
+    inset 0 0 0 1px rgb(var(--lumno-color-accent-rgb) / 0.06);
 }
 body[data-theme="dark"] .x-nt-bookmark-cascade-debug-button {
   --x-nt-corner-hover-bg: rgba(96, 165, 250, 0.16);
@@ -6353,7 +6353,7 @@ body[data-theme="dark"] .x-nt-suggestion-number-shortcut {
 }
 .x-nt-suggestion-bookmark-path {
   all: unset;
-  color: var(--x-nt-link, #2563EB);
+  color: var(--x-nt-link, rgb(var(--lumno-color-accent-rgb)));
   font-size: var(--lumno-font-size-sm);
   font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   text-decoration: none;
@@ -6377,7 +6377,7 @@ body[data-theme="dark"] .x-nt-suggestion-number-shortcut {
 }
 .x-nt-suggestion-url-line {
   all: unset;
-  color: var(--x-nt-link, #2563EB);
+  color: var(--x-nt-link, rgb(var(--lumno-color-accent-rgb)));
   font-size: var(--lumno-font-size-sm);
   font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   text-decoration: none;
