@@ -1239,10 +1239,12 @@ assert.strictEqual(
 );
 
 assert.strictEqual(search.normalizeHost('WWW.Example.COM'), 'example.com');
-assert.strictEqual(search.normalizeHost('my.feishu.cn'), 'feishu.cn',
-  'the Feishu account portal should share feishu.cn host identity on every surface');
-assert.strictEqual(search.normalizeHost('www.my.feishu.cn'), 'feishu.cn');
-assert.strictEqual(search.normalizeHost('docs.feishu.cn'), 'docs.feishu.cn');
+assert.strictEqual(search.normalizeHostIdentity('my.feishu.cn'), 'feishu.cn',
+  'the Feishu account portal should share feishu.cn host identity for icons and site search');
+assert.strictEqual(search.normalizeHostIdentity('www.my.feishu.cn'), 'feishu.cn');
+assert.strictEqual(search.normalizeHostIdentity('docs.feishu.cn'), 'docs.feishu.cn');
+assert.strictEqual(search.normalizeHost('my.feishu.cn'), 'my.feishu.cn',
+  'search ranking, dedup and saved selection stats keep the plain host');
 assert.strictEqual(search.normalizeHost(''), '');
 assert.strictEqual(search.normalizeHost(null), '');
 assert.strictEqual(

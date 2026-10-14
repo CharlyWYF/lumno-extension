@@ -3476,7 +3476,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         return null;
       }
       try {
-        const hostname = SEARCH_UTILS.normalizeHost(new URL(url).hostname);
+        const hostname = SEARCH_UTILS.normalizeHostIdentity(new URL(url).hostname);
         return getBrandAccentForHost(hostname);
       } catch (e) {
         return null;
@@ -3497,7 +3497,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         return '';
       }
       try {
-        return SEARCH_UTILS.normalizeHost(new URL(url).hostname);
+        return SEARCH_UTILS.normalizeHostIdentity(new URL(url).hostname);
       } catch (e) {
         return '';
       }
@@ -3682,11 +3682,11 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     }
 
     function getProviderThemeHost(provider) {
-      return SEARCH_UTILS.normalizeHost(SEARCH_UTILS.getSiteSearchProviderHost(provider));
+      return SEARCH_UTILS.normalizeHostIdentity(SEARCH_UTILS.getSiteSearchProviderHost(provider));
     }
 
     function buildAndCacheBrandThemeForHost(hostKey, iconUrl) {
-      const normalizedHost = SEARCH_UTILS.normalizeHost(hostKey);
+      const normalizedHost = SEARCH_UTILS.normalizeHostIdentity(hostKey);
       if (!normalizedHost) {
         return null;
       }

@@ -270,14 +270,20 @@
     }
   };
 
-  // Host identity used across search, favicons and site search. my.feishu.cn
-  // is Feishu's account portal and shares feishu.cn's identity.
+  function normalizeHost(hostname) {
+    return String(hostname || '').toLowerCase().replace(/^www\./, '');
+  }
+
+  // Host identity for favicons, page themes and site-search providers, as the
+  // background and New Tab compute it: my.feishu.cn is Feishu's account portal
+  // and shares feishu.cn's identity. Search ranking, dedup and saved selection
+  // stats keep the plain host, so their stored keys stay what they were.
   const HOST_ALIASES = Object.freeze({
     'my.feishu.cn': 'feishu.cn'
   });
 
-  function normalizeHost(hostname) {
-    const host = String(hostname || '').toLowerCase().replace(/^www\./, '');
+  function normalizeHostIdentity(hostname) {
+    const host = normalizeHost(hostname);
     return Object.prototype.hasOwnProperty.call(HOST_ALIASES, host) ? HOST_ALIASES[host] : host;
   }
 
@@ -3564,6 +3570,7 @@
     normalizeSearchSelectionQuery,
     normalizeSearchSelectionStats,
     normalizeHost,
+    normalizeHostIdentity,
     normalizeSiteSearchProvider,
     normalizeSiteSearchTemplate,
     providerMatchesSiteSearchInputPrefix,
