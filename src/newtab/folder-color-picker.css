@@ -108,7 +108,7 @@ body[data-theme="dark"] .x-nt-folder-color-stage { --x-nt-folder-color-dot: rgb(
   pointer-events: none;
 }
 .x-nt-folder-color-saved-item:hover .x-nt-folder-color-remove,
-.x-nt-folder-color-saved-item:focus-within .x-nt-folder-color-remove { opacity: 1; visibility: visible; pointer-events: auto; }
+.x-nt-folder-color-saved-item:has(:focus-visible) .x-nt-folder-color-remove { opacity: 1; visibility: visible; pointer-events: auto; }
 .x-nt-folder-color-remove:focus-visible { outline: 2px solid var(--panel-text); outline-offset: 2px; }
 .x-nt-folder-color-remove:disabled { opacity: 0.4; cursor: default; }
 .x-nt-folder-color-remove .ri-icon { pointer-events: none; }

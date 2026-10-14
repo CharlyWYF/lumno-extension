@@ -3714,8 +3714,8 @@ body[data-theme="dark"] .x-nt-recent-inner::before {
 }
 .x-nt-recent-card:hover .x-nt-recent-pin,
 .x-nt-recent-card:hover .x-nt-recent-track,
-.x-nt-recent-card:focus-within .x-nt-recent-pin,
-.x-nt-recent-card:focus-within .x-nt-recent-track,
+.x-nt-recent-card:has(:focus-visible) .x-nt-recent-pin,
+.x-nt-recent-card:has(:focus-visible) .x-nt-recent-track,
 .x-nt-recent-card[data-recent-context-menu-open="true"] .x-nt-recent-pin,
 .x-nt-recent-card[data-recent-context-menu-open="true"] .x-nt-recent-track,
 .x-nt-recent-pin.x-nt-recent-pin--active,
@@ -6176,7 +6176,7 @@ body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
   outline-offset: 2px;
 }
 .x-nt-wallpaper-custom-tile:hover .x-nt-wallpaper-delete-button,
-.x-nt-wallpaper-custom-tile:focus-within .x-nt-wallpaper-delete-button {
+.x-nt-wallpaper-custom-tile:has(:focus-visible) .x-nt-wallpaper-delete-button {
   opacity: 1;
   transform: scale(1);
   pointer-events: auto;
@@ -6948,7 +6948,7 @@ body[data-theme="dark"] .x-nt-suggestion-icon-slot[data-emphasis="true"][data-fa
   flex-shrink: 0;
 }
 .x-nt-recent-card:hover .x-nt-recent-action,
-.x-nt-recent-card:focus-within .x-nt-recent-action,
+.x-nt-recent-card:has(:focus-visible) .x-nt-recent-action,
 .x-nt-recent-card[data-recent-context-menu-open="true"] .x-nt-recent-action {
   max-width: 64px;
   padding-left: 6px;
