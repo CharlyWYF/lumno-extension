@@ -283,9 +283,6 @@ function checkManifestPath(value) {
   if (/^(https?:|chrome:|__MSG_)/.test(value)) {
     return;
   }
-  if (value === '_favicon/*') {
-    return;
-  }
   if (packagedResourcePatternHasMatch(value)) {
     return;
   }
@@ -490,7 +487,13 @@ Object.values(storeManifest.icons || {}).forEach(checkManifestPath);
   (script.css || []).forEach(checkManifestPath);
 });
 (storeManifest.web_accessible_resources || []).forEach((entry) => {
-  (entry.resources || []).forEach(checkManifestPath);
+  (entry.resources || []).forEach((resource) => {
+    // Pages could probe a web-accessible _favicon endpoint for visited sites.
+    if (/^\/?_favicon(?:\/|$)/.test(String(resource || ''))) {
+      throw new Error(`_favicon must not be web accessible in the store package: ${resource}`);
+    }
+    checkManifestPath(resource);
+  });
 });
 injectedScriptFiles.forEach(checkManifestPath);
 checkRuntimeGetUrlReferences();

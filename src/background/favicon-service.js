@@ -1056,31 +1056,16 @@ function fetchFaviconData(url, pageUrl) {
     if (faviconPending.has(url)) {
       return faviconPending.get(url);
     }
-    const promise = fetch(url, {
-      cache: 'force-cache',
-      credentials: 'omit',
-      referrerPolicy: 'no-referrer',
-      redirect: 'error'
+    const promise = fetchFaviconDataUrl(url).then((dataUrl) => {
+      if (!dataUrl || !FAVICON_UTILS.isExtensionFaviconEndpointUrl(url)) {
+        return dataUrl;
+      }
+      // Chromium answers an unknown page with its default globe; web-page
+      // surfaces cannot compare pixels against it any more, so report no icon.
+      return fetchExtensionFaviconPlaceholderData(url).then((placeholderData) => (
+        placeholderData && placeholderData === dataUrl ? null : dataUrl
+      ));
     })
-      .then((response) => {
-        if (!response || !response.ok) {
-          return null;
-        }
-        const responseUrl = String(response.url || url);
-        if (!isAllowedFaviconProxyRequestUrl(responseUrl)) {
-          return null;
-        }
-        return response.blob();
-      })
-      .then((blob) => {
-        if (!blob || blob.size > 256 * 1024) {
-          return null;
-        }
-        return blob.arrayBuffer().then((buffer) => {
-          const base64 = arrayBufferToBase64(buffer);
-          return `data:${blob.type || 'image/png'};base64,${base64}`;
-        });
-      })
       .then((dataUrl) => {
         if (dataUrl) {
           FAVICON_UTILS.setBoundedCacheEntry(
@@ -1100,6 +1085,82 @@ function fetchFaviconData(url, pageUrl) {
     faviconPending.set(url, promise);
     return promise;
   });
+}
+
+// Web pages cannot load _favicon URLs (they are not web accessible), so items
+// rendered inside a page get their browser-cache icons as data: URLs. An icon
+// not ready within the wait renders as the surface's fallback instead.
+function inlineExtensionFaviconsForWebPage(items, waitMs) {
+  const list = Array.isArray(items) ? items : [];
+  const timeoutMs = Number.isFinite(waitMs) ? Math.max(0, waitMs) : 400;
+  return Promise.all(list.map((item) => {
+    const iconUrl = item && typeof item.favIconUrl === 'string' ? item.favIconUrl : '';
+    if (!FAVICON_UTILS.isExtensionFaviconEndpointUrl(iconUrl)) {
+      return item;
+    }
+    let timer = null;
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => resolve(null), timeoutMs);
+    });
+    return Promise.race([fetchFaviconData(iconUrl, item.url || '').catch(() => null), timeout])
+      .then((dataUrl) => {
+        clearTimeout(timer);
+        return { ...item, favIconUrl: dataUrl || '' };
+      });
+  }));
+}
+
+const extensionFaviconPlaceholderData = new Map();
+
+function fetchExtensionFaviconPlaceholderData(faviconUrl) {
+  let placeholderUrl = '';
+  try {
+    const parsed = new URL(faviconUrl);
+    parsed.searchParams.set('pageUrl', 'https://lumno.invalid/__favicon_placeholder_probe__');
+    placeholderUrl = parsed.toString();
+  } catch (e) {
+    return Promise.resolve(null);
+  }
+  if (!extensionFaviconPlaceholderData.has(placeholderUrl)) {
+    const pending = fetchFaviconDataUrl(placeholderUrl).then((dataUrl) => {
+      if (!dataUrl) {
+        extensionFaviconPlaceholderData.delete(placeholderUrl);
+      }
+      return dataUrl;
+    });
+    FAVICON_UTILS.setBoundedCacheEntry(extensionFaviconPlaceholderData, placeholderUrl, pending, 16);
+  }
+  return extensionFaviconPlaceholderData.get(placeholderUrl);
+}
+
+// Reads an approved favicon source into a data: URL (null when unusable).
+function fetchFaviconDataUrl(url) {
+  return fetch(url, {
+    cache: 'force-cache',
+    credentials: 'omit',
+    referrerPolicy: 'no-referrer',
+    redirect: 'error'
+  })
+    .then((response) => {
+      if (!response || !response.ok) {
+        return null;
+      }
+      const responseUrl = String(response.url || url);
+      if (!isAllowedFaviconProxyRequestUrl(responseUrl)) {
+        return null;
+      }
+      return response.blob();
+    })
+    .then((blob) => {
+      if (!blob || blob.size > 256 * 1024) {
+        return null;
+      }
+      return blob.arrayBuffer().then((buffer) => {
+        const base64 = arrayBufferToBase64(buffer);
+        return `data:${blob.type || 'image/png'};base64,${base64}`;
+      });
+    })
+    .catch(() => null);
 }
 
 function normalizeFaviconRequestBlacklistItems(items) {

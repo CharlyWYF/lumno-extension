@@ -1883,8 +1883,9 @@ function injectTabSwitcherOnTab(hostTab, items, context) {
     finishOpen(false, 'empty');
     return;
   }
+  let webPageTabItems = tabItems;
   const buildSwitcherContext = (tabZoomFactor) => ({
-    tabs: tabItems,
+    tabs: webPageTabItems,
     currentTabId: context && typeof context.currentTabId === 'number' ? context.currentTabId : hostTab.id,
     selectedIndex: context && typeof context.selectedIndex === 'number' ? context.selectedIndex : 0,
     tabZoomFactor: tabZoomFactor,
@@ -2015,16 +2016,23 @@ function injectTabSwitcherOnTab(hostTab, items, context) {
       runDynamicSwitcherScript(switcherContext);
     }
   };
+  // The switcher renders inside the web page, which cannot load _favicon URLs.
+  const runWebPageSwitcherScript = (tabZoomFactor) => {
+    inlineExtensionFaviconsForWebPage(tabItems).then((pageItems) => {
+      webPageTabItems = pageItems;
+      runSwitcherScript(tabZoomFactor);
+    });
+  };
   if (chrome.tabs && typeof chrome.tabs.getZoom === 'function') {
     chrome.tabs.getZoom(hostTab.id, (zoomFactor) => {
       const zoom = Number.isFinite(Number(zoomFactor)) && Number(zoomFactor) > 0
         ? Number(zoomFactor)
         : 1;
-      runSwitcherScript(zoom);
+      runWebPageSwitcherScript(zoom);
     });
     return;
   }
-  runSwitcherScript(1);
+  runWebPageSwitcherScript(1);
 }
 
 function advanceExistingTabSwitcherOnTab(tab, source, callback) {

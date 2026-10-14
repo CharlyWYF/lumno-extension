@@ -263,7 +263,7 @@
 
     function getLastWorkingFaviconSrc(img) {
       const source = faviconViewCore.getLastWorkingFaviconSrc(img);
-      return isRemoteFaviconProxy(source) ? (faviconDataCache.get(source) || '') : source;
+      return isBackgroundFetchedFavicon(source) ? (faviconDataCache.get(source) || '') : source;
     }
 
     function restoreWorkingFaviconOrFail(img, previousSrc, onFailed) {
@@ -458,8 +458,8 @@
       img._xOverlayThemeFaviconCandidateToken = (img._xOverlayThemeFaviconCandidateToken || 0) + 1;
       const candidateToken = img._xOverlayThemeFaviconCandidateToken;
 
-      if (isRemoteFaviconProxy(nextUrl)) {
-        attachRemoteFaviconCandidate(img, state, nextUrl);
+      if (isBackgroundFetchedFavicon(nextUrl)) {
+        attachBackgroundFaviconCandidate(img, state, nextUrl);
         return true;
       }
 
@@ -542,13 +542,16 @@
       return true;
     }
 
-    function isRemoteFaviconProxy(url) {
-      return /^https:\/\//i.test(String(url || '')) && faviconUtils.isFaviconProxyUrl(url);
+    // Icon services and the browser's _favicon cache are fetched by the
+    // extension background: the host page only renders local image bytes, never
+    // connects to a service, and the _favicon endpoint stays unreachable from
+    // web pages (it would reveal which sites the user has visited).
+    function isBackgroundFetchedFavicon(url) {
+      return (/^https:\/\//i.test(String(url || '')) && faviconUtils.isFaviconProxyUrl(url)) ||
+        faviconUtils.isExtensionFaviconEndpointUrl(url);
     }
 
-    function attachRemoteFaviconCandidate(img, state, sourceUrl) {
-      // Fetch in the extension background, so the host page only renders local
-      // image bytes and never connects to the service or follows its redirects.
+    function attachBackgroundFaviconCandidate(img, state, sourceUrl) {
       const token = img._xOverlayThemeFaviconCandidateToken;
       let settled = false;
       showPendingFallbackIcon(img);
@@ -705,7 +708,7 @@
     function preloadIcon(url, pageUrl) {
       const safeUrl = faviconUrlResolver.resolveFaviconSource(url, pageUrl || '');
       if (safeUrl) {
-        if (isRemoteFaviconProxy(safeUrl)) {
+        if (isBackgroundFetchedFavicon(safeUrl)) {
           requestFaviconData(safeUrl, pageUrl).then((dataUrl) => {
             if (dataUrl) {
               preloadThemeFromFavicon(safeUrl, dataUrl, getHostFromUrl(pageUrl || ''));
@@ -726,12 +729,12 @@
           return item;
         }
         const favicon = faviconUrlResolver.resolveFaviconSource(item.favicon, item.url || '');
-        if (isRemoteFaviconProxy(favicon)) {
+        if (isBackgroundFetchedFavicon(favicon)) {
           preloadIcon(favicon, item.url || '');
         }
         return {
           ...item,
-          favicon: isRemoteFaviconProxy(favicon) ? '' : favicon
+          favicon: isBackgroundFetchedFavicon(favicon) ? '' : favicon
         };
       }));
     }

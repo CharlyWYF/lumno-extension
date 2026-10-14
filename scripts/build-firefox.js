@@ -79,13 +79,10 @@ if (contentScriptCount - ffManifest.content_scripts.length !== AUTO_PIP_SCRIPTS.
   throw new Error('Expected one content_scripts entry per auto picture-in-picture script.');
 }
 
-// Chrome-only: the _favicon service and its permission.
+// Chrome-only: the _favicon service permission.
 ffManifest.permissions = ffManifest.permissions.filter((permission) => permission !== 'favicon');
 // Lets the New Tab focus swap drop the replaced tab from recently closed.
 ffManifest.permissions.push('sessions');
-ffManifest.web_accessible_resources.forEach((entry) => {
-  entry.resources = entry.resources.filter((resource) => resource !== '_favicon/*');
-});
 
 fs.writeFileSync(outPath('manifest.json'), `${JSON.stringify(ffManifest, null, 3)}\n`);
 

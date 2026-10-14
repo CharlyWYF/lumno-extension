@@ -79,6 +79,13 @@
     return /^chrome:\/\/favicon2\//i.test(String(url || '').trim());
   }
 
+  // Chromium's _favicon endpoint answers from the browser's own icon cache.
+  // It is not web accessible (a page could probe it to learn which sites were
+  // visited), so web-page surfaces load these through the background instead.
+  function isExtensionFaviconEndpointUrl(url) {
+    return /^chrome-extension:\/\/[^/]+\/_favicon\//i.test(String(url || '').trim());
+  }
+
   // Services that receive only the site origin answer for the whole site.
   function isOriginScopedFaviconProxyUrl(url) {
     try {
@@ -1880,6 +1887,7 @@
     isBlockedLocalFaviconUrl,
     isBrowserInternalPageUrl,
     isChromeMonogramFaviconUrl,
+    isExtensionFaviconEndpointUrl,
     isFaviconProxyUrl,
     isFaviconIsUrl,
     isAllowedFaviconProxyRequestUrl,
