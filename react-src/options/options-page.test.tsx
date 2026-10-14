@@ -264,8 +264,8 @@ describe('Options page storage wiring', () => {
     const chrome = await bootOptionsPage();
     const simpleMode = toggle('_x_extension_simple_mode_toggle_2026_unique_');
     await act(async () => {
-      simpleMode.checked = true;
-      simpleMode.dispatchEvent(new Event('change'));
+      // A click on the switch the user sees.
+      simpleMode.click();
     });
     await settle();
     expect(chrome.storage.sync.values[settings.SIMPLE_MODE_ENABLED_STORAGE_KEY]).toBe(true);
@@ -325,14 +325,25 @@ describe('Options page storage wiring', () => {
         }>;
       };
     }).LumnoOptionsToggleSettings.getToggleSettings(SETTINGS);
+    // Sub-options stay disabled while their parent switch is off.
+    const parents = [SETTINGS.SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY, SETTINGS.NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY];
     for (const entry of entries) {
+      if (!parents.includes(entry.key)) {
+        await act(async () => {
+          chrome.storage.sync.externalSet(Object.fromEntries(parents.map((key) => [key, true])));
+        });
+        await settle();
+      }
       const control = document.getElementById(entry.inputId) as HTMLInputElement & HTMLSelectElement;
       expect(control, entry.inputId).toBeTruthy();
       if (entry.control === 'select') {
         const option = Array.from(control.options).map((item) => item.value).find((value) => value !== control.value);
+        const host = control.closest('._x_extension_custom_select_2024_unique_') as HTMLElement;
         await act(async () => {
-          control.value = String(option);
-          control.dispatchEvent(new Event('change'));
+          host.querySelector<HTMLButtonElement>('button')?.click();
+        });
+        await act(async () => {
+          host.querySelector<HTMLElement>(`[data-value="${option}"]`)?.click();
         });
         await settle();
         expect(chrome.storage.sync.values[entry.key], entry.key).toBe(entry.normalize(option));
@@ -340,8 +351,7 @@ describe('Options page storage wiring', () => {
       }
       const next = !control.checked;
       await act(async () => {
-        control.checked = next;
-        control.dispatchEvent(new Event('change'));
+        control.click();
       });
       await settle();
       const written = (entry.normalizeInput || entry.normalize)(next);
@@ -353,6 +363,18 @@ describe('Options page storage wiring', () => {
       await settle();
       expect(control.checked, `${entry.key} follows storage`).toBe(Boolean(entry.normalize(!written)));
     }
+  });
+
+  it('runs each switch\'s follow-up, such as locking the selection provider while it is off', async () => {
+    const settings = SETTINGS;
+    const chrome = await bootOptionsPage({ [settings.SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY]: true });
+    const provider = document.getElementById('_x_extension_selection_quick_actions_provider_select_2026_unique_') as HTMLSelectElement;
+    expect(provider.disabled).toBe(false);
+    await act(async () => {
+      chrome.storage.sync.externalSet({ [settings.SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY]: false });
+    });
+    await settle();
+    expect(provider.disabled).toBe(true);
   });
 
   it('migrates the aggregate tab-group switch from older per-search values', async () => {

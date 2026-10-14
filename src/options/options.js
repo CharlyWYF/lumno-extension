@@ -304,10 +304,21 @@
       selectionQuickActionsGroupRow.setAttribute('aria-disabled', disabled ? 'true' : 'false');
     }
   }
-  const TOGGLE_SETTINGS = globalThis.LumnoOptionsToggleSettings.getToggleSettings(SETTINGS);
+  const TOGGLE_SETTINGS = globalThis.LumnoOptionsToggleSettings.getToggleSettings(SETTINGS, {
+    faviconBlacklistEditor: setFaviconBlacklistEditorEnabled,
+    newtabShortcutSubcontrols: syncNewtabShortcutSubcontrolAvailability,
+    selectionQuickActionsAvailability: syncSelectionQuickActionsProviderAvailability
+  });
+  // Each switch's React view replaces its <input> in the document. The page
+  // keeps working with the original element: the view reports clicks to it as
+  // change events and re-renders from it, so look every control up once, now.
+  const toggleSettingControls = new Map(TOGGLE_SETTINGS.map((entry) => [
+    entry,
+    document.getElementById(entry.inputId)
+  ]));
   TOGGLE_SETTINGS.forEach((entry) => {
     if (entry.kind) {
-      registerOptionsToggleControl(document.getElementById(entry.inputId), entry.kind);
+      registerOptionsToggleControl(toggleSettingControls.get(entry), entry.kind);
     }
   });
   newtabOpenInNewTabToggles.forEach((input) => registerOptionsToggleControl(input, 'newtab-open-in-new-tab'));
@@ -4396,16 +4407,8 @@
     repairOnLoad: false,
     repairOnChange: false
   });
-  const toggleSettingHooks = {
-    faviconBlacklistEditor: setFaviconBlacklistEditorEnabled,
-    newtabShortcutSubcontrols: syncNewtabShortcutSubcontrolAvailability,
-    selectionQuickActionsAvailability: syncSelectionQuickActionsProviderAvailability
-  };
   TOGGLE_SETTINGS.forEach((entry) => {
-    const spec = Object.assign({}, entry, {
-      afterApply: entry.after ? toggleSettingHooks[entry.after] : null,
-      input: document.getElementById(entry.inputId)
-    });
+    const spec = Object.assign({}, entry, { input: toggleSettingControls.get(entry) });
     if (entry.control === 'select') {
       settingBinder.bindSelect(spec);
     } else {

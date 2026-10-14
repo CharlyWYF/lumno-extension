@@ -109,6 +109,17 @@ function createPage(initial, options) {
 // own changes; each entry's normalizer decides the startup value.
 {
   const table = getToggleSettings(settings);
+  const hooks = {
+    faviconBlacklistEditor() {},
+    newtabShortcutSubcontrols() {},
+    selectionQuickActionsAvailability() {}
+  };
+  const hooked = new Map(getToggleSettings(settings, hooks).map((entry) => [entry.key, entry.afterApply]));
+  assert.strictEqual(hooked.get(settings.FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY), hooks.faviconBlacklistEditor);
+  assert.strictEqual(hooked.get(settings.NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY), hooks.newtabShortcutSubcontrols);
+  assert.strictEqual(hooked.get(settings.SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY), hooks.selectionQuickActionsAvailability);
+  assert.strictEqual(hooked.get(settings.SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY), hooks.selectionQuickActionsAvailability);
+  assert.strictEqual(hooked.get(settings.MOTION_EFFECTS_ENABLED_STORAGE_KEY), undefined);
   const keys = table.map((entry) => entry.key);
   assert(keys.every(Boolean), 'every switch should use a key defined in LumnoSettings');
   assert.strictEqual(new Set(keys).size, keys.length, 'each key is bound once');
