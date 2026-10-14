@@ -349,6 +349,33 @@
           entries.reduce((sum, [key, value]) => sum + size(key, value), 0) > (chromeFallbackArea.QUOTA_BYTES || 102400))) fail('chrome-capacity');
       return { payload, synced, remove };
     }
+    // The values apply() writes, so their change events are not taken for new
+    // local edits that would start another full round. Expectations left
+    // unmatched expire shortly after the apply.
+    const ownWrites = new Map();
+    let ownWritesTimer = null;
+    const ownWriteKey = (areaName, key) => `${areaName}\n${key}`;
+    // Only values that really change fire an event; an expectation for an
+    // unchanged one would swallow a later identical edit by the person.
+    async function expectOwnWrites(area, areaName, values) {
+      if (ownWritesTimer) { clearTimeout(ownWritesTimer); ownWritesTimer = null; }
+      const current = await storage(area, 'get', Object.keys(values));
+      Object.entries(values).forEach(([key, value]) => {
+        if (contract.canonical(value) !== contract.canonical(current[key])) ownWrites.set(ownWriteKey(areaName, key), contract.canonical(value));
+      });
+    }
+    function expireOwnWrites() {
+      if (ownWritesTimer) clearTimeout(ownWritesTimer);
+      ownWritesTimer = setTimeout(() => { ownWrites.clear(); ownWritesTimer = null; }, 2000);
+      if (ownWritesTimer && typeof ownWritesTimer.unref === 'function') ownWritesTimer.unref();
+    }
+    function isOwnWrite(areaName, key, change) {
+      const id = ownWriteKey(areaName, key);
+      if (!ownWrites.has(id)) return false;
+      const expected = ownWrites.get(id) === contract.canonical(change.newValue);
+      ownWrites.delete(id);
+      return expected;
+    }
     async function apply(state, captured, client, activate, nextSession) {
       const { payload, synced, remove } = await prepareChrome(state, captured);
       const icons = {};
@@ -367,19 +394,26 @@
         if (captured.generation !== generation) fail('local-changed');
         const removed = contract.LOCAL_PREFERENCE_KEYS.filter((key) =>
           Object.prototype.hasOwnProperty.call(captured.local, key) && !Object.prototype.hasOwnProperty.call(state.data, key));
-        // Stage the complete operation before changing either local store. Chrome
-        // may terminate the worker between the media transaction and preferences.
-        await privateStore.put('pendingApply', { state, captured, activate, nextSession });
-        await wallpaperStore.replaceAll(wallpapers);
-        if (captured.generation !== generation) fail('local-changed');
-        if (remove.length) await storage(chromeFallbackArea || localPrefsArea, 'remove', remove);
-        await storage(chromeFallbackArea || localPrefsArea, 'set', synced);
-        if (removed.length) await storage(localPrefsArea, 'remove', removed);
-        await storage(localPrefsArea, 'set', {
+        const localValues = {
           ...pickLocalPreferences(payload),
           [contract.OVERFLOW_KEY]: payload[contract.OVERFLOW_KEY], [contract.ICONS_KEY]: icons,
           [settings.ASSET_REVISION_STORAGE_KEY]: cryptoApi.randomUUID(),
-          ...(runtime.isActiveAreaName('local') && chromeFallbackArea ? { [settings.LOCAL_PRIMARY_STORAGE_KEY]: false } : {}) });
+          ...(runtime.isActiveAreaName('local') && chromeFallbackArea ? { [settings.LOCAL_PRIMARY_STORAGE_KEY]: false } : {}) };
+        try {
+          await expectOwnWrites(chromeFallbackArea || localPrefsArea, chromeFallbackArea ? 'sync' : 'local',
+            { ...Object.fromEntries(remove.map((key) => [key, undefined])), ...synced });
+          await expectOwnWrites(localPrefsArea, 'local', { ...Object.fromEntries(removed.map((key) => [key, undefined])), ...localValues });
+          if (captured.generation !== generation) fail('local-changed');
+          // Stage the complete operation before changing either local store. Chrome
+          // may terminate the worker between the media transaction and preferences.
+          await privateStore.put('pendingApply', { state, captured, activate, nextSession });
+          await wallpaperStore.replaceAll(wallpapers);
+          if (captured.generation !== generation) fail('local-changed');
+          if (remove.length) await storage(chromeFallbackArea || localPrefsArea, 'remove', remove);
+          await storage(chromeFallbackArea || localPrefsArea, 'set', synced);
+          if (removed.length) await storage(localPrefsArea, 'remove', removed);
+          await storage(localPrefsArea, 'set', localValues);
+        } finally { expireOwnWrites(); }
         // Credentials and the merge baseline belong to the same server and must
         // commit atomically; separate records could pair a new server with an old base.
         await privateStore.put('session', nextSession);
@@ -528,9 +562,18 @@
       }
       await prepareChrome(target, captured);
       if (!remote || !contract.equal(target, remote.state)) await publish(target, remote, client, captured.generation);
-      if (!contract.equal(target, captured.state)) await apply(target, captured, client, false, { config, base: target });
-      else if (captured.generation !== generation) fail('local-changed');
-      else await privateStore.put('session', { config, base: target });
+      if (!contract.equal(target, captured.state)) {
+        // The server now holds target: the captured state plus what only the
+        // server changed. Until target is applied here, the captured state is
+        // what both sides share. As the baseline it survives an apply that
+        // fails below: published edits of this device are not reported again
+        // as conflicts, and the server's changes are not taken for reverts.
+        await privateStore.put('session', { config, base: captured.state });
+        await apply(target, captured, client, false, { config, base: target });
+      } else {
+        await privateStore.put('session', { config, base: target });
+        if (captured.generation !== generation) fail('local-changed');
+      }
       if (decision) await privateStore.put('recoveryBlocked', false);
       await privateStore.put('conflict', null);
       await mirrorReporting();
@@ -679,8 +722,12 @@
     }
     function onStorageChanged(changes, areaName) {
         if (stopped) return;
+        const changed = watchedKeys.filter((key) => changes[key]);
+        // This controller's own apply: nothing new to capture or upload.
+        if (changed.length && !changes[CHROME_SYNC_META_KEY] &&
+            changed.filter((key) => !isOwnWrite(areaName, key, changes[key])).length === 0) return;
         if ((areaName === 'local' || (areaName === 'sync' && !runtime.isActiveAreaName('local'))) &&
-            watchedKeys.some((key) => changes[key])) generation += 1;
+            changed.length) generation += 1;
         if (!((areaName === 'sync' && !runtime.isActiveAreaName('local')) || areaName === 'local') ||
             !(watchedKeys.some((key) => changes[key]) || (areaName === 'sync' && changes[CHROME_SYNC_META_KEY]))) return;
         queueSync(1500);

@@ -1316,6 +1316,42 @@ async function testBackgroundRounds() {
   assert.strictEqual(lockServer.directories.has(lockPath), false, 'the next round releases it first');
   assert.strictEqual(holder.privateValues.get('staleLock'), null);
 
+  // An edit that lands between publishing and applying a merge: the next round
+  // merges from what both sides then share, instead of reporting this device's
+  // already-published list edit as a conflict.
+  const windowServer = createServer();
+  const windowed = createDevice(windowServer, { sync: { [theme]: 'light', [language]: 'en', [customSearch]: engine('base') } }, [], quiet);
+  await windowed.controller.handle({ operation: 'connect', config });
+  await set(windowed.chrome.storage.sync, { [customSearch]: engine('local') });
+  windowServer.replaceState({ ...windowServer.state(), data: { ...windowServer.state().data, [language]: 'ja' } });
+  let edited = false;
+  windowServer.afterPut = async (path) => {
+    if (!edited && path.endsWith('/state.json')) { edited = true; await set(windowed.chrome.storage.sync, { [customSearch]: engine('later') }); }
+  };
+  await assert.rejects(windowed.controller.handle({ operation: 'sync' }), /local-changed/);
+  windowServer.afterPut = null;
+  assert.deepStrictEqual(windowServer.state().data[customSearch], engine('local'), 'the merge was published before the apply failed');
+  assert.deepStrictEqual(await windowed.controller.handle({ operation: 'sync' }), { ok: true }, 'no false conflict after the failed apply');
+  assert.deepStrictEqual(windowServer.state().data[customSearch], engine('later'));
+  assert.strictEqual(windowed.chrome.storage.sync.values[language], 'ja', 'the server change still arrives');
+
+  // Applying a server change does not make this connection start another round.
+  const selfServer = createServer();
+  const applying = createDevice(selfServer, { sync: { [theme]: 'light' } }, [], quiet);
+  await applying.controller.handle({ operation: 'connect', config });
+  await new Promise((resolve) => setTimeout(resolve, 1600));
+  selfServer.replaceState({ ...selfServer.state(), data: { ...selfServer.state().data, [theme]: 'dark' } });
+  await applying.controller.handle({ operation: 'sync' });
+  assert.strictEqual(applying.chrome.storage.sync.values[theme], 'dark');
+  const afterApply = selfServer.requests.length;
+  await new Promise((resolve) => setTimeout(resolve, 1700));
+  assert.strictEqual(selfServer.requests.length, afterApply, 'its own writes are not taken for new local edits');
+  await set(applying.chrome.storage.sync, { [theme]: 'light' });
+  await new Promise((resolve) => setTimeout(resolve, 1700));
+  await settle(applying);
+  assert.strictEqual(selfServer.state().data[theme], 'light', 'a later edit back to the earlier value still syncs');
+  await applying.controller.handle({ operation: 'pause' });
+
   // When the storage mode cannot be read, the settings might come from the
   // wrong area; they are never uploaded as this device's copy.
   const unreadableServer = createServer();
