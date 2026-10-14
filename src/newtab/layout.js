@@ -1,6 +1,19 @@
 (function() {
   const SUGGESTIONS_HEIGHT_LAYOUT = globalThis.LumnoSuggestionsHeightLayout;
 
+  // New Tab widths, defined once. The standard search box and the content
+  // column; the search width slider runs from 640 (since 508a5c0 widened
+  // its range) to the content width and snaps to these points.
+  const STANDARD_SEARCH_MAX_WIDTH_PX = 720;
+  const CONTENT_MAX_WIDTH_PX = 1040;
+  const SEARCH_WIDTH_CONFIG = Object.freeze({
+    min: 640,
+    max: CONTENT_MAX_WIDTH_PX,
+    fallback: 920,
+    snapPoints: Object.freeze([640, STANDARD_SEARCH_MAX_WIDTH_PX, 920, CONTENT_MAX_WIDTH_PX]),
+    snapThreshold: 14
+  });
+
   function resolveElement(value) {
     if (typeof value === 'function') {
       return value();
@@ -16,6 +29,44 @@
   function getFiniteNumber(value, fallback) {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
+  }
+
+  function getDockDensityRank(density) {
+    if (density === 'tiny') {
+      return 2;
+    }
+    if (density === 'compact') {
+      return 1;
+    }
+    return 0;
+  }
+
+  // Dock density hysteresis. The density sets how much room the shortcuts
+  // above the dock take, and that room sets the density, so a measurement
+  // can ask for a roomier density that would then measure as denser again
+  // (a wrapped shortcut row flipping compact <-> default every frame).
+  //
+  //   - On a mobile-width page the dock flows: 'mobile'.
+  //   - Getting denser (less room) always happens at once.
+  //   - Getting roomier is held while `holdPromotion` is set (a live resize
+  //     or a layout preference change), and otherwise happens only if the
+  //     roomier density would still measure as itself
+  //     (`isPromotionStable(candidate)`), so it cannot flip back.
+  function nextDockDensity(previous, measured, options) {
+    const opts = options || {};
+    if (opts.mobileFlow) {
+      return 'mobile';
+    }
+    if (!previous || previous === 'mobile' ||
+        getDockDensityRank(measured) >= getDockDensityRank(previous)) {
+      return measured;
+    }
+    if (opts.holdPromotion) {
+      return previous;
+    }
+    return typeof opts.isPromotionStable === 'function' && !opts.isPromotionStable(measured)
+      ? previous
+      : measured;
   }
 
   function getGridContentWidthForColumns(columnCount, columnWidth, gap) {
@@ -101,8 +152,6 @@
       '--x-nt-suggestions-viewport-fit-max-height';
     const visibleAttribute = 'data-visible';
     const suggestionsOpenAttribute = 'data-nt-suggestions-open';
-    let dockDensityPromotionLock = null;
-    let shortcutAreaRelayout = false;
     const getTopInsetPx = typeof options.getTopInsetPx === 'function'
       ? options.getTopInsetPx
       : function() {
@@ -251,8 +300,8 @@
 
     function applyWidthMode(config) {
       const rawSearchMax = Number(config && config.searchMaxWidth);
-      const searchMax = Number.isFinite(rawSearchMax) ? Math.max(1, rawSearchMax) : 720;
-      const contentMax = Math.max(1040, Number((config && config.contentMaxWidth) || 1040));
+      const searchMax = Number.isFinite(rawSearchMax) ? Math.max(1, rawSearchMax) : STANDARD_SEARCH_MAX_WIDTH_PX;
+      const contentMax = Math.max(CONTENT_MAX_WIDTH_PX, Number((config && config.contentMaxWidth) || CONTENT_MAX_WIDTH_PX));
       if (documentObj && documentObj.documentElement) {
         documentObj.documentElement.style.setProperty('--x-nt-search-max-width', `${searchMax}px`);
         documentObj.documentElement.style.setProperty('--x-nt-content-max-width', `${contentMax}px`);
@@ -293,36 +342,6 @@
         return false;
       }
       return section.style.getPropertyValue('display') !== 'none';
-    }
-
-    function getDockDensityRank(density) {
-      if (density === 'tiny') {
-        return 2;
-      }
-      if (density === 'compact') {
-        return 1;
-      }
-      return 0;
-    }
-
-    function getDockDensityLayoutContext(
-      shortcutSection,
-      shortcutVisible,
-      bottomDockTopReserve
-    ) {
-      const viewportWidth = Math.max(0, windowObj.innerWidth || 0);
-      const viewportHeight = Math.max(0, windowObj.innerHeight || 0);
-      const topReserve = Math.round(Math.max(0, Number(bottomDockTopReserve) || 0));
-      if (!shortcutVisible || !shortcutSection) {
-        return `${viewportWidth}:${viewportHeight}:${topReserve}:hidden`;
-      }
-      const shortcutRect = shortcutSection.getBoundingClientRect();
-      const sectionWidth = Math.round(Math.max(0, Number(shortcutRect && shortcutRect.width) || 0));
-      let tileCount = -1;
-      if (typeof shortcutSection.querySelectorAll === 'function') {
-        tileCount = shortcutSection.querySelectorAll('.x-nt-shortcut-tile').length;
-      }
-      return `${viewportWidth}:${viewportHeight}:${topReserve}:${sectionWidth}:${tileCount}`;
     }
 
     function getDockDensityForAvailableHeight(availableHeight, mobileFlow) {
@@ -750,7 +769,7 @@
       setStylePixels(scroller, '--x-nt-bottom-dock-scrollbar-end-inset', endInset);
     }
 
-    function updateBottomDockLayout(callbacks) {
+    function layoutBottomDockPass(callbacks) {
       const body = documentObj && documentObj.body;
       const bookmarkSection = getBookmarkSection();
       const recentSection = getRecentSection();
@@ -776,49 +795,12 @@
       const previousDockDensity = typeof bottomDock.getAttribute === 'function'
         ? bottomDock.getAttribute('data-density')
         : '';
-      const shortcutSection = getShortcutSection();
-      const shortcutVisible = isSectionVisible(shortcutSection);
-      const densityLayoutContext = getDockDensityLayoutContext(
-        shortcutSection,
-        shortcutVisible,
-        bottomDockTopReserve
-      );
-      const releaseDockDensityLock = Boolean(callbacks && callbacks.releaseDockDensityLock);
-      if (dockDensityPromotionLock &&
-          dockDensityPromotionLock.context !== densityLayoutContext) {
-        dockDensityPromotionLock = null;
-      }
-      let dockDensity = getDockDensityForAvailableHeight(bottomDockMaxHeight, mobileFlow);
-      const isDensityPromotion = !mobileFlow &&
-        previousDockDensity &&
-        getDockDensityRank(dockDensity) < getDockDensityRank(previousDockDensity);
-      const releaseWouldOscillate = releaseDockDensityLock &&
-        isDensityPromotion &&
-        !isDockDensityPromotionStable(
-          body,
-          bottomDock,
-          dockDensity,
-          viewportHeight
-        );
-      const shouldKeepCompactedDensity = isDensityPromotion && (
-        Boolean(callbacks && callbacks.stabilizeDockDensity) ||
-        releaseWouldOscillate ||
-        Boolean(
-          !releaseDockDensityLock &&
-          dockDensityPromotionLock &&
-          dockDensityPromotionLock.context === densityLayoutContext &&
-          dockDensityPromotionLock.density === previousDockDensity
-        )
-      );
-      if (shouldKeepCompactedDensity) {
-        dockDensity = previousDockDensity;
-        dockDensityPromotionLock = {
-          context: densityLayoutContext,
-          density: previousDockDensity
-        };
-      } else if (releaseDockDensityLock || dockDensity !== previousDockDensity) {
-        dockDensityPromotionLock = null;
-      }
+      const measuredDensity = getDockDensityForAvailableHeight(bottomDockMaxHeight, mobileFlow);
+      const dockDensity = nextDockDensity(previousDockDensity, measuredDensity, {
+        mobileFlow,
+        holdPromotion: Boolean(callbacks && callbacks.stabilizeDockDensity),
+        isPromotionStable: (candidate) => isDockDensityPromotionStable(body, bottomDock, candidate, viewportHeight)
+      });
       body.setAttribute('data-nt-bottom-dock-density', dockDensity);
       bottomDock.setAttribute('data-density', dockDensity);
       sectionSafeCorridor.style.setProperty('display', (bookmarkVisible && recentVisible) ? 'block' : 'none', 'important');
@@ -832,26 +814,27 @@
       positionSearchEntry({
         preserveCurrentTop: Boolean(callbacks && callbacks.preserveSearchEntryLayout)
       });
-      // On short screens the dock sits below the shortcuts, so a new limit
-      // moves the dock too; lay it out once more against the limited area.
-      if (updateShortcutAreaLimit() && !shortcutAreaRelayout) {
-        shortcutAreaRelayout = true;
-        try {
-          updateBottomDockLayout({ ...(callbacks || {}), preserveSearchEntryLayout: true });
-        } finally {
-          shortcutAreaRelayout = false;
+      // A new density moves the shortcuts, and on short screens a new
+      // shortcut area limit moves the dock; either changes what this pass
+      // measured, so the caller lays out once more against it.
+      const shortcutAreaLimitChanged = updateShortcutAreaLimit();
+      return previousDockDensity !== dockDensity || shortcutAreaLimitChanged;
+    }
+
+    // Lays the dock out, then again while a pass changed its own inputs (a
+    // density or shortcut-area limit). Follow-up passes keep the search box
+    // where it is and only make the dock denser, so this settles within the
+    // call instead of over painted frames.
+    const BOTTOM_DOCK_LAYOUT_MAX_PASSES = 3;
+    function updateBottomDockLayout(callbacks) {
+      let passOptions = callbacks;
+      for (let pass = 0; pass < BOTTOM_DOCK_LAYOUT_MAX_PASSES; pass += 1) {
+        if (!layoutBottomDockPass(passOptions)) {
+          break;
         }
-        return;
+        passOptions = { ...(callbacks || {}), preserveSearchEntryLayout: true, stabilizeDockDensity: true };
       }
       updateSuggestionsFloatingLayout();
-      if (previousDockDensity !== dockDensity && typeof windowObj.requestAnimationFrame === 'function') {
-        windowObj.requestAnimationFrame(() => {
-          updateBottomDockLayout({
-            preserveSearchEntryLayout: true,
-            stabilizeDockDensity: true
-          });
-        });
-      }
     }
 
     function setSuggestionsVisible(visible) {
@@ -919,7 +902,11 @@
   }
 
   globalThis.LumnoNewtabLayout = {
+    STANDARD_SEARCH_MAX_WIDTH_PX,
+    CONTENT_MAX_WIDTH_PX,
+    SEARCH_WIDTH_CONFIG,
     createLayoutController,
+    nextDockDensity,
     getAdaptiveGridColumnCount,
     getGridContentWidthForColumns,
     getResponsiveContentWidth

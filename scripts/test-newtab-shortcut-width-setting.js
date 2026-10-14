@@ -9,12 +9,7 @@ const optionsHtml = readPageSource('src/options/options.html');
 const optionsSource = fs.readFileSync('src/options/options.js', 'utf8');
 const newtabHtml = readPageSource('newtab.html');
 const newtabSource = readNewtabRuntimeSource();
-const wallpaperSource = fs.readFileSync('src/newtab/wallpaper.js', 'utf8');
 const shortcutDialogCss = readStylesheet('src/newtab/shortcut-dialog.css');
-const wallpaperViewSource = fs.readFileSync(
-  'react-src/newtab/wallpaper-view.tsx',
-  'utf8'
-);
 const rangeSliderSource = fs.readFileSync(
   'react-src/shared/range-slider.tsx',
   'utf8'
@@ -57,20 +52,9 @@ assert.strictEqual(settings.NEWTAB_SHORTCUT_GAP_MIN, 0);
 assert.strictEqual(settings.NEWTAB_SHORTCUT_GAP_MAX, 24);
 assert.strictEqual(settings.NEWTAB_SHORTCUT_GAP_DEFAULT, 4);
 
-assert.match(
-  wallpaperViewSource,
-  /ref\('shortcutColumnsControl'\)[\s\S]*?ref\('shortcutColumnsSlider'\)[\s\S]*?ref\('shortcutColumnsSliderValueInput'\)/
-);
-assert.doesNotMatch(wallpaperViewSource, /shortcutWidthSlider/);
-assert.match(
-  wallpaperSource,
-  /shortcutColumnsConfig[\s\S]*?getShortcutColumns[\s\S]*?setShortcutColumns/
-);
-assert.match(
-  wallpaperSource,
-  /wallpaperShortcutColumnsSlider\.addEventListener\('input'[\s\S]*?persistShortcutColumnsFromSlider[\s\S]*?bindWallpaperSliderValueInput\(wallpaperShortcutColumnsSlider\)/
-);
-assert.doesNotMatch(wallpaperSource, /snapShortcutColumns|wallpaperShortcutColumnsPointer/);
+// The appearance panel is a React view driven by the wallpaper runtime; its controls are
+// tested by behavior in react-src/newtab/wallpaper-view.test.tsx and
+// scripts/test-newtab-wallpaper-panel.js rather than by matching source text here.
 assert.match(
   newtabSource,
   /shortcutColumnsConfig:\s*\{[\s\S]*?min:\s*NEWTAB_SHORTCUT_COLUMNS_MIN,[\s\S]*?max:\s*NEWTAB_SHORTCUT_COLUMNS_MAX,[\s\S]*?fallback:\s*NEWTAB_SHORTCUT_COLUMNS_DEFAULT/
@@ -163,11 +147,6 @@ assert.match(
   optionsSource,
   /onInput\(value\)[\s\S]*?normalizeNewtabShortcutColumns\(value\)[\s\S]*?NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY/,
   'Options should persist slider and typed column changes'
-);
-assert.match(
-  wallpaperViewSource,
-  /<RangeSliderField[\s\S]*?ref\('shortcutColumnsSlider'\)[\s\S]*?max=\{String\(shortcutColumnsMax\)\}[\s\S]*?ref\('shortcutColumnsSliderValueInput'\)/,
-  'Appearance should reuse the shared fixed-size slider value input'
 );
 
 const shortcutSectionStart = newtabHtml.indexOf('.x-nt-shortcuts-section {');

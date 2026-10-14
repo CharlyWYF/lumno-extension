@@ -57,13 +57,32 @@
   --lumno-accordion-open: 50ms cubic-bezier(0.41, 0.1, 0.67, 0.52);
   --lumno-accordion-close: 135ms cubic-bezier(0.2, 0.55, 0.5, 1) 85ms;
 
-  /* Layers: in-flow stacking first, then page chrome, then floating surfaces. */
+  /*
+   * Layers, in the order they cover each other: in-flow stacking first, then page
+   * chrome, then floating surfaces. A surface that must sit just above a layer
+   * adds to that layer's token in calc() rather than inventing a new number.
+   */
   --lumno-z-raised: 1;
   --lumno-z-overlay: 2;
   --lumno-z-sticky: 30;
+  /* Options' confirm mask stays under the dropdowns a confirm may open. */
+  --lumno-z-modal: 9998;
+  /* New Tab's top bookmarks bar. */
+  --lumno-z-topbar: 10000;
   --lumno-z-dropdown: 10000;
   --lumno-z-tooltip: 10000;
+  /* A shortcut being dragged, with the area it moves in: over the bars, under menus. */
+  --lumno-z-drag-lift: 10001;
+  /* Bookmark folder menus, which a drag may open and drop into. */
+  --lumno-z-menu: 10002;
+  --lumno-z-context-menu: 10040;
+  --lumno-z-dialog: 10040;
+  /* Tooltips and menus that open from inside a dialog. */
+  --lumno-z-dialog-menu: 10060;
   --lumno-z-toast: 10080;
+  /* What follows the pointer during a drag: previews, ghosts and drop lines. */
+  --lumno-z-drag-ghost: 2147483645;
+  --lumno-z-max: 2147483647;
 
   /* Color: text */
   --lumno-color-text: #111827;
@@ -94,6 +113,8 @@
   --lumno-color-toast-error-border: rgba(255, 255, 255, 0.16);
   --lumno-color-toast-error-text: #ffffff;
   --lumno-color-selection-outline: #6b7280;
+  /* Lumno link blue as channels, for tints: rgb(var(--lumno-color-accent-rgb) / 0.12). */
+  --lumno-color-accent-rgb: 37 99 235;
 
   /* Color: control parts */
   --lumno-color-knob: #ffffff;
@@ -124,6 +145,39 @@
     inset 0 1px 3px rgba(255, 255, 255, 0.1),
     inset 0 -1px 0 rgba(0, 0, 0, 0.22);
   --lumno-shadow-primary-sheen-pressed: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/*
+ * Keyboard focus: every control shows the same ring, including controls reset with
+ * `all: unset`. The :not() keeps text fields out (their shells show focus) and lifts
+ * the rule above a single-class reset; a component that draws its own focus state
+ * declares it with its own :focus-visible rule.
+ */
+:where(button, a[href], summary, [role="button"], [role="link"], [role="tab"], [role="switch"],
+  [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="option"],
+  [tabindex]:not([tabindex="-1"])):not(input, textarea, select):focus-visible {
+  outline: 2px solid var(--lumno-color-focus-ring);
+  outline-offset: 2px;
+}
+
+/*
+ * Reduced motion. Transitions are dropped, delays included, so a changed value applies
+ * at once and code that measures right after a change sees the final size (a very
+ * short transition would still show the old value for a frame). Animations finish at
+ * once but still run, so animationend fires for code that waits on it, and loops stop
+ * after one pass. Components only add rules here when they need a different resting
+ * state, for example no magnification or no staged entry.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Dark values. Kept as one block so both selectors stay in sync. */

@@ -15,6 +15,17 @@ const {
   setInsertionGap
 } = require(path.join(repoRoot, 'src', 'newtab', 'cross-surface-drag.js'));
 
+// Drag slides honor a reduced-motion preference.
+{
+  const { prefersReducedMotion } = require(path.join(repoRoot, 'src', 'newtab', 'cross-surface-drag.js'));
+  const windowWith = (reduce) => ({
+    matchMedia: (query) => ({ matches: reduce && query === '(prefers-reduced-motion: reduce)' })
+  });
+  assert.strictEqual(prefersReducedMotion(windowWith(true)), true);
+  assert.strictEqual(prefersReducedMotion(windowWith(false)), false);
+  assert.strictEqual(prefersReducedMotion({}), false, 'no matchMedia means full motion');
+}
+
 function getFunctionSource(source, name) {
   const marker = `function ${name}(`;
   const start = source.indexOf(marker);
@@ -147,10 +158,13 @@ function rect(left, top, width = 60, height = 60) {
       domOrder.splice(index, 0, tile.id);
     };
     const renderShortcuts = () => {};
-    const suppressCanceledDragClick = () => {};
+    const flushDeferredShortcutRender = () => {};
+    const getShortcutDropSettleMs = () => 0;
+    const getDragClickGuard = () => ({ armAfterDrag() {} });
     ${getFunctionSource(newtabJs, 'getShortcutGroupHeader')}
     ${getFunctionSource(newtabJs, 'restoreShortcutDragOrder')}
     ${getFunctionSource(newtabJs, 'finishShortcutDrag')}
+    ${getFunctionSource(newtabJs, 'endShortcutDrag')}
     finishShortcutDrag(null, { cancel: true });
     return { dataOrder: newtabShortcuts.map((item) => item.id), domOrder, activeState: shortcutDragState };
   `);
@@ -160,43 +174,6 @@ function rect(left, top, width = 60, height = 60) {
   assert.strictEqual(result.activeState, null);
 }
 
-// Escape cancels before mouseup. Suppression must last until that release's
-// click, even when the user keeps holding the mouse, then allow a fresh press.
-{
-  const listeners = new Map();
-  const timers = [];
-  const document = {
-    addEventListener(type, handler) {
-      if (!listeners.has(type)) { listeners.set(type, new Set()); }
-      listeners.get(type).add(handler);
-    },
-    removeEventListener(type, handler) { listeners.get(type).delete(handler); }
-  };
-  const suppress = new Function('document', 'window', `
-    ${getFunctionSource(newtabJs, 'suppressCanceledDragClick')}
-    return suppressCanceledDragClick;
-  `)(document, { setTimeout(callback) { timers.push(callback); } });
-  const element = {};
-  const dispatch = (type, pointerId) => {
-    [...listeners.get(type)].forEach((handler) => handler({ pointerId }));
-  };
-  suppress(element, '_xShortcutSuppressClick', 7);
-  assert.strictEqual(element._xShortcutSuppressClick, true);
-  assert.strictEqual(timers.length, 0, 'holding the mouse cannot expire suppression');
-  dispatch('pointerup', 8);
-  assert.strictEqual(timers.length, 0, 'another pointer cannot end the gesture');
-  dispatch('pointerup', 7);
-  assert.strictEqual(element._xShortcutSuppressClick, true, 'the ensuing click stays suppressed');
-  timers.shift()();
-  assert.strictEqual(element._xShortcutSuppressClick, false);
-  assert.ok([...listeners.values()].every((handlers) => handlers.size === 0));
-  suppress(element, '_xBookmarkSuppressClick', 7);
-  suppress(element, '_xBookmarkSuppressClick', 7);
-  assert.strictEqual(listeners.get('pointerdown').size, 1, 'repeat cancellation replaces old listeners');
-  dispatch('pointerdown', 9);
-  assert.strictEqual(element._xBookmarkSuppressClick, false, 'a new intentional gesture remains usable');
-  assert.ok([...listeners.values()].every((handlers) => handlers.size === 0));
-}
 
 // Holding a shortcut at the top-bar edge keeps scrolling without pointer
 // movement; releasing cancels even the frame queued by that final scroll.
@@ -526,14 +503,14 @@ assert.ok(
   'an empty bookmarks bar should stay droppable during shortcut drags without reviving disabled bookmarks'
 );
 
-const finishShortcutDragSource = getFunctionSource(newtabJs, 'finishShortcutDrag');
+const finishShortcutDragSource = getFunctionSource(newtabJs, 'endShortcutDrag');
 assert.ok(
   finishShortcutDragSource.includes('!(options && options.cancel)'),
   'canceled shortcut drags should never convert'
 );
 assertOrder(
   finishShortcutDragSource,
-  'moveShortcutToBookmarks(state, bookmarkDropTarget);',
+  'moveShortcutToBookmarks(state, bookmarkDropTarget)',
   'persistShortcutOrder(state)',
   'dropping a shortcut on bookmarks should branch before persisting the shortcut order'
 );

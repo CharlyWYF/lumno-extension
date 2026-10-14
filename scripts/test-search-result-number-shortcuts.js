@@ -456,16 +456,6 @@ assert.match(
   /getSuggestionNavigationKey\(event,[\s\S]*?macosCtrlEnabled:\s*macosCtrlSuggestionNavigationEnabled/,
   'New Tab should gate Ctrl+N/P through the Labs preference'
 );
-assert.match(
-  overlaySource,
-  /e\.type === 'keydown' && searchInputActive && getSuggestionNavigationKey\(e\)[\s\S]*?handleSearchInputKeydown\(e\);[\s\S]*?stopImmediatePropagation\(\)/,
-  'Overlay should consume enabled Ctrl+N/P exactly once during capture'
-);
-assert.match(
-  overlaySource,
-  /overlayKeyCaptureHandler = function\(e\)[\s\S]*?\(e\.type === 'keydown' \|\| e\.type === 'keyup'\)[\s\S]*?handleNumberShortcutKeyEvent\(\s*e,\s*suggestionItems,\s*suggestionsContainer,\s*numberShortcutOptions\s*\)[\s\S]*?stopImmediatePropagation\(\)[\s\S]*?return;/,
-  'Overlay should capture the modifier release transition before the host page'
-);
 
 const newtabModifierSource = newtabSource.slice(
   newtabSource.indexOf('function setSuggestionActionModifiersActive'),

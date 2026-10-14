@@ -4,6 +4,7 @@ const fs = require('fs');
 const settings = require('../src/shared/settings.js');
 const { readPageSource } = require('./helpers/page-source');
 const { readNewtabRuntimeSource } = require('./helpers/newtab-source');
+const { readBackgroundSource } = require('./helpers/background-source');
 
 const auditOutput = execFileSync(process.execPath, ['scripts/audit-i18n.js'], {
   encoding: 'utf8'
@@ -18,7 +19,7 @@ assert.strictEqual(
 
 const optionsSource = fs.readFileSync('src/options/options.js', 'utf8');
 const optionsHtml = readPageSource('src/options/options.html');
-const backgroundSource = fs.readFileSync('src/background/background.js', 'utf8');
+const backgroundSource = readBackgroundSource();
 const newtabSource = readNewtabRuntimeSource();
 const wallpaperSource = fs.readFileSync('src/newtab/wallpaper.js', 'utf8');
 const overlaySource = fs.readFileSync('src/overlay/search-panel.js', 'utf8');
@@ -89,26 +90,8 @@ function getFunctionSource(source, name) {
   assert.fail(`${name} should have a complete body`);
 }
 
-function getStorageConstantValue(source, name) {
-  const start = source.indexOf(`const ${name}`);
-  assert(start >= 0, `${name} should exist`);
-  const end = source.indexOf(';', start);
-  const declaration = source.slice(start, end + 1);
-  const values = [...declaration.matchAll(/['"](_x_extension_[a-z0-9_]+_unique_)['"]/g)];
-  assert(values.length > 0, `${name} should include a storage key fallback`);
-  return values[values.length - 1][1];
-}
 
 {
-  const syncKeysBlock = optionsSource.match(/const SYNC_KEYS = \[([\s\S]*?)\n  \];/);
-  assert(syncKeysBlock, 'options should define its Chrome Sync export/import contract');
-  const optionSyncKeys = [...syncKeysBlock[1].matchAll(/\b([A-Z][A-Z0-9_]+_STORAGE_KEY)\b/g)]
-    .map((match) => getStorageConstantValue(optionsSource, match[1]));
-  assert.deepStrictEqual(
-    optionSyncKeys,
-    chromeSyncKeys,
-    'options export/import keys must exactly match the shared Chrome Sync contract'
-  );
   assert(backgroundMigratesChromeSyncContract, 'background startup should migrate the full Chrome Sync contract');
   assert(
     /chrome\.storage\.sync\.remove\(LANGUAGE_MESSAGES_STORAGE_KEY/.test(backgroundSource),
@@ -130,7 +113,7 @@ function getStorageConstantValue(source, name) {
     'shared settings should define and export the overlay opening-animation key'
   );
   assert(
-    /const SYNC_KEYS = \[[\s\S]*OVERLAY_ENTER_ANIMATION_STORAGE_KEY[\s\S]*\];/.test(optionsSource),
+    chromeSyncKeys.includes(settings.OVERLAY_ENTER_ANIMATION_STORAGE_KEY),
     'overlay opening animation should be included in options sync/export/import keys'
   );
   assert(
@@ -175,7 +158,7 @@ function getStorageConstantValue(source, name) {
   );
 }
 assert(
-  /const SYNC_KEYS = \[[\s\S]*SITE_SEARCH_STORAGE_KEY[\s\S]*\];/.test(optionsSource),
+  chromeSyncKeys.includes(settings.SITE_SEARCH_STORAGE_KEY),
   'custom search providers, including their selected category, should remain in sync/export/import'
 );
 
@@ -222,11 +205,11 @@ assert(
 );
 
 assert(
-  /BOOKMARK_VIEW_MODE_STORAGE_KEY\s*=\s*['_"]_x_extension_bookmark_view_mode_2026_unique_['_"]/.test(optionsSource),
+  settings.BOOKMARK_VIEW_MODE_STORAGE_KEY === '_x_extension_bookmark_view_mode_2026_unique_',
   'options sync should define the bookmark view mode storage key'
 );
 assert(
-  /const SYNC_KEYS = \[[\s\S]*BOOKMARK_VIEW_MODE_STORAGE_KEY[\s\S]*\];/.test(optionsSource),
+  chromeSyncKeys.includes(settings.BOOKMARK_VIEW_MODE_STORAGE_KEY),
   'bookmark view mode should be included in options sync/export/import keys'
 );
 assert(
@@ -449,17 +432,6 @@ localeNames.forEach((locale) => {
     );
   });
 });
-[
-  ['new tab', newtabSource],
-  ['options', optionsSource],
-  ['background', backgroundSource]
-].forEach(([surface, source]) => {
-  const migrationSource = getFunctionSource(source, 'migrateStorageIfNeeded');
-  assert(
-    /storageArea\.get\(missingKeys,\s*\(latestSyncResult\)/.test(migrationSource),
-    `${surface} migration should recheck sync storage before writing a formerly missing value`
-  );
-});
 {
   const key = '_x_extension_bookmark_view_mode_2026_unique_';
   const writes = [];
@@ -483,6 +455,7 @@ localeNames.forEach((locale) => {
     'chrome',
     'isPrimaryStorageAreaName',
     'providerStorageRuntime',
+    'SETTINGS',
     `${getFunctionSource(newtabSource, 'migrateStorageIfNeeded')}
     return migrateStorageIfNeeded;`
   );
@@ -491,7 +464,7 @@ localeNames.forEach((locale) => {
       local: localArea,
       sync: syncArea
     }
-  }, (areaName) => areaName === 'sync', null);
+  }, (areaName) => areaName === 'sync', null, settings);
   migrateStorageIfNeeded([key]);
   assert.deepStrictEqual(
     writes,
@@ -501,7 +474,7 @@ localeNames.forEach((locale) => {
   let finishModeRead;
   syncReadCount = 0;
   const waitingMigration = createMigration(syncArea, { storage: { local: localArea, sync: syncArea } },
-    (areaName) => areaName === 'local', { ready: { then(callback) { finishModeRead = callback; } } });
+    (areaName) => areaName === 'local', { ready: { then(callback) { finishModeRead = callback; } } }, settings);
   waitingMigration([key]);
   assert.strictEqual(syncReadCount, 0, 'migration waits for this device to choose its storage source');
   finishModeRead();
@@ -567,11 +540,11 @@ localeNames.forEach((locale) => {
   );
 }
 assert(
-  /BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY\s*=\s*['_"]_x_extension_bookmark_folder_icons_visible_2026_unique_['_"]/.test(optionsSource),
+  settings.BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY === '_x_extension_bookmark_folder_icons_visible_2026_unique_',
   'options sync should define the bookmark folder icons storage key'
 );
 assert(
-  /const SYNC_KEYS = \[[\s\S]*BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY[\s\S]*\];/.test(optionsSource),
+  chromeSyncKeys.includes(settings.BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY),
   'bookmark folder icons should be included in options sync/export/import keys'
 );
 assert(
@@ -595,15 +568,16 @@ localeNames.forEach((locale) => {
   );
 });
 assert(
-  /NEWTAB_SHORTCUTS_STORAGE_KEY\s*=\s*['_"]_x_extension_newtab_shortcuts_2026_unique_['_"]/.test(optionsSource),
+  settings.NEWTAB_SHORTCUTS_STORAGE_KEY === '_x_extension_newtab_shortcuts_2026_unique_',
   'options sync should define the New Tab shortcuts storage key'
 );
 assert(
-  /const SYNC_KEYS = \[[\s\S]*NEWTAB_SHORTCUTS_STORAGE_KEY[\s\S]*\];/.test(optionsSource),
+  chromeSyncKeys.includes(settings.NEWTAB_SHORTCUTS_STORAGE_KEY),
   'New Tab shortcuts should be included in options sync/export/import keys'
 );
 assert(
-  /const SYNC_KEYS = \[[\s\S]*NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY[\s\S]*NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY[\s\S]*\];/.test(optionsSource),
+  [settings.NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY, settings.NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY]
+    .every((key) => chromeSyncKeys.includes(key)),
   'all New Tab shortcut chunks should be included in options sync/export/import keys'
 );
 assert(
@@ -612,23 +586,15 @@ assert(
   'all New Tab shortcut chunks should be included in the shared Chrome Sync contract'
 );
 assert(
-  /hasOwnProperty\.call\(data, NEWTAB_SHORTCUTS_STORAGE_KEY\)[\s\S]*NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY[\s\S]*NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY[\s\S]*payload\[key\] = \[\];/.test(optionsSource),
-  'importing a legacy single-key shortcut payload should clear stale shortcut chunks'
-);
-assert(
   optionsMigratesSyncKeys,
   'New Tab shortcuts should be included in options local-to-sync migration'
 );
 assert(
-  /SYNC_KEYS\.some\(\(key\) => changes\[key\]\)/.test(optionsSource),
-  'all Chrome Sync preference changes should refresh options sync status'
-);
-assert(
-  /NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY\s*=\s*['_"]_x_extension_newtab_shortcut_add_visible_2026_unique_['_"]/.test(optionsSource),
+  settings.NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY === '_x_extension_newtab_shortcut_add_visible_2026_unique_',
   'options sync should define the New Tab add shortcut visibility key'
 );
 assert(
-  /const SYNC_KEYS = \[[\s\S]*NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY[\s\S]*\];/.test(optionsSource),
+  chromeSyncKeys.includes(settings.NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY),
   'the New Tab add shortcut preference should be included in sync export and import'
 );
 assert(
@@ -653,11 +619,11 @@ localeNames.forEach((locale) => {
   });
 });
 assert(
-  /NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY\s*=\s*['_"]_x_extension_newtab_shortcut_dock_magnification_enabled_2026_unique_['_"]/.test(optionsSource),
+  settings.NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY === '_x_extension_newtab_shortcut_dock_magnification_enabled_2026_unique_',
   'options sync should define the New Tab shortcut Dock magnification key'
 );
 assert(
-  /const SYNC_KEYS = \[[\s\S]*NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY[\s\S]*\];/.test(optionsSource),
+  chromeSyncKeys.includes(settings.NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY),
   'the New Tab shortcut Dock magnification preference should be included in sync export and import'
 );
 assert(

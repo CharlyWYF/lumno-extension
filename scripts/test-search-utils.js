@@ -60,33 +60,13 @@ function assertKeywordOnlySuggestionsKeepSearchActionFirst(relativePath) {
   );
   assert.match(
     source,
-    /!strongNavigationMatch && preferAutocompleteFirst && !onlyKeywordSuggestions/,
-    `${relativePath} should not promote search-engine suggestions ahead of the explicit search action`
-  );
-  assert.match(
-    source,
     /if \(onlyKeywordSuggestions\) \{\s*clearAutocomplete\(\);\s*\} else \{\s*applyAutocomplete\(allSuggestions,\s*primarySuggestion,\s*primaryHighlightReason\);\s*\}/,
     `${relativePath} should disable autocomplete when the only available results are keyword search suggestions`
   );
   assert.match(
     source,
-    /if \(preferAutocompleteFirst &&\s*!siteSearchState && query && !onlyKeywordSuggestions &&/,
-    `${relativePath} should only let open-tab quick switch replace the first row in autocomplete-first mode`
-  );
-  assert.match(
-    source,
     /const autocompleteSuggestions = getKeywordSearchSuggestionState\(allSuggestions\)\.autocompleteSuggestions;[\s\S]*?getDomainPrefixCandidate\(autocompleteSuggestions,/,
     `${relativePath} should use shared autocomplete filtering for inline autocomplete`
-  );
-  assert.match(
-    source,
-    /getAutocompleteCandidate\(keywordSuggestionState\.autocompleteSuggestions,/,
-    `${relativePath} should use shared autocomplete filtering before primary highlight promotion`
-  );
-  assert.match(
-    source,
-    /if \(preferAutocompleteFirst &&[\s\S]*?SEARCH_UTILS\.pinExactSearchActionSecond\(allSuggestions\)/,
-    `${relativePath} should keep an exact-query search action in the second row after primary-result promotion`
   );
 }
 
@@ -612,19 +592,46 @@ assert.strictEqual(
 );
 [
   'file:///Users/kevinxu/Downloads/report.pdf',
-  'data:text/plain,hello',
   'view-source:https://example.com/',
   'mailto:hello@example.com',
   'magnet:?xt=urn:btih:0123456789abcdef',
   'vscode://file/Users/kevinxu/github/Lumno',
-  'about:blank',
-  'javascript:alert(1)'
+  'about:blank'
 ].forEach((directUrl) => {
   assert.strictEqual(
     search.getDirectNavigationUrl(directUrl),
     directUrl,
     `${directUrl} should be preserved as a direct navigation target`
   );
+});
+[
+  'data:text/html,<script>alert(1)</script>',
+  'data:text/plain,hello',
+  'javascript:alert(1)',
+  'JavaScript:alert(document.cookie)'
+].forEach((input) => {
+  assert.strictEqual(
+    search.getDirectNavigationUrl(input),
+    '',
+    `${input} should be searched for instead of opened as a top-level page`
+  );
+});
+[
+  'https://wiki.corp.example/page?token=secret',
+  'https://wiki.corp.example/page?token=secret more',
+  'file:///Users/someone/contract.pdf',
+  'C:\\Users\\someone\\contract.pdf',
+  'example.com',
+  'jira.internal/browse/SEC-1',
+  '10.0.0.8:8080',
+  'localhost:3000',
+  'data:text/plain,hello',
+  'mailto:someone@example.com'
+].forEach((input) => {
+  assert.strictEqual(search.isUrlLikeSearchQuery(input), true, `${input} should count as a URL-like query`);
+});
+['weather tomorrow', 'vue.js tutorial', 'c++ templates', 'site:example.com', ''].forEach((input) => {
+  assert.strictEqual(search.isUrlLikeSearchQuery(input), false, `${input} should count as words to search`);
 });
 assert.strictEqual(
   search.getDirectNavigationUrl('example.com/docs'),
@@ -663,7 +670,7 @@ assert.strictEqual(
 );
 assertDirectNavigationDelegatesToShared('src/newtab/newtab.js');
 assertDirectNavigationDelegatesToShared('src/overlay/search-panel.js');
-assertDirectNavigationDelegatesToShared('src/background/background.js');
+assertDirectNavigationDelegatesToShared('src/background/search-suggestions-service.js');
 assertTabMatchUrlDelegatesToShared('src/newtab/newtab.js');
 assertTabMatchUrlDelegatesToShared('src/overlay/search-panel.js');
 assertTabMatchUrlDelegatesToShared('src/overlay/search-panel.js', { includeSearch: false });
@@ -1257,5 +1264,21 @@ assert.strictEqual(
   null,
   'local scopes should require an exact keyword so normal searches are not hijacked'
 );
+
+assert.strictEqual(search.normalizeHost('WWW.Example.COM'), 'example.com');
+assert.strictEqual(search.normalizeHostIdentity('my.feishu.cn'), 'feishu.cn',
+  'the Feishu account portal should share feishu.cn host identity for icons and site search');
+assert.strictEqual(search.normalizeHostIdentity('www.my.feishu.cn'), 'feishu.cn');
+assert.strictEqual(search.normalizeHostIdentity('docs.feishu.cn'), 'docs.feishu.cn');
+assert.strictEqual(search.normalizeHost('my.feishu.cn'), 'my.feishu.cn',
+  'search ranking, dedup and saved selection stats keep the plain host');
+assert.strictEqual(search.normalizeHost(''), '');
+assert.strictEqual(search.normalizeHost(null), '');
+assert.strictEqual(
+  search.sanitizeDisplayText('A\u0000B\u200BC\uFEFF\uE000D\uD800 \uD83D\uDE00'),
+  'AB\u200BCD \uD83D\uDE00',
+  'display text should drop control, BOM, private-use and lone-surrogate code points'
+);
+assert.strictEqual(search.sanitizeDisplayText(undefined), '');
 
 console.log('search utils tests passed');

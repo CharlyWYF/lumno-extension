@@ -3,9 +3,60 @@ const fs = require('fs');
 const { JSDOM } = require('jsdom');
 const selectionIntent = require('../src/shared/selection-intent.js');
 
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+// The runtime only schedules work through window.setTimeout and
+// requestAnimationFrame, so the test drives a virtual clock instead of
+// sleeping: wait(ms) runs every timer that falls due within ms, in order.
+function installVirtualClock(window) {
+  let now = 0;
+  let nextId = 1;
+  let order = 0;
+  const timers = new Map();
+  const schedule = (callback, delay, args) => {
+    const id = nextId++;
+    timers.set(id, { args, callback, due: now + Math.max(0, Number(delay) || 0), order: order++ });
+    return id;
+  };
+  const cancel = (id) => {
+    timers.delete(id);
+  };
+  window.setTimeout = (callback, delay, ...args) => schedule(callback, delay, args);
+  window.clearTimeout = cancel;
+  window.requestAnimationFrame = (callback) => schedule(() => callback(now), 16, []);
+  window.cancelAnimationFrame = cancel;
+  const settle = () => new Promise((resolve) => setImmediate(resolve));
+  return async function advance(ms) {
+    const target = now + Math.max(0, ms);
+    await settle();
+    for (;;) {
+      let nextEntry = null;
+      timers.forEach((timer, id) => {
+        if (timer.due > target) return;
+        if (!nextEntry || timer.due < nextEntry[1].due ||
+            (timer.due === nextEntry[1].due && timer.order < nextEntry[1].order)) {
+          nextEntry = [id, timer];
+        }
+      });
+      if (!nextEntry) break;
+      const [id, timer] = nextEntry;
+      timers.delete(id);
+      now = timer.due;
+      try {
+        if (typeof timer.callback === 'function') {
+          timer.callback(...timer.args);
+        } else {
+          window.eval(String(timer.callback));
+        }
+      } catch (error) {
+        console.error('Uncaught error in timer callback:', error);
+      }
+      await settle();
+    }
+    now = target;
+    await settle();
+  };
 }
+
+let wait = null;
 
 (async () => {
   const dom = new JSDOM(`<!doctype html><html lang="zh-CN"><body>
@@ -46,6 +97,7 @@ function wait(ms) {
     url: 'https://example.com/article'
   });
   const { window } = dom;
+  wait = installVirtualClock(window);
   window.LumnoSelectionIntent = selectionIntent;
   window.Range.prototype.getBoundingClientRect = function() {
     const node = this.commonAncestorContainer;

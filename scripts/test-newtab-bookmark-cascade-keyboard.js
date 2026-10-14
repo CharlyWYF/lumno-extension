@@ -147,6 +147,13 @@ function createFakeElement(tagName, ownerDocument) {
       const eventName = String(type || '');
       listeners.set(eventName, [...(listeners.get(eventName) || []), listener]);
     },
+    removeEventListener(type, listener) {
+      const eventName = String(type || '');
+      listeners.set(eventName, (listeners.get(eventName) || []).filter((item) => item !== listener));
+    },
+    listenerCount(type) {
+      return (listeners.get(String(type || '')) || []).length;
+    },
     dispatchEvent(event) {
       const nextEvent = event || createFakeEvent('');
       nextEvent.target = nextEvent.target || element;
@@ -222,6 +229,13 @@ function createFakeDocument() {
     addEventListener(type, listener) {
       const eventName = String(type || '');
       listeners.set(eventName, [...(listeners.get(eventName) || []), listener]);
+    },
+    removeEventListener(type, listener) {
+      const eventName = String(type || '');
+      listeners.set(eventName, (listeners.get(eventName) || []).filter((item) => item !== listener));
+    },
+    listenerCount(type) {
+      return (listeners.get(String(type || '')) || []).length;
     },
     dispatchEvent(event) {
       const nextEvent = event || createFakeEvent('');
@@ -488,8 +502,14 @@ async function flushPromises() {
   assert.strictEqual(getLevelTitle(levels[1]), 'Patterns', 'sibling submenus should render their own folder title');
   assert.strictEqual(getActiveLabel(levels[1]), 'Pattern Library', 'the newly opened submenu should select its first child');
 
+  assert.strictEqual(documentObj.listenerCount('pointermove'), 1, 'an open menu tracks the pointer');
+  // The dismiss stack notes presses on its own; the menu adds one more.
+  const pressListenersWhileClosed = documentObj.listenerCount('pointerdown') - 1;
   dispatchKey(documentObj, 'Escape');
   assert.strictEqual(runtime.isOpen(), false, 'Escape should close the cascade menu');
+  assert.strictEqual(documentObj.listenerCount('pointermove'), 0, 'a closed menu leaves no pointer listener');
+  assert.strictEqual(documentObj.listenerCount('pointerdown'), pressListenersWhileClosed,
+    'a closed menu leaves no press listener of its own');
   assert.strictEqual(documentObj.activeElement, anchor, 'Escape should restore focus to the trigger');
   assert.strictEqual(
     anchorVisualStates[anchorVisualStates.length - 1],

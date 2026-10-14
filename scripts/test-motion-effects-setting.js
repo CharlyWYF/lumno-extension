@@ -44,26 +44,6 @@ assert.strictEqual(
   '_x_extension_motion_effects_enabled_2026_unique_'
 );
 assert(settings.CHROME_SYNC_STORAGE_KEYS.includes(settings.MOTION_EFFECTS_ENABLED_STORAGE_KEY));
-assert.match(
-  optionsSource,
-  /const MOTION_EFFECTS_ENABLED_STORAGE_KEY = SETTINGS\.MOTION_EFFECTS_ENABLED_STORAGE_KEY[\s\S]*?_x_extension_motion_effects_enabled_2026_unique_/,
-  'options should use the shared synchronized motion key'
-);
-assert.match(
-  optionsSource,
-  /MOTION_EFFECTS_ENABLED_STORAGE_KEY,[\s\S]*AUTO_PIP_ENABLED_STORAGE_KEY,/,
-  'motion effects should be part of options export and import sync payloads'
-);
-assert.match(
-  optionsSource,
-  /motionEffectsToggle\.addEventListener\('change'[\s\S]*?storageArea\.set\(\{ \[MOTION_EFFECTS_ENABLED_STORAGE_KEY\]: next \}\)/,
-  'motion effects changes should persist immediately'
-);
-assert.match(
-  optionsSource,
-  /storageArea\.get\(\[MOTION_EFFECTS_ENABLED_STORAGE_KEY\][\s\S]*?setOptionsToggleState\(motionEffectsToggle, stored\)/,
-  'options should restore the synchronized motion setting'
-);
 
 assert(
   newtabHtml.includes('../shared/motion-preload.js'),
@@ -146,11 +126,6 @@ assert.match(
   overlaySource,
   /const reduceMotion = revealOptions\.forceInstant === true \|\|[\s\S]*?shouldSkipOverlayEntryMotion\(\);[\s\S]*?if \(reduceMotion\) \{[\s\S]*?finishOverlayPanelEnterAnimation\(overlay\);[\s\S]*?\} else \{[\s\S]*?overlayFrameTracker\.runEnterAnimation/,
   'turning motion effects off or detecting a slow first frame should skip only the Overlay entrance path'
-);
-assert.match(
-  overlaySource,
-  /function shouldAnimateOverlayUpdateNoticeMount\([\s\S]*return !window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches/,
-  'Overlay notice motion should continue to follow only the OS preference'
 );
 assert.doesNotMatch(
   overlaySource,

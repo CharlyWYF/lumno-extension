@@ -13,7 +13,7 @@
       stableHashCode
     } = deps;
 
-    // Page state still owned by newtab.js; read and written through accessors.
+    // The page state object shared with newtab.js and the other modules.
     const pageState = deps.pageState;
 
     function getBookmarkPageCount() {
@@ -143,7 +143,9 @@
       if (pageState.bookmarkPageAnimating) {
         return;
       }
-      if (!pageState.bookmarkGrid) {
+      // With reduced motion asked for, the page switches without sliding.
+      const crossSurfaceDrag = root.LumnoNewtabCrossSurfaceDrag;
+      if (!pageState.bookmarkGrid || (crossSurfaceDrag && crossSurfaceDrag.prefersReducedMotion(window))) {
         pageState.bookmarkCurrentPage = targetPage;
         renderCurrentBookmarkPage();
         updateBookmarkSectionPosition();

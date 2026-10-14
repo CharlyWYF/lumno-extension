@@ -40,6 +40,7 @@ function SegmentedControl({
   onSelect(value: string): void;
 }) {
   const indicatorRef = useRef<HTMLSpanElement>(null);
+  const hasActiveItem = model.items.some((item) => item.value === model.activeValue);
   const itemSignature = model.items
     .map((item) => `${item.value}\u0000${item.label}`)
     .join('\u0001');
@@ -56,8 +57,12 @@ function SegmentedControl({
     if (model.disabled || model.items.length < 2) {
       return;
     }
+    // Radio group keys: arrows move the selection, wrapping; Home/End jump.
     const { key } = event;
-    if (key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== 'Home' && key !== 'End') {
+    const step = key === 'ArrowRight' || key === 'ArrowDown'
+      ? 1
+      : key === 'ArrowLeft' || key === 'ArrowUp' ? -1 : 0;
+    if (!step && key !== 'Home' && key !== 'End') {
       return;
     }
     event.preventDefault();
@@ -65,7 +70,7 @@ function SegmentedControl({
       ? 0
       : key === 'End'
         ? model.items.length - 1
-        : (currentIndex + (key === 'ArrowRight' ? 1 : -1) + model.items.length) % model.items.length;
+        : (currentIndex + step + model.items.length) % model.items.length;
     const nextItem = model.items[nextIndex];
     const buttonGroup = event.currentTarget.parentElement;
     onSelect(nextItem.value);
@@ -87,19 +92,24 @@ function SegmentedControl({
       />
       {model.items.map((item, index) => {
         const active = item.value === model.activeValue;
+        // Roving tab stop: only the selected option (or the first, when none
+        // is selected) is in the tab order; arrows move between options.
+        const tabStop = active || (index === 0 && !hasActiveItem);
         const dataProps = {
           [model.dataAttribute]: item.value
         };
         return (
           <button
             {...dataProps}
-            aria-pressed={active}
+            aria-checked={active}
             className="_x_extension_theme_option_2024_unique_"
             data-active={active ? 'true' : 'false'}
             disabled={model.disabled}
             key={item.value}
             onClick={() => onSelect(item.value)}
             onKeyDown={(event) => handleKeyDown(event, index)}
+            role="radio"
+            tabIndex={tabStop ? 0 : -1}
             type="button"
           >
             {item.iconClass ? (
@@ -138,6 +148,8 @@ export function createSegmentedControlController(
   if (host) {
     host.dataset.reactIsland = 'options-segmented-control';
     host.dataset.segmentedKind = options.kind;
+    // The options inside are radios; the host keeps its own aria-label.
+    host.setAttribute('role', 'radiogroup');
   }
   return createReactRootController(
     host,

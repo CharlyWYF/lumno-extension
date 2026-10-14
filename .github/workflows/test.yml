@@ -1,14 +1,24 @@
 name: Test
 
+# Pull requests are tested on their own event; pushes only for main, so a
+# branch with an open PR isn't tested twice for the same commit.
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -17,10 +27,13 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
 
+      # Builds the React bundles once, runs both test suites, then the static
+      # checks (the same ones npm run check runs after its own build).
       - name: Run tests and checks
         run: npm run verify
 

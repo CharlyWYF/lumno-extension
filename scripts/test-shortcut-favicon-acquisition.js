@@ -7,22 +7,12 @@ const shortcutsStore = require('../src/newtab/shortcuts-store.js');
 const searchUtils = require('../src/shared/search-utils.js');
 const faviconCache = require('../src/shared/favicon-cache.js');
 const { readNewtabRuntimeSource } = require('./helpers/newtab-source');
+const { readBackgroundSource } = require('./helpers/background-source');
+const { extractFunction } = require('./helpers/extract-function');
 
 const repoRoot = path.resolve(__dirname, '..');
-const backgroundSource = fs.readFileSync(path.join(repoRoot, 'src/background/background.js'), 'utf8');
+const backgroundSource = readBackgroundSource();
 const newtabSource = readNewtabRuntimeSource();
-
-function extractFunction(source, name) {
-  const start = source.search(new RegExp(`(?:async )?function ${name}\\(`));
-  assert.notStrictEqual(start, -1, `missing function ${name}`);
-  const openBrace = source.indexOf('{', start);
-  let depth = 0;
-  for (let index = openBrace; index < source.length; index += 1) {
-    if (source[index] === '{') depth += 1;
-    if (source[index] === '}' && --depth === 0) return source.slice(start, index + 1);
-  }
-  throw new Error(`unterminated function ${name}`);
-}
 
 function png(width, marker = 1) {
   const buffer = Buffer.alloc(25);
@@ -266,7 +256,8 @@ async function run() {
 
   const enabled = createAcquisition();
   const proxyResult = await enabled.fetchShortcutFaviconData(page, '', '', false, 'service');
-  assert.strictEqual(new URL(proxyResult.sourceUrl).searchParams.get('url'), normalizedPage);
+  assert.strictEqual(new URL(proxyResult.sourceUrl).searchParams.get('url'), new URL(normalizedPage).origin + '/',
+    'the third-party service should learn only the site origin');
   assert.strictEqual(enabled.state.calls.length, 1, 'an explicit service source should contact only the service');
   enabled.state.proxyImage = png(128, 9);
   assert.deepStrictEqual(await enabled.fetchShortcutFaviconData(page, '', '', false, 'service'), proxyResult,
@@ -446,23 +437,31 @@ async function run() {
     'invalid service responses must not be saved');
   const noBrowserIcon = createAcquisition({ browserImage: png(16, 0) });
   assert.ok((await noBrowserIcon.fetchShortcutFaviconData(page)).sourceUrl.startsWith('https:'),
-    'a missing exact-page browser icon should try the full-page service request in enhanced mode');
+    'a missing exact-page browser icon should try the origin-only service request in enhanced mode');
 
   const pages = ['https://chrome.google.com/', 'https://chrome.google.com/webstore/devconsole?hl=zh-cn',
     'https://chrome.google.com/webstore/devconsole?hl=en', 'https://chrome.google.com/webstore/',
     'https://chrome.google.com/webstore', 'https://chrome.google.com/apps%2Fpreview'];
   const pathSpecific = createAcquisition({ pageImages: Object.fromEntries(pages.map((url, index) =>
     [url, { browser: png(32, index + 10), proxy: png(128, index + 20) }])) });
-  for (const source of ['cache', 'service']) {
-    const results = await Promise.all(pages.map((url) => pathSpecific.fetchShortcutFaviconData(url, '', '', false, source)));
-    assert.strictEqual(new Set(results.map((result) => result.data)).size, pages.length,
-      'same-host paths, query values, trailing slashes and encoded slashes retain separate artwork');
-    for (let index = 0; index < pages.length; index += 1) {
-      assert.strictEqual(new URL(results[index].sourceUrl).searchParams.get(source === 'cache' ? 'pageUrl' : 'url'), pages[index]);
-    }
+  const cacheResults = await Promise.all(pages.map((url) => pathSpecific.fetchShortcutFaviconData(url, '', '', false, 'cache')));
+  assert.strictEqual(new Set(cacheResults.map((result) => result.data)).size, pages.length,
+    'same-host paths, query values, trailing slashes and encoded slashes retain separate browser artwork');
+  for (let index = 0; index < pages.length; index += 1) {
+    assert.strictEqual(new URL(cacheResults[index].sourceUrl).searchParams.get('pageUrl'), pages[index]);
   }
+  // The third-party service is told only the site origin, so it answers once
+  // for every page of that origin.
+  const serviceResults = await Promise.all(pages.map((url) => pathSpecific.fetchShortcutFaviconData(url, '', '', false, 'service')));
+  assert.strictEqual(new Set(serviceResults.map((result) => result.data)).size, 1,
+    'service artwork is shared by the pages of one origin');
+  serviceResults.forEach((result) => {
+    assert.strictEqual(new URL(result.sourceUrl).searchParams.get('url'), 'https://chrome.google.com/');
+  });
   const webstore = pages[1];
-  const oldRootSource = pathSpecific.resolver.getGstaticFaviconUrl(pages[0]);
+  // A snapshot saved from an older full-page service request for another page.
+  const oldRootSource = `https://t2.gstatic.cn/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE%2CSIZE%2CURL&url=${
+    encodeURIComponent(pages[3])}&size=128`;
   const oldBytes = `data:image/png;base64,${png(128, 88).toString('base64')}`;
   const oldRootSnapshot = createFrontend(pathSpecific, webstore, {
     initialSnapshots: shortcutFavicon.setCachedIcon({}, webstore, oldBytes, oldRootSource), iconSource: 'service'

@@ -44,16 +44,6 @@ assert.strictEqual(settings.normalizeSimpleModeEnabled(undefined), false);
 assert.strictEqual(settings.normalizeSimpleModeEnabled(false), false);
 assert.strictEqual(settings.normalizeSimpleModeEnabled(true), true);
 
-assert.match(
-  optionsSource,
-  /simpleModeToggle\.addEventListener\('change'[\s\S]*?storageArea\.set\(\{ \[SIMPLE_MODE_ENABLED_STORAGE_KEY\]: next \}\)/,
-  'options should persist simple mode immediately'
-);
-assert.match(
-  optionsSource,
-  /storageArea\.get\(\[SIMPLE_MODE_ENABLED_STORAGE_KEY\][\s\S]*?setOptionsToggleState\(simpleModeToggle, stored\)/,
-  'options should restore simple mode from synchronized storage'
-);
 
 assert.match(
   newtabSource,

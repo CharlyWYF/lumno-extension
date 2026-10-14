@@ -4,11 +4,9 @@ const path = require('path');
 const vm = require('vm');
 const aggregateSearch = require('../src/background/aggregate-search.js');
 const aggregateStore = require('../src/shared/aggregate-search-store.js');
+const { readBackgroundSource } = require('./helpers/background-source');
 
-const backgroundSource = fs.readFileSync(
-  path.join(__dirname, '..', 'src/background/background.js'),
-  'utf8'
-);
+const backgroundSource = readBackgroundSource();
 const aggregateSearchSource = fs.readFileSync(
   path.join(__dirname, '..', 'src/background/aggregate-search.js'),
   'utf8'
@@ -74,31 +72,8 @@ assert.doesNotMatch(
   /loadCustomSiteSearchProviders\(\)\.then\(\(customItems\) => \{\s*siteSearchCache = customItems;/,
   'provider storage failures must not cache a custom-only source list'
 );
-const getSiteSearchProvidersMessageCase = backgroundSource.slice(
-  backgroundSource.indexOf("case 'getSiteSearchProviders':"),
-  backgroundSource.indexOf("case 'runSiteSearchProviderQuery':")
-);
-assert.match(
-  getSiteSearchProvidersMessageCase,
-  /loadSiteSearchProviders\(\)[\s\S]*?\.catch\(\(\) => \{[\s\S]*?sendResponse\(\{[\s\S]*?items: \[\],[\s\S]*?reason: 'site-search-provider-load-failed'/,
-  'a failed provider load must answer the runtime message so callers can use their local fallback'
-);
-const aggregateMessageCaseSource = backgroundSource.slice(
-  backgroundSource.indexOf("case 'runAggregateSearchQuery':"),
-  backgroundSource.indexOf("default:", backgroundSource.indexOf("case 'runAggregateSearchQuery':"))
-);
-assert.ok(
-  aggregateMessageCaseSource.includes('request.aggregateId') &&
-    aggregateMessageCaseSource.includes('request.query') &&
-    aggregateMessageCaseSource.includes('request.disposition'),
-  'the aggregate message must contain only the stored definition identity and search request data'
-);
-assert.ok(
-  !aggregateMessageCaseSource.includes('request.provider') &&
-    !aggregateMessageCaseSource.includes('request.providers') &&
-    !aggregateMessageCaseSource.includes('request.urls'),
-  'the page must not be allowed to supply provider definitions or arbitrary target URLs'
-);
+// The runAggregateSearchQuery message itself is covered by
+// scripts/test-background-message-handlers.js.
 
 function createChromeApi(options = {}) {
   const created = [];

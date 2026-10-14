@@ -151,7 +151,7 @@ body[data-wallpaper-active="true"] .x-nt-quote-text:hover {
   width: var(--x-nt-quote-shuffle-gap);
 }
 .x-nt-quote-row:hover .x-nt-quote-shuffle,
-.x-nt-quote-row:focus-within .x-nt-quote-shuffle,
+.x-nt-quote-row:has(:focus-visible) .x-nt-quote-shuffle,
 .x-nt-quote-shuffle[data-loading="true"] {
   opacity: 0.72;
   pointer-events: auto;

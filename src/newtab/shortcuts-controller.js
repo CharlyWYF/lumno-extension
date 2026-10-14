@@ -6,6 +6,7 @@
       shortcutFolderRuntime,
       bookmarksRuntime,
       isShortcutDragActive,
+      moveShortcutByKeyboard,
       MAX_NEWTAB_SHORTCUTS,
       normalizeHost,
       sanitizeDisplayText,
@@ -102,7 +103,7 @@
       animateShortcutLayoutChange
     } = deps;
 
-    // Page state still owned by newtab.js; read and written through accessors.
+    // The page state object shared with newtab.js and the other modules.
     const pageState = deps.pageState;
 
     let shortcutsView = null;
@@ -630,10 +631,20 @@
       }
     }
 
+    // A shortcut drag moves the rendered tiles by hand until it ends, so a
+    // render asked for meanwhile (a favicon that resolved, a storage change)
+    // waits and runs once the drag is over.
+    let shortcutRenderDeferred = false;
+
     function renderShortcuts() {
       if (!pageState.shortcutGrid || !shortcutsView) {
         return;
       }
+      if (isShortcutDragActive()) {
+        shortcutRenderDeferred = true;
+        return;
+      }
+      shortcutRenderDeferred = false;
       hideShortcutTooltip();
       closeShortcutContextMenu();
       pageState.newtabShortcuts = NEWTAB_SHORTCUTS_STORE.normalizeShortcuts(pageState.newtabShortcuts, getShortcutStoreOptions());
@@ -659,6 +670,12 @@
           document.body && document.body.getAttribute('data-nt-ready') === '1'
         )
       });
+    }
+
+    function flushDeferredShortcutRender() {
+      if (shortcutRenderDeferred && !isShortcutDragActive()) {
+        renderShortcuts();
+      }
     }
 
     // A drag moves tiles between groups without rendering; the grid follows
@@ -1512,6 +1529,7 @@
         isMiddleClick,
         openShortcut: openShortcutUrl,
         isActivationSuppressed: isCardActivationSuppressed,
+        moveShortcut: moveShortcutByKeyboard,
         onContextMenu: handleShortcutContextMenu,
         onNativeDragStart: handleShortcutNativeDragStart,
         getAddLabel: () => t('newtab_shortcuts_add', 'Add shortcut'),
@@ -1607,6 +1625,7 @@
       getShortcutFaviconCandidateUrl,
       getShortcutTitle,
       renderShortcuts,
+      flushDeferredShortcutRender,
       loadNewtabShortcutPreferences,
       loadVisibleShortcuts,
       persistShortcuts,

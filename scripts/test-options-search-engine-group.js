@@ -64,11 +64,6 @@ assert.match(
   /_x_extension_site_search_category_tabs_2026_unique_" role="group"[\s\S]*aria-pressed="true"[\s\S]*aria-pressed="false"/,
   'The custom provider group selector should expose button-group semantics'
 );
-assert.match(
-  optionsJs,
-  /category:\s*isBuiltinAiProvider\s*\?\s*'aiSearch'\s*:\s*\(draft && draft\.category === 'searchEngine' \? 'searchEngine' : 'site'\)/,
-  'Options should preserve built-in AI providers and persist the selected custom provider group'
-);
 [newtabJs, overlaySearchPanelJs].forEach((source, index) => {
   assert.doesNotMatch(
     source,

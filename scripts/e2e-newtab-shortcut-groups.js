@@ -194,7 +194,8 @@ async function openPage(cdp, viewport) {
       })()`);
     },
     async key(key, modifiers = 0) {
-      const codes = { Enter: ['Enter', 13], Escape: ['Escape', 27], Backspace: ['Backspace', 8], z: ['KeyZ', 90] };
+      const codes = { Enter: ['Enter', 13], Escape: ['Escape', 27], Backspace: ['Backspace', 8], z: ['KeyZ', 90],
+        ArrowLeft: ['ArrowLeft', 37], ArrowRight: ['ArrowRight', 39] };
       const [code, keyCode] = codes[key];
       // Enter carries its character, or a form would not submit.
       const text = key === 'Enter' ? { type: 'keyDown', text: '\r', unmodifiedText: '\r' } : { type: 'rawKeyDown' };
@@ -518,6 +519,70 @@ check('a group menu button hides once its menu closes', WIDE, async (page) => {
     await page.mouse('mouseMoved', away.x, away.y, { button: 'none' });
     await page.settle(300);
     if (await shown()) problems.push({ key: `button still shown after ${how}`, dx: 0, dy: 0 });
+  }
+  return problems;
+});
+
+// Alt+Arrow moves the focused tile one place, across a group's edge too,
+// keeps focus on it and does not send the page back in history.
+check('Alt+Arrow moves a focused tile one place', WIDE, async (page) => {
+  await page.seed(BASE_GROUPS, BASE_ITEMS);
+  const ALT = 1;
+  const read = () => page.evaluate(`(() => ({
+    order: Array.from(document.querySelectorAll('.x-nt-shortcut-tile[data-shortcut-id]'))
+      .map((tile) => tile.getAttribute('data-shortcut-group-id') + ':' + tile.getAttribute('data-shortcut-id'))
+      .join(' '),
+    focused: document.activeElement && document.activeElement.getAttribute('data-shortcut-id'),
+    href: location.href
+  }))()`);
+  const start = await read();
+  const problems = [];
+  const expect = async (label, order, focused) => {
+    await page.settle();
+    const now = await read();
+    if (now.order !== order) problems.push({ key: `${label}: ${now.order}`, dx: 0, dy: 0 });
+    if (now.focused !== focused) problems.push({ key: `${label}: focus on ${now.focused}`, dx: 0, dy: 0 });
+    if (now.href !== start.href) problems.push({ key: `${label}: navigated to ${now.href}`, dx: 0, dy: 0 });
+  };
+  const rest = 'work:w1 work:w2 work:w3 work:w4 read:r1 read:r2';
+  await page.evaluate(`document.querySelector('[data-shortcut-id="a1"]').focus()`);
+  await page.key('ArrowRight', ALT);
+  await expect('a1 right', `g0:a2 g0:a1 g0:a3 g0:a4 g0:a5 ${rest}`, 'a1');
+  await page.evaluate(`document.querySelector('[data-shortcut-id="a5"]').focus()`);
+  await page.key('ArrowRight', ALT);
+  await expect('a5 into work', `g0:a2 g0:a1 g0:a3 g0:a4 work:a5 ${rest}`, 'a5');
+  await page.key('ArrowLeft', ALT);
+  await expect('a5 back', `g0:a2 g0:a1 g0:a3 g0:a4 g0:a5 ${rest}`, 'a5');
+  return problems;
+});
+
+// Settings changed elsewhere (the options page, another tab) apply live,
+// and a shortcut list saved elsewhere replaces the one shown.
+check('settings and shortcuts saved elsewhere apply live', WIDE, async (page) => {
+  await page.seed(BASE_GROUPS, BASE_ITEMS);
+  const visibleKey = '_x_extension_newtab_shortcuts_visible_2026_unique_';
+  const set = (values) => page.evaluate(`new Promise((resolve) => chrome.storage.sync.set(${JSON.stringify(values)}, resolve))`);
+  const shown = () => page.evaluate(`(() => {
+    const section = document.querySelector('.x-nt-shortcuts-section');
+    return Boolean(section) && getComputedStyle(section).display !== 'none' && section.getBoundingClientRect().height > 0;
+  })()`);
+  const tileIds = () => page.evaluate(`Array.from(document.querySelectorAll('.x-nt-shortcut-tile[data-shortcut-id]'))
+    .map((tile) => tile.getAttribute('data-shortcut-id')).join(' ')`);
+  const problems = [];
+  await set({ [visibleKey]: false });
+  await page.settle();
+  if (await shown()) problems.push({ key: 'shortcuts still shown after hiding them elsewhere', dx: 0, dy: 0 });
+  await set({ [visibleKey]: true });
+  await page.settle();
+  if (!(await shown())) problems.push({ key: 'shortcuts not shown again', dx: 0, dy: 0 });
+  const payload = shortcutsStore.createShortcutStoragePlan({
+    groups: BASE_GROUPS,
+    items: BASE_ITEMS.filter((item) => item.id !== 'a3')
+  }).payload;
+  await set(payload);
+  await page.settle(900);
+  if ((await tileIds()).split(' ').includes('a3')) {
+    problems.push({ key: 'a shortcut removed elsewhere is still shown', dx: 0, dy: 0 });
   }
   return problems;
 });

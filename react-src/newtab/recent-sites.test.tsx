@@ -384,14 +384,8 @@ describe('Recent Sites React island', () => {
     expect(pressed.mock.calls[0][0].item.url).toBe('https://example.com/');
     expect(opened).not.toHaveBeenCalled();
 
-    // A drag that ended on this press suppresses its click.
-    card._xRecentSuppressClick = true;
-    act(() => {
-      card.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0 }));
-    });
-    expect(opened).not.toHaveBeenCalled();
-
-    card._xRecentSuppressClick = false;
+    // The click after a drag is swallowed by the page-wide drag click guard
+    // (drag-click-guard.js) before it reaches the card.
     act(() => {
       card.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }));
       card.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0 }));

@@ -25,16 +25,8 @@ assert.match(
   'background should pass the current web clip setting into the overlay context'
 );
 
-assert.match(
-  backgroundJs,
-  /'openDocumentPipPicker'/,
-  'background message router should route the web clip command action'
-);
-assert.match(
-  backgroundJs,
-  /case 'openDocumentPipPicker':[\s\S]*?openDocumentPipPickerOnTab\(senderTab,\s*'search-command'\)/,
-  'web clip command messages should open the Document PiP picker on the sender tab'
-);
+// The openDocumentPipPicker message is covered by
+// scripts/test-background-message-handlers.js.
 assert.match(
   contentJs,
   /function refreshPiPContent\(session\)/,

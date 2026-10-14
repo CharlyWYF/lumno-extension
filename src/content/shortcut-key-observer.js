@@ -8,7 +8,15 @@
       // A listener from the previous extension context may already be invalid.
     }
   }
-  const SHOW_SEARCH_SHORTCUT_REFRESH_MS = 15000;
+  // The configured shortcut lives in chrome.commands, which a content script
+  // cannot read or observe, so it is fetched from the background. Asking on
+  // every keydown woke the service worker from every frame while the user
+  // typed; instead the frame asks once at startup and again when its window
+  // regains focus, its tab becomes visible or the page comes back from the
+  // back/forward cache (the user may have edited the shortcut in
+  // chrome://extensions/shortcuts meanwhile). The interval folds the focus and
+  // visibilitychange that arrive together on a tab switch into one request.
+  const SHOW_SEARCH_SHORTCUT_REFRESH_MIN_INTERVAL_MS = 2000;
   const RELEASE_REPLAY_WINDOW_MS = 5000;
   const SHORTCUT_KEY_MATCHER = globalThis.LumnoShortcutKeyMatcher;
   let showSearchShortcutRaw = '';
@@ -42,9 +50,9 @@
     showSearchShortcutSpec = SHORTCUT_KEY_MATCHER.parseShortcut(nextShortcut);
   }
 
-  function refreshShowSearchShortcut(force) {
+  function refreshShowSearchShortcut() {
     const now = Date.now();
-    if (!force && (now - showSearchShortcutRefreshedAt) < SHOW_SEARCH_SHORTCUT_REFRESH_MS) {
+    if ((now - showSearchShortcutRefreshedAt) < SHOW_SEARCH_SHORTCUT_REFRESH_MIN_INTERVAL_MS) {
       return;
     }
     showSearchShortcutRefreshedAt = now;
@@ -97,7 +105,6 @@
       return;
     }
     rememberTrustedShortcutKeydown(event);
-    refreshShowSearchShortcut(false);
     const descriptor = SHORTCUT_KEY_MATCHER.describeKeyboardEvent(event);
     if (!showSearchShortcutSpec) {
       relayUnresolvedShowSearchShortcut(event, descriptor);
@@ -282,24 +289,43 @@
     relayTabSwitcherShortcutRelease(key);
   }
 
-  const refreshShowSearchShortcutOnFocus = () => refreshShowSearchShortcut(true);
+  // Element focus does not bubble, so a non-capturing listener on window hears
+  // only the window itself gaining focus, the one focus that can follow a
+  // shortcut edit.
+  const refreshShowSearchShortcutOnFocus = (event) => {
+    if (event && event.target !== window) {
+      return;
+    }
+    refreshShowSearchShortcut();
+  };
+  // Every frame of a tab becomes visible together; the top frame speaks for
+  // the tab and a subframe refreshes when its own window takes focus.
   const refreshShowSearchShortcutOnVisibility = () => {
-    if (document.visibilityState === 'visible') {
-      refreshShowSearchShortcut(false);
+    if (window.top === window && document.visibilityState === 'visible') {
+      refreshShowSearchShortcut();
+    }
+  };
+  // A page restored from the back/forward cache keeps this script's state
+  // from before it was cached, without running the startup request again.
+  const refreshShowSearchShortcutOnPageShow = (event) => {
+    if (event && event.persisted === true) {
+      refreshShowSearchShortcut();
     }
   };
 
   notifyTopFrameDocumentStarted();
-  refreshShowSearchShortcut(true);
+  refreshShowSearchShortcut();
   window.addEventListener('keydown', relayShowSearchShortcut, true);
   window.addEventListener('keyup', notifyTabSwitcherShortcutModifierReleased, true);
-  window.addEventListener('focus', refreshShowSearchShortcutOnFocus, true);
+  window.addEventListener('focus', refreshShowSearchShortcutOnFocus);
+  window.addEventListener('pageshow', refreshShowSearchShortcutOnPageShow);
   document.addEventListener('visibilitychange', refreshShowSearchShortcutOnVisibility, true);
   window[RUNTIME_KEY] = Object.freeze({
     cleanup() {
       window.removeEventListener('keydown', relayShowSearchShortcut, true);
       window.removeEventListener('keyup', notifyTabSwitcherShortcutModifierReleased, true);
-      window.removeEventListener('focus', refreshShowSearchShortcutOnFocus, true);
+      window.removeEventListener('focus', refreshShowSearchShortcutOnFocus);
+      window.removeEventListener('pageshow', refreshShowSearchShortcutOnPageShow);
       document.removeEventListener('visibilitychange', refreshShowSearchShortcutOnVisibility, true);
       if (chrome && chrome.runtime && chrome.runtime.onMessage &&
           typeof chrome.runtime.onMessage.removeListener === 'function') {

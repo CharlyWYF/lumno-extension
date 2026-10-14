@@ -6,7 +6,8 @@
 .x-nt-recent-history-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10050;
+  /* Over the recent card's context menu that opens it. */
+  z-index: calc(var(--lumno-z-dialog) + 10);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -187,7 +188,7 @@ body[data-theme="dark"] .x-nt-recent-history-dialog {
 }
 
 .x-nt-recent-history-version:hover,
-.x-nt-recent-history-version:focus-within {
+.x-nt-recent-history-version:has(:focus-visible) {
   background: var(--lumno-color-hover);
 }
 
@@ -290,7 +291,7 @@ body[data-theme="dark"] .x-nt-recent-history-dialog {
 }
 
 .x-nt-recent-history-version:hover .x-nt-recent-history-action-slot,
-.x-nt-recent-history-version:focus-within .x-nt-recent-history-action-slot {
+.x-nt-recent-history-version:has(:focus-visible) .x-nt-recent-history-action-slot {
   width: 108px;
   margin-left: 8px;
   opacity: 1;
@@ -298,7 +299,7 @@ body[data-theme="dark"] .x-nt-recent-history-dialog {
 }
 
 .x-nt-recent-history-version:hover .x-nt-recent-history-restore,
-.x-nt-recent-history-version:focus-within .x-nt-recent-history-restore {
+.x-nt-recent-history-version:has(:focus-visible) .x-nt-recent-history-restore {
   opacity: 1;
   transform: translateX(0);
 }

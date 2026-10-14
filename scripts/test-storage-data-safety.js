@@ -163,8 +163,8 @@ assert.deepStrictEqual(
     'src/background/background.js:chrome.storage.sync:BOOKMARK_TOPBAR_LOCAL_STORAGE_KEYS',
     'src/background/background.js:chrome.storage.sync:LANGUAGE_MESSAGES_STORAGE_KEY',
     'src/background/background.js:localArea:REMOVED_AI_LOCAL_STORAGE_KEYS',
-    'src/background/background.js:localArea:legacyKeys',
     'src/background/background.js:syncArea:REMOVED_AI_SYNC_STORAGE_KEYS',
+    'src/background/favicon-service.js:localArea:legacyKeys',
     'src/newtab/bookmark-display-settings.js:bookmarkTopbarSurfaceStorageArea:BOOKMARK_TOPBAR_SURFACE_COLOR_STORAGE_KEY',
     'src/newtab/bookmark-display-settings.js:localArea:BOOKMARK_TOPBAR_SURFACE_COLOR_STORAGE_KEY',
     'src/newtab/bookmark-display-settings.js:syncArea:cleanupKeys'
@@ -195,33 +195,51 @@ assert.strictEqual(
   );
 });
 
-const migrationSurfaces = [
-  'src/background/background.js',
-  'src/newtab/newtab.js',
-  'src/options/options.js'
-];
-function extractFunctionSource(source, name) {
-  const start = source.indexOf(`function ${name}(`);
-  assert.notStrictEqual(start, -1, `missing function ${name}`);
-  const openBrace = source.indexOf('{', start);
-  let depth = 0;
-  for (let index = openBrace; index < source.length; index += 1) {
-    if (source[index] === '{') {
-      depth += 1;
-    } else if (source[index] === '}') {
-      depth -= 1;
-      if (depth === 0) {
-        return source.slice(start, index + 1);
-      }
-    }
+// Background and New Tab move local settings into sync through one shared
+// helper. It never removes anything and treats grouped shortcuts as one save.
+{
+  const [V2_HEAD, V2_CHUNK_2] = settings.NEWTAB_SHORTCUTS_V2_STORAGE_KEYS;
+  const PLAIN_KEY = settings.THEME_STORAGE_KEY;
+  function runMigration(sync, local, keys, syncAfterFirstRead) {
+    const writes = [];
+    let syncReads = 0;
+    const forbidden = () => { throw new Error('migration must not remove or clear data'); };
+    const syncArea = {
+      get(requested, callback) {
+        syncReads += 1;
+        callback(syncReads > 1 && syncAfterFirstRead ? { ...sync, ...syncAfterFirstRead } : { ...sync });
+      },
+      set(payload) { writes.push(payload); },
+      remove: forbidden,
+      clear: forbidden
+    };
+    const localArea = { get(requested, callback) { callback({ ...local }); }, remove: forbidden, clear: forbidden };
+    settings.migrateLocalSettingsToSync(localArea, syncArea, keys);
+    return writes;
   }
-  throw new Error(`unterminated function ${name}`);
+  const allKeys = [PLAIN_KEY, ...settings.NEWTAB_SHORTCUTS_V2_STORAGE_KEYS];
+  assert.deepStrictEqual(runMigration({}, { [PLAIN_KEY]: 'dark' }, allKeys), [{ [PLAIN_KEY]: 'dark' }]);
+  assert.deepStrictEqual(runMigration({ [PLAIN_KEY]: 'light' }, { [PLAIN_KEY]: 'dark' }, allKeys), [],
+    'a value already in sync is kept');
+  assert.deepStrictEqual(runMigration({}, { [PLAIN_KEY]: 'dark' }, allKeys, { [PLAIN_KEY]: 'light' }), [],
+    'a value synced after the first read is not overwritten');
+  assert.deepStrictEqual(runMigration({}, { [V2_CHUNK_2]: ['b'] }, allKeys), [],
+    'a local chunk without its head never moves on its own');
+  assert.deepStrictEqual(
+    runMigration({ [V2_CHUNK_2]: ['stray'] }, { [V2_HEAD]: { v: 2 }, [V2_CHUNK_2]: ['b'] }, allKeys),
+    [{ [V2_HEAD]: { v: 2 }, [V2_CHUNK_2]: ['b'] }],
+    'the whole local grouped save moves with its head, replacing a stray chunk in sync'
+  );
+  assert.deepStrictEqual(
+    runMigration({ [V2_HEAD]: { v: 3 } }, { [V2_HEAD]: { v: 2 }, [V2_CHUNK_2]: ['b'] }, allKeys),
+    [],
+    'no local chunk moves next to a head sync already has'
+  );
+  assert.deepStrictEqual(
+    runMigration({}, { [V2_HEAD]: { v: 2 }, [V2_CHUNK_2]: ['b'], [PLAIN_KEY]: 'dark' }, allKeys, { [V2_HEAD]: { v: 3 } }),
+    [{ [PLAIN_KEY]: 'dark' }],
+    'once another device syncs a grouped save, none of the local one moves'
+  );
 }
-migrationSurfaces.forEach((file) => {
-  const source = fs.readFileSync(path.join(repoRoot, file), 'utf8');
-  const block = extractFunctionSource(source, 'migrateStorageIfNeeded');
-  assert.match(block, /storageArea\.set\(stillMissingSyncValues\)/);
-  assert.doesNotMatch(block, /\.remove\s*\(|\.clear\s*\(/);
-});
 
 console.log('storage data safety tests passed');

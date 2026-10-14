@@ -182,7 +182,7 @@ const BASE_STYLES: Record<
     cursor: 'text',
     display: 'block',
     'font-family':
-      "'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+      "'Lumno Open Sans', 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
     'font-size': '16px',
     'font-weight': '500',
     'line-height': '1',

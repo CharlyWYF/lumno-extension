@@ -5,19 +5,11 @@ const dragApi = require('../src/newtab/cross-surface-drag');
 const store = require('../src/newtab/shortcuts-store');
 const references = require('../src/shared/bookmark-folder-reference');
 const { readNewtabRuntimeSource } = require('./helpers/newtab-source');
+const { extractFunction: extractFunctionFrom } = require('./helpers/extract-function');
 
 const source = readNewtabRuntimeSource();
 function extractFunction(name) {
-  let start = source.indexOf(`function ${name}(`);
-  assert.ok(start >= 0, `Missing ${name}`);
-  const body = source.indexOf('{', start);
-  if (source.slice(start - 6, start) === 'async ') start -= 6;
-  let depth = 0;
-  for (let index = body; index < source.length; index += 1) {
-    if (source[index] === '{') depth += 1;
-    if (source[index] === '}' && --depth === 0) return source.slice(start, index + 1);
-  }
-  throw new Error(`Unterminated ${name}`);
+  return extractFunctionFrom(source, name);
 }
 const json = (value) => JSON.parse(JSON.stringify(value));
 const settle = () => new Promise((resolve) => setImmediate(resolve));
@@ -317,7 +309,7 @@ function createTargetRuntime(sourceType) {
 
   // A plain click on a folder tile ends a pointer session without dragging;
   // it must leave the folder menu for the click to toggle.
-  assert.match(extractFunction('finishShortcutDrag'), /if \(state\.isDragging\) \{\s*closeBookmarkCascadeMenu\(\);/);
+  assert.match(extractFunction('endShortcutDrag'), /if \(state\.isDragging\) \{\s*closeBookmarkCascadeMenu\(\);/);
 
   console.log('Shortcut stacking passed: targets, folder creation, portable binding, undo/redo, rename and reorder, conflicts and rollback.');
 })().catch((error) => { console.error(error); process.exitCode = 1; });

@@ -49,6 +49,8 @@ const injectedScriptFiles = [
   'src/overlay/lifecycle.js',
   'src/overlay/site-fixes.js',
   'src/overlay/page-theme.js',
+  'src/overlay/notices.js',
+  'src/overlay/keyboard.js',
   'src/overlay/search-panel.js',
   'src/overlay/tab-switcher.js',
   'src/content/document-pip-picker.js'
@@ -97,9 +99,6 @@ function checkPath(value) {
     return;
   }
   if (/^(https?:|chrome:|__MSG_)/.test(value)) {
-    return;
-  }
-  if (value === '_favicon/*') {
     return;
   }
   if (manifestResourcePatternHasMatch(value)) {
@@ -299,9 +298,23 @@ function run() {
     (script.js || []).forEach(checkPath);
     (script.css || []).forEach(checkPath);
   });
+  // A web-accessible _favicon endpoint lets any page probe which sites the
+  // user has visited; in-page surfaces get icon bytes from the background.
+  const exposedFaviconResources = [];
   (manifest.web_accessible_resources || []).forEach((entry) => {
-    (entry.resources || []).forEach(checkPath);
+    (entry.resources || []).forEach((resource) => {
+      if (/^\/?_favicon(?:\/|$)/.test(String(resource || ''))) {
+        exposedFaviconResources.push(resource);
+        return;
+      }
+      checkPath(resource);
+    });
   });
+  if (exposedFaviconResources.length > 0) {
+    console.error(`_favicon must not be web accessible: ${exposedFaviconResources.join(', ')}`);
+    process.exitCode = 1;
+    return false;
+  }
   injectedScriptFiles.forEach(checkPath);
   checkRuntimeGetUrlReferences();
   checkHtmlReferences();

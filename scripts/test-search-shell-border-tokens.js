@@ -80,15 +80,15 @@ assert.ok(
   ),
   'the New Tab search mode menu should consume the shared surface border token'
 );
-assert.ok(
-  newtabHtml.includes(
-    '.x-nt-bookmark-cascade-level {\n        position: fixed'
-  ) &&
-    newtabHtml.includes('border: 1px solid var(\n          --x-nt-surface-border,') &&
-    newtabHtml.includes('body[data-theme="dark"] .x-nt-bookmark-cascade-level') &&
-    newtabHtml.includes('body[data-theme="dark"] .x-nt-feedback-popover'),
-  'New Tab outer panels should consume the shared surface border token in both themes'
-);
+// The surface border token has light and dark values (above), so outer panels
+// read it once.
+['.x-nt-bookmark-cascade-level', '.x-nt-feedback-popover'].forEach((selector) => {
+  assert.match(
+    newtabHtml,
+    new RegExp(`${selector.replace(/[.-]/g, '\\$&')} \\{[^}]*border: 1px solid var\\(--x-nt-surface-border\\);`),
+    `${selector} should consume the shared surface border token`
+  );
+});
 
 assert.ok(
   overlaySource.includes("border: 'var(--x-lumno-search-shell-border-light, rgba(0, 0, 0, 0.14))'") &&

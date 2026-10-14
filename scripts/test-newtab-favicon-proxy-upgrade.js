@@ -13,6 +13,15 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// The runtime arms load timeouts and rescue passes that would otherwise keep
+// the process alive for seconds after the last assertion. They still fire on
+// schedule while the test is awaiting; they just don't hold the exit open.
+function setUnrefTimeout(callback, ms) {
+  const timer = setTimeout(callback, ms);
+  timer.unref();
+  return timer;
+}
+
 function createFakeImage() {
   const attributes = new Map();
   const listeners = new Map();
@@ -205,7 +214,7 @@ function createRuntime(options) {
       }
     },
     windowObj: config.windowObj || {
-      setTimeout,
+      setTimeout: setUnrefTimeout,
       clearTimeout,
       requestAnimationFrame(callback) {
         return setTimeout(callback, 0);

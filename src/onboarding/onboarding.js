@@ -2,7 +2,7 @@
   const MODEL = globalThis.LumnoOnboardingContent;
   const NAVIGATION_DISPOSITION = globalThis.LumnoNavigationDisposition;
 
-  const LANGUAGE_STORAGE_KEY = '_x_extension_language_2024_unique_';
+  const LANGUAGE_STORAGE_KEY = globalThis.LumnoSettings.LANGUAGE_STORAGE_KEY;
   const SHOW_SEARCH_COMMAND_NAME = 'show-search';
   const ONBOARDING_SEARCH_OVERLAY_COMMAND_ACTION = 'triggerOnboardingSearchOverlayFromCommand';
   const SHORTCUT_PLACEHOLDER = '{shortcut}';
@@ -132,104 +132,8 @@
     return getRuntimeArray('featureAwards');
   }
 
-  function getNewtabPreviewFaviconUrl(url) {
-    const value = String(url || '').trim();
-    return value
-      ? `https://t2.gstatic.cn/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE%2CSIZE%2CURL&url=${encodeURIComponent(value)}&size=64`
-      : '';
-  }
-
-  function getNewtabPreviewFolderSvg(idSuffix) {
-    const suffix = String(idSuffix || 'preview').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const lowerGradientId = `x-nt-preview-folder-lower-${suffix}`;
-    const upperGradientId = `x-nt-preview-folder-upper-${suffix}`;
-    return [
-      '<svg viewBox="0 0 31 29" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">',
-      '<g data-folder-layer="lower">',
-      `<path d="M7.24 2C6.082 2 5.503 2 5.064 2.232C4.71 2.42 4.42 2.71 4.232 3.064C4 3.503 4 4.082 4 5.24V19.76C4 20.918 4 21.497 4.232 21.936C4.42 22.29 4.71 22.58 5.064 22.768C5.503 23 6.082 23 7.24 23H23.76C24.918 23 25.497 23 25.936 22.768C26.29 22.58 26.58 22.29 26.768 21.936C27 21.497 27 20.918 27 19.76V8.24C27 7.082 27 6.503 26.768 6.064C26.58 5.71 26.29 5.42 25.936 5.232C25.497 5 24.918 5 23.76 5H16.287C15.767 5 15.507 5 15.263 4.938C15.065 4.887 14.875 4.806 14.701 4.698C14.488 4.565 14.308 4.377 13.948 4.002L12.986 2.998C12.626 2.623 12.446 2.435 12.233 2.302C12.059 2.194 11.869 2.113 11.671 2.062C11.427 2 11.167 2 10.647 2H7.24Z" fill="url(#${lowerGradientId})"/>`,
-      '<path d="M7.24 2.5H10.647C11.192 2.5 11.379 2.504 11.547 2.547C11.696 2.585 11.838 2.645 11.969 2.727C12.116 2.818 12.248 2.95 12.625 3.344L13.587 4.348C13.929 4.705 14.158 4.949 14.438 5.123C14.655 5.258 14.892 5.359 15.14 5.422C15.458 5.503 15.792 5.5 16.287 5.5H23.76C24.347 5.5 24.757 5.5 25.075 5.527C25.388 5.554 25.567 5.603 25.702 5.675C25.968 5.815 26.185 6.032 26.325 6.298C26.397 6.433 26.446 6.612 26.473 6.925C26.5 7.243 26.5 7.653 26.5 8.24V19.76C26.5 20.347 26.5 20.757 26.473 21.075C26.446 21.388 26.397 21.567 26.325 21.702C26.185 21.968 25.968 22.185 25.702 22.325C25.567 22.397 25.388 22.446 25.075 22.473C24.757 22.5 24.347 22.5 23.76 22.5H7.24C6.653 22.5 6.243 22.5 5.925 22.473C5.612 22.446 5.433 22.397 5.298 22.325C5.032 22.185 4.815 21.968 4.675 21.702C4.603 21.567 4.554 21.388 4.527 21.075C4.5 20.757 4.5 20.347 4.5 19.76V5.24C4.5 4.653 4.5 4.243 4.527 3.925C4.554 3.612 4.603 3.433 4.675 3.298C4.815 3.032 5.032 2.815 5.298 2.675C5.433 2.603 5.612 2.554 5.925 2.527C6.243 2.5 6.653 2.5 7.24 2.5Z" stroke="#5393FF"/>',
-      '</g>',
-      '<g data-folder-layer="file">',
-      '<path d="M7 10C7 9.448 7.448 9 8 9H23C23.552 9 24 9.448 24 10V17C24 17.552 23.552 18 23 18H8C7.448 18 7 17.552 7 17V10Z" fill="white"/>',
-      '<path d="M13 11H18" stroke="#DDE8FB" stroke-linecap="round"/>',
-      '</g>',
-      '<g data-folder-layer="upper">',
-      `<path d="M7.24 5C6.082 5 5.503 5 5.064 5.232C4.71 5.42 4.42 5.71 4.232 6.064C4 6.503 4 7.082 4 8.24V19.76C4 20.918 4 21.497 4.232 21.936C4.42 22.29 4.71 22.58 5.064 22.768C5.503 23 6.082 23 7.24 23H23.76C24.918 23 25.497 23 25.936 22.768C26.29 22.58 26.58 22.29 26.768 21.936C27 21.497 27 20.918 27 19.76V8.24C27 7.082 27 6.503 26.768 6.064C26.58 5.71 26.29 5.42 25.936 5.232C25.497 5 24.918 5 23.76 5H7.24Z" fill="url(#${upperGradientId})"/>`,
-      '<path d="M7.24 5.5H23.76C24.347 5.5 24.757 5.5 25.075 5.527C25.388 5.554 25.567 5.603 25.702 5.675C25.968 5.815 26.185 6.032 26.325 6.298C26.397 6.433 26.446 6.612 26.473 6.925C26.5 7.243 26.5 7.653 26.5 8.24V19.76C26.5 20.347 26.5 20.757 26.473 21.075C26.446 21.388 26.397 21.567 26.325 21.702C26.185 21.968 25.968 22.185 25.702 22.325C25.567 22.397 25.388 22.446 25.075 22.473C24.757 22.5 24.347 22.5 23.76 22.5H7.24C6.653 22.5 6.243 22.5 5.925 22.473C5.612 22.446 5.433 22.397 5.298 22.325C5.032 22.185 4.815 21.968 4.675 21.702C4.603 21.567 4.554 21.388 4.527 21.075C4.5 20.757 4.5 20.347 4.5 19.76V8.24C4.5 7.653 4.5 7.243 4.527 6.925C4.554 6.612 4.603 6.433 4.675 6.298C4.815 6.032 5.032 5.815 5.298 5.675C5.433 5.603 5.612 5.554 5.925 5.527C6.243 5.5 6.653 5.5 7.24 5.5Z" stroke="#5393FF"/>',
-      '</g>',
-      '<defs>',
-      `<linearGradient id="${lowerGradientId}" x1="15.5" y1="2" x2="15.5" y2="23" gradientUnits="userSpaceOnUse">`,
-      '<stop stop-color="#93BBFF"/><stop offset="0.884515" stop-color="#81B0FF"/><stop offset="0.884615" stop-color="#4389FF"/><stop offset="1" stop-color="#97BEFF"/>',
-      '</linearGradient>',
-      `<linearGradient id="${upperGradientId}" x1="15.5" y1="2" x2="15.5" y2="23" gradientUnits="userSpaceOnUse">`,
-      '<stop stop-color="#CCDFFF"/><stop offset="0.884515" stop-color="#B2CEFF"/><stop offset="0.884615" stop-color="#89B5FF"/><stop offset="1" stop-color="#97BEFF"/>',
-      '</linearGradient>',
-      '</defs>',
-      '</svg>'
-    ].join('');
-  }
-
-  function mixNewtabPreviewColor(color, target, amount) {
-    return [
-      Math.round(color[0] + (target[0] - color[0]) * amount),
-      Math.round(color[1] + (target[1] - color[1]) * amount),
-      Math.round(color[2] + (target[2] - color[2]) * amount)
-    ];
-  }
-
-  function newtabPreviewRgbToCss(rgb) {
-    return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
-  }
-
-  function newtabPreviewRgbToCssAlpha(rgb, alpha) {
-    return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
-  }
-
-  function newtabPreviewRgbToCssParts(rgb) {
-    return `${rgb[0]}, ${rgb[1]}, ${rgb[2]}`;
-  }
-
-  function getNewtabPreviewAccentRgb(item) {
-    return item && Array.isArray(item.accentRgb) && item.accentRgb.length === 3
-      ? item.accentRgb
-      : [59, 130, 246];
-  }
-
-  function applyNewtabPreviewRecentTheme(card, item) {
-    const accentRgb = getNewtabPreviewAccentRgb(item);
-    const accentEmphasis = mixNewtabPreviewColor(accentRgb, [0, 0, 0], 0.18);
-    const base = mixNewtabPreviewColor(accentRgb, [255, 255, 255], 0.82);
-    const border = mixNewtabPreviewColor(base, [0, 0, 0], 0.1);
-    const innerTint = mixNewtabPreviewColor(accentRgb, [255, 255, 255], 0.82);
-    card.style.setProperty('--x-nt-recent-card-color', newtabPreviewRgbToCss(base));
-    card.style.setProperty('--x-nt-recent-card-border-color', newtabPreviewRgbToCss(border));
-    card.style.setProperty('--x-nt-recent-inner-tint-rgb', newtabPreviewRgbToCssParts(innerTint));
-    card.style.setProperty('--x-nt-recent-accent-color', newtabPreviewRgbToCss(accentEmphasis));
-    card.style.setProperty('--x-nt-recent-accent-soft', newtabPreviewRgbToCssAlpha(accentRgb, 0.12));
-    card.style.setProperty('--x-nt-recent-accent-border', newtabPreviewRgbToCssAlpha(accentRgb, 0.18));
-  }
-
-  function applyNewtabPreviewBookmarkTheme(card, item) {
-    if (!item || item.type === 'folder') {
-      card.style.setProperty('--x-nt-bookmark-shadow-rgb', '86, 138, 220');
-      return;
-    }
-    const accentRgb = getNewtabPreviewAccentRgb(item);
-    const base = mixNewtabPreviewColor(accentRgb, [255, 255, 255], 0.94);
-    const border = mixNewtabPreviewColor(base, [0, 0, 0], 0.07);
-    const icon = mixNewtabPreviewColor(accentRgb, [255, 255, 255], 0.96);
-    const hover = mixNewtabPreviewColor(accentRgb, [255, 255, 255], 0.9);
-    const shadow = mixNewtabPreviewColor(accentRgb, [138, 146, 160], 0.46);
-    card.style.setProperty('--x-nt-bookmark-card-color', newtabPreviewRgbToCss(base));
-    card.style.setProperty('--x-nt-bookmark-card-hover-color', newtabPreviewRgbToCssAlpha(hover, 0.86));
-    card.style.setProperty('--x-nt-bookmark-card-border-color', newtabPreviewRgbToCss(border));
-    card.style.setProperty('--x-nt-bookmark-icon-color', newtabPreviewRgbToCss(icon));
-    card.style.setProperty('--x-nt-bookmark-shadow-rgb', newtabPreviewRgbToCssParts(shadow));
-  }
-
   const params = new URLSearchParams(window.location.search || '');
   const root = document.querySelector('[data-onboarding-shell]');
-  const versionText = document.getElementById('onboarding-version-text');
   const copyPanel = document.getElementById('onboarding-copy-panel');
   const eyebrow = document.getElementById('onboarding-eyebrow');
   const title = document.getElementById('onboarding-title');
@@ -720,24 +624,6 @@
     return navigator.language || 'en';
   }
 
-  function updateVersionChip() {
-    const chromeApi = getChromeApi();
-    const versionFromParams = (params.get('version') || '').trim();
-    const manifestVersion = chromeApi && chromeApi.runtime && typeof chromeApi.runtime.getManifest === 'function'
-      ? String((chromeApi.runtime.getManifest() || {}).version || '').trim()
-      : '';
-    const version = versionFromParams || (manifestVersion ? `v${manifestVersion}` : '');
-    if (!versionText) {
-      return;
-    }
-    versionText.textContent = version || '';
-    const chip = versionText.closest('.version-chip');
-    if (chip) {
-      chip.hidden = !version;
-    }
-  }
-
-
   function getBrowserTooltipText(browserAvatars) {
     const browsers = browserAvatars && Array.isArray(browserAvatars.browsers)
       ? browserAvatars.browsers
@@ -882,6 +768,14 @@
   }
 
 
+  function mixSiteSearchDemoColor(color, target, amount) {
+    return [
+      Math.round(color[0] + (target[0] - color[0]) * amount),
+      Math.round(color[1] + (target[1] - color[1]) * amount),
+      Math.round(color[2] + (target[2] - color[2]) * amount)
+    ];
+  }
+
   function getSiteSearchDemoBrandAccentRgb(item) {
     return item && Array.isArray(item.brandAccentRgb) && item.brandAccentRgb.length === 3
       ? item.brandAccentRgb
@@ -916,10 +810,10 @@
       : [59, 130, 246];
     const luminance = getSiteSearchDemoLuminance(accentRgb);
     if (luminance < 0.12) {
-      return mixNewtabPreviewColor(accentRgb, [255, 255, 255], 0.55);
+      return mixSiteSearchDemoColor(accentRgb, [255, 255, 255], 0.55);
     }
     if (luminance > 0.9) {
-      return mixNewtabPreviewColor(accentRgb, [0, 0, 0], 0.2);
+      return mixSiteSearchDemoColor(accentRgb, [0, 0, 0], 0.2);
     }
     return accentRgb;
   }
@@ -927,29 +821,102 @@
   function getSiteSearchDemoTheme(item) {
     const accentRgb = normalizeSiteSearchDemoAccentRgb(getSiteSearchDemoBrandAccentRgb(item));
     const base = [255, 255, 255];
-    const markBg = mixNewtabPreviewColor(accentRgb, base, 0.78);
-    const tagBg = mixNewtabPreviewColor(accentRgb, base, 0.74);
-    const keyBg = mixNewtabPreviewColor(accentRgb, base, 0.9);
+    const markBg = mixSiteSearchDemoColor(accentRgb, base, 0.78);
+    const tagBg = mixSiteSearchDemoColor(accentRgb, base, 0.74);
+    const keyBg = mixSiteSearchDemoColor(accentRgb, base, 0.9);
     return {
       accentRgb,
-      highlightBg: mixNewtabPreviewColor(accentRgb, base, 0.86),
-      highlightBorder: mixNewtabPreviewColor(accentRgb, base, 0.62),
+      highlightBg: mixSiteSearchDemoColor(accentRgb, base, 0.86),
+      highlightBorder: mixSiteSearchDemoColor(accentRgb, base, 0.62),
       markBg,
       markText: getSiteSearchDemoReadableTextColor(markBg),
       tagBg,
       tagText: getSiteSearchDemoReadableTextColor(tagBg),
-      tagBorder: mixNewtabPreviewColor(accentRgb, base, 0.58),
+      tagBorder: mixSiteSearchDemoColor(accentRgb, base, 0.58),
       keyBg,
       keyText: getSiteSearchDemoReadableTextColor(keyBg),
-      keyBorder: mixNewtabPreviewColor(accentRgb, base, 0.18),
+      keyBorder: mixSiteSearchDemoColor(accentRgb, base, 0.18),
       buttonText: getSiteSearchDemoLuminance(accentRgb) > 0.8
-        ? mixNewtabPreviewColor(accentRgb, [0, 0, 0], 0.6)
+        ? mixSiteSearchDemoColor(accentRgb, [0, 0, 0], 0.6)
         : accentRgb,
-      buttonBg: mixNewtabPreviewColor(accentRgb, base, 0.94),
-      buttonBorder: mixNewtabPreviewColor(accentRgb, base, 0.7)
+      buttonBg: mixSiteSearchDemoColor(accentRgb, base, 0.94),
+      buttonBorder: mixSiteSearchDemoColor(accentRgb, base, 0.7)
     };
   }
 
+
+  function getBookmarkFocusModel() {
+    return {
+      hoverLeadMs: LUMNO_OVERLAY_HOVER_LEAD_MS,
+      hoverStartMs: LUMNO_OVERLAY_HOVER_START_MS,
+      hoverStepMs: LUMNO_OVERLAY_HOVER_STEP_MS,
+      hoverWrapStepMs: LUMNO_OVERLAY_HOVER_WRAP_STEP_MS,
+      openLabel: getRuntimeMiscText('openLabel', 'Open'),
+      overlayAriaLabel: 'Lumno overlay demo',
+      panelId: ONBOARDING_OVERLAY_DEMO_PANEL_ID,
+      query: getLumnoOverlayQuery(),
+      reducedMotion: prefersReducedMotion(),
+      removeHistoryLabel: getRuntimeMiscText('removeHistoryLabel', 'Remove history item'),
+      results: getLumnoOverlayResults(),
+      searchAriaLabel: 'Search Lumno demo',
+      settingsLabel: getRuntimeMiscText('settingsLabel', 'Settings')
+    };
+  }
+
+  function getNewtabPreviewModel() {
+    return {
+      ariaLabel: getRuntimeMiscText('newtabPreviewAriaLabel', 'Lumno new tab preview'),
+      bookmarkManagerLabel: getRuntimeMiscText('bookmarkManagerLabel', 'Open bookmark manager'),
+      bookmarks: getNewtabPreviewBookmarks(),
+      bookmarksSectionTitle: getNewtabPreviewSectionTitle('bookmarks', 'Bookmarks'),
+      hoverHoldMs: NEWTAB_PREVIEW_HOVER_HOLD_MS,
+      hoverMoveMs: NEWTAB_PREVIEW_HOVER_MOVE_MS,
+      hoverSettleMs: NEWTAB_PREVIEW_HOVER_SETTLE_MS,
+      hoverStartMs: NEWTAB_PREVIEW_HOVER_START_MS,
+      nextLabelTemplate: getRuntimeMiscText('nextLabelTemplate', '{label} next'),
+      openItemAriaTemplate: getRuntimeMiscText('openItemAriaTemplate', 'Open {title}'),
+      previousLabelTemplate: getRuntimeMiscText('previousLabelTemplate', '{label} previous'),
+      query: getNewtabPreviewQuery(),
+      recentSectionTitle: getNewtabPreviewSectionTitle('recent', 'Recent'),
+      recentSites: getNewtabPreviewRecentSites(),
+      reducedMotion: prefersReducedMotion(),
+      searchAriaLabel: getRuntimeMiscText('newtabSearchPreviewAriaLabel', 'Lumno new tab search preview'),
+      searchPlaceholder: getRuntimeMiscText('newtabSearchPlaceholder', 'Search or enter URL…'),
+      sectionModeBookmarksLabel: getRuntimeMiscText('sectionModeBookmarksLabel', 'Bookmarks display mode'),
+      sectionModeRecentLabel: getRuntimeMiscText('sectionModeRecentLabel', 'Recent display mode'),
+      settingsLabel: getRuntimeMiscText('settingsLabel', 'Settings'),
+      visitLabel: getRuntimeMiscText('goLabel', 'Visit'),
+      wordmarkSrc: NEWTAB_PREVIEW_WORDMARK_SRC
+    };
+  }
+
+  function getVisualSurfaceModel(kind) {
+    return {
+      ariaLabel: 'Lumno',
+      bookmarkFocus: getBookmarkFocusModel(),
+      butterflyDValues: LUMNO_WEB_BUTTERFLY_D_VALUES,
+      butterflyRestPath: LUMNO_WEB_BUTTERFLY_REST_PATH,
+      featureAwards: getFeatureAwards(),
+      featureCardAriaJoiner: getRuntimeMiscText('featureCardAriaJoiner', ', '),
+      featureCards: getFeatureCards(),
+      homepagePipArtSrc: HOMEPAGE_PIP_ART_SRC,
+      kind,
+      newtabPreview: getNewtabPreviewModel(),
+      newtabFiltersArtSrc: NEWTAB_FILTERS_ART_SRC,
+      practicalFeaturesAriaLabel: getRuntimeMiscText('practicalFeaturesAriaLabel', 'Lumno practical features'),
+      principlesAriaLabel: getRuntimeMiscText('principlesAriaLabel', 'Lumno principles'),
+      siteSearchCases: getSiteSearchDemoCases().map((item) => (
+        Object.assign({}, item, { theme: getSiteSearchDemoTheme(item) })
+      )),
+      siteSearchDemoAriaLabel: getRuntimeMiscText('siteSearchDemoAriaLabel', 'Lumno site search demo'),
+      siteSearchOpenLabel: getRuntimeMiscText('openLabel', 'Open'),
+      siteSearchSettingsLabel: getRuntimeMiscText('settingsLabel', 'Settings'),
+      siteSearchTabHintTemplate: String(
+        getRuntimeSection('siteSearchDemo').tabHintTemplate || 'Search with {provider}'
+      ),
+      wordmarkSrc: LUMNO_WEB_WORDMARK_SRC
+    };
+  }
 
   function renderVisualSurface(slide) {
     if (!visualStage) {
@@ -962,117 +929,7 @@
     }
     visualStage.dataset.visualKind = slide.visual.kind;
     if (slide.visual.visible) {
-      visualSurfaceController.render({
-          ariaLabel: 'Lumno',
-          bookmarkFocus: {
-            hoverLeadMs: LUMNO_OVERLAY_HOVER_LEAD_MS,
-            hoverStartMs: LUMNO_OVERLAY_HOVER_START_MS,
-            hoverStepMs: LUMNO_OVERLAY_HOVER_STEP_MS,
-            hoverWrapStepMs: LUMNO_OVERLAY_HOVER_WRAP_STEP_MS,
-            openLabel: getRuntimeMiscText('openLabel', 'Open'),
-            overlayAriaLabel: 'Lumno overlay demo',
-            panelId: ONBOARDING_OVERLAY_DEMO_PANEL_ID,
-            query: getLumnoOverlayQuery(),
-            reducedMotion: prefersReducedMotion(),
-            removeHistoryLabel: getRuntimeMiscText(
-              'removeHistoryLabel',
-              'Remove history item'
-            ),
-            results: getLumnoOverlayResults(),
-            searchAriaLabel: 'Search Lumno demo',
-            settingsLabel: getRuntimeMiscText('settingsLabel', 'Settings')
-          },
-          butterflyDValues: LUMNO_WEB_BUTTERFLY_D_VALUES,
-          butterflyRestPath: LUMNO_WEB_BUTTERFLY_REST_PATH,
-          featureAwards: getFeatureAwards(),
-          featureCardAriaJoiner: getRuntimeMiscText('featureCardAriaJoiner', ', '),
-          featureCards: getFeatureCards(),
-          homepagePipArtSrc: HOMEPAGE_PIP_ART_SRC,
-          kind: slide.visual.kind,
-          newtabPreview: {
-            ariaLabel: getRuntimeMiscText(
-              'newtabPreviewAriaLabel',
-              'Lumno new tab preview'
-            ),
-            bookmarkManagerLabel: getRuntimeMiscText(
-              'bookmarkManagerLabel',
-              'Open bookmark manager'
-            ),
-            bookmarks: getNewtabPreviewBookmarks(),
-            bookmarksSectionTitle: getNewtabPreviewSectionTitle(
-              'bookmarks',
-              'Bookmarks'
-            ),
-            hoverHoldMs: NEWTAB_PREVIEW_HOVER_HOLD_MS,
-            hoverMoveMs: NEWTAB_PREVIEW_HOVER_MOVE_MS,
-            hoverSettleMs: NEWTAB_PREVIEW_HOVER_SETTLE_MS,
-            hoverStartMs: NEWTAB_PREVIEW_HOVER_START_MS,
-            nextLabelTemplate: getRuntimeMiscText(
-              'nextLabelTemplate',
-              '{label} next'
-            ),
-            openItemAriaTemplate: getRuntimeMiscText(
-              'openItemAriaTemplate',
-              'Open {title}'
-            ),
-            previousLabelTemplate: getRuntimeMiscText(
-              'previousLabelTemplate',
-              '{label} previous'
-            ),
-            query: getNewtabPreviewQuery(),
-            recentSectionTitle: getNewtabPreviewSectionTitle(
-              'recent',
-              'Recent'
-            ),
-            recentSites: getNewtabPreviewRecentSites(),
-            reducedMotion: prefersReducedMotion(),
-            searchAriaLabel: getRuntimeMiscText(
-              'newtabSearchPreviewAriaLabel',
-              'Lumno new tab search preview'
-            ),
-            searchPlaceholder: getRuntimeMiscText(
-              'newtabSearchPlaceholder',
-              'Search or enter URL…'
-            ),
-            sectionModeBookmarksLabel: getRuntimeMiscText(
-              'sectionModeBookmarksLabel',
-              'Bookmarks display mode'
-            ),
-            sectionModeRecentLabel: getRuntimeMiscText(
-              'sectionModeRecentLabel',
-              'Recent display mode'
-            ),
-            settingsLabel: getRuntimeMiscText('settingsLabel', 'Settings'),
-            visitLabel: getRuntimeMiscText('goLabel', 'Visit'),
-            wordmarkSrc: NEWTAB_PREVIEW_WORDMARK_SRC
-          },
-          newtabFiltersArtSrc: NEWTAB_FILTERS_ART_SRC,
-          practicalFeaturesAriaLabel: getRuntimeMiscText(
-            'practicalFeaturesAriaLabel',
-            'Lumno practical features'
-          ),
-          principlesAriaLabel: getRuntimeMiscText(
-            'principlesAriaLabel',
-            'Lumno principles'
-          ),
-          siteSearchCases: getSiteSearchDemoCases().map((item) => (
-            Object.assign({}, item, { theme: getSiteSearchDemoTheme(item) })
-          )),
-          siteSearchDemoAriaLabel: getRuntimeMiscText(
-            'siteSearchDemoAriaLabel',
-            'Lumno site search demo'
-          ),
-          siteSearchOpenLabel: getRuntimeMiscText('openLabel', 'Open'),
-          siteSearchSettingsLabel: getRuntimeMiscText(
-            'settingsLabel',
-            'Settings'
-          ),
-          siteSearchTabHintTemplate: String(
-            getRuntimeSection('siteSearchDemo').tabHintTemplate ||
-              'Search with {provider}'
-          ),
-          wordmarkSrc: LUMNO_WEB_WORDMARK_SRC
-        });
+      visualSurfaceController.render(getVisualSurfaceModel(slide.visual.kind));
     }
     renderCursor(slide);
   }
@@ -1646,7 +1503,6 @@
     runtimeCopy = blueprint.runtimeCopy || runtimeCopy;
     const requestedIndex = Number(params.get('slide') || 0);
     state = MODEL.createOnboardingState(blueprint.slides.length, requestedIndex);
-    updateVersionChip();
     render();
     refreshCurrentShortcut(true);
   });

@@ -865,7 +865,7 @@ function testWrappedShortcutsDoNotOscillateDockDensity() {
   );
 
   const settledDensities = [];
-  controller.updateBottomDockLayout({ releaseDockDensityLock: true });
+  controller.updateBottomDockLayout();
   settledDensities.push(bottomDock.getAttribute('data-density'));
   flushAnimationFrames();
   settledDensities.push(bottomDock.getAttribute('data-density'));
@@ -951,7 +951,7 @@ function testContinuousResizeKeepsDockDensityStableUntilSettle() {
     'live resize should keep the last compact density even after the viewport grows'
   );
 
-  controller.updateBottomDockLayout({ releaseDockDensityLock: true });
+  controller.updateBottomDockLayout();
   flushAnimationFrames();
   assert.strictEqual(
     bottomDock.getAttribute('data-density'),
@@ -971,12 +971,7 @@ function testContinuousResizeKeepsDockDensityStableUntilSettle() {
   );
   assert.match(
     newtabSource,
-    /newtabResizeLayoutLocked\s*=\s*true;[\s\S]*?newtabResizeSettleTimer\s*=\s*window\.setTimeout\([\s\S]*?newtabResizeLayoutLocked\s*=\s*false;[\s\S]*?releaseDockDensityLock:\s*true[\s\S]*?NEWTAB_RESIZE_DENSITY_SETTLE_MS/,
-    'new-tab resize should release the search anchor and density stabilization only after resize events settle'
-  );
-  assert.match(
-    newtabSource,
-    /const NEWTAB_INITIAL_VIEWPORT_SETTLE_MS = 32;[\s\S]*?const startupViewport = getSearchEntryViewportSnapshot\(\);[\s\S]*?function scheduleNewtabReadyAfterViewportSettle\(\)[\s\S]*?const revealAfterViewportSettles = \(\) => \{[\s\S]*?updateBookmarkSectionPosition\(\{ releaseDockDensityLock: true \}\);[\s\S]*?requestAnimationFrame\(\(\) => \{[\s\S]*?setAttribute\('data-nt-ready', '1'\)[\s\S]*?\};[\s\S]*?if \(viewportRevision === 0 &&\s*!(?:pageState\.)?newtabResizeLayoutLocked &&\s*!hasSearchEntryViewportChanged\(startupViewport\)\) \{\s*revealAfterViewportSettles\(\);\s*return;\s*\}\s*newtabReadySettleTimer = window\.setTimeout\(revealAfterViewportSettles, NEWTAB_INITIAL_VIEWPORT_SETTLE_MS\);/,
+    /const NEWTAB_INITIAL_VIEWPORT_SETTLE_MS = 32;[\s\S]*?const startupViewport = getSearchEntryViewportSnapshot\(\);[\s\S]*?function scheduleNewtabReadyAfterViewportSettle\(\)[\s\S]*?const revealAfterViewportSettles = \(\) => \{[\s\S]*?updateBookmarkSectionPosition\(\);[\s\S]*?requestAnimationFrame\(\(\) => \{[\s\S]*?setAttribute\('data-nt-ready', '1'\)[\s\S]*?\};[\s\S]*?if \(viewportRevision === 0 &&\s*!(?:pageState\.)?newtabResizeLayoutLocked &&\s*!hasSearchEntryViewportChanged\(startupViewport\)\) \{\s*revealAfterViewportSettles\(\);\s*return;\s*\}\s*newtabReadySettleTimer = window\.setTimeout\(revealAfterViewportSettles, NEWTAB_INITIAL_VIEWPORT_SETTLE_MS\);/,
     'new-tab content should skip the settle window when the viewport never changed while loading, and still wait one paint frame'
   );
   assert.match(
@@ -1337,17 +1332,25 @@ function testBottomDockCssDefinesAdaptiveDensityVariables() {
   );
   assert.match(
     newtabHtml,
-    /@media \(max-width:\s*640px\)[\s\S]*?#_x_extension_newtab_bookmarks_grid_2024_unique_\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/,
+    // Two columns from 860px down, phones included.
+    /@media \(max-width:\s*860px\)\s*\{\s*#_x_extension_newtab_bookmarks_grid_2024_unique_\s*\{\s*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/,
     'mobile bookmarks should render two columns'
   );
   assert.match(
     newtabHtml,
-    /@media \(max-width:\s*640px\)[\s\S]*?#_x_extension_newtab_recent_sites_grid_2024_unique_\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/,
+    // Two columns from 860px down, phones included.
+    /@media \(max-width:\s*860px\)\s*\{\s*#_x_extension_newtab_recent_sites_grid_2024_unique_\s*\{\s*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/,
     'mobile recent sites should render two columns'
+  );
+  // The corner buttons take their size from their control's --x-nt-corner-size.
+  assert.match(
+    newtabHtml,
+    /\.x-nt-wallpaper-button,\s*\.x-nt-feedback-button,[^{]*\{[^}]*width:\s*var\(--x-nt-corner-size[^}]*height:\s*var\(--x-nt-corner-size/,
+    'corner buttons should take the corner size'
   );
   assert.match(
     newtabHtml,
-    /@media \(max-width:\s*640px\)[\s\S]*?\.x-nt-wallpaper-button,\s*\.x-nt-feedback-button\s*\{[\s\S]*?width:\s*44px;[\s\S]*?height:\s*44px;/,
+    /@media \(max-width:\s*640px\)\s*\{[^@]*?--x-nt-corner-size:\s*44px;/,
     'mobile utility controls should meet the 44px touch target'
   );
   assert.match(
@@ -1367,13 +1370,18 @@ function testBottomDockCssDefinesAdaptiveDensityVariables() {
   );
   assert.match(
     newtabHtml,
-    /@media \(hover:\s*none\)[\s\S]*?\.x-nt-wallpaper-button,\s*\.x-nt-feedback-button\s*\{[\s\S]*?width:\s*44px;[\s\S]*?height:\s*44px;/,
+    /@media \(hover:\s*none\)\s*\{[^@]*?--x-nt-corner-size:\s*44px;/,
     'touch input should keep fixed utility controls at least 44px square'
   );
   assert.match(
     newtabHtml,
-    /@media \(min-width:\s*641px\) and \(max-width:\s*900px\) and \(max-height:\s*560px\)[\s\S]*?body\[data-nt-bottom-dock-density="tiny"\]\s*\{[\s\S]*?--x-nt-shortcuts-reserved-height:\s*50px;[\s\S]*?#_x_extension_newtab_bottom_dock_2024_unique_\[data-density="tiny"\]\s*\{[\s\S]*?--x-nt-dock-bookmark-card-height:\s*44px;[\s\S]*?\.x-nt-wallpaper-button,\s*\.x-nt-feedback-button\s*\{[\s\S]*?width:\s*44px;[\s\S]*?height:\s*44px;/,
+    /@media \(min-width:\s*641px\) and \(max-width:\s*900px\) and \(max-height:\s*560px\)[\s\S]*?body\[data-nt-bottom-dock-density="tiny"\]\s*\{[\s\S]*?--x-nt-shortcuts-reserved-height:\s*50px;[\s\S]*?#_x_extension_newtab_bottom_dock_2024_unique_\[data-density="tiny"\]\s*\{[\s\S]*?--x-nt-dock-bookmark-card-height:\s*44px;/,
     'narrow landscape should not let tiny density shrink interactive rows below 44px'
+  );
+  assert.match(
+    newtabHtml,
+    /@media \(min-width:\s*641px\) and \(max-width:\s*900px\) and \(max-height:\s*560px\)\s*\{[^@]*?--x-nt-corner-size:\s*44px;/,
+    'narrow landscape should keep the corner buttons at the 44px touch target'
   );
   assert.match(
     newtabHtml,
@@ -1402,7 +1410,7 @@ function testBottomDockCssDefinesAdaptiveDensityVariables() {
   );
   assert.match(
     newtabHtml,
-    /@media \(max-width:\s*640px\)[\s\S]*?\.x-nt-wallpaper-control,\s*\.x-nt-feedback-control\s*\{[\s\S]*?bottom:\s*max\(10px,\s*env\(safe-area-inset-bottom\)\);/,
+    /@media \(max-width:\s*640px\)\s*\{[^@]*?--x-nt-corner-inset-y:\s*max\(10px,\s*env\(safe-area-inset-bottom\)\);/,
     'mobile utility controls should clear the bottom safe area'
   );
   assert.match(
@@ -1449,6 +1457,20 @@ testMobileSearchEntryReservesOccupiedTopSurface();
 testMobileSearchEntryHoldsStillWhileSuggestionsAreOpen();
 testResizeOutOfMobileRestoresFixedDockLayout();
 testBottomDockCssDefinesAdaptiveDensityVariables();
+
+// The search width slider's range and snap points are defined once and run
+// from the narrowest setting to the content column.
+function testSearchWidthConfigSpansStandardToContentWidth() {
+  const config = layoutRuntime.SEARCH_WIDTH_CONFIG;
+  assert.strictEqual(config.min, 640);
+  assert.strictEqual(config.max, layoutRuntime.CONTENT_MAX_WIDTH_PX);
+  assert.deepStrictEqual(Array.from(config.snapPoints), [640, 720, 920, 1040]);
+  assert.ok(config.snapPoints.includes(layoutRuntime.STANDARD_SEARCH_MAX_WIDTH_PX),
+    'the standard search width is one of the snap points');
+  assert.ok(config.snapPoints.includes(config.fallback), 'the default width is a snap point');
+  assert.ok(Object.isFrozen(config) && Object.isFrozen(config.snapPoints));
+}
+testSearchWidthConfigSpansStandardToContentWidth();
 
 function testAdaptiveGridUsesMobileTierBeforeCompactTier() {
   const config = {
@@ -1641,7 +1663,7 @@ function testResizeSettleAnimatesSearchPositionChange() {
   );
   assert.match(
     resizeListenerSource,
-    /captureTopContentLayout\(\)[\s\S]*?cancelTopContentLayoutAnimations\(\)[\s\S]*?newtabResizeLayoutLocked\s*=\s*false;[\s\S]*?updateBookmarkSectionPosition\(\{ releaseDockDensityLock: true \}\);[\s\S]*?animateTopContentLayout\(fromLayout\)/,
+    /captureTopContentLayout\(\)[\s\S]*?cancelTopContentLayoutAnimations\(\)[\s\S]*?newtabResizeLayoutLocked\s*=\s*false;[\s\S]*?updateBookmarkSectionPosition\(\);[\s\S]*?animateTopContentLayout\(fromLayout\)/,
     'resize settle should animate the search and content from the locked position to the final layout'
   );
   assert.match(

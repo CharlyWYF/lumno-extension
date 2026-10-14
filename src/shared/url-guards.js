@@ -108,8 +108,38 @@
     }
   }
 
+  // Whether a tab may be opened on a URL a web-page context (content script or
+  // in-page overlay) asked for. Typed and bookmarked targets stay openable
+  // (http(s), file:, mailto:, browser pages ...), but never script, inline
+  // data documents or another extension's pages.
+  function canOpenUrlFromWebPageContext(url, ownExtensionBaseUrl) {
+    const raw = String(url || '').trim();
+    if (!raw) {
+      return false;
+    }
+    let parsed = null;
+    try {
+      parsed = new URL(raw);
+    } catch (e) {
+      return false;
+    }
+    const protocol = String(parsed.protocol || '').toLowerCase();
+    if (protocol === 'javascript:' || protocol === 'data:' || protocol === 'vbscript:') {
+      return false;
+    }
+    if (protocol === 'view-source:') {
+      return canOpenUrlFromWebPageContext(raw.slice(protocol.length), ownExtensionBaseUrl);
+    }
+    if (isBrowserExtensionProtocol(protocol)) {
+      const base = String(ownExtensionBaseUrl || '');
+      return Boolean(base) && parsed.href.startsWith(base);
+    }
+    return true;
+  }
+
   return Object.freeze({
     canFetchPageForFavicon,
+    canOpenUrlFromWebPageContext,
     canOpenOverlayOnUrl,
     isBrowserExtensionProtocol,
     isBrowserInternalUrl,

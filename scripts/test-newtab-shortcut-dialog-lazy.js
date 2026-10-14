@@ -2,18 +2,11 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const { readNewtabRuntimeSource } = require('./helpers/newtab-source');
+const { extractFunction: extractFunctionFrom } = require('./helpers/extract-function');
 
 const source = readNewtabRuntimeSource();
 function extractFunction(name) {
-  const start = source.search(new RegExp(`(?:async )?function ${name}\\(`));
-  assert(start >= 0);
-  const brace = source.indexOf('{', start);
-  let depth = 0;
-  for (let index = brace; index < source.length; index += 1) {
-    if (source[index] === '{') depth += 1;
-    if (source[index] === '}' && --depth === 0) return source.slice(start, index + 1);
-  }
-  throw new Error(`Missing end of ${name}`);
+  return extractFunctionFrom(source, name);
 }
 
 function createHarness() {

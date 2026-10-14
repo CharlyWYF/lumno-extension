@@ -99,10 +99,6 @@
     return path;
   }
 
-  function supportsDocumentPiP() {
-    return getDocumentPiPSupportState().supported;
-  }
-
   function isPictureInPictureAllowedByPolicy() {
     const policy = document.permissionsPolicy || document.featurePolicy;
     if (!policy || typeof policy.allowsFeature !== 'function') {
@@ -980,12 +976,23 @@
     if (!pipDocument || !pipDocument.head) {
       return;
     }
-    if (!pipDocument.getElementById('__lumno_pip_remixicon_css_2026__')) {
-      const link = pipDocument.createElement('link');
-      link.id = '__lumno_pip_remixicon_css_2026__';
-      link.rel = 'stylesheet';
-      link.href = getRuntimeUrl('assets/remixicon/fonts/remixicon.css');
-      pipDocument.head.appendChild(link);
+    // The PiP window holds a clone of the host page, so remixicon.css and its
+    // "[class^=ri-] { font-family: remixicon !important }" rule would restyle
+    // the cloned page's own icons. Only the icon face is declared, under a
+    // Lumno-only family name, and the dock's two glyphs are named below.
+    if (!pipDocument.getElementById('__lumno_pip_icon_font_face_2026__')) {
+      const fontUrl = String(getRuntimeUrl('assets/remixicon/fonts/remixicon.woff2'))
+        .replace(/["\\\n\r\f]/g, '\\$&');
+      const fontFace = pipDocument.createElement('style');
+      fontFace.id = '__lumno_pip_icon_font_face_2026__';
+      fontFace.textContent = [
+        '@font-face {',
+        '  font-family: "lumno-remixicon";',
+        `  src: url("${fontUrl}") format("woff2");`,
+        '  font-display: swap;',
+        '}'
+      ].join('\n');
+      pipDocument.head.appendChild(fontFace);
     }
     if (!pipDocument.getElementById('__lumno_pip_dock_style_2026__')) {
       const style = pipDocument.createElement('style');
@@ -1026,6 +1033,9 @@
           pointer-events: none;
         }
         .lumno-pip-dock-btn .ri-icon {
+          font-family: "lumno-remixicon" !important;
+          font-style: normal;
+          -webkit-font-smoothing: antialiased;
           font-size: 15px;
           line-height: 1;
           transform: none;
@@ -1034,6 +1044,12 @@
         .lumno-pip-dock-btn:hover .ri-icon,
         .lumno-pip-dock-btn:focus-visible .ri-icon {
           transform: scale(1.03);
+        }
+        .lumno-pip-dock-btn .ri-close-line::before {
+          content: "\\eb99";
+        }
+        .lumno-pip-dock-btn .ri-focus-3-line::before {
+          content: "\\ed4c";
         }
         .lumno-pip-dock-btn .lumno-pip-dock-label {
           display: inline-block;

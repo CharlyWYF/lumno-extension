@@ -6,7 +6,7 @@
     return;
   }
 
-  const INPUT_FONT_STACK = "'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+  const INPUT_FONT_STACK = "'Lumno Open Sans', 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
   const DEFAULT_ACCENT_RGB = [59, 130, 246];
   const DEFAULT_PREFIX_GAP = 8;
   const DEFAULT_MODE_MENU_DOUBLE_TAB_DURATION = 700;

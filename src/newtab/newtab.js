@@ -1,4 +1,8 @@
 (function() {
+  // Page state shared with the modules split out of this file: each module
+  // receives this one object as `pageState` and reads and writes the same
+  // properties this file does.
+  const pageState = {};
   const root = document.getElementById('_x_extension_newtab_root_2024_unique_');
   const createSearchInput = window._x_extension_createSearchInput_2024_unique_;
   if (!root || typeof createSearchInput !== 'function') {
@@ -220,8 +224,6 @@
   const BOOKMARK_TOPBAR_PICK_COLOR_ACTION = 'pick-bookmark-topbar-color';
   const BOOKMARK_TOPBAR_SURFACE_MODE_ACTION = 'set-bookmark-topbar-surface-mode';
   const BOOKMARK_TOPBAR_LAYOUT_ACTION = 'set-bookmark-topbar-layout';
-  // Flip this to true when inspecting bookmark cascade hover intent and safe-triangle timing.
-  const BOOKMARK_CASCADE_DEBUG_UI_ENABLED = false;
   const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = '_x_extension_default_search_engine_2024_unique_';
   const SEARCH_RESULT_PRIORITY_STORAGE_KEY = '_x_extension_search_result_priority_2026_unique_';
   const OVERLAY_TAB_PRIORITY_STORAGE_KEY = '_x_extension_overlay_tab_priority_2024_unique_';
@@ -265,6 +267,10 @@
   const NEWTAB_BOOKMARK_MOVE_HISTORY = globalThis.LumnoNewtabBookmarkMoveHistory;
   const NEWTAB_BOOKMARK_DRAG = globalThis.LumnoNewtabBookmarkDrag;
   const NEWTAB_CROSS_SURFACE_DRAG = globalThis.LumnoNewtabCrossSurfaceDrag;
+  // Escape closes only the top open layer (menus, popovers, panels, drags).
+  // The folder color dialog handles its own Escape.
+  const dismissStack = globalThis.LumnoNewtabDismissStack.getDismissStack();
+  dismissStack.setShouldIgnore(() => Boolean(pageState.folderColorPicker && pageState.folderColorPicker.isOpen()));
   const NEWTAB_BOOKMARK_FOLDER_ICON = globalThis.LumnoNewtabBookmarkFolderIcon;
   const NEWTAB_PAGE_NOTICE = globalThis.LumnoNewtabPageNotice;
   const NEWTAB_TOAST = globalThis.LumnoNewtabToast;
@@ -307,38 +313,7 @@
     hideTopActionTooltip: (...args) => hideTopActionTooltip(...args),
     NEWTAB_FEEDBACK_CONTROL,
     showTopActionTooltip: (...args) => showTopActionTooltip(...args),
-    pageState: {
-      get feedbackLinks() {
-        return feedbackLinks;
-      },
-      set feedbackLinks(value) {
-        feedbackLinks = value;
-      },
-      get currentResolvedLocale() {
-        return currentResolvedLocale;
-      },
-      get currentLanguageMode() {
-        return currentLanguageMode;
-      },
-      get feedbackControl() {
-        return feedbackControl;
-      },
-      set feedbackControl(value) {
-        feedbackControl = value;
-      },
-      get feedbackButton() {
-        return feedbackButton;
-      },
-      set feedbackButton(value) {
-        feedbackButton = value;
-      },
-      get feedbackReactController() {
-        return feedbackReactController;
-      },
-      set feedbackReactController(value) {
-        feedbackReactController = value;
-      }
-    }
+    pageState
   });
 
   const NEWTAB_SELECT_MENU = globalThis.LumnoNewtabSelectMenu;
@@ -413,26 +388,7 @@
     closeShortcutContextMenu: (...args) => closeShortcutContextMenu(...args),
     closeRecentContextMenu: (...args) => closeRecentContextMenu(...args),
     hideCursorTooltip: (...args) => hideCursorTooltip(...args),
-    pageState: {
-      get bookmarkContextMenu() {
-        return bookmarkContextMenu;
-      },
-      set bookmarkContextMenu(value) {
-        bookmarkContextMenu = value;
-      },
-      get bookmarkContextMenuSelectController() {
-        return bookmarkContextMenuSelectController;
-      },
-      get bookmarkContextMenuTarget() {
-        return bookmarkContextMenuTarget;
-      },
-      set bookmarkContextMenuTarget(value) {
-        bookmarkContextMenuTarget = value;
-      },
-      get bookmarkDragState() {
-        return bookmarkDragState;
-      }
-    }
+    pageState
   });
 
   const shortcutFolderRuntime = FOLDER_REFERENCES.createRuntime({ chrome });
@@ -521,14 +477,14 @@
   const NEWTAB_RESIZE_DENSITY_SETTLE_MS = 140;
   const pageSearchParams = new URLSearchParams(window.location.search || '');
   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-  let globalThemeMode = 'system';
-  let newtabThemeMode = 'global';
-  let newtabThemeScope = 'global';
-  let currentThemeMode = 'system';
-  let initialThemeApplied = false;
-  let resolveInitialThemeReady = null;
+  pageState.globalThemeMode = 'system';
+  pageState.newtabThemeMode = 'global';
+  pageState.newtabThemeScope = 'global';
+  pageState.currentThemeMode = 'system';
+  pageState.initialThemeApplied = false;
+  pageState.resolveInitialThemeReady = null;
   const initialThemeReadyPromise = new Promise((resolve) => {
-    resolveInitialThemeReady = resolve;
+    pageState.resolveInitialThemeReady = resolve;
   });
 
   const NEWTAB_BOOKMARK_DISPLAY_SETTINGS = globalThis.LumnoNewtabBookmarkDisplaySettings;
@@ -540,12 +496,11 @@
     loadInitialBookmarkViewMode,
     getEffectiveBookmarkTopbarSurfaceMode,
     getBookmarkTopbarLayout,
-    handleBookmarkTopbarLayoutStorageChanges,
     syncBookmarkTopbarSurfaceAppearance,
     loadInitialBookmarkTopbarSurfaceMode,
     syncBookmarkTopbarSurfaceColorForTheme,
     loadInitialBookmarkTopbarSurfaceColors,
-    handleBookmarkTopbarSurfaceColorStorageChanges,
+    registerStorageChangeHandlers: registerBookmarkDisplayStorageChanges,
     handleBookmarkModeMenuAction
   } = NEWTAB_BOOKMARK_DISPLAY_SETTINGS.createBookmarkDisplaySettings({
     storageArea,
@@ -564,173 +519,160 @@
     BOOKMARK_TOPBAR_PICK_COLOR_ACTION,
     BOOKMARK_TOPBAR_SURFACE_MODE_ACTION,
     BOOKMARK_TOPBAR_LAYOUT_ACTION,
-    pageState: {
-      get resolveInitialBookmarkViewModeReady() {
-        return resolveInitialBookmarkViewModeReady;
-      },
-      set resolveInitialBookmarkViewModeReady(value) {
-        resolveInitialBookmarkViewModeReady = value;
-      },
-      get bookmarkViewModeRevision() {
-        return bookmarkViewModeRevision;
-      },
-      get bookmarkTopbarRuntime() {
-        return bookmarkTopbarRuntime;
-      }
-    }
+    pageState
   });
 
-  let resolveInitialLanguageReady = null;
+  pageState.resolveInitialLanguageReady = null;
   const initialLanguageReadyPromise = new Promise((resolve) => {
-    resolveInitialLanguageReady = resolve;
+    pageState.resolveInitialLanguageReady = resolve;
   });
-  let resolveInitialBookmarkViewModeReady = null;
+  pageState.resolveInitialBookmarkViewModeReady = null;
   const initialBookmarkViewModeReadyPromise = new Promise((resolve) => {
-    resolveInitialBookmarkViewModeReady = resolve;
+    pageState.resolveInitialBookmarkViewModeReady = resolve;
     if (!storageArea) {
       resolve();
     }
   });
-  let modeBadge = null;
+  pageState.modeBadge = null;
   let siteSearchTabHint = null;
-  let inputModeController = null;
-  let inputParts = null;
+  pageState.inputModeController = null;
+  pageState.inputParts = null;
   const recentCards = [];
   const bookmarkCards = [];
   const bookmarkCardElementCache = new Map();
   const suggestionItems = [];
-  let selectedIndex = -1;
-  let currentSuggestions = [];
-  let lastSuggestionResponse = [];
-  let latestQuery = '';
-  let latestRawQuery = '';
-  let siteSearchTriggerState = null;
-  let localSearchScopeTriggerState = null;
-  let suggestionsView = null;
-  let recentSourceItems = [];
-  let pinnedRecentSites = [];
+  pageState.selectedIndex = -1;
+  pageState.currentSuggestions = [];
+  pageState.lastSuggestionResponse = [];
+  pageState.latestQuery = '';
+  pageState.latestRawQuery = '';
+  pageState.siteSearchTriggerState = null;
+  pageState.localSearchScopeTriggerState = null;
+  pageState.suggestionsView = null;
+  pageState.recentSourceItems = [];
+  pageState.pinnedRecentSites = [];
   // Progress tracking (Labs): the switch and the versions tracked cards left.
-  let progressTrackingEnabled = false;
-  let progressHistoryMap = {};
-  let hiddenRecentSites = [];
+  pageState.progressTrackingEnabled = false;
+  pageState.progressHistoryMap = {};
+  pageState.hiddenRecentSites = [];
   let initialPinnedRecentSitesReadyTask = Promise.resolve([]);
   let initialHiddenRecentSitesReadyTask = Promise.resolve([]);
-  let searchBlacklistItems = [];
-  let currentMessages = null;
+  pageState.searchBlacklistItems = [];
+  pageState.currentMessages = null;
   // Text set once at startup may be read before the chosen language loads;
   // controls register here to re-read it whenever the language is applied.
   const languageChangeListeners = [];
   function onLanguageChange(listener) {
     languageChangeListeners.push(listener);
   }
-  let currentLanguageMode = 'system';
-  let currentResolvedLocale = null;
-  let defaultPlaceholderText = 'Search or enter URL…';
+  pageState.currentLanguageMode = 'system';
+  pageState.currentResolvedLocale = null;
+  pageState.defaultPlaceholderText = 'Search or enter URL…';
   let toastElement = null;
   let toastController = null;
   let layoutController = null;
   let bottomDockScroller = null;
-  let faviconViewRuntime = null;
+  pageState.faviconViewRuntime = null;
   let searchEntryRestoreLayoutLockUntil = 0;
-  let newtabResizeLayoutLocked = false;
-  let newtabReadyRequested = false;
-  let newtabReadyViewportRevision = 0;
-  let resolveNewtabEntryAnimationReady = null;
+  pageState.newtabResizeLayoutLocked = false;
+  pageState.newtabReadyRequested = false;
+  pageState.newtabReadyViewportRevision = 0;
+  pageState.resolveNewtabEntryAnimationReady = null;
   const newtabEntryAnimationReadyPromise = new Promise((resolve) => {
-    resolveNewtabEntryAnimationReady = resolve;
+    pageState.resolveNewtabEntryAnimationReady = resolve;
   });
   let searchEntryLastVisibleViewportWidth = Math.max(0, window.innerWidth || 0);
   let searchEntryLastVisibleViewportHeight = Math.max(0, window.innerHeight || 0);
-  let currentRecentMode = 'most';
+  pageState.currentRecentMode = 'most';
   let currentRecentCount = 4;
-  let currentBookmarkCount = 8;
+  pageState.currentBookmarkCount = 8;
   let currentBookmarkColumns = 6;
-  let currentBookmarkViewMode = 'folder';
-  let bookmarkViewModeRevision = 0;
+  pageState.currentBookmarkViewMode = 'folder';
+  pageState.bookmarkViewModeRevision = 0;
   let bookmarkFolderIconsVisible = true;
-  let tabRankScoreDebugEnabled = false;
+  pageState.tabRankScoreDebugEnabled = false;
   let searchLayer = null;
-  let topContentContainer = null;
-  let topContentController = null;
-  let wordmarkImageEl = null;
+  pageState.topContentContainer = null;
+  pageState.topContentController = null;
+  pageState.wordmarkImageEl = null;
   let wallpaperControl = null;
-  let wallpaperRuntime = null;
-  let quoteRuntime = null;
+  pageState.wallpaperRuntime = null;
+  pageState.quoteRuntime = null;
   let sectionPanelSettings = null;
-  let feedbackControl = null;
-  let feedbackReactController = null;
-  let feedbackButton = null;
-  let feedbackLinks = LUMNO_FEEDBACK_LINKS_FALLBACK;
-  let updateNoticeController = null;
-  let engagementNoticeController = null;
-  let webdavFeatureHintController = null;
-  let helpCenterAskHintController = null;
+  pageState.feedbackControl = null;
+  pageState.feedbackReactController = null;
+  pageState.feedbackButton = null;
+  pageState.feedbackLinks = LUMNO_FEEDBACK_LINKS_FALLBACK;
+  pageState.updateNoticeController = null;
+  pageState.engagementNoticeController = null;
+  pageState.webdavFeatureHintController = null;
+  pageState.helpCenterAskHintController = null;
   let pageNoticeController = null;
-  let newtabTopContentMode = 'brand';
-  let newtabTimeFontWeight = NEWTAB_TIME_FONT_WEIGHT_DEFAULT;
-  let newtabTimeSecondsVisible = false;
-  let newtabInputAutoFocusEnabled = false;
+  pageState.newtabTopContentMode = 'brand';
+  pageState.newtabTimeFontWeight = NEWTAB_TIME_FONT_WEIGHT_DEFAULT;
+  pageState.newtabTimeSecondsVisible = false;
+  pageState.newtabInputAutoFocusEnabled = false;
   let newtabFeedbackButtonVisible = true;
   let newtabAppearanceButtonVisible = true;
-  let numberShortcutInstantEnabled = false;
-  let macosCtrlSuggestionNavigationEnabled = false;
-  let simpleModeEnabled = false;
-  let zenModeEnabled = false;
-  let bookmarkCurrentPage = 0;
-  let bookmarkAllItems = [];
-  let bookmarkCurrentFolderId = '1';
-  let bookmarkRootFolderId = '1';
-  let bookmarkFolderPath = [];
-  let bookmarkRootTotalCount = 0;
-  let bookmarkRootVisibleCount = 0;
+  pageState.numberShortcutInstantEnabled = false;
+  pageState.macosCtrlSuggestionNavigationEnabled = false;
+  pageState.simpleModeEnabled = false;
+  pageState.zenModeEnabled = false;
+  pageState.bookmarkCurrentPage = 0;
+  pageState.bookmarkAllItems = [];
+  pageState.bookmarkCurrentFolderId = '1';
+  pageState.bookmarkRootFolderId = '1';
+  pageState.bookmarkFolderPath = [];
+  pageState.bookmarkRootTotalCount = 0;
+  pageState.bookmarkRootVisibleCount = 0;
   let bookmarkTitleWrap = null;
-  let bookmarkHeading = null;
-  let bookmarkModeMenu = null;
-  let bookmarkGrid = null;
-  let bookmarkCascadeRuntime = null;
-  let bookmarkTopbarRuntime = null;
+  pageState.bookmarkHeading = null;
+  pageState.bookmarkModeMenu = null;
+  pageState.bookmarkGrid = null;
+  pageState.bookmarkCascadeRuntime = null;
+  pageState.bookmarkTopbarRuntime = null;
   let recentHeader = null;
-  let recentHeading = null;
-  let recentModeMenu = null;
+  pageState.recentHeading = null;
+  pageState.recentModeMenu = null;
   let recentGrid = null;
   let bookmarkBreadcrumb = null;
-  let bookmarkBreadcrumbController = null;
-  let bookmarkPagerPrevButton = null;
-  let bookmarkPagerNextButton = null;
-  let bookmarkOpenManagerButton = null;
-  let bookmarkPageAnimating = false;
-  let bookmarkDragState = null;
+  pageState.bookmarkBreadcrumbController = null;
+  pageState.bookmarkPagerPrevButton = null;
+  pageState.bookmarkPagerNextButton = null;
+  pageState.bookmarkOpenManagerButton = null;
+  pageState.bookmarkPageAnimating = false;
+  pageState.bookmarkDragState = null;
   const bookmarkMoveHistory = NEWTAB_BOOKMARK_MOVE_HISTORY.createBookmarkMoveHistory({ maxEntries: 30 });
-  let bookmarkMoveHistoryBusy = false;
-  let bookmarkContextMenu = null;
-  let bookmarkContextMenuTarget = null;
-  let recentContextMenu = null;
-  let recentContextMenuTarget = null;
+  pageState.bookmarkMoveHistoryBusy = false;
+  pageState.bookmarkContextMenu = null;
+  pageState.bookmarkContextMenuTarget = null;
+  pageState.recentContextMenu = null;
+  pageState.recentContextMenuTarget = null;
   let bookmarkWheelLastAt = 0;
-  let recentMouseInsideSection = false;
-  let recentMouseLeftAt = 0;
-  let recentSitesView = null;
-  let bookmarksView = null;
-  let shortcutSection = null;
-  let shortcutGrid = null;
-  let addShortcutButton = null;
-  let shortcutDialogController = null;
+  pageState.recentMouseInsideSection = false;
+  pageState.recentMouseLeftAt = 0;
+  pageState.recentSitesView = null;
+  pageState.bookmarksView = null;
+  pageState.shortcutSection = null;
+  pageState.shortcutGrid = null;
+  pageState.addShortcutButton = null;
+  pageState.shortcutDialogController = null;
   let recentHistoryDialogController = null;
   let recentHistoryDialogLoadPromise = null;
   let shortcutDialogLoadPromise = null;
   let shortcutDialogOpenRevision = 0;
-  let shortcutContextMenu = null;
-  let shortcutContextMenuTarget = null;
-  let newtabShortcuts = [];
-  let newtabShortcutIcons = {};
-  let newtabShortcutFavicons = {};
-  let newtabShortcutsVisible = true;
-  let newtabShortcutAddVisible = true;
-  let newtabShortcutDockMagnificationEnabled = true;
-  let newtabShortcutColumns = NEWTAB_SHORTCUT_COLUMNS_DEFAULT;
-  let newtabShortcutSize = NEWTAB_SHORTCUT_SIZE_DEFAULT;
-  let newtabShortcutGap = NEWTAB_SHORTCUT_GAP_DEFAULT;
-  let shortcutPersistenceInFlightCount = 0;
+  pageState.shortcutContextMenu = null;
+  pageState.shortcutContextMenuTarget = null;
+  pageState.newtabShortcuts = [];
+  pageState.newtabShortcutIcons = {};
+  pageState.newtabShortcutFavicons = {};
+  pageState.newtabShortcutsVisible = true;
+  pageState.newtabShortcutAddVisible = true;
+  pageState.newtabShortcutDockMagnificationEnabled = true;
+  pageState.newtabShortcutColumns = NEWTAB_SHORTCUT_COLUMNS_DEFAULT;
+  pageState.newtabShortcutSize = NEWTAB_SHORTCUT_SIZE_DEFAULT;
+  pageState.newtabShortcutGap = NEWTAB_SHORTCUT_GAP_DEFAULT;
+  pageState.shortcutPersistenceInFlightCount = 0;
 
   const NEWTAB_SHORTCUT_CONTEXT_MENU = globalThis.LumnoNewtabShortcutContextMenu;
   const {
@@ -761,7 +703,7 @@
     SHORTCUT_CONTEXT_MENU_REMOVE_VALUE,
     removeShortcutById: (...args) => removeShortcutById(...args),
     BOOKMARK_CONTEXT_MENU_OPEN_GROUP_VALUE,
-    openBookmarkFolderTabGroupConfirmation: (...args) => openBookmarkFolderTabGroupConfirmation(...args),
+    openBookmarkFolderTabGroupConfirmation,
     t,
     getShortcutContextMenuOptions,
     closeRecentContextMenu: (...args) => closeRecentContextMenu(...args),
@@ -773,32 +715,7 @@
     moveShortcutGroup: (...args) => moveShortcutGroup(...args),
     deleteShortcutGroup: (...args) => deleteShortcutGroup(...args),
     confirmDeleteShortcutGroupWithSites: (...args) => confirmDeleteShortcutGroupWithSites(...args),
-    pageState: {
-      get shortcutContextMenu() {
-        return shortcutContextMenu;
-      },
-      set shortcutContextMenu(value) {
-        shortcutContextMenu = value;
-      },
-      get shortcutContextMenuSelectController() {
-        return shortcutContextMenuSelectController;
-      },
-      get shortcutGrid() {
-        return shortcutGrid;
-      },
-      get shortcutContextMenuTarget() {
-        return shortcutContextMenuTarget;
-      },
-      set shortcutContextMenuTarget(value) {
-        shortcutContextMenuTarget = value;
-      },
-      get shortcutSection() {
-        return shortcutSection;
-      },
-      get addShortcutButton() {
-        return addShortcutButton;
-      }
-    }
+    pageState
   });
 
   const NEWTAB_SHORTCUT_DOCK = globalThis.LumnoNewtabShortcutDock;
@@ -818,27 +735,11 @@
     applyShortcutContextMenuDockHover,
     clearShortcutContextMenuTileActive,
     getShortcutTileFromNode,
-    pageState: {
-      get shortcutGrid() {
-        return shortcutGrid;
-      },
-      get newtabShortcutDockMagnificationEnabled() {
-        return newtabShortcutDockMagnificationEnabled;
-      },
-      get shortcutDockPendingPointerX() {
-        return shortcutDockPendingPointerX;
-      },
-      set shortcutDockPendingPointerX(value) {
-        shortcutDockPendingPointerX = value;
-      },
-      get shortcutContextMenuTarget() {
-        return shortcutContextMenuTarget;
-      }
-    }
+    pageState
   });
 
-  let shortcutDockPendingPointerX = Number.NaN;
-  let shortcutDragState = null;
+  pageState.shortcutDockPendingPointerX = Number.NaN;
+  pageState.shortcutDragState = null;
   // Set once the recent-card drag runtime exists; earlier helpers ask it lazily.
   let recentCardDragRuntime = null;
   const shortcutTiles = [];
@@ -918,47 +819,7 @@
     getUrlDisplay: (...args) => getUrlDisplay(...args),
     getHelpCenterLocale,
     SETTINGS,
-    pageState: {
-      get siteSearchIconCacheLoaded() {
-        return siteSearchIconCacheLoaded;
-      },
-      get siteSearchIconCache() {
-        return siteSearchIconCache;
-      },
-      get siteSearchProvidersLoadVersion() {
-        return siteSearchProvidersLoadVersion;
-      },
-      set siteSearchProvidersLoadVersion(value) {
-        siteSearchProvidersLoadVersion = value;
-      },
-      get siteSearchProvidersCache() {
-        return siteSearchProvidersCache;
-      },
-      set siteSearchProvidersCache(value) {
-        siteSearchProvidersCache = value;
-      },
-      get aggregateSearchesCache() {
-        return aggregateSearchesCache;
-      },
-      set aggregateSearchesCache(value) {
-        aggregateSearchesCache = value;
-      },
-      get aggregateSearchesLoadPromise() {
-        return aggregateSearchesLoadPromise;
-      },
-      set aggregateSearchesLoadPromise(value) {
-        aggregateSearchesLoadPromise = value;
-      },
-      get aggregateSearchesLoadVersion() {
-        return aggregateSearchesLoadVersion;
-      },
-      get AGGREGATE_SEARCH_STORAGE_KEY() {
-        return AGGREGATE_SEARCH_STORAGE_KEY;
-      },
-      get enabledSearchResultSourceTypes() {
-        return enabledSearchResultSourceTypes;
-      }
-    }
+    pageState
   });
 
   const defaultAccentColor = NEWTAB_FAVICON_THEME.defaultAccentColor;
@@ -1033,20 +894,7 @@
     stableHashCode,
     getThemeSourceForSuggestion,
     areFaviconRenderCachesReady,
-    pageState: {
-      get siteSearchState() {
-        return siteSearchState;
-      },
-      get faviconDataCache() {
-        return faviconDataCache;
-      },
-      get requestFaviconData() {
-        return requestFaviconData;
-      },
-      get faviconCacheRuntime() {
-        return faviconCacheRuntime;
-      }
-    }
+    pageState
   });
 
   const NEWTAB_URL_POLICY = globalThis.LumnoNewtabUrlPolicy;
@@ -1100,29 +948,7 @@
     FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY,
     SEARCH_UTILS,
     getBrowserIconUrl: firefoxBrowserIcons ? firefoxBrowserIcons.get : null,
-    pageState: {
-      get searchBlacklistItems() {
-        return searchBlacklistItems;
-      },
-      set searchBlacklistItems(value) {
-        searchBlacklistItems = value;
-      },
-      get faviconRequestBlacklistItems() {
-        return faviconRequestBlacklistItems;
-      },
-      set faviconRequestBlacklistItems(value) {
-        faviconRequestBlacklistItems = value;
-      },
-      get faviconEnhancedFetchEnabled() {
-        return faviconEnhancedFetchEnabled;
-      },
-      set faviconEnhancedFetchEnabled(value) {
-        faviconEnhancedFetchEnabled = value;
-      },
-      get searchResultDisplayLimit() {
-        return searchResultDisplayLimit;
-      }
-    }
+    pageState
   });
 
   // A press made while a card context menu is open belongs to the menu:
@@ -1199,57 +1025,11 @@
     progressHistory: PROGRESS_HISTORY,
     progressHistoryStorageArea: localStorageArea,
     openProgressHistory: (item) => openRecentHistoryDialog(item),
-    pageState: {
-      get progressTrackingEnabled() {
-        return progressTrackingEnabled;
-      },
-      get progressHistoryMap() {
-        return progressHistoryMap;
-      },
-      set progressHistoryMap(value) {
-        progressHistoryMap = value;
-      },
-      get recentContextMenu() {
-        return recentContextMenu;
-      },
-      set recentContextMenu(value) {
-        recentContextMenu = value;
-      },
-      get recentContextMenuSelectController() {
-        return recentContextMenuSelectController;
-      },
-      get recentContextMenuTarget() {
-        return recentContextMenuTarget;
-      },
-      set recentContextMenuTarget(value) {
-        recentContextMenuTarget = value;
-      },
-      get hiddenRecentSites() {
-        return hiddenRecentSites;
-      },
-      set hiddenRecentSites(value) {
-        hiddenRecentSites = value;
-      },
-      get pinnedRecentSites() {
-        return pinnedRecentSites;
-      },
-      set pinnedRecentSites(value) {
-        pinnedRecentSites = value;
-      },
-      get recentRenderSignature() {
-        return recentRenderSignature;
-      },
-      set recentRenderSignature(value) {
-        recentRenderSignature = value;
-      },
-      get recentSourceItems() {
-        return recentSourceItems;
-      }
-    }
+    pageState
   });
 
   let folderColorPreview = null;
-  let folderColorPicker = null;
+  pageState.folderColorPicker = null;
 
   function getFolderColor(folderId) {
     return folderColorPreview && folderColorPreview.folderId === String(folderId)
@@ -1365,9 +1145,9 @@
     closeBookmarkCascadeMenu();
     closeShortcutDialog();
     hideCursorTooltip();
-    if (!folderColorPicker) {
+    if (!pageState.folderColorPicker) {
       try {
-        folderColorPicker = await folderColorApi.createFolderColorPicker({
+        pageState.folderColorPicker = await folderColorApi.createFolderColorPicker({
           documentObj: document, t,
           getFolderSvg: getFigmaFolderSvg,
           initFolderIcon: NEWTAB_BOOKMARK_FOLDER_ICON.initFolderPathMorph,
@@ -1390,7 +1170,7 @@
         return;
       }
     }
-    folderColorPicker.open({ folderId: String(folderId), title, color: getFolderColor(folderId), sourceElement });
+    pageState.folderColorPicker.open({ folderId: String(folderId), title, color: getFolderColor(folderId), sourceElement });
   }
   const shortcutIconStore = NEWTAB_SHORTCUT_ICON_STORE.createShortcutIconStore({
     documentObj: document,
@@ -1413,14 +1193,14 @@
     storageKey: SITE_SEARCH_ICON_CACHE_STORAGE_KEY,
     ...siteSearchIconCacheOptions
   });
-  let siteSearchIconCache = {};
-  let siteSearchIconCacheLoaded = false;
+  pageState.siteSearchIconCache = {};
+  pageState.siteSearchIconCacheLoaded = false;
   let siteSearchIconCacheLoadPromise = null;
   let siteSearchIconCacheRevision = 0;
 
   function loadSiteSearchIconCache() {
-    if (siteSearchIconCacheLoaded) {
-      return Promise.resolve(siteSearchIconCache);
+    if (pageState.siteSearchIconCacheLoaded) {
+      return Promise.resolve(pageState.siteSearchIconCache);
     }
     if (siteSearchIconCacheLoadPromise) {
       return siteSearchIconCacheLoadPromise;
@@ -1428,23 +1208,23 @@
     const loadRevision = siteSearchIconCacheRevision;
     siteSearchIconCacheLoadPromise = siteSearchIconStore.readAll().then((cache) => {
       if (siteSearchIconCacheRevision === loadRevision) {
-        siteSearchIconCache = cache && typeof cache === 'object' ? cache : {};
+        pageState.siteSearchIconCache = cache && typeof cache === 'object' ? cache : {};
       }
-      siteSearchIconCacheLoaded = true;
-      return siteSearchIconCache;
+      pageState.siteSearchIconCacheLoaded = true;
+      return pageState.siteSearchIconCache;
     }).catch(() => {
       if (siteSearchIconCacheRevision === loadRevision) {
-        siteSearchIconCache = {};
+        pageState.siteSearchIconCache = {};
       }
-      siteSearchIconCacheLoaded = true;
-      return siteSearchIconCache;
+      pageState.siteSearchIconCacheLoaded = true;
+      return pageState.siteSearchIconCache;
     });
     return siteSearchIconCacheLoadPromise;
   }
 
   loadSiteSearchIconCache();
-  let shortcutFaviconPolicyRevision = 0;
-  let shortcutFaviconPendingCacheEntries = {};
+  pageState.shortcutFaviconPolicyRevision = 0;
+  pageState.shortcutFaviconPendingCacheEntries = {};
   const sectionModeSelectController =
     NEWTAB_SELECT_MENU.createController({
       documentObj: document,
@@ -1452,8 +1232,7 @@
       onBeforeOpen: (...args) => hideTopActionTooltip(...args),
       getViewportTopInset: (...args) => getNewtabViewportTopPaddingPx(...args)
     });
-  const shortcutContextMenuSelectController =
-    NEWTAB_SELECT_MENU.createController({
+  pageState.shortcutContextMenuSelectController = NEWTAB_SELECT_MENU.createController({
       documentObj: document,
       windowObj: window,
       onBeforeOpen: () => {
@@ -1462,8 +1241,7 @@
       },
       getViewportTopInset: (...args) => getNewtabViewportTopPaddingPx(...args)
     });
-  const bookmarkContextMenuSelectController =
-    NEWTAB_SELECT_MENU.createController({
+  pageState.bookmarkContextMenuSelectController = NEWTAB_SELECT_MENU.createController({
       documentObj: document,
       windowObj: window,
       onBeforeOpen: () => {
@@ -1472,8 +1250,7 @@
       },
       getViewportTopInset: (...args) => getNewtabViewportTopPaddingPx(...args)
     });
-  const recentContextMenuSelectController =
-    NEWTAB_SELECT_MENU.createController({
+  pageState.recentContextMenuSelectController = NEWTAB_SELECT_MENU.createController({
       documentObj: document,
       windowObj: window,
       onBeforeOpen: () => {
@@ -1507,14 +1284,7 @@
     normalizeThemeConfidence,
     isLowConfidenceTheme,
     scheduleWallpaperAdaptiveToneUpdate,
-    pageState: {
-      get recentMouseInsideSection() {
-        return recentMouseInsideSection;
-      },
-      get recentMouseLeftAt() {
-        return recentMouseLeftAt;
-      }
-    }
+    pageState
   });
 
   const NEWTAB_APPEARANCE_MODES = globalThis.LumnoNewtabAppearanceModes;
@@ -1579,116 +1349,7 @@
     NEWTAB_THEME_SCOPE_STORAGE_KEY,
     initialLanguageReadyPromise,
     LANGUAGE_STORAGE_KEY,
-    pageState: {
-      get topContentController() {
-        return topContentController;
-      },
-      get newtabTopContentMode() {
-        return newtabTopContentMode;
-      },
-      get bookmarkTopbarRuntime() {
-        return bookmarkTopbarRuntime;
-      },
-      get quoteRuntime() {
-        return quoteRuntime;
-      },
-      get inputModeController() {
-        return inputModeController;
-      },
-      get updateNoticeController() {
-        return updateNoticeController;
-      },
-      get engagementNoticeController() {
-        return engagementNoticeController;
-      },
-      get webdavFeatureHintController() {
-        return webdavFeatureHintController;
-      },
-      get helpCenterAskHintController() {
-        return helpCenterAskHintController;
-      },
-      get inputParts() {
-        return inputParts;
-      },
-      get defaultPlaceholderText() {
-        return defaultPlaceholderText;
-      },
-      set defaultPlaceholderText(value) {
-        defaultPlaceholderText = value;
-      },
-      get siteSearchState() {
-        return siteSearchState;
-      },
-      get localSearchScopeState() {
-        return localSearchScopeState;
-      },
-      get latestQuery() {
-        return latestQuery;
-      },
-      get lastSuggestionResponse() {
-        return lastSuggestionResponse;
-      },
-      get currentLanguageMode() {
-        return currentLanguageMode;
-      },
-      set currentLanguageMode(value) {
-        currentLanguageMode = value;
-      },
-      get currentResolvedLocale() {
-        return currentResolvedLocale;
-      },
-      set currentResolvedLocale(value) {
-        currentResolvedLocale = value;
-      },
-      get resolveInitialLanguageReady() {
-        return resolveInitialLanguageReady;
-      },
-      get currentMessages() {
-        return currentMessages;
-      },
-      set currentMessages(value) {
-        currentMessages = value;
-      },
-      get faviconViewRuntime() {
-        return faviconViewRuntime;
-      },
-      get currentThemeMode() {
-        return currentThemeMode;
-      },
-      set currentThemeMode(value) {
-        currentThemeMode = value;
-      },
-      get wallpaperRuntime() {
-        return wallpaperRuntime;
-      },
-      get initialThemeApplied() {
-        return initialThemeApplied;
-      },
-      set initialThemeApplied(value) {
-        initialThemeApplied = value;
-      },
-      get resolveInitialThemeReady() {
-        return resolveInitialThemeReady;
-      },
-      get newtabThemeMode() {
-        return newtabThemeMode;
-      },
-      set newtabThemeMode(value) {
-        newtabThemeMode = value;
-      },
-      get globalThemeMode() {
-        return globalThemeMode;
-      },
-      set globalThemeMode(value) {
-        globalThemeMode = value;
-      },
-      get newtabThemeScope() {
-        return newtabThemeScope;
-      },
-      set newtabThemeScope(value) {
-        newtabThemeScope = value;
-      }
-    }
+    pageState
   });
 
   const SECTION_MODE_MENU_MIN_WIDTH_PX = 168;
@@ -1725,8 +1386,8 @@
   );
   const NEWTAB_WIDTH_MODE_CONFIGS = {
     standard: {
-      searchMaxWidth: 720,
-      contentMaxWidth: 1040,
+      searchMaxWidth: NEWTAB_LAYOUT.STANDARD_SEARCH_MAX_WIDTH_PX,
+      contentMaxWidth: NEWTAB_LAYOUT.CONTENT_MAX_WIDTH_PX,
       recentMaxColumns: 4
     },
     wide: {
@@ -1735,13 +1396,7 @@
       recentMaxColumns: RECENT_WIDE_MAX_COLUMNS
     }
   };
-  const NEWTAB_SEARCH_WIDTH_CONFIG = {
-    min: 640,
-    max: 1040,
-    fallback: 920,
-    snapPoints: [640, 720, 920, 1040],
-    snapThreshold: 14
-  };
+  const NEWTAB_SEARCH_WIDTH_CONFIG = NEWTAB_LAYOUT.SEARCH_WIDTH_CONFIG;
   let currentNewtabWidthMode = 'wide';
   let currentNewtabSearchWidth = null;
   let currentRecentGridColumns = 4;
@@ -1797,8 +1452,7 @@
     normalizeBookmarkCount,
     getBookmarkLimit,
     normalizeBookmarkColumns,
-    normalizeTabRankScoreDebugMode,
-    normalizeBookmarkCascadeDebugMode
+    normalizeTabRankScoreDebugMode
   } = NEWTAB_PAGE_PREFERENCES.createPagePreferences({
     SETTINGS,
     NEWTAB_SEARCH_WIDTH_CONFIG,
@@ -1832,74 +1486,7 @@
     SIMPLE_MODE_ENABLED_STORAGE_KEY,
     MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY,
     getBookmarkGridColumnCount,
-    pageState: {
-      get wallpaperRuntime() {
-        return wallpaperRuntime;
-      },
-      get newtabInputAutoFocusEnabled() {
-        return newtabInputAutoFocusEnabled;
-      },
-      set newtabInputAutoFocusEnabled(value) {
-        newtabInputAutoFocusEnabled = value;
-      },
-      get newtabShortcutsVisible() {
-        return newtabShortcutsVisible;
-      },
-      set newtabShortcutsVisible(value) {
-        newtabShortcutsVisible = value;
-      },
-      get newtabShortcutAddVisible() {
-        return newtabShortcutAddVisible;
-      },
-      set newtabShortcutAddVisible(value) {
-        newtabShortcutAddVisible = value;
-      },
-      get newtabShortcutDockMagnificationEnabled() {
-        return newtabShortcutDockMagnificationEnabled;
-      },
-      set newtabShortcutDockMagnificationEnabled(value) {
-        newtabShortcutDockMagnificationEnabled = value;
-      },
-      get newtabShortcutColumns() {
-        return newtabShortcutColumns;
-      },
-      set newtabShortcutColumns(value) {
-        newtabShortcutColumns = value;
-      },
-      get newtabShortcutSize() {
-        return newtabShortcutSize;
-      },
-      set newtabShortcutSize(value) {
-        newtabShortcutSize = value;
-      },
-      get newtabShortcutGap() {
-        return newtabShortcutGap;
-      },
-      set newtabShortcutGap(value) {
-        newtabShortcutGap = value;
-      },
-      get numberShortcutInstantEnabled() {
-        return numberShortcutInstantEnabled;
-      },
-      set numberShortcutInstantEnabled(value) {
-        numberShortcutInstantEnabled = value;
-      },
-      get simpleModeEnabled() {
-        return simpleModeEnabled;
-      },
-      set simpleModeEnabled(value) {
-        simpleModeEnabled = value;
-      },
-      get macosCtrlSuggestionNavigationEnabled() {
-        return macosCtrlSuggestionNavigationEnabled;
-      },
-      set macosCtrlSuggestionNavigationEnabled(value) {
-        macosCtrlSuggestionNavigationEnabled = value;
-      },
-      get currentBookmarkCount() {
-        return currentBookmarkCount;
-      }
-    }
+    pageState
   });
 
   function formatTabRankDebugText(tab) {
@@ -1929,7 +1516,7 @@
       mobileColumns: 2,
       compactBreakpointPx: 860,
       compactColumns: 2,
-      contentMaxWidth: Number(config.contentMaxWidth || 1040),
+      contentMaxWidth: Number(config.contentMaxWidth || NEWTAB_LAYOUT.CONTENT_MAX_WIDTH_PX),
       targetColumnWidth: BOOKMARK_CARD_TARGET_WIDTH_PX,
       gap: BOOKMARK_GRID_GAP_PX,
       minColumns: 2,
@@ -1961,7 +1548,7 @@
       mobileColumns: 2,
       compactBreakpointPx: 860,
       compactColumns: 2,
-      contentMaxWidth: Number(config.contentMaxWidth || 1040),
+      contentMaxWidth: Number(config.contentMaxWidth || NEWTAB_LAYOUT.CONTENT_MAX_WIDTH_PX),
       targetColumnWidth: RECENT_CARD_TARGET_WIDTH_PX,
       gap: RECENT_GRID_GAP_PX,
       minColumns: 4,
@@ -2076,20 +1663,20 @@
   }
 
   function applyBookmarkGridColumns() {
-    if (!bookmarkGrid) {
+    if (!pageState.bookmarkGrid) {
       return false;
     }
-    const previousColumns = Number.parseInt(bookmarkGrid.style.getPropertyValue('--x-nt-bookmark-columns'), 10);
+    const previousColumns = Number.parseInt(pageState.bookmarkGrid.style.getPropertyValue('--x-nt-bookmark-columns'), 10);
     const columns = Math.max(1, getBookmarkGridColumnCount());
-    bookmarkGrid.style.setProperty('--x-nt-bookmark-columns', String(columns));
+    pageState.bookmarkGrid.style.setProperty('--x-nt-bookmark-columns', String(columns));
     return previousColumns !== columns;
   }
 
   function keepBookmarkPageAnchorAfterLimitChange(previousLimit) {
     const prev = Math.max(1, Number.parseInt(previousLimit, 10) || 1);
     const next = Math.max(1, getBookmarkLimit());
-    const firstVisibleIndex = Math.max(0, bookmarkCurrentPage * prev);
-    bookmarkCurrentPage = Math.floor(firstVisibleIndex / next);
+    const firstVisibleIndex = Math.max(0, pageState.bookmarkCurrentPage * prev);
+    pageState.bookmarkCurrentPage = Math.floor(firstVisibleIndex / next);
   }
 
   function applyRecentGridColumns() {
@@ -2121,8 +1708,8 @@
     const changed = currentNewtabSearchWidth !== nextWidth;
     currentNewtabSearchWidth = nextWidth;
     updateNewtabSearchWidthLayout();
-    if (wallpaperRuntime && typeof wallpaperRuntime.updateSearchWidthUi === 'function') {
-      wallpaperRuntime.updateSearchWidthUi();
+    if (pageState.wallpaperRuntime && typeof pageState.wallpaperRuntime.updateSearchWidthUi === 'function') {
+      pageState.wallpaperRuntime.updateSearchWidthUi();
     }
     if (config.persist && storageArea && nextWidth !== null) {
       storageArea.set({ [NEWTAB_SEARCH_WIDTH_STORAGE_KEY]: nextWidth });
@@ -2131,7 +1718,7 @@
   }
 
   // 使用本地打包字体，避免外链字体依赖。
-  let defaultSearchEngineState = {
+  pageState.defaultSearchEngineState = {
     id: '',
     name: '',
     host: '',
@@ -2262,35 +1849,7 @@
     if (isPrimaryStorageAreaName('local')) {
       return;
     }
-    chrome.storage.local.get(keys, (localResult) => {
-      const hasLocal = keys.some((key) => typeof localResult[key] !== 'undefined');
-      if (!hasLocal) {
-        return;
-      }
-      storageArea.get(keys, (syncResult) => {
-        const missingSyncValues = {};
-        keys.forEach((key) => {
-          if (typeof localResult[key] !== 'undefined' && typeof syncResult[key] === 'undefined') {
-            missingSyncValues[key] = localResult[key];
-          }
-        });
-        const missingKeys = Object.keys(missingSyncValues);
-        if (missingKeys.length === 0) {
-          return;
-        }
-        storageArea.get(missingKeys, (latestSyncResult) => {
-          const stillMissingSyncValues = {};
-          missingKeys.forEach((key) => {
-            if (typeof latestSyncResult[key] === 'undefined') {
-              stillMissingSyncValues[key] = missingSyncValues[key];
-            }
-          });
-          if (Object.keys(stillMissingSyncValues).length > 0) {
-            storageArea.set(stillMissingSyncValues);
-          }
-        });
-      });
-    });
+    SETTINGS.migrateLocalSettingsToSync(chrome.storage.local, storageArea, keys);
   }
 
   function getSystemLocale() {
@@ -2301,9 +1860,7 @@
   }
 
   function sanitizeDisplayText(text) {
-    const raw = String(text || '');
-    const withoutSpecial = raw.replace(/[\u0000-\u001F\u007F-\u009F\uFEFF\uFFF9-\uFFFD]|\p{Co}/gu, '');
-    return withoutSpecial.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '');
+    return SEARCH_UTILS.sanitizeDisplayText(text);
   }
 
   function loadLocaleMessages(locale) {
@@ -2322,8 +1879,8 @@
   }
 
   function t(key, fallback) {
-    if (currentMessages && currentMessages[key] && currentMessages[key].message) {
-      return currentMessages[key].message;
+    if (pageState.currentMessages && pageState.currentMessages[key] && pageState.currentMessages[key].message) {
+      return pageState.currentMessages[key].message;
     }
     if (chrome && chrome.i18n && chrome.i18n.getMessage) {
       const message = chrome.i18n.getMessage(key);
@@ -2353,8 +1910,8 @@
   }
 
   function createWallpaperAdaptiveToneTargets() {
-    const bookmarkPager = bookmarkPagerPrevButton && bookmarkPagerPrevButton.parentElement
-      ? bookmarkPagerPrevButton.parentElement
+    const bookmarkPager = pageState.bookmarkPagerPrevButton && pageState.bookmarkPagerPrevButton.parentElement
+      ? pageState.bookmarkPagerPrevButton.parentElement
       : null;
     const shortcutToneTargets = shortcutTiles.map((tile) => ({
       element: tile,
@@ -2364,8 +1921,8 @@
       iconButton: true,
       forcedIconBackground: 'shortcut-fallback'
     }));
-    if (shortcutGrid) {
-      shortcutGrid.querySelectorAll('.x-nt-shortcut-group-empty').forEach((slot) => {
+    if (pageState.shortcutGrid) {
+      pageState.shortcutGrid.querySelectorAll('.x-nt-shortcut-group-empty').forEach((slot) => {
         shortcutToneTargets.push({
           element: slot,
           sampleElement: getShortcutDockIcon(slot) || slot,
@@ -2387,10 +1944,10 @@
         iconButton: true
       });
     });
-    if (addShortcutButton) {
+    if (pageState.addShortcutButton) {
       shortcutToneTargets.push({
-        element: addShortcutButton,
-        sampleElement: getShortcutDockIcon(addShortcutButton) || addShortcutButton,
+        element: pageState.addShortcutButton,
+        sampleElement: getShortcutDockIcon(pageState.addShortcutButton) || pageState.addShortcutButton,
         minWidth: 42,
         minHeight: 42,
         iconButton: true,
@@ -2399,8 +1956,8 @@
     }
     return [
       {
-        element: bookmarkTopbarRuntime && bookmarkTopbarRuntime.element,
-        sampleElement: bookmarkTopbarRuntime && bookmarkTopbarRuntime.element,
+        element: pageState.bookmarkTopbarRuntime && pageState.bookmarkTopbarRuntime.element,
+        sampleElement: pageState.bookmarkTopbarRuntime && pageState.bookmarkTopbarRuntime.element,
         minWidth: 280,
         minHeight: 64,
         surface: 'topbar',
@@ -2409,16 +1966,16 @@
           getEffectiveBookmarkTopbarSurfaceMode() === 'custom'
       },
       {
-        element: topContentContainer,
-        sampleElement: topContentController && typeof topContentController.getContent === 'function'
-          ? (topContentController.getContent() || topContentContainer)
-          : (wordmarkImageEl || topContentContainer),
+        element: pageState.topContentContainer,
+        sampleElement: pageState.topContentController && typeof pageState.topContentController.getContent === 'function'
+          ? (pageState.topContentController.getContent() || pageState.topContentContainer)
+          : (pageState.wordmarkImageEl || pageState.topContentContainer),
         minWidth: 220,
         minHeight: 72
       },
       {
-        element: quoteRuntime && quoteRuntime.element,
-        sampleElement: quoteRuntime && (quoteRuntime.textElement || quoteRuntime.element),
+        element: pageState.quoteRuntime && pageState.quoteRuntime.element,
+        sampleElement: pageState.quoteRuntime && (pageState.quoteRuntime.textElement || pageState.quoteRuntime.element),
         minWidth: 160,
         minHeight: 32
       },
@@ -2450,15 +2007,8 @@
         iconButton: true
       },
       {
-        element: feedbackButton,
-        sampleElement: feedbackButton,
-        minWidth: 42,
-        minHeight: 42,
-        iconButton: true
-      },
-      {
-        element: BOOKMARK_CASCADE_DEBUG_UI_ENABLED && bookmarkCascadeRuntime && bookmarkCascadeRuntime.getDebugButton(),
-        sampleElement: BOOKMARK_CASCADE_DEBUG_UI_ENABLED && bookmarkCascadeRuntime && bookmarkCascadeRuntime.getDebugButton(),
+        element: pageState.feedbackButton,
+        sampleElement: pageState.feedbackButton,
         minWidth: 42,
         minHeight: 42,
         iconButton: true
@@ -2510,12 +2060,12 @@
     }
   };
 
-  quoteRuntime = globalThis.LumnoNewtabQuotes.createRuntime({
+  pageState.quoteRuntime = globalThis.LumnoNewtabQuotes.createRuntime({
     documentObj: document, windowObj: window, chromeObj: chrome,
     storageArea, localStorageArea, t, showToast,
-    getLocale: () => currentResolvedLocale,
+    getLocale: () => pageState.currentResolvedLocale,
     getSearchRoot: () => root,
-    getShortcutSection: () => shortcutSection,
+    getShortcutSection: () => pageState.shortcutSection,
     getTooltipController: () => topActionTooltipController,
     isPreferenceArea: (areaName) => providerStorageRuntime
       ? providerStorageRuntime.isActiveAreaName(areaName) : areaName === 'sync',
@@ -2537,9 +2087,9 @@
       RECENT_COUNT_STORAGE_KEY,
       ...bookmarkTopbarStorageKeys
     ],
-    getBookmarkViewMode: () => currentBookmarkViewMode,
+    getBookmarkViewMode: () => pageState.currentBookmarkViewMode,
     setBookmarkViewMode: (mode) => setBookmarkViewMode(mode),
-    getBookmarkCount: () => currentBookmarkCount,
+    getBookmarkCount: () => pageState.currentBookmarkCount,
     setBookmarkCount: (value, options) => setSectionPreference(
       BOOKMARK_COUNT_STORAGE_KEY,
       normalizeBookmarkCount(value),
@@ -2568,7 +2118,7 @@
       `${BOOKMARK_TOPBAR_SURFACE_MODE_ACTION}:${mode}`
     ),
     pickBookmarkTopbarSurfaceColor: () => handleBookmarkModeMenuAction(BOOKMARK_TOPBAR_PICK_COLOR_ACTION),
-    getRecentMode: () => currentRecentMode,
+    getRecentMode: () => pageState.currentRecentMode,
     setRecentMode: (mode) => setRecentMode(mode),
     getRecentCount: () => currentRecentCount,
     setRecentCount: (value, options) => setSectionPreference(
@@ -2578,14 +2128,14 @@
       options
     )
   });
-  wallpaperRuntime = NEWTAB_WALLPAPER.createWallpaperRuntime({
+  pageState.wallpaperRuntime = NEWTAB_WALLPAPER.createWallpaperRuntime({
     documentObj: document,
     windowObj: window,
     chromeObj: chrome,
     extensionRoutes: EXTENSION_ROUTES,
     storageArea,
     localWallpaperStorageArea: localStorageArea,
-    getQuoteRuntime: () => quoteRuntime,
+    getQuoteRuntime: () => pageState.quoteRuntime,
     getSectionPanelSettings: () => sectionPanelSettings,
     storageKeys: {
       wallpaper: NEWTAB_WALLPAPER_STORAGE_KEY,
@@ -2611,13 +2161,13 @@
     showTopActionTooltip: (...args) => showTopActionTooltip(...args),
     hideTopActionTooltip: (...args) => hideTopActionTooltip(...args),
     applyWordmarkThemeAppearance: (...args) => applyWordmarkThemeAppearance(...args),
-    getTopContentMode: () => newtabTopContentMode,
+    getTopContentMode: () => pageState.newtabTopContentMode,
     setTopContentMode: (value) => {
       setNewtabTopContentMode(value);
     },
-    getTimeFontWeight: () => newtabTimeFontWeight,
+    getTimeFontWeight: () => pageState.newtabTimeFontWeight,
     setTimeFontWeight: (...args) => setNewtabTimeFontWeight(...args),
-    getTimeSecondsVisible: () => newtabTimeSecondsVisible,
+    getTimeSecondsVisible: () => pageState.newtabTimeSecondsVisible,
     setTimeSecondsVisible: (...args) => setNewtabTimeSecondsVisible(...args),
     getSearchWidth: getEffectiveNewtabSearchWidth,
     setSearchWidth: (value, options) => {
@@ -2638,57 +2188,57 @@
       max: NEWTAB_SHORTCUT_GAP_MAX,
       fallback: NEWTAB_SHORTCUT_GAP_DEFAULT
     },
-    getShortcutsVisible: () => newtabShortcutsVisible,
+    getShortcutsVisible: () => pageState.newtabShortcutsVisible,
     setShortcutsVisible: setNewtabShortcutsVisible,
-    getShortcutAddVisible: () => newtabShortcutAddVisible,
+    getShortcutAddVisible: () => pageState.newtabShortcutAddVisible,
     setShortcutAddVisible: setNewtabShortcutAddVisible,
-    getShortcutDockMagnificationEnabled: () => newtabShortcutDockMagnificationEnabled,
+    getShortcutDockMagnificationEnabled: () => pageState.newtabShortcutDockMagnificationEnabled,
     setShortcutDockMagnificationEnabled: setNewtabShortcutDockMagnificationEnabled,
-    getShortcutColumns: () => newtabShortcutColumns,
+    getShortcutColumns: () => pageState.newtabShortcutColumns,
     setShortcutColumns: setNewtabShortcutColumns,
-    getShortcutSize: () => newtabShortcutSize,
+    getShortcutSize: () => pageState.newtabShortcutSize,
     setShortcutSize: setNewtabShortcutSize,
-    getShortcutGap: () => newtabShortcutGap,
+    getShortcutGap: () => pageState.newtabShortcutGap,
     setShortcutGap: setNewtabShortcutGap,
     featureHints: FEATURE_HINTS,
     featureHintVisibilityGate: newtabEntryAnimationReadyPromise,
     inputAutoFocusReady: initialNewtabInputAutoFocusReadyTask,
-    getInputAutoFocusEnabled: () => newtabInputAutoFocusEnabled,
+    getInputAutoFocusEnabled: () => pageState.newtabInputAutoFocusEnabled,
     setInputAutoFocusEnabled: setNewtabInputAutoFocusEnabled,
     getAdaptiveToneTargets: createWallpaperAdaptiveToneTargets,
     view: NEWTAB_WALLPAPER_VIEW
   });
 
   function updateWallpaperLanguageStrings() {
-    if (wallpaperRuntime) {
-      wallpaperRuntime.updateLanguageStrings();
+    if (pageState.wallpaperRuntime) {
+      pageState.wallpaperRuntime.updateLanguageStrings();
     }
   }
 
   function updateWallpaperAppearanceSelectionUi() {
-    if (wallpaperRuntime) {
-      wallpaperRuntime.updateAppearanceSelectionUi();
+    if (pageState.wallpaperRuntime) {
+      pageState.wallpaperRuntime.updateAppearanceSelectionUi();
     }
   }
 
   function bootstrapInitialWallpaper() {
-    if (!wallpaperRuntime) {
+    if (!pageState.wallpaperRuntime) {
       return Promise.resolve();
     }
-    return bootstrapInitialThemeMode().then(() => wallpaperRuntime.bootstrapInitialWallpaper());
+    return bootstrapInitialThemeMode().then(() => pageState.wallpaperRuntime.bootstrapInitialWallpaper());
   }
 
   function bootstrapInitialWallpaperOverlay() {
-    return wallpaperRuntime ? wallpaperRuntime.bootstrapInitialWallpaperOverlay() : Promise.resolve();
+    return pageState.wallpaperRuntime ? pageState.wallpaperRuntime.bootstrapInitialWallpaperOverlay() : Promise.resolve();
   }
 
   function bootstrapInitialWallpaperEffect() {
-    return wallpaperRuntime ? wallpaperRuntime.bootstrapInitialWallpaperEffect() : Promise.resolve();
+    return pageState.wallpaperRuntime ? pageState.wallpaperRuntime.bootstrapInitialWallpaperEffect() : Promise.resolve();
   }
 
   function waitForInitialWallpaperEffectVisual() {
-    return wallpaperRuntime && typeof wallpaperRuntime.waitForInitialWallpaperEffectVisual === 'function'
-      ? wallpaperRuntime.waitForInitialWallpaperEffectVisual()
+    return pageState.wallpaperRuntime && typeof pageState.wallpaperRuntime.waitForInitialWallpaperEffectVisual === 'function'
+      ? pageState.wallpaperRuntime.waitForInitialWallpaperEffectVisual()
       : Promise.resolve();
   }
 
@@ -2699,32 +2249,32 @@
   }
 
   function bootstrapInitialNewtabFavicon() {
-    return wallpaperRuntime && typeof wallpaperRuntime.bootstrapInitialNewtabFavicon === 'function'
-      ? wallpaperRuntime.bootstrapInitialNewtabFavicon()
+    return pageState.wallpaperRuntime && typeof pageState.wallpaperRuntime.bootstrapInitialNewtabFavicon === 'function'
+      ? pageState.wallpaperRuntime.bootstrapInitialNewtabFavicon()
       : Promise.resolve();
   }
 
   function createWallpaperControls() {
-    if (!wallpaperRuntime) {
+    if (!pageState.wallpaperRuntime) {
       return;
     }
-    wallpaperRuntime.createControls();
-    wallpaperControl = wallpaperRuntime.getControlElement();
+    pageState.wallpaperRuntime.createControls();
+    wallpaperControl = pageState.wallpaperRuntime.getControlElement();
   }
 
   function isWallpaperPanelOpen() {
-    return wallpaperRuntime ? wallpaperRuntime.isPanelOpen() : false;
+    return pageState.wallpaperRuntime ? pageState.wallpaperRuntime.isPanelOpen() : false;
   }
 
   function closeWallpaperPanel(options) {
-    if (wallpaperRuntime) {
-      wallpaperRuntime.closePanel(options);
+    if (pageState.wallpaperRuntime) {
+      pageState.wallpaperRuntime.closePanel(options);
     }
   }
 
   function scheduleWallpaperAdaptiveToneUpdate() {
-    if (wallpaperRuntime) {
-      wallpaperRuntime.scheduleAdaptiveToneUpdate();
+    if (pageState.wallpaperRuntime) {
+      pageState.wallpaperRuntime.scheduleAdaptiveToneUpdate();
     }
   }
 
@@ -2736,7 +2286,7 @@
   }
 
   function buildDefaultSearchUrl(query) {
-    const engine = getSearchEngineById(defaultSearchEngineState.id);
+    const engine = getSearchEngineById(pageState.defaultSearchEngineState.id);
     if (engine && typeof engine.searchUrl === 'function') {
       return engine.searchUrl(query);
     }
@@ -2744,7 +2294,7 @@
   }
 
   function getDefaultSearchEngineThemeUrl() {
-    const engine = getSearchEngineById(defaultSearchEngineState.id);
+    const engine = getSearchEngineById(pageState.defaultSearchEngineState.id);
     if (engine && typeof engine.searchUrl === 'function') {
       return engine.searchUrl('test');
     }
@@ -2767,7 +2317,7 @@
       const stored = result ? result[DEFAULT_SEARCH_ENGINE_STORAGE_KEY] : null;
       if (stored && stored.id &&
           (!SEARCH_UTILS.isRetiredSearchEngineState(stored))) {
-        defaultSearchEngineState = stored;
+        pageState.defaultSearchEngineState = stored;
       }
     });
   }
@@ -2820,11 +2370,11 @@
   // leaves the section alone.
   function applyBookmarkCountPreference(value) {
     const nextCount = normalizeBookmarkCount(value);
-    if (nextCount === currentBookmarkCount) {
+    if (nextCount === pageState.currentBookmarkCount) {
       return;
     }
-    currentBookmarkCount = nextCount;
-    bookmarkCurrentPage = 0;
+    pageState.currentBookmarkCount = nextCount;
+    pageState.bookmarkCurrentPage = 0;
     markBookmarkDataDirty();
     loadBookmarks({ force: true });
   }
@@ -2845,8 +2395,8 @@
 
   function applyBookmarkFolderIconsVisiblePreference(value) {
     bookmarkFolderIconsVisible = normalizeBookmarkFolderIconsVisible(value);
-    if (bookmarksView && typeof bookmarksView.setFolderIconsVisible === 'function') {
-      bookmarksView.setFolderIconsVisible(bookmarkFolderIconsVisible);
+    if (pageState.bookmarksView && typeof pageState.bookmarksView.setFolderIconsVisible === 'function') {
+      pageState.bookmarksView.setFolderIconsVisible(bookmarkFolderIconsVisible);
     }
   }
 
@@ -2867,352 +2417,339 @@
     }
   }
 
-  addStorageChangeListener((changes, areaName) => {
-    if (areaName === 'local' && changes[FOLDER_REFERENCES.BINDINGS_KEY]) {
-      shortcutFolderRuntime.accept(changes[FOLDER_REFERENCES.BINDINGS_KEY].newValue);
-      if (!isShortcutDragActive()) renderShortcuts();
+  // Every storage change the page reacts to goes through this registry;
+  // each part registers the keys it owns (see storage-change-registry.js).
+  const storageChanges = globalThis.LumnoNewtabStorageChangeRegistry.createStorageChangeRegistry({
+    isPrimaryArea: isPrimaryStorageAreaName
+  });
+  addStorageChangeListener(storageChanges.dispatch);
+
+  storageChanges.on(FOLDER_REFERENCES.BINDINGS_KEY, (changes) => {
+    shortcutFolderRuntime.accept(changes[FOLDER_REFERENCES.BINDINGS_KEY].newValue);
+    renderShortcuts();
+  }, { area: 'local' });
+  storageChanges.on(FOLDER_COLOR_REFS_STORAGE_KEY, (changes) => {
+    folderColorRefs = NEWTAB_BOOKMARK_FOLDER_ICON.normalizeFolderColorRefs(changes[FOLDER_COLOR_REFS_STORAGE_KEY].newValue);
+    syncFolderColorsWithBookmarks(false).catch(() => {});
+  });
+  storageChanges.on(NEWTAB_SHORTCUT_ICONS_STORAGE_KEY, (changes) => {
+    pageState.newtabShortcutIcons = NEWTAB_SHORTCUT_ICON_STORE.normalizeIconMap(
+      changes[NEWTAB_SHORTCUT_ICONS_STORAGE_KEY].newValue
+    );
+    renderShortcuts();
+  }, { area: 'local' });
+  storageChanges.on(NEWTAB_SHORTCUT_FAVICON_CACHE_STORAGE_KEY, (changes) => {
+    pageState.newtabShortcutFavicons = SHORTCUT_FAVICON.normalizeCacheMap({
+      ...(changes[NEWTAB_SHORTCUT_FAVICON_CACHE_STORAGE_KEY].newValue || {}),
+      ...pageState.shortcutFaviconPendingCacheEntries
+    });
+    renderShortcuts();
+  }, { area: 'local' });
+  storageChanges.on(SITE_SEARCH_ICON_CACHE_STORAGE_KEY, (changes) => {
+    pageState.siteSearchIconCache = SHORTCUT_FAVICON.normalizeCacheMap(
+      changes[SITE_SEARCH_ICON_CACHE_STORAGE_KEY].newValue,
+      Date.now(),
+      siteSearchIconCacheOptions
+    );
+    pageState.siteSearchIconCacheLoaded = true;
+    siteSearchIconCacheRevision += 1;
+    siteSearchIconCacheLoadPromise = Promise.resolve(pageState.siteSearchIconCache);
+    if (pageState.siteSearchState && pageState.inputModeController) {
+      const activeProvider = pageState.siteSearchState;
+      setSiteSearchPrefix(activeProvider, defaultTheme);
+      getThemeForProvider(activeProvider).then((theme) => {
+        if (pageState.siteSearchState === activeProvider) {
+          setSiteSearchPrefix(activeProvider, theme);
+        }
+      }).catch(() => {});
     }
-    if (isPrimaryStorageAreaName(areaName) && changes[FOLDER_COLOR_REFS_STORAGE_KEY]) {
-      folderColorRefs = NEWTAB_BOOKMARK_FOLDER_ICON.normalizeFolderColorRefs(changes[FOLDER_COLOR_REFS_STORAGE_KEY].newValue);
-      syncFolderColorsWithBookmarks(false).catch(() => {});
+    if (pageState.inputModeController && typeof pageState.inputModeController.refreshModeMenu === 'function') {
+      pageState.inputModeController.refreshModeMenu();
     }
-    if (areaName === 'local' && changes[NEWTAB_SHORTCUT_ICONS_STORAGE_KEY]) {
-      newtabShortcutIcons = NEWTAB_SHORTCUT_ICON_STORE.normalizeIconMap(
-        changes[NEWTAB_SHORTCUT_ICONS_STORAGE_KEY].newValue
-      );
-      renderShortcuts();
+    if (pageState.latestQuery) {
+      requestSuggestions(pageState.latestQuery, { immediate: true });
     }
-    if (areaName === 'local' && changes[NEWTAB_SHORTCUT_FAVICON_CACHE_STORAGE_KEY]) {
-      newtabShortcutFavicons = SHORTCUT_FAVICON.normalizeCacheMap({
-        ...(changes[NEWTAB_SHORTCUT_FAVICON_CACHE_STORAGE_KEY].newValue || {}),
-        ...shortcutFaviconPendingCacheEntries
-      });
-      renderShortcuts();
-    }
-    if (areaName === 'local' && changes[SITE_SEARCH_ICON_CACHE_STORAGE_KEY]) {
-      siteSearchIconCache = SHORTCUT_FAVICON.normalizeCacheMap(
-        changes[SITE_SEARCH_ICON_CACHE_STORAGE_KEY].newValue,
-        Date.now(),
-        siteSearchIconCacheOptions
-      );
-      siteSearchIconCacheLoaded = true;
-      siteSearchIconCacheRevision += 1;
-      siteSearchIconCacheLoadPromise = Promise.resolve(siteSearchIconCache);
-      if (siteSearchState && inputModeController) {
-        const activeProvider = siteSearchState;
-        setSiteSearchPrefix(activeProvider, defaultTheme);
-        getThemeForProvider(activeProvider).then((theme) => {
-          if (siteSearchState === activeProvider) {
-            setSiteSearchPrefix(activeProvider, theme);
-          }
-        }).catch(() => {});
-      }
-      if (inputModeController && typeof inputModeController.refreshModeMenu === 'function') {
-        inputModeController.refreshModeMenu();
-      }
-      if (latestQuery) {
-        requestSuggestions(latestQuery, { immediate: true });
-      }
-    }
-    if (areaName === 'local' &&
-        changes[NEWTAB_SHORTCUTS_LOCAL_OVERFLOW_STORAGE_KEY] &&
-        isShortcutSyncStorageActive() &&
-        shortcutPersistenceInFlightCount === 0) {
+  }, { area: 'local' });
+  storageChanges.on(NEWTAB_SHORTCUTS_LOCAL_OVERFLOW_STORAGE_KEY, () => {
+    if (isShortcutSyncStorageActive() && pageState.shortcutPersistenceInFlightCount === 0) {
       scheduleShortcutStorageReload();
     }
-    handleBookmarkTopbarSurfaceColorStorageChanges(changes, areaName);
-    handleBookmarkTopbarLayoutStorageChanges(changes, areaName);
-    if (areaName === 'local' && changes[PROGRESS_HISTORY.STORAGE_KEY]) {
-      progressHistoryMap = PROGRESS_HISTORY.normalizeHistoryMap(changes[PROGRESS_HISTORY.STORAGE_KEY].newValue);
+  }, { area: 'local' });
+  registerBookmarkDisplayStorageChanges(storageChanges);
+  storageChanges.on(PROGRESS_HISTORY.STORAGE_KEY, (changes) => {
+    pageState.progressHistoryMap = PROGRESS_HISTORY.normalizeHistoryMap(changes[PROGRESS_HISTORY.STORAGE_KEY].newValue);
+  }, { area: 'local' });
+  // With settings in sync, wallpaper files and caches still change in local.
+  storageChanges.on([
+    NEWTAB_LOCAL_WALLPAPER_STORAGE_KEY,
+    settingsRuntimeApi.ASSET_REVISION_STORAGE_KEY,
+    globalThis.LumnoNewtabRemoteContent.BING_DAILY_CACHE_KEY
+  ], (changes) => {
+    if (pageState.wallpaperRuntime) {
+      pageState.wallpaperRuntime.handleStorageChange(changes);
     }
-    const isPrimaryArea = isPrimaryStorageAreaName(areaName);
-    if (!isPrimaryArea) {
-      if (recentSitesStorageAreaName &&
-          isPrimaryStorageAreaName(areaName) &&
-          changes[PINNED_RECENT_SITES_STORAGE_KEY]) {
-        pinnedRecentSites = normalizePinnedRecentSites(changes[PINNED_RECENT_SITES_STORAGE_KEY].newValue);
-        recentRenderSignature = '';
-        renderRecentSites(recentSourceItems);
-      }
-      if (recentSitesStorageAreaName &&
-          isPrimaryStorageAreaName(areaName) &&
-          changes[HIDDEN_RECENT_SITES_STORAGE_KEY]) {
-        hiddenRecentSites = normalizeHiddenRecentSites(changes[HIDDEN_RECENT_SITES_STORAGE_KEY].newValue);
-        recentRenderSignature = '';
-        renderRecentSites(recentSourceItems);
-      }
-      if (areaName === 'local' &&
-          (changes[NEWTAB_LOCAL_WALLPAPER_STORAGE_KEY] || changes[settingsRuntimeApi.ASSET_REVISION_STORAGE_KEY] ||
-            (changes[globalThis.LumnoNewtabRemoteContent.BING_DAILY_CACHE_KEY])) &&
-          wallpaperRuntime) {
-        wallpaperRuntime.handleStorageChange(changes);
-      }
-      return;
-    }
-    if (changes[THEME_STORAGE_KEY]) {
-      globalThemeMode = normalizeThemeMode(changes[THEME_STORAGE_KEY].newValue);
-      if (isNewtabThemeFollowingGlobal()) {
-        applyScopedThemeMode();
-      } else {
-        updateWallpaperAppearanceSelectionUi();
-        updateModeCommandSuggestions();
-      }
-    }
-    if (changes[NEWTAB_THEME_MODE_STORAGE_KEY]) {
-      newtabThemeMode = normalizeNewtabThemeMode(changes[NEWTAB_THEME_MODE_STORAGE_KEY].newValue);
+  }, { area: (areaName) => areaName === 'local' && !isPrimaryStorageAreaName(areaName) });
+  storageChanges.on(THEME_STORAGE_KEY, (changes) => {
+    pageState.globalThemeMode = normalizeThemeMode(changes[THEME_STORAGE_KEY].newValue);
+    if (isNewtabThemeFollowingGlobal()) {
       applyScopedThemeMode();
-    }
-    if (changes[NEWTAB_THEME_SCOPE_STORAGE_KEY]) {
-      newtabThemeScope = normalizeNewtabThemeScope(changes[NEWTAB_THEME_SCOPE_STORAGE_KEY].newValue);
-      updateWallpaperLanguageStrings();
+    } else {
+      updateWallpaperAppearanceSelectionUi();
       updateModeCommandSuggestions();
     }
-    if (wallpaperRuntime) {
-      wallpaperRuntime.handleStorageChange(changes);
+  });
+  storageChanges.on(NEWTAB_THEME_MODE_STORAGE_KEY, (changes) => {
+    pageState.newtabThemeMode = normalizeNewtabThemeMode(changes[NEWTAB_THEME_MODE_STORAGE_KEY].newValue);
+    applyScopedThemeMode();
+  });
+  storageChanges.on(NEWTAB_THEME_SCOPE_STORAGE_KEY, (changes) => {
+    pageState.newtabThemeScope = normalizeNewtabThemeScope(changes[NEWTAB_THEME_SCOPE_STORAGE_KEY].newValue);
+    updateWallpaperLanguageStrings();
+    updateModeCommandSuggestions();
+  });
+  storageChanges.onAny((changes) => {
+    if (pageState.wallpaperRuntime) {
+    pageState.wallpaperRuntime.handleStorageChange(changes);
     }
-    if (changes[LANGUAGE_STORAGE_KEY]) {
-      applyLanguageMode(changes[LANGUAGE_STORAGE_KEY].newValue || 'system');
+  });
+  storageChanges.on(LANGUAGE_STORAGE_KEY, (changes) => {
+    applyLanguageMode(changes[LANGUAGE_STORAGE_KEY].newValue || 'system');
+  });
+  storageChanges.on(NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY, (changes) => {
+    const rawValue = changes[NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY].newValue;
+    pageState.newtabInputAutoFocusEnabled = normalizeNewtabInputAutoFocusEnabled(rawValue);
+    settingsRuntimeApi.cacheNewtabInputAutoFocusEnabled(pageState.newtabInputAutoFocusEnabled);
+    updateNewtabInputAutoFocusUi();
+  });
+  storageChanges.on(RECENT_COUNT_STORAGE_KEY, (changes) => {
+    applyRecentCountPreference(changes[RECENT_COUNT_STORAGE_KEY].newValue);
+  });
+  storageChanges.on(NEWTAB_WIDTH_MODE_STORAGE_KEY, (changes) => {
+    const previousBookmarkLimit = getBookmarkLimit();
+    const rawMode = changes[NEWTAB_WIDTH_MODE_STORAGE_KEY].newValue;
+    const nextMode = normalizeNewtabWidthMode(rawMode);
+    currentNewtabWidthMode = nextMode;
+    if (storageArea && rawMode !== nextMode) {
+      storageArea.set({ [NEWTAB_WIDTH_MODE_STORAGE_KEY]: nextMode });
     }
-    if (changes[NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY]) {
-      const rawValue = changes[NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY].newValue;
-      newtabInputAutoFocusEnabled = normalizeNewtabInputAutoFocusEnabled(rawValue);
-      settingsRuntimeApi.cacheNewtabInputAutoFocusEnabled(newtabInputAutoFocusEnabled);
-      updateNewtabInputAutoFocusUi();
+    applyNewtabWidthMode();
+    if (pageState.wallpaperRuntime && typeof pageState.wallpaperRuntime.updateSearchWidthUi === 'function') {
+      pageState.wallpaperRuntime.updateSearchWidthUi();
     }
-    if (changes[RECENT_COUNT_STORAGE_KEY]) {
-      applyRecentCountPreference(changes[RECENT_COUNT_STORAGE_KEY].newValue);
+    const recentColumnsChanged = applyRecentGridColumns();
+    const bookmarkColumnsChanged = applyBookmarkGridColumns();
+    if (recentColumnsChanged) {
+      markRecentDataDirty();
+      loadRecentSites({ force: true });
     }
-    if (changes[NEWTAB_WIDTH_MODE_STORAGE_KEY]) {
-      const previousBookmarkLimit = getBookmarkLimit();
-      const rawMode = changes[NEWTAB_WIDTH_MODE_STORAGE_KEY].newValue;
-      const nextMode = normalizeNewtabWidthMode(rawMode);
-      currentNewtabWidthMode = nextMode;
-      if (storageArea && rawMode !== nextMode) {
-        storageArea.set({ [NEWTAB_WIDTH_MODE_STORAGE_KEY]: nextMode });
-      }
-      applyNewtabWidthMode();
-      if (wallpaperRuntime && typeof wallpaperRuntime.updateSearchWidthUi === 'function') {
-        wallpaperRuntime.updateSearchWidthUi();
-      }
-      const recentColumnsChanged = applyRecentGridColumns();
-      const bookmarkColumnsChanged = applyBookmarkGridColumns();
-      if (recentColumnsChanged) {
-        markRecentDataDirty();
-        loadRecentSites({ force: true });
-      }
-      if (bookmarkColumnsChanged) {
-        keepBookmarkPageAnchorAfterLimitChange(previousBookmarkLimit);
-        renderCurrentBookmarkPage();
-      }
-      updateBookmarkGridHeightLock();
-      updateBookmarkSectionPosition();
+    if (bookmarkColumnsChanged) {
+      keepBookmarkPageAnchorAfterLimitChange(previousBookmarkLimit);
+      renderCurrentBookmarkPage();
     }
-    if (changes[NEWTAB_SEARCH_WIDTH_STORAGE_KEY]) {
-      const rawWidth = changes[NEWTAB_SEARCH_WIDTH_STORAGE_KEY].newValue;
-      currentNewtabSearchWidth = normalizeNewtabSearchWidth(rawWidth, { allowNull: true });
-      updateNewtabSearchWidthLayout();
-      if (wallpaperRuntime && typeof wallpaperRuntime.updateSearchWidthUi === 'function') {
-        wallpaperRuntime.updateSearchWidthUi();
-      }
+    updateBookmarkGridHeightLock();
+    updateBookmarkSectionPosition();
+  });
+  storageChanges.on(NEWTAB_SEARCH_WIDTH_STORAGE_KEY, (changes) => {
+    const rawWidth = changes[NEWTAB_SEARCH_WIDTH_STORAGE_KEY].newValue;
+    currentNewtabSearchWidth = normalizeNewtabSearchWidth(rawWidth, { allowNull: true });
+    updateNewtabSearchWidthLayout();
+    if (pageState.wallpaperRuntime && typeof pageState.wallpaperRuntime.updateSearchWidthUi === 'function') {
+      pageState.wallpaperRuntime.updateSearchWidthUi();
     }
-    if (changes[NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabTopContentMode(raw);
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY]: nextValue });
-      }
-      setNewtabTopContentMode(nextValue);
+  });
+  storageChanges.on(NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabTopContentMode(raw);
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY]: nextValue });
     }
-    if (changes[NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabTimeFontWeight(raw);
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]: nextValue });
-      }
-      setNewtabTimeFontWeight(nextValue);
+    setNewtabTopContentMode(nextValue);
+  });
+  storageChanges.on(NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabTimeFontWeight(raw);
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]: nextValue });
     }
-    if (changes[NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabTimeSecondsVisible(raw);
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY]: nextValue });
-      }
-      setNewtabTimeSecondsVisible(nextValue);
+    setNewtabTimeFontWeight(nextValue);
+  });
+  storageChanges.on(NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabTimeSecondsVisible(raw);
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY]: nextValue });
     }
-    if (changes[NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY].newValue;
-      newtabFeedbackButtonVisible = normalizeNewtabFeedbackButtonVisible(raw);
-      if (storageArea && raw !== newtabFeedbackButtonVisible) {
-        storageArea.set({
-          [NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY]: newtabFeedbackButtonVisible
-        });
-      }
-      applyNewtabActionButtonVisibility();
-    }
-    if (changes[NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY].newValue;
-      newtabAppearanceButtonVisible = normalizeNewtabAppearanceButtonVisible(raw);
-      if (storageArea && raw !== newtabAppearanceButtonVisible) {
-        storageArea.set({
-          [NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY]: newtabAppearanceButtonVisible
-        });
-      }
-      applyNewtabActionButtonVisibility();
-    }
-    if (changes[NEWTAB_ZEN_MODE_STORAGE_KEY]) {
-      zenModeEnabled = normalizeZenModeEnabled(changes[NEWTAB_ZEN_MODE_STORAGE_KEY].newValue);
-      applyZenMode();
-      updateZenCommandSuggestions();
-    }
-    if (changes[NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabShortcutsVisible(raw);
-      newtabShortcutsVisible = nextValue;
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY]: nextValue });
-      }
-      applyNewtabShortcutsVisibility();
-      updateNewtabShortcutPreferencesUi();
-    }
-    if (changes[NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabShortcutAddVisible(raw);
-      newtabShortcutAddVisible = nextValue;
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY]: nextValue });
-      }
-      renderShortcuts();
-      updateNewtabShortcutPreferencesUi();
-    }
-    if (changes[NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabShortcutDockMagnificationEnabled(raw);
-      newtabShortcutDockMagnificationEnabled = nextValue;
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY]: nextValue });
-      }
-      applyNewtabShortcutDockMagnification();
-      updateNewtabShortcutPreferencesUi();
-    }
-    if (changes[NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabShortcutColumns(raw);
-      newtabShortcutColumns = nextValue;
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY]: nextValue });
-      }
-      applyNewtabShortcutColumns();
-      updateBookmarkSectionPosition({
-        preserveSearchEntryLayout: true,
-        stabilizeDockDensity: true
-      });
-      updateNewtabShortcutPreferencesUi();
-    }
-    if (changes[NEWTAB_SHORTCUT_SIZE_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_SHORTCUT_SIZE_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabShortcutSize(raw);
-      newtabShortcutSize = nextValue;
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_SHORTCUT_SIZE_STORAGE_KEY]: nextValue });
-      }
-      applyNewtabShortcutLayoutPreferences();
-      updateBookmarkSectionPosition({
-        preserveSearchEntryLayout: true,
-        stabilizeDockDensity: true
-      });
-      updateNewtabShortcutPreferencesUi();
-    }
-    if (changes[NEWTAB_SHORTCUT_GAP_STORAGE_KEY]) {
-      const raw = changes[NEWTAB_SHORTCUT_GAP_STORAGE_KEY].newValue;
-      const nextValue = normalizeNewtabShortcutGap(raw);
-      newtabShortcutGap = nextValue;
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [NEWTAB_SHORTCUT_GAP_STORAGE_KEY]: nextValue });
-      }
-      applyNewtabShortcutLayoutPreferences();
-      updateBookmarkSectionPosition({
-        preserveSearchEntryLayout: true,
-        stabilizeDockDensity: true
-      });
-      updateNewtabShortcutPreferencesUi();
-    }
-    if (changes[RECENT_MODE_STORAGE_KEY]) {
-      const nextMode = normalizeRecentMode(changes[RECENT_MODE_STORAGE_KEY].newValue, 'latest');
-      if (currentRecentMode === nextMode) {
-        updateRecentModeMenu();
-      } else {
-        currentRecentMode = nextMode;
-        updateRecentHeading();
-        updateRecentModeMenu();
-        markRecentDataDirty();
-        loadRecentSites({ force: true });
-      }
-    }
-    if (changes[BOOKMARK_VIEW_MODE_STORAGE_KEY]) {
-      const rawMode = changes[BOOKMARK_VIEW_MODE_STORAGE_KEY].newValue;
-      const nextMode = normalizeBookmarkViewMode(rawMode);
-      if (shouldRepairBookmarkViewModeStorageValue(rawMode, nextMode)) {
-        persistBookmarkViewMode(nextMode);
-      }
-      applyBookmarkViewMode(nextMode, { force: true });
-    }
-    if (changes[BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY]) {
-      const raw = changes[BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY].newValue;
-      const nextValue = normalizeBookmarkFolderIconsVisible(raw);
-      if (storageArea && raw !== nextValue) {
-        storageArea.set({ [BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY]: nextValue });
-      }
-      applyBookmarkFolderIconsVisiblePreference(nextValue);
-    }
-    if (changes[BOOKMARK_COUNT_STORAGE_KEY]) {
-      const raw = changes[BOOKMARK_COUNT_STORAGE_KEY].newValue;
-      const nextCount = normalizeBookmarkCount(raw);
-      if (storageArea && raw !== nextCount) {
-        storageArea.set({ [BOOKMARK_COUNT_STORAGE_KEY]: nextCount });
-      }
-      applyBookmarkCountPreference(nextCount);
-    }
-    if (changes[BOOKMARK_COLUMNS_STORAGE_KEY]) {
-      const raw = changes[BOOKMARK_COLUMNS_STORAGE_KEY].newValue;
-      const nextColumns = normalizeBookmarkColumns(raw);
-      if (storageArea && raw !== nextColumns) {
-        storageArea.set({ [BOOKMARK_COLUMNS_STORAGE_KEY]: nextColumns });
-      }
-      applyBookmarkColumnsPreference(nextColumns);
-    }
-    if (changes[TAB_RANK_SCORE_DEBUG_STORAGE_KEY]) {
-      tabRankScoreDebugEnabled = normalizeTabRankScoreDebugMode(changes[TAB_RANK_SCORE_DEBUG_STORAGE_KEY].newValue);
-      if (!latestQuery || !latestQuery.trim()) {
-        requestTabsAndRender();
-      }
-    }
-    if (BOOKMARK_CASCADE_DEBUG_UI_ENABLED && changes[BOOKMARK_CASCADE_DEBUG_STORAGE_KEY]) {
-      setBookmarkCascadeDebugEnabled(changes[BOOKMARK_CASCADE_DEBUG_STORAGE_KEY].newValue, {
-        persist: false
+    setNewtabTimeSecondsVisible(nextValue);
+  });
+  storageChanges.on(NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY].newValue;
+    newtabFeedbackButtonVisible = normalizeNewtabFeedbackButtonVisible(raw);
+    if (storageArea && raw !== newtabFeedbackButtonVisible) {
+      storageArea.set({
+        [NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY]: newtabFeedbackButtonVisible
       });
     }
-    if (changes[PINNED_RECENT_SITES_STORAGE_KEY]) {
-      pinnedRecentSites = normalizePinnedRecentSites(changes[PINNED_RECENT_SITES_STORAGE_KEY].newValue);
-      recentRenderSignature = '';
-      renderRecentSites(recentSourceItems);
+    applyNewtabActionButtonVisibility();
+  });
+  storageChanges.on(NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY].newValue;
+    newtabAppearanceButtonVisible = normalizeNewtabAppearanceButtonVisible(raw);
+    if (storageArea && raw !== newtabAppearanceButtonVisible) {
+      storageArea.set({
+        [NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY]: newtabAppearanceButtonVisible
+      });
     }
-    if (changes[settingsRuntimeApi.PROGRESS_TRACKING_ENABLED_STORAGE_KEY]) {
-      progressTrackingEnabled = settingsRuntimeApi.normalizeProgressTrackingEnabled(
-        changes[settingsRuntimeApi.PROGRESS_TRACKING_ENABLED_STORAGE_KEY].newValue
-      );
-      if (!progressTrackingEnabled && recentHistoryDialogController) {
-        recentHistoryDialogController.close({ restoreFocus: false });
-      }
-      recentRenderSignature = '';
-      renderRecentSites(recentSourceItems);
+    applyNewtabActionButtonVisibility();
+  });
+  storageChanges.on(NEWTAB_ZEN_MODE_STORAGE_KEY, (changes) => {
+    pageState.zenModeEnabled = normalizeZenModeEnabled(changes[NEWTAB_ZEN_MODE_STORAGE_KEY].newValue);
+    applyZenMode();
+    updateZenCommandSuggestions();
+  });
+  storageChanges.on(NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabShortcutsVisible(raw);
+    pageState.newtabShortcutsVisible = nextValue;
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY]: nextValue });
     }
-    if (changes[HIDDEN_RECENT_SITES_STORAGE_KEY]) {
-      hiddenRecentSites = normalizeHiddenRecentSites(changes[HIDDEN_RECENT_SITES_STORAGE_KEY].newValue);
-      recentRenderSignature = '';
-      renderRecentSites(recentSourceItems);
+    applyNewtabShortcutsVisibility();
+    updateNewtabShortcutPreferencesUi();
+  });
+  storageChanges.on(NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabShortcutAddVisible(raw);
+    pageState.newtabShortcutAddVisible = nextValue;
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY]: nextValue });
     }
-    if (shortcutPersistenceInFlightCount === 0 &&
-        NEWTAB_SHORTCUTS_STORAGE_KEYS.some((key) => changes[key])) {
+    renderShortcuts();
+    updateNewtabShortcutPreferencesUi();
+  });
+  storageChanges.on(NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabShortcutDockMagnificationEnabled(raw);
+    pageState.newtabShortcutDockMagnificationEnabled = nextValue;
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY]: nextValue });
+    }
+    applyNewtabShortcutDockMagnification();
+    updateNewtabShortcutPreferencesUi();
+  });
+  storageChanges.on(NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabShortcutColumns(raw);
+    pageState.newtabShortcutColumns = nextValue;
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY]: nextValue });
+    }
+    applyNewtabShortcutColumns();
+    updateBookmarkSectionPosition({
+      preserveSearchEntryLayout: true,
+      stabilizeDockDensity: true
+    });
+    updateNewtabShortcutPreferencesUi();
+  });
+  storageChanges.on(NEWTAB_SHORTCUT_SIZE_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_SHORTCUT_SIZE_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabShortcutSize(raw);
+    pageState.newtabShortcutSize = nextValue;
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_SHORTCUT_SIZE_STORAGE_KEY]: nextValue });
+    }
+    applyNewtabShortcutLayoutPreferences();
+    updateBookmarkSectionPosition({
+      preserveSearchEntryLayout: true,
+      stabilizeDockDensity: true
+    });
+    updateNewtabShortcutPreferencesUi();
+  });
+  storageChanges.on(NEWTAB_SHORTCUT_GAP_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_SHORTCUT_GAP_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabShortcutGap(raw);
+    pageState.newtabShortcutGap = nextValue;
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_SHORTCUT_GAP_STORAGE_KEY]: nextValue });
+    }
+    applyNewtabShortcutLayoutPreferences();
+    updateBookmarkSectionPosition({
+      preserveSearchEntryLayout: true,
+      stabilizeDockDensity: true
+    });
+    updateNewtabShortcutPreferencesUi();
+  });
+  storageChanges.on(RECENT_MODE_STORAGE_KEY, (changes) => {
+    const nextMode = normalizeRecentMode(changes[RECENT_MODE_STORAGE_KEY].newValue, 'latest');
+    if (pageState.currentRecentMode === nextMode) {
+      updateRecentModeMenu();
+    } else {
+      pageState.currentRecentMode = nextMode;
+      updateRecentHeading();
+      updateRecentModeMenu();
+      markRecentDataDirty();
+      loadRecentSites({ force: true });
+    }
+  });
+  storageChanges.on(BOOKMARK_VIEW_MODE_STORAGE_KEY, (changes) => {
+    const rawMode = changes[BOOKMARK_VIEW_MODE_STORAGE_KEY].newValue;
+    const nextMode = normalizeBookmarkViewMode(rawMode);
+    if (shouldRepairBookmarkViewModeStorageValue(rawMode, nextMode)) {
+      persistBookmarkViewMode(nextMode);
+    }
+    applyBookmarkViewMode(nextMode, { force: true });
+  });
+  storageChanges.on(BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY, (changes) => {
+    const raw = changes[BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY].newValue;
+    const nextValue = normalizeBookmarkFolderIconsVisible(raw);
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY]: nextValue });
+    }
+    applyBookmarkFolderIconsVisiblePreference(nextValue);
+  });
+  storageChanges.on(BOOKMARK_COUNT_STORAGE_KEY, (changes) => {
+    const raw = changes[BOOKMARK_COUNT_STORAGE_KEY].newValue;
+    const nextCount = normalizeBookmarkCount(raw);
+    if (storageArea && raw !== nextCount) {
+      storageArea.set({ [BOOKMARK_COUNT_STORAGE_KEY]: nextCount });
+    }
+    applyBookmarkCountPreference(nextCount);
+  });
+  storageChanges.on(BOOKMARK_COLUMNS_STORAGE_KEY, (changes) => {
+    const raw = changes[BOOKMARK_COLUMNS_STORAGE_KEY].newValue;
+    const nextColumns = normalizeBookmarkColumns(raw);
+    if (storageArea && raw !== nextColumns) {
+      storageArea.set({ [BOOKMARK_COLUMNS_STORAGE_KEY]: nextColumns });
+    }
+    applyBookmarkColumnsPreference(nextColumns);
+  });
+  storageChanges.on(TAB_RANK_SCORE_DEBUG_STORAGE_KEY, (changes) => {
+    pageState.tabRankScoreDebugEnabled = normalizeTabRankScoreDebugMode(changes[TAB_RANK_SCORE_DEBUG_STORAGE_KEY].newValue);
+    if (!pageState.latestQuery || !pageState.latestQuery.trim()) {
+      requestTabsAndRender();
+    }
+  });
+  storageChanges.on(PINNED_RECENT_SITES_STORAGE_KEY, (changes) => {
+    pageState.pinnedRecentSites = normalizePinnedRecentSites(changes[PINNED_RECENT_SITES_STORAGE_KEY].newValue);
+    pageState.recentRenderSignature = '';
+    renderRecentSites(pageState.recentSourceItems);
+  });
+  storageChanges.on(settingsRuntimeApi.PROGRESS_TRACKING_ENABLED_STORAGE_KEY, (changes) => {
+    pageState.progressTrackingEnabled = settingsRuntimeApi.normalizeProgressTrackingEnabled(
+      changes[settingsRuntimeApi.PROGRESS_TRACKING_ENABLED_STORAGE_KEY].newValue
+    );
+    if (!pageState.progressTrackingEnabled && recentHistoryDialogController) {
+      recentHistoryDialogController.close({ restoreFocus: false });
+    }
+    pageState.recentRenderSignature = '';
+    renderRecentSites(pageState.recentSourceItems);
+  });
+  storageChanges.on(HIDDEN_RECENT_SITES_STORAGE_KEY, (changes) => {
+    pageState.hiddenRecentSites = normalizeHiddenRecentSites(changes[HIDDEN_RECENT_SITES_STORAGE_KEY].newValue);
+    pageState.recentRenderSignature = '';
+    renderRecentSites(pageState.recentSourceItems);
+  });
+  storageChanges.on(NEWTAB_SHORTCUTS_STORAGE_KEYS, () => {
+    if (pageState.shortcutPersistenceInFlightCount === 0) {
       scheduleShortcutStorageReload();
     }
   });
@@ -3223,8 +2760,8 @@
         return;
       }
       if (message.action === 'lumno:wallpapers-updated') {
-        if (wallpaperRuntime && typeof wallpaperRuntime.refreshCustomWallpapers === 'function') {
-          wallpaperRuntime.refreshCustomWallpapers();
+        if (pageState.wallpaperRuntime && typeof pageState.wallpaperRuntime.refreshCustomWallpapers === 'function') {
+          pageState.wallpaperRuntime.refreshCustomWallpapers();
         }
         return;
       }
@@ -3244,40 +2781,40 @@
   if (storageArea) {
     bootstrapInitialLanguageMode();
     storageArea.get([settingsRuntimeApi.PROGRESS_TRACKING_ENABLED_STORAGE_KEY], (result) => {
-      progressTrackingEnabled = settingsRuntimeApi.normalizeProgressTrackingEnabled(
+      pageState.progressTrackingEnabled = settingsRuntimeApi.normalizeProgressTrackingEnabled(
         result && result[settingsRuntimeApi.PROGRESS_TRACKING_ENABLED_STORAGE_KEY]
       );
-      if (progressTrackingEnabled && recentSourceItems.length > 0) {
-        recentRenderSignature = '';
-        renderRecentSites(recentSourceItems);
+      if (pageState.progressTrackingEnabled && pageState.recentSourceItems.length > 0) {
+        pageState.recentRenderSignature = '';
+        renderRecentSites(pageState.recentSourceItems);
       }
     });
     if (localStorageArea) {
       localStorageArea.get([PROGRESS_HISTORY.STORAGE_KEY], (result) => {
-        progressHistoryMap = PROGRESS_HISTORY.normalizeHistoryMap(result && result[PROGRESS_HISTORY.STORAGE_KEY]);
+        pageState.progressHistoryMap = PROGRESS_HISTORY.normalizeHistoryMap(result && result[PROGRESS_HISTORY.STORAGE_KEY]);
       });
     }
     initialPinnedRecentSitesReadyTask = readPinnedRecentSites().then((items) => {
-      pinnedRecentSites = items;
-      if (recentSourceItems.length > 0) {
-        recentRenderSignature = '';
-        renderRecentSites(recentSourceItems);
+      pageState.pinnedRecentSites = items;
+      if (pageState.recentSourceItems.length > 0) {
+        pageState.recentRenderSignature = '';
+        renderRecentSites(pageState.recentSourceItems);
       }
       return items;
     }).catch(() => {
-      pinnedRecentSites = [];
-      return pinnedRecentSites;
+      pageState.pinnedRecentSites = [];
+      return pageState.pinnedRecentSites;
     });
     initialHiddenRecentSitesReadyTask = readHiddenRecentSites().then((items) => {
-      hiddenRecentSites = items;
-      if (recentSourceItems.length > 0) {
-        recentRenderSignature = '';
-        renderRecentSites(recentSourceItems);
+      pageState.hiddenRecentSites = items;
+      if (pageState.recentSourceItems.length > 0) {
+        pageState.recentRenderSignature = '';
+        renderRecentSites(pageState.recentSourceItems);
       }
       return items;
     }).catch(() => {
-      hiddenRecentSites = [];
-      return hiddenRecentSites;
+      pageState.hiddenRecentSites = [];
+      return pageState.hiddenRecentSites;
     });
 
     storageArea.get([RECENT_COUNT_STORAGE_KEY], (result) => {
@@ -3288,7 +2825,7 @@
       if (stored !== count) {
         storageArea.set({ [RECENT_COUNT_STORAGE_KEY]: count });
       }
-      if (changed || !recentLoadedOnce) {
+      if (changed || !pageState.recentLoadedOnce) {
         markRecentDataDirty();
         loadRecentSites();
       }
@@ -3306,8 +2843,8 @@
         storageArea.set({ [NEWTAB_WIDTH_MODE_STORAGE_KEY]: mode });
       }
       applyNewtabWidthMode();
-      if (wallpaperRuntime && typeof wallpaperRuntime.updateSearchWidthUi === 'function') {
-        wallpaperRuntime.updateSearchWidthUi();
+      if (pageState.wallpaperRuntime && typeof pageState.wallpaperRuntime.updateSearchWidthUi === 'function') {
+        pageState.wallpaperRuntime.updateSearchWidthUi();
       }
       const recentColumnsChanged = applyRecentGridColumns();
       const bookmarkColumnsChanged = applyBookmarkGridColumns();
@@ -3315,7 +2852,7 @@
         markRecentDataDirty();
         loadRecentSites({ force: true });
       }
-      if (bookmarkColumnsChanged && bookmarkLoadedOnce) {
+      if (bookmarkColumnsChanged && pageState.bookmarkLoadedOnce) {
         keepBookmarkPageAnchorAfterLimitChange(previousBookmarkLimit);
         renderCurrentBookmarkPage();
       }
@@ -3345,22 +2882,22 @@
       setNewtabTimeFontWeight(nextFontWeight);
       setNewtabTimeSecondsVisible(nextSecondsVisible);
       setNewtabTopContentMode(nextValue);
-      if (wallpaperRuntime && typeof wallpaperRuntime.updateTopContentModeUi === 'function') {
-        wallpaperRuntime.updateTopContentModeUi();
+      if (pageState.wallpaperRuntime && typeof pageState.wallpaperRuntime.updateTopContentModeUi === 'function') {
+        pageState.wallpaperRuntime.updateTopContentModeUi();
       }
     });
     storageArea.get([RECENT_MODE_STORAGE_KEY], (result) => {
       const stored = result[RECENT_MODE_STORAGE_KEY];
       const hasStored = stored === 'latest' || stored === 'most';
       const mode = normalizeRecentMode(stored, 'most');
-      const changed = currentRecentMode !== mode;
-      currentRecentMode = mode;
+      const changed = pageState.currentRecentMode !== mode;
+      pageState.currentRecentMode = mode;
       updateRecentHeading();
       updateRecentModeMenu();
       if (!hasStored) {
         storageArea.set({ [RECENT_MODE_STORAGE_KEY]: mode });
       }
-      if (changed || !recentLoadedOnce) {
+      if (changed || !pageState.recentLoadedOnce) {
         markRecentDataDirty();
         loadRecentSites();
       }
@@ -3375,19 +2912,19 @@
       if (raw !== nextValue) {
         storageArea.set({ [BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY]: nextValue });
       }
-      if (bookmarksView && typeof bookmarksView.setFolderIconsVisible === 'function') {
-        bookmarksView.setFolderIconsVisible(nextValue);
+      if (pageState.bookmarksView && typeof pageState.bookmarksView.setFolderIconsVisible === 'function') {
+        pageState.bookmarksView.setFolderIconsVisible(nextValue);
       }
     });
     storageArea.get([BOOKMARK_COUNT_STORAGE_KEY], (result) => {
       const stored = result[BOOKMARK_COUNT_STORAGE_KEY];
       const count = normalizeBookmarkCount(stored);
-      const changed = currentBookmarkCount !== count;
-      currentBookmarkCount = count;
+      const changed = pageState.currentBookmarkCount !== count;
+      pageState.currentBookmarkCount = count;
       if (stored !== count) {
         storageArea.set({ [BOOKMARK_COUNT_STORAGE_KEY]: count });
       }
-      if (changed || !bookmarkLoadedOnce) {
+      if (changed || !pageState.bookmarkLoadedOnce) {
         markBookmarkDataDirty();
         loadBookmarks();
       }
@@ -3406,26 +2943,16 @@
     storageArea.get([TAB_RANK_SCORE_DEBUG_STORAGE_KEY], (result) => {
       const raw = result[TAB_RANK_SCORE_DEBUG_STORAGE_KEY];
       const next = normalizeTabRankScoreDebugMode(raw);
-      tabRankScoreDebugEnabled = next;
+      pageState.tabRankScoreDebugEnabled = next;
       if (raw !== next) {
         storageArea.set({ [TAB_RANK_SCORE_DEBUG_STORAGE_KEY]: next });
       }
     });
-    if (BOOKMARK_CASCADE_DEBUG_UI_ENABLED) {
-      storageArea.get([BOOKMARK_CASCADE_DEBUG_STORAGE_KEY], (result) => {
-        const raw = result[BOOKMARK_CASCADE_DEBUG_STORAGE_KEY];
-        const next = normalizeBookmarkCascadeDebugMode(raw);
-        setBookmarkCascadeDebugEnabled(next, { persist: false });
-        if (raw !== next) {
-          storageArea.set({ [BOOKMARK_CASCADE_DEBUG_STORAGE_KEY]: next });
-        }
-      });
-    }
   }
 
-  let lastDeletionAt = 0;
-  let autocompleteState = null;
-  let inlineSearchState = null;
+  pageState.lastDeletionAt = 0;
+  pageState.autocompleteState = null;
+  pageState.inlineSearchState = null;
   const imeKeyGuard = LumnoImeKeyGuard.createImeKeyGuard();
   const searchInputHistoryController =
     SEARCH_INPUT_HISTORY.createSearchInputHistoryController({
@@ -3437,138 +2964,134 @@
   function isImeCompositionEvent(event) {
     return imeKeyGuard.shouldIgnoreKeydown(event);
   }
-  let siteSearchState = null;
-  let localSearchScopeState = null;
-  let remoteSuggestionDebounceTimer = null;
-  let tabs = [];
-  let currentNewtabTabId = null;
-  let siteSearchProvidersCache = null;
-  let siteSearchProvidersLoadVersion = 0;
-  let aggregateSearchesCache = null;
-  let aggregateSearchesLoadPromise = null;
-  let aggregateSearchesLoadVersion = 0;
-  let suggestionRequestSeq = 0;
-  let searchSuggestionsDismissed = false;
-  let suggestionRequestWatchdogTimer = null;
-  let searchResultPriorityMode = 'autocomplete';
-  let enabledSearchResultSourceTypes = ['topSite', 'bookmark', 'history'];
-  let searchResultDisplayLimit = 10;
-  let openTabQuickSwitchEnabled = true;
-  let newtabOpenInNewTab = SETTINGS.normalizeNewtabOpenInNewTab(null);
+  pageState.siteSearchState = null;
+  pageState.localSearchScopeState = null;
+  pageState.remoteSuggestionDebounceTimer = null;
+  pageState.tabs = [];
+  pageState.currentNewtabTabId = null;
+  pageState.siteSearchProvidersCache = null;
+  pageState.siteSearchProvidersLoadVersion = 0;
+  pageState.aggregateSearchesCache = null;
+  pageState.aggregateSearchesLoadPromise = null;
+  pageState.aggregateSearchesLoadVersion = 0;
+  pageState.suggestionRequestSeq = 0;
+  pageState.searchSuggestionsDismissed = false;
+  pageState.suggestionRequestWatchdogTimer = null;
+  pageState.searchResultPriorityMode = 'autocomplete';
+  pageState.enabledSearchResultSourceTypes = ['topSite', 'bookmark', 'history'];
+  pageState.searchResultDisplayLimit = 10;
+  pageState.openTabQuickSwitchEnabled = true;
+  pageState.newtabOpenInNewTab = SETTINGS.normalizeNewtabOpenInNewTab(null);
   let searchInputRef = null;
-  let faviconRequestBlacklistItems = [];
-  let faviconEnhancedFetchEnabled = false;
+  pageState.faviconRequestBlacklistItems = [];
+  pageState.faviconEnhancedFetchEnabled = false;
   loadDefaultSearchEngineState();
-  if (chrome && chrome.storage && chrome.storage.onChanged) {
-    addStorageChangeListener((changes, areaName) => {
-      if (!isPrimaryStorageAreaName(areaName)) {
-        return;
+  storageChanges.on(DEFAULT_SEARCH_ENGINE_STORAGE_KEY, (changes) => {
+    const nextValue = changes[DEFAULT_SEARCH_ENGINE_STORAGE_KEY].newValue;
+    if (nextValue && nextValue.id &&
+        (!SEARCH_UTILS.isRetiredSearchEngineState(nextValue))) {
+      pageState.defaultSearchEngineState = nextValue;
+    }
+  });
+  storageChanges.on(SEARCH_RESULT_PRIORITY_STORAGE_KEY, (changes) => {
+    pageState.searchResultPriorityMode = normalizeSearchResultPriority(changes[SEARCH_RESULT_PRIORITY_STORAGE_KEY].newValue);
+  });
+  storageChanges.on(SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY, (changes) => {
+    pageState.enabledSearchResultSourceTypes = normalizeEnabledSearchResultSourceTypes(
+      changes[SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY].newValue
+    );
+    if (pageState.localSearchScopeState &&
+        !pageState.enabledSearchResultSourceTypes.includes(pageState.localSearchScopeState.sourceType)) {
+      clearLocalSearchScope();
+    }
+  });
+  storageChanges.on(SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY, (changes) => {
+    pageState.searchResultDisplayLimit = normalizeSearchResultDisplayLimit(
+      changes[SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY].newValue
+    );
+    if (pageState.latestQuery) {
+      renderSuggestions(pageState.lastSuggestionResponse, pageState.latestQuery);
+    }
+  });
+  storageChanges.on(NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY, (changes) => {
+    pageState.newtabOpenInNewTab = SETTINGS.normalizeNewtabOpenInNewTab(
+      changes[NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY].newValue
+    );
+  });
+  storageChanges.on(NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY, (changes) => {
+    pageState.numberShortcutInstantEnabled = normalizeNumberShortcutInstantEnabled(
+      changes[NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY].newValue
+    );
+    SUGGESTION_NAVIGATION.cancelNumberShortcuts(suggestionsContainer);
+  });
+  storageChanges.on(MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY, (changes) => {
+    pageState.macosCtrlSuggestionNavigationEnabled = normalizeMacosCtrlSuggestionNavigationEnabled(
+      changes[MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY].newValue
+    );
+  });
+  storageChanges.on(SIMPLE_MODE_ENABLED_STORAGE_KEY, (changes) => {
+    pageState.simpleModeEnabled = normalizeSimpleModeEnabled(
+      changes[SIMPLE_MODE_ENABLED_STORAGE_KEY].newValue
+    );
+    if (pageState.latestQuery) {
+      renderSuggestions(pageState.lastSuggestionResponse, pageState.latestQuery);
+    }
+  });
+  storageChanges.on(OVERLAY_TAB_PRIORITY_STORAGE_KEY, (changes) => {
+    pageState.openTabQuickSwitchEnabled = normalizeOverlayTabPriorityMode(changes[OVERLAY_TAB_PRIORITY_STORAGE_KEY].newValue);
+    if (pageState.latestQuery) {
+      requestSuggestions(pageState.latestQuery, { immediate: true });
+    }
+  });
+  storageChanges.on(SEARCH_BLACKLIST_STORAGE_KEY, (changes) => {
+    pageState.searchBlacklistItems = normalizeSearchBlacklistItems(changes[SEARCH_BLACKLIST_STORAGE_KEY].newValue);
+    markRecentDataDirty();
+    scheduleRecentReloadIfVisible();
+  });
+  storageChanges.on(FAVICON_REQUEST_BLACKLIST_STORAGE_KEY, (changes) => {
+    pageState.faviconRequestBlacklistItems = normalizeFaviconRequestBlacklistItems(changes[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY].newValue);
+    markRecentDataDirty();
+    scheduleRecentReloadIfVisible();
+    scheduleBookmarkReloadIfVisible();
+    if (typeof refreshThemeAwareFavicons === 'function') {
+      refreshThemeAwareFavicons();
+    }
+  });
+  storageChanges.on(FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY, (changes) => {
+    pageState.faviconEnhancedFetchEnabled = normalizeFaviconEnhancedFetchEnabled(
+      changes[FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY].newValue
+    );
+    markRecentDataDirty();
+    scheduleRecentReloadIfVisible();
+    scheduleBookmarkReloadIfVisible();
+    if (typeof refreshThemeAwareFavicons === 'function') {
+      refreshThemeAwareFavicons();
+    }
+  });
+  storageChanges.on([FAVICON_REQUEST_BLACKLIST_STORAGE_KEY, FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY], () => {
+    pageState.shortcutFaviconPolicyRevision += 1;
+    renderShortcuts();
+    if (pageState.inputModeController) {
+      if (pageState.siteSearchState) {
+        setSiteSearchPrefix(pageState.siteSearchState, getImmediateThemeForSuggestion({ provider: pageState.siteSearchState }), { animate: false });
       }
-      if (changes[DEFAULT_SEARCH_ENGINE_STORAGE_KEY]) {
-        const nextValue = changes[DEFAULT_SEARCH_ENGINE_STORAGE_KEY].newValue;
-        if (nextValue && nextValue.id &&
-            (!SEARCH_UTILS.isRetiredSearchEngineState(nextValue))) {
-          defaultSearchEngineState = nextValue;
-        }
-      }
-      if (changes[SEARCH_RESULT_PRIORITY_STORAGE_KEY]) {
-        searchResultPriorityMode = normalizeSearchResultPriority(changes[SEARCH_RESULT_PRIORITY_STORAGE_KEY].newValue);
-      }
-      if (changes[SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY]) {
-        enabledSearchResultSourceTypes = normalizeEnabledSearchResultSourceTypes(
-          changes[SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY].newValue
-        );
-        if (localSearchScopeState &&
-            !enabledSearchResultSourceTypes.includes(localSearchScopeState.sourceType)) {
-          clearLocalSearchScope();
-        }
-      }
-      if (changes[SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY]) {
-        searchResultDisplayLimit = normalizeSearchResultDisplayLimit(
-          changes[SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY].newValue
-        );
-        if (latestQuery) {
-          renderSuggestions(lastSuggestionResponse, latestQuery);
-        }
-      }
-      if (changes[NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY]) {
-        newtabOpenInNewTab = SETTINGS.normalizeNewtabOpenInNewTab(
-          changes[NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY].newValue
-        );
-      }
-      if (changes[NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY]) {
-        numberShortcutInstantEnabled = normalizeNumberShortcutInstantEnabled(
-          changes[NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY].newValue
-        );
-        SUGGESTION_NAVIGATION.cancelNumberShortcuts(suggestionsContainer);
-      }
-      if (changes[MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY]) {
-        macosCtrlSuggestionNavigationEnabled = normalizeMacosCtrlSuggestionNavigationEnabled(
-          changes[MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY].newValue
-        );
-      }
-      if (changes[SIMPLE_MODE_ENABLED_STORAGE_KEY]) {
-        simpleModeEnabled = normalizeSimpleModeEnabled(
-          changes[SIMPLE_MODE_ENABLED_STORAGE_KEY].newValue
-        );
-        if (latestQuery) {
-          renderSuggestions(lastSuggestionResponse, latestQuery);
-        }
-      }
-      if (changes[OVERLAY_TAB_PRIORITY_STORAGE_KEY]) {
-        openTabQuickSwitchEnabled = normalizeOverlayTabPriorityMode(changes[OVERLAY_TAB_PRIORITY_STORAGE_KEY].newValue);
-        if (latestQuery) {
-          requestSuggestions(latestQuery, { immediate: true });
-        }
-      }
-      if (changes[SEARCH_BLACKLIST_STORAGE_KEY]) {
-        searchBlacklistItems = normalizeSearchBlacklistItems(changes[SEARCH_BLACKLIST_STORAGE_KEY].newValue);
-        markRecentDataDirty();
-        scheduleRecentReloadIfVisible();
-      }
-      if (changes[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY]) {
-        faviconRequestBlacklistItems = normalizeFaviconRequestBlacklistItems(changes[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY].newValue);
-        markRecentDataDirty();
-        scheduleRecentReloadIfVisible();
-        scheduleBookmarkReloadIfVisible();
-        if (typeof refreshThemeAwareFavicons === 'function') {
-          refreshThemeAwareFavicons();
-        }
-      }
-      if (changes[FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY]) {
-        faviconEnhancedFetchEnabled = normalizeFaviconEnhancedFetchEnabled(
-          changes[FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY].newValue
-        );
-        markRecentDataDirty();
-        scheduleRecentReloadIfVisible();
-        scheduleBookmarkReloadIfVisible();
-        if (typeof refreshThemeAwareFavicons === 'function') {
-          refreshThemeAwareFavicons();
-        }
-      }
-      if (changes[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY] || changes[FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY]) {
-        shortcutFaviconPolicyRevision += 1;
-        renderShortcuts();
-        if (inputModeController) {
-          if (siteSearchState) {
-            setSiteSearchPrefix(siteSearchState, getImmediateThemeForSuggestion({ provider: siteSearchState }), { animate: false });
-          }
-          inputModeController.refreshModeMenu();
-        }
-      }
-      if (latestQuery && latestQuery.trim() && (
-        changes[DEFAULT_SEARCH_ENGINE_STORAGE_KEY] ||
-        changes[SEARCH_RESULT_PRIORITY_STORAGE_KEY] ||
-        changes[SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY] ||
-        changes[SEARCH_BLACKLIST_STORAGE_KEY] ||
-        changes[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY] ||
-        changes[FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY]
-      )) {
-        requestSuggestions(latestQuery, { immediate: true });
-      }
-    });
-  }
-  const AGGREGATE_SEARCH_STORAGE_KEY = SETTINGS.AGGREGATE_SEARCH_STORAGE_KEY ||
+      pageState.inputModeController.refreshModeMenu();
+    }
+  });
+  // These settings change which suggestions show, so they refresh at once.
+  storageChanges.on([
+    DEFAULT_SEARCH_ENGINE_STORAGE_KEY,
+    SEARCH_RESULT_PRIORITY_STORAGE_KEY,
+    SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY,
+    SEARCH_BLACKLIST_STORAGE_KEY,
+    FAVICON_REQUEST_BLACKLIST_STORAGE_KEY,
+    FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY
+  ], () => {
+    if (pageState.latestQuery && pageState.latestQuery.trim()) {
+      requestSuggestions(pageState.latestQuery, { immediate: true });
+    }
+  });
+  pageState.AGGREGATE_SEARCH_STORAGE_KEY = SETTINGS.AGGREGATE_SEARCH_STORAGE_KEY ||
     AGGREGATE_SEARCH_STORE.STORAGE_KEY ||
     '_x_extension_aggregate_searches_2026_unique_';
   migrateStorageIfNeeded([
@@ -3604,7 +3127,7 @@
     SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY,
     SITE_SEARCH_STORAGE_KEY,
     SITE_SEARCH_DISABLED_STORAGE_KEY,
-    AGGREGATE_SEARCH_STORAGE_KEY,
+    pageState.AGGREGATE_SEARCH_STORAGE_KEY,
     SEARCH_BLACKLIST_STORAGE_KEY,
     FAVICON_REQUEST_BLACKLIST_STORAGE_KEY,
     FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY,
@@ -3621,9 +3144,9 @@
   ]);
   let handleTabKey = null;
 
-  const faviconDataCache = new Map();
+  pageState.faviconDataCache = new Map();
   const faviconDataPending = new Map();
-  const faviconCacheRuntime = NEWTAB_FAVICON_CACHE.createFaviconCache({
+  pageState.faviconCacheRuntime = NEWTAB_FAVICON_CACHE.createFaviconCache({
     storageArea: (chrome && chrome.storage && chrome.storage.local) ? chrome.storage.local : null,
     windowObj: window,
     normalizeFaviconHost,
@@ -3633,19 +3156,19 @@
   });
 
   function isFaviconPersistLoaded() {
-    return faviconCacheRuntime.isFaviconPersistLoaded();
+    return pageState.faviconCacheRuntime.isFaviconPersistLoaded();
   }
 
   function isFaviconDataPersistLoaded() {
-    return faviconCacheRuntime.isFaviconDataPersistLoaded();
+    return pageState.faviconCacheRuntime.isFaviconDataPersistLoaded();
   }
 
   function isSiteThemePersistLoaded() {
-    return faviconCacheRuntime.isSiteThemePersistLoaded();
+    return pageState.faviconCacheRuntime.isSiteThemePersistLoaded();
   }
 
   function waitForFaviconCachesOrTimeout(maxWaitMs) {
-    return faviconCacheRuntime.waitForCachesOrTimeout(maxWaitMs);
+    return pageState.faviconCacheRuntime.waitForCachesOrTimeout(maxWaitMs);
   }
 
   function areFaviconRenderCachesReady() {
@@ -3660,27 +3183,27 @@
   }
 
   function isHostFaviconVisitDirty(hostname) {
-    return faviconCacheRuntime.isHostVisitDirty(hostname);
+    return pageState.faviconCacheRuntime.isHostVisitDirty(hostname);
   }
 
   function setPersistedFaviconUrl(cacheKey, url) {
-    faviconCacheRuntime.setPersistedUrl(cacheKey, url);
+    pageState.faviconCacheRuntime.setPersistedUrl(cacheKey, url);
   }
 
   function getPersistedFaviconEntry(cacheKey) {
-    return faviconCacheRuntime.getPersistedEntry(cacheKey);
+    return pageState.faviconCacheRuntime.getPersistedEntry(cacheKey);
   }
 
   function getPersistedFaviconDataEntry(cacheKey) {
-    return faviconCacheRuntime.getPersistedDataEntry(cacheKey);
+    return pageState.faviconCacheRuntime.getPersistedDataEntry(cacheKey);
   }
 
   function setPersistedFaviconData(cacheKey, dataUrl) {
-    faviconCacheRuntime.setPersistedData(cacheKey, dataUrl);
+    pageState.faviconCacheRuntime.setPersistedData(cacheKey, dataUrl);
   }
 
   function getPersistedSiteThemeEntry(hostKey) {
-    return faviconCacheRuntime.getPersistedThemeEntry(hostKey);
+    return pageState.faviconCacheRuntime.getPersistedThemeEntry(hostKey);
   }
 
   function setPersistedSiteThemeEntry(hostKey, theme) {
@@ -3691,7 +3214,7 @@
     if (!accentRgb) {
       return false;
     }
-    return faviconCacheRuntime.setPersistedThemeEntry(hostKey, {
+    return pageState.faviconCacheRuntime.setPersistedThemeEntry(hostKey, {
       accentRgb,
       source: getThemeSource(theme),
       neutral: isLowConfidenceTheme(theme) || theme._xThemeNeutral === true,
@@ -3700,7 +3223,7 @@
   }
 
   const logNewtabFaviconDecision = FAVICON_UTILS.createFaviconDecisionLogger({ surface: 'newtab' });
-  faviconViewRuntime = NEWTAB_FAVICON_VIEW.createFaviconViewRuntime({
+  pageState.faviconViewRuntime = NEWTAB_FAVICON_VIEW.createFaviconViewRuntime({
     document,
     windowObj: window,
     chromeApi: chrome,
@@ -3723,21 +3246,21 @@
     setPersistedFaviconUrl,
     setPersistedFaviconData,
     preloadThemeFromFavicon,
-    faviconDataCache,
+    faviconDataCache: pageState.faviconDataCache,
     faviconDataPending,
     hasThemeForHost: (hostKey) => Boolean(hostKey && themeHostCache.has(hostKey))
   });
-  const applyFaviconOpticalShift = faviconViewRuntime.applyFaviconOpticalShift;
-  const applyFaviconOpticalAlignment = faviconViewRuntime.applyFaviconOpticalAlignment;
-  const reportMissingIcon = faviconViewRuntime.reportMissingIcon;
-  const applyFallbackIcon = faviconViewRuntime.applyFallbackIcon;
-  const requestFaviconData = faviconViewRuntime.requestFaviconData;
-  const setFaviconSrcWithAnimation = faviconViewRuntime.setFaviconSrcWithAnimation;
-  const attachFaviconData = faviconViewRuntime.attachFaviconData;
-  const preloadIcon = faviconViewRuntime.preloadIcon;
-  const warmIconCache = faviconViewRuntime.warmIconCache;
-  const attachFaviconWithFallbacks = faviconViewRuntime.attachFaviconWithFallbacks;
-  const rescueThemeAwareFallbackFavicons = faviconViewRuntime.rescueThemeAwareFallbackFavicons;
+  const applyFaviconOpticalShift = pageState.faviconViewRuntime.applyFaviconOpticalShift;
+  const applyFaviconOpticalAlignment = pageState.faviconViewRuntime.applyFaviconOpticalAlignment;
+  const reportMissingIcon = pageState.faviconViewRuntime.reportMissingIcon;
+  const applyFallbackIcon = pageState.faviconViewRuntime.applyFallbackIcon;
+  pageState.requestFaviconData = pageState.faviconViewRuntime.requestFaviconData;
+  const setFaviconSrcWithAnimation = pageState.faviconViewRuntime.setFaviconSrcWithAnimation;
+  const attachFaviconData = pageState.faviconViewRuntime.attachFaviconData;
+  const preloadIcon = pageState.faviconViewRuntime.preloadIcon;
+  const warmIconCache = pageState.faviconViewRuntime.warmIconCache;
+  const attachFaviconWithFallbacks = pageState.faviconViewRuntime.attachFaviconWithFallbacks;
+  const rescueThemeAwareFallbackFavicons = pageState.faviconViewRuntime.rescueThemeAwareFallbackFavicons;
 
   function isAllowedFaviconProxyRequestUrl(url) {
     return FAVICON_UTILS.isAllowedFaviconProxyRequestUrl(url);
@@ -3845,20 +3368,7 @@
     navigateBookmarkFolder: (...args) => navigateBookmarkFolder(...args),
     getDirectNavigationUrl: (...args) => getDirectNavigationUrl(...args),
     buildDefaultSearchUrl,
-    pageState: {
-      get numberShortcutInstantEnabled() {
-        return numberShortcutInstantEnabled;
-      },
-      get newtabOpenInNewTab() {
-        return newtabOpenInNewTab;
-      },
-      get latestRawQuery() {
-        return latestRawQuery;
-      },
-      get inputParts() {
-        return inputParts;
-      }
-    }
+    pageState
   });
 
   const pageStructureRuntime = NEWTAB_PAGE_STRUCTURE.createPageStructure({
@@ -3907,53 +3417,7 @@
     normalizeNewtabTopContentMode,
     normalizeNewtabTimeFontWeight,
     normalizeNewtabTimeSecondsVisible,
-    pageState: {
-      get topContentContainer() {
-        return topContentContainer;
-      },
-      get shortcutSection() {
-        return shortcutSection;
-      },
-      get updateNoticeController() {
-        return updateNoticeController;
-      },
-      get engagementNoticeController() {
-        return engagementNoticeController;
-      },
-      get newtabTopContentMode() {
-        return newtabTopContentMode;
-      },
-      set newtabTopContentMode(value) {
-        newtabTopContentMode = value;
-      },
-      get zenModeEnabled() {
-        return zenModeEnabled;
-      },
-      get wordmarkImageEl() {
-        return wordmarkImageEl;
-      },
-      set wordmarkImageEl(value) {
-        wordmarkImageEl = value;
-      },
-      get topContentController() {
-        return topContentController;
-      },
-      get newtabTimeFontWeight() {
-        return newtabTimeFontWeight;
-      },
-      set newtabTimeFontWeight(value) {
-        newtabTimeFontWeight = value;
-      },
-      get newtabTimeSecondsVisible() {
-        return newtabTimeSecondsVisible;
-      },
-      set newtabTimeSecondsVisible(value) {
-        newtabTimeSecondsVisible = value;
-      },
-      get wallpaperRuntime() {
-        return wallpaperRuntime;
-      }
-    }
+    pageState
   });
 
   const NEWTAB_ENTRY_MOTION = globalThis.LumnoNewtabEntryMotion;
@@ -3970,26 +3434,7 @@
     rememberSearchEntryViewport,
     getSearchEntryViewportSnapshot,
     hasSearchEntryViewportChanged,
-    pageState: {
-      get resolveNewtabEntryAnimationReady() {
-        return resolveNewtabEntryAnimationReady;
-      },
-      set resolveNewtabEntryAnimationReady(value) {
-        resolveNewtabEntryAnimationReady = value;
-      },
-      get newtabReadyRequested() {
-        return newtabReadyRequested;
-      },
-      set newtabReadyRequested(value) {
-        newtabReadyRequested = value;
-      },
-      get newtabReadyViewportRevision() {
-        return newtabReadyViewportRevision;
-      },
-      get newtabResizeLayoutLocked() {
-        return newtabResizeLayoutLocked;
-      }
-    }
+    pageState
   });
 
   searchLayer = pageStructureRuntime.searchLayer;
@@ -4069,17 +3514,7 @@
     shortcutDialogTooltipController,
     bookmarkCursorTooltipController,
     shouldSuppressBookmarkHover: (...args) => shouldSuppressBookmarkHover(...args),
-    pageState: {
-      get inputParts() {
-        return inputParts;
-      },
-      get newtabShortcutDockMagnificationEnabled() {
-        return newtabShortcutDockMagnificationEnabled;
-      },
-      get shortcutGrid() {
-        return shortcutGrid;
-      }
-    }
+    pageState
   });
 
   const NEWTAB_SECTION_HEADERS = globalThis.LumnoNewtabSectionHeaders;
@@ -4125,92 +3560,7 @@
     persistBookmarkViewMode,
     showTopActionTooltip,
     hideTopActionTooltip,
-    pageState: {
-      get recentHeading() {
-        return recentHeading;
-      },
-      get currentRecentMode() {
-        return currentRecentMode;
-      },
-      set currentRecentMode(value) {
-        currentRecentMode = value;
-      },
-      get recentModeMenu() {
-        return recentModeMenu;
-      },
-      get bookmarkHeading() {
-        return bookmarkHeading;
-      },
-      get currentBookmarkViewMode() {
-        return currentBookmarkViewMode;
-      },
-      set currentBookmarkViewMode(value) {
-        currentBookmarkViewMode = value;
-      },
-      get bookmarkCascadeRuntime() {
-        return bookmarkCascadeRuntime;
-      },
-      get bookmarkTopbarRuntime() {
-        return bookmarkTopbarRuntime;
-      },
-      get currentBookmarkCount() {
-        return currentBookmarkCount;
-      },
-      get zenModeEnabled() {
-        return zenModeEnabled;
-      },
-      get bookmarkModeMenu() {
-        return bookmarkModeMenu;
-      },
-      get bookmarkGrid() {
-        return bookmarkGrid;
-      },
-      get bookmarkViewModeRevision() {
-        return bookmarkViewModeRevision;
-      },
-      set bookmarkViewModeRevision(value) {
-        bookmarkViewModeRevision = value;
-      },
-      get bookmarkLoadedOnce() {
-        return bookmarkLoadedOnce;
-      },
-      get bookmarkCurrentPage() {
-        return bookmarkCurrentPage;
-      },
-      set bookmarkCurrentPage(value) {
-        bookmarkCurrentPage = value;
-      },
-      get bookmarkRenderSignature() {
-        return bookmarkRenderSignature;
-      },
-      set bookmarkRenderSignature(value) {
-        bookmarkRenderSignature = value;
-      },
-      get bookmarkCurrentFolderId() {
-        return bookmarkCurrentFolderId;
-      },
-      set bookmarkCurrentFolderId(value) {
-        bookmarkCurrentFolderId = value;
-      },
-      get bookmarkRootFolderId() {
-        return bookmarkRootFolderId;
-      },
-      get bookmarkPagerPrevButton() {
-        return bookmarkPagerPrevButton;
-      },
-      get bookmarkPagerNextButton() {
-        return bookmarkPagerNextButton;
-      },
-      get bookmarkOpenManagerButton() {
-        return bookmarkOpenManagerButton;
-      },
-      get bookmarkBreadcrumbController() {
-        return bookmarkBreadcrumbController;
-      },
-      get bookmarkFolderPath() {
-        return bookmarkFolderPath;
-      }
-    }
+    pageState
   });
 
   const NEWTAB_SHORTCUTS_CONTROLLER = globalThis.LumnoNewtabShortcutsController;
@@ -4230,6 +3580,7 @@
     getShortcutFaviconCandidateUrl,
     getShortcutTitle,
     renderShortcuts,
+    flushDeferredShortcutRender,
     loadNewtabShortcutPreferences,
     loadVisibleShortcuts,
     persistShortcuts,
@@ -4253,6 +3604,7 @@
     shortcutFolderRuntime,
     bookmarksRuntime,
     isShortcutDragActive: (...args) => isShortcutDragActive(...args),
+    moveShortcutByKeyboard: (...args) => moveShortcutByKeyboard(...args),
     MAX_NEWTAB_SHORTCUTS,
     normalizeHost,
     sanitizeDisplayText,
@@ -4269,7 +3621,7 @@
     getExtensionResourceUrl,
     sendRuntimeMessage,
     shortcutFaviconStore,
-    faviconCacheRuntime,
+    faviconCacheRuntime: pageState.faviconCacheRuntime,
     FAVICON_UTILS,
     getPersistedFaviconDataEntry,
     t,
@@ -4347,107 +3699,7 @@
     handleShortcutGroupMenu: openShortcutGroupMenu,
     WEBDAV_STATUS_STORAGE_KEY: SETTINGS.WEBDAV_STATUS_STORAGE_KEY,
     animateShortcutLayoutChange: (...args) => animateShortcutLayoutChange(...args),
-    pageState: {
-      get newtabShortcuts() {
-        return newtabShortcuts;
-      },
-      set newtabShortcuts(value) {
-        newtabShortcuts = value;
-      },
-      get bookmarkMoveHistoryBusy() {
-        return bookmarkMoveHistoryBusy;
-      },
-      set bookmarkMoveHistoryBusy(value) {
-        bookmarkMoveHistoryBusy = value;
-      },
-      get newtabShortcutIcons() {
-        return newtabShortcutIcons;
-      },
-      set newtabShortcutIcons(value) {
-        newtabShortcutIcons = value;
-      },
-      get newtabShortcutFavicons() {
-        return newtabShortcutFavicons;
-      },
-      set newtabShortcutFavicons(value) {
-        newtabShortcutFavicons = value;
-      },
-      get shortcutFaviconPolicyRevision() {
-        return shortcutFaviconPolicyRevision;
-      },
-      get shortcutFaviconPendingCacheEntries() {
-        return shortcutFaviconPendingCacheEntries;
-      },
-      set shortcutFaviconPendingCacheEntries(value) {
-        shortcutFaviconPendingCacheEntries = value;
-      },
-      get shortcutDialogController() {
-        return shortcutDialogController;
-      },
-      get shortcutGrid() {
-        return shortcutGrid;
-      },
-      set shortcutGrid(value) {
-        shortcutGrid = value;
-      },
-      get addShortcutButton() {
-        return addShortcutButton;
-      },
-      set addShortcutButton(value) {
-        addShortcutButton = value;
-      },
-      get shortcutSection() {
-        return shortcutSection;
-      },
-      set shortcutSection(value) {
-        shortcutSection = value;
-      },
-      get newtabShortcutsVisible() {
-        return newtabShortcutsVisible;
-      },
-      set newtabShortcutsVisible(value) {
-        newtabShortcutsVisible = value;
-      },
-      get newtabShortcutAddVisible() {
-        return newtabShortcutAddVisible;
-      },
-      set newtabShortcutAddVisible(value) {
-        newtabShortcutAddVisible = value;
-      },
-      get newtabShortcutDockMagnificationEnabled() {
-        return newtabShortcutDockMagnificationEnabled;
-      },
-      set newtabShortcutDockMagnificationEnabled(value) {
-        newtabShortcutDockMagnificationEnabled = value;
-      },
-      get newtabShortcutColumns() {
-        return newtabShortcutColumns;
-      },
-      set newtabShortcutColumns(value) {
-        newtabShortcutColumns = value;
-      },
-      get newtabShortcutSize() {
-        return newtabShortcutSize;
-      },
-      set newtabShortcutSize(value) {
-        newtabShortcutSize = value;
-      },
-      get newtabShortcutGap() {
-        return newtabShortcutGap;
-      },
-      set newtabShortcutGap(value) {
-        newtabShortcutGap = value;
-      },
-      get shortcutPersistenceInFlightCount() {
-        return shortcutPersistenceInFlightCount;
-      },
-      set shortcutPersistenceInFlightCount(value) {
-        shortcutPersistenceInFlightCount = value;
-      },
-      get bookmarkCascadeRuntime() {
-        return bookmarkCascadeRuntime;
-      }
-    }
+    pageState
   });
 
   const NEWTAB_BOOKMARK_DRAG_CONTROLLER = globalThis.LumnoNewtabBookmarkDragController;
@@ -4529,85 +3781,11 @@
     hideCursorTooltip,
     isEditableElement: (...args) => isEditableElement(...args),
     closeBookmarkCascadeMenu,
-    suppressCanceledDragClick: (...args) => suppressCanceledDragClick(...args),
     renderCurrentBookmarkPage: (...args) => renderCurrentBookmarkPage(...args),
     applyShortcutGroupDeleteRecord,
     autoScrollShortcutArea: (...args) => autoScrollShortcutArea(...args),
     closeBookmarkContextMenu,
-    pageState: {
-      get bookmarkGrid() {
-        return bookmarkGrid;
-      },
-      get bookmarkAllItems() {
-        return bookmarkAllItems;
-      },
-      set bookmarkAllItems(value) {
-        bookmarkAllItems = value;
-      },
-      get bookmarkCurrentPage() {
-        return bookmarkCurrentPage;
-      },
-      get bookmarkCurrentFolderId() {
-        return bookmarkCurrentFolderId;
-      },
-      get currentBookmarkCount() {
-        return currentBookmarkCount;
-      },
-      get bookmarkTopbarRuntime() {
-        return bookmarkTopbarRuntime;
-      },
-      get bookmarkLoadedOnce() {
-        return bookmarkLoadedOnce;
-      },
-      get bookmarkRootFolderId() {
-        return bookmarkRootFolderId;
-      },
-      get shortcutDragState() {
-        return shortcutDragState;
-      },
-      get bookmarkCascadeRuntime() {
-        return bookmarkCascadeRuntime;
-      },
-      get shortcutGrid() {
-        return shortcutGrid;
-      },
-      get shortcutSection() {
-        return shortcutSection;
-      },
-      get newtabShortcuts() {
-        return newtabShortcuts;
-      },
-      get addShortcutButton() {
-        return addShortcutButton;
-      },
-      get bookmarkMoveHistoryBusy() {
-        return bookmarkMoveHistoryBusy;
-      },
-      set bookmarkMoveHistoryBusy(value) {
-        bookmarkMoveHistoryBusy = value;
-      },
-      get newtabShortcutIcons() {
-        return newtabShortcutIcons;
-      },
-      get bookmarkPagerPrevButton() {
-        return bookmarkPagerPrevButton;
-      },
-      get bookmarkPagerNextButton() {
-        return bookmarkPagerNextButton;
-      },
-      get currentBookmarkViewMode() {
-        return currentBookmarkViewMode;
-      },
-      get bookmarkDragState() {
-        return bookmarkDragState;
-      },
-      set bookmarkDragState(value) {
-        bookmarkDragState = value;
-      },
-      get bookmarkPageAnimating() {
-        return bookmarkPageAnimating;
-      }
-    }
+    pageState
   });
 
   function getSectionModeSelectOptions(config) {
@@ -4809,8 +3987,8 @@
       return;
     }
     section.setAttribute('data-content-visible', visible ? 'true' : 'false');
-    section.setAttribute('data-visible', visible && !zenModeEnabled ? 'true' : 'false');
-    if (section === recentSection && (!visible || zenModeEnabled)) {
+    section.setAttribute('data-visible', visible && !pageState.zenModeEnabled ? 'true' : 'false');
+    if (section === recentSection && (!visible || pageState.zenModeEnabled)) {
       closeRecentContextMenu();
     }
     scheduleWallpaperAdaptiveToneUpdate();
@@ -4825,8 +4003,8 @@
       return;
     }
     const rootStyle = document.documentElement.style;
-    const size = normalizeNewtabShortcutSize(newtabShortcutSize);
-    const gap = normalizeNewtabShortcutGap(newtabShortcutGap);
+    const size = normalizeNewtabShortcutSize(pageState.newtabShortcutSize);
+    const gap = normalizeNewtabShortcutGap(pageState.newtabShortcutGap);
     // Whole pixels with matching parity leave an even margin on each side, so
     // the icon sits centered in its tile and the favicon in its icon on 1x screens.
     const iconSize = roundToParityOf(size * 0.75, size);
@@ -4853,12 +4031,12 @@
     }
     document.documentElement.style.setProperty(
       '--x-nt-shortcut-columns',
-      String(newtabShortcutColumns)
+      String(pageState.newtabShortcutColumns)
     );
-    if (!shortcutGrid || typeof window.getComputedStyle !== 'function') {
+    if (!pageState.shortcutGrid || typeof window.getComputedStyle !== 'function') {
       return;
     }
-    const gridStyle = window.getComputedStyle(shortcutGrid);
+    const gridStyle = window.getComputedStyle(pageState.shortcutGrid);
     const tileSize = Number.parseFloat(
       gridStyle.getPropertyValue('--x-nt-shortcut-tile-size')
     );
@@ -4869,8 +4047,8 @@
       return;
     }
     const targetWidth =
-      (tileSize * newtabShortcutColumns) +
-      (columnGap * Math.max(0, newtabShortcutColumns - 1)) +
+      (tileSize * pageState.newtabShortcutColumns) +
+      (columnGap * Math.max(0, pageState.newtabShortcutColumns - 1)) +
       paddingLeft +
       paddingRight;
     document.documentElement.style.setProperty(
@@ -4880,16 +4058,16 @@
   }
 
   function applyNewtabShortcutsVisibility() {
-    if (!shortcutSection) {
+    if (!pageState.shortcutSection) {
       return;
     }
     const hasVisibleContent = getVisibleShortcuts().length > 0 ||
-      (newtabShortcutAddVisible && newtabShortcuts.length < MAX_NEWTAB_SHORTCUTS);
+      (pageState.newtabShortcutAddVisible && pageState.newtabShortcuts.length < MAX_NEWTAB_SHORTCUTS);
     setContentSectionVisible(
-      shortcutSection,
-      Boolean(newtabShortcutsVisible && hasVisibleContent)
+      pageState.shortcutSection,
+      Boolean(pageState.newtabShortcutsVisible && hasVisibleContent)
     );
-    if (!newtabShortcutsVisible || !hasVisibleContent || zenModeEnabled) {
+    if (!pageState.newtabShortcutsVisible || !hasVisibleContent || pageState.zenModeEnabled) {
       resetShortcutDockHover();
       closeShortcutContextMenu();
       closeShortcutDialog();
@@ -4897,8 +4075,8 @@
   }
 
   function updateShortcutDialogLanguageStrings() {
-    if (shortcutDialogController) {
-      shortcutDialogController.updateLanguage();
+    if (pageState.shortcutDialogController) {
+      pageState.shortcutDialogController.updateLanguage();
     }
   }
 
@@ -4926,12 +4104,12 @@
     if (target && target.kind === 'group') {
       const groups = getShortcutGroups();
       const index = groups.findIndex((group) => group.id === target.groupId);
-      const hasSites = newtabShortcuts.some((item) => item.groupId === target.groupId);
+      const hasSites = pageState.newtabShortcuts.some((item) => item.groupId === target.groupId);
       const option = (value, label, extra) => ({ action: value, value, label, ...(extra || {}) });
       return [
         option(SHORTCUT_GROUP_MENU_VALUES.rename, t('newtab_shortcuts_group_rename', 'Rename')),
         option(SHORTCUT_GROUP_MENU_VALUES.addSite, t('newtab_shortcuts_group_add_site', 'Add site'), {
-          disabled: newtabShortcuts.length >= MAX_NEWTAB_SHORTCUTS
+          disabled: pageState.newtabShortcuts.length >= MAX_NEWTAB_SHORTCUTS
         }),
         option(SHORTCUT_GROUP_MENU_VALUES.moveUp, t('newtab_shortcuts_group_move_up', 'Move up'), {
           dividerBefore: true, disabled: index <= 0
@@ -4988,20 +4166,20 @@
   }
 
   function updateShortcutContextMenuLanguageStrings() {
-    if (!shortcutContextMenu || !shortcutContextMenuSelectController) {
+    if (!pageState.shortcutContextMenu || !pageState.shortcutContextMenuSelectController) {
       return;
     }
     const label = t('newtab_shortcuts_context_menu_label', 'Shortcut actions');
-    if (shortcutContextMenu.trigger) {
-      shortcutContextMenu.trigger.setAttribute('aria-label', label);
+    if (pageState.shortcutContextMenu.trigger) {
+      pageState.shortcutContextMenu.trigger.setAttribute('aria-label', label);
     }
-    if (typeof shortcutContextMenuSelectController.setOptions === 'function') {
-      shortcutContextMenuSelectController.setOptions(
-        shortcutContextMenu.control,
-        getShortcutContextMenuOptions(shortcutContextMenuTarget),
-        shortcutContextMenuTarget && shortcutContextMenuTarget.kind === 'group'
+    if (typeof pageState.shortcutContextMenuSelectController.setOptions === 'function') {
+      pageState.shortcutContextMenuSelectController.setOptions(
+        pageState.shortcutContextMenu.control,
+        getShortcutContextMenuOptions(pageState.shortcutContextMenuTarget),
+        pageState.shortcutContextMenuTarget && pageState.shortcutContextMenuTarget.kind === 'group'
           ? SHORTCUT_GROUP_MENU_VALUES.rename
-          : shortcutContextMenuTarget && shortcutContextMenuTarget.kind === 'add'
+          : pageState.shortcutContextMenuTarget && pageState.shortcutContextMenuTarget.kind === 'add'
           ? SHORTCUT_GROUP_MENU_VALUES.addShortcut
           : NEWTAB_CONTEXT_MENU_OPEN_VALUE
       );
@@ -5009,22 +4187,22 @@
   }
 
   function updateBookmarkContextMenuLanguageStrings() {
-    if (!bookmarkContextMenu || !bookmarkContextMenuSelectController) {
+    if (!pageState.bookmarkContextMenu || !pageState.bookmarkContextMenuSelectController) {
       return;
     }
-    if (bookmarkContextMenu.trigger) {
-      bookmarkContextMenu.trigger.setAttribute(
+    if (pageState.bookmarkContextMenu.trigger) {
+      pageState.bookmarkContextMenu.trigger.setAttribute(
         'aria-label',
         t('bookmarks_context_menu_label', 'Bookmark actions')
       );
     }
-    if (typeof bookmarkContextMenuSelectController.setOptions === 'function') {
-      bookmarkContextMenuSelectController.setOptions(
-        bookmarkContextMenu.control,
-        getBookmarkContextMenuOptions(bookmarkContextMenuTarget),
-        bookmarkContextMenuTarget && bookmarkContextMenuTarget.isFolder
+    if (typeof pageState.bookmarkContextMenuSelectController.setOptions === 'function') {
+      pageState.bookmarkContextMenuSelectController.setOptions(
+        pageState.bookmarkContextMenu.control,
+        getBookmarkContextMenuOptions(pageState.bookmarkContextMenuTarget),
+        pageState.bookmarkContextMenuTarget && pageState.bookmarkContextMenuTarget.isFolder
           ? BOOKMARK_CONTEXT_MENU_OPEN_GROUP_VALUE
-          : bookmarkContextMenuTarget
+          : pageState.bookmarkContextMenuTarget
             ? NEWTAB_CONTEXT_MENU_OPEN_VALUE
             : BOOKMARK_CONTEXT_MENU_EDIT_VALUE
       );
@@ -5032,36 +4210,36 @@
   }
 
   function updateRecentContextMenuLanguageStrings() {
-    if (!recentContextMenu || !recentContextMenuSelectController) {
+    if (!pageState.recentContextMenu || !pageState.recentContextMenuSelectController) {
       return;
     }
-    if (recentContextMenu.trigger) {
-      recentContextMenu.trigger.setAttribute(
+    if (pageState.recentContextMenu.trigger) {
+      pageState.recentContextMenu.trigger.setAttribute(
         'aria-label',
         t('recent_context_menu_label', 'Recent site actions')
       );
     }
-    if (typeof recentContextMenuSelectController.setOptions === 'function') {
-      recentContextMenuSelectController.setOptions(
-        recentContextMenu.control,
-        getRecentContextMenuOptions(recentContextMenuTarget),
+    if (typeof pageState.recentContextMenuSelectController.setOptions === 'function') {
+      pageState.recentContextMenuSelectController.setOptions(
+        pageState.recentContextMenu.control,
+        getRecentContextMenuOptions(pageState.recentContextMenuTarget),
         NEWTAB_CONTEXT_MENU_OPEN_VALUE
       );
     }
   }
 
   function updateShortcutLanguageStrings() {
-    if (shortcutSection) {
-      shortcutSection.setAttribute('aria-label', t('newtab_shortcuts_section_label', 'Shortcuts'));
+    if (pageState.shortcutSection) {
+      pageState.shortcutSection.setAttribute('aria-label', t('newtab_shortcuts_section_label', 'Shortcuts'));
     }
-    if (addShortcutButton) {
+    if (pageState.addShortcutButton) {
       const addLabel = t('newtab_shortcuts_add', 'Add shortcut');
-      addShortcutButton.setAttribute('aria-label', addLabel);
-      addShortcutButton.setAttribute('data-tooltip', addLabel);
+      pageState.addShortcutButton.setAttribute('aria-label', addLabel);
+      pageState.addShortcutButton.setAttribute('data-tooltip', addLabel);
     }
     updateShortcutDialogLanguageStrings();
-    if (shortcutGrid) {
-      Array.from(shortcutGrid.querySelectorAll('.x-nt-shortcut-tile[data-shortcut-url]')).forEach((tile) => {
+    if (pageState.shortcutGrid) {
+      Array.from(pageState.shortcutGrid.querySelectorAll('.x-nt-shortcut-tile[data-shortcut-url]')).forEach((tile) => {
         const title = tile.getAttribute('data-shortcut-title') || '';
         tile.setAttribute('aria-label', formatMessage('open_prefix', '打开 {title}', { title }));
       });
@@ -5073,8 +4251,8 @@
 
   function closeShortcutDialog(options) {
     shortcutDialogOpenRevision += 1;
-    if (shortcutDialogController) {
-      shortcutDialogController.close({
+    if (pageState.shortcutDialogController) {
+      pageState.shortcutDialogController.close({
         ...(options || {}),
         force: true
       });
@@ -5084,17 +4262,17 @@
   async function openShortcutDialog(options) {
     const revision = ++shortcutDialogOpenRevision;
     try {
-      if (!shortcutDialogController) {
+      if (!pageState.shortcutDialogController) {
         if (!shortcutDialogLoadPromise) {
           shortcutDialogLoadPromise = Promise.resolve(createShortcutDialogComponent()).then((controller) => {
             if (!controller) throw new Error('Shortcut dialog unavailable');
-            shortcutDialogController = controller;
+            pageState.shortcutDialogController = controller;
             controller.mount(document.body);
           }).finally(() => { shortcutDialogLoadPromise = null; });
         }
         await shortcutDialogLoadPromise;
       }
-      if (revision === shortcutDialogOpenRevision) shortcutDialogController.open(options);
+      if (revision === shortcutDialogOpenRevision) pageState.shortcutDialogController.open(options);
     } catch (error) {
       console.warn('[Lumno] Failed to load shortcut dialog', error);
       if (revision === shortcutDialogOpenRevision) showToast(t('toast_error', 'Operation failed. Please try again.'), true);
@@ -5102,13 +4280,13 @@
   }
 
   function getShortcutTileFromNode(node) {
-    if (!shortcutGrid || !node) {
+    if (!pageState.shortcutGrid || !node) {
       return null;
     }
     const tile = typeof node.closest === 'function'
       ? node.closest('.x-nt-shortcut-tile')
       : null;
-    return tile && shortcutGrid.contains(tile) ? tile : null;
+    return tile && pageState.shortcutGrid.contains(tile) ? tile : null;
   }
 
   function getShortcutTileId(tile) {
@@ -5118,18 +4296,18 @@
   }
 
   function refreshShortcutTileCacheFromDom() {
-    if (!shortcutGrid) {
+    if (!pageState.shortcutGrid) {
       return;
     }
     shortcutTiles.length = 0;
-    Array.from(shortcutGrid.querySelectorAll('.x-nt-shortcut-tile[data-shortcut-id]')).forEach((tile) => {
+    Array.from(pageState.shortcutGrid.querySelectorAll('.x-nt-shortcut-tile[data-shortcut-id]')).forEach((tile) => {
       shortcutTiles.push(tile);
     });
   }
 
   function getShortcutReorderTiles() {
-    return shortcutGrid
-      ? Array.from(shortcutGrid.querySelectorAll('.x-nt-shortcut-tile[data-shortcut-id]'))
+    return pageState.shortcutGrid
+      ? Array.from(pageState.shortcutGrid.querySelectorAll('.x-nt-shortcut-tile[data-shortcut-id]'))
       : [];
   }
 
@@ -5138,7 +4316,7 @@
     if (!id) {
       return null;
     }
-    return newtabShortcuts.find((item) => item && item.id === id) || null;
+    return pageState.newtabShortcuts.find((item) => item && item.id === id) || null;
   }
 
   function getShortcutTileById(shortcutId) {
@@ -5253,8 +4431,8 @@
     const isFolder = Boolean(target.isFolder);
     const url = isFolder ? '' : String((node && node.url) || target.url || '');
     // Websites in a folder opened from a shortcut choose an icon like shortcuts.
-    const iconEditable = !isFolder && target.sourceKind === 'cascade' && Boolean(bookmarkCascadeRuntime) &&
-      isShortcutFolderAnchor(bookmarkCascadeRuntime.getAnchor());
+    const iconEditable = !isFolder && target.sourceKind === 'cascade' && Boolean(pageState.bookmarkCascadeRuntime) &&
+      isShortcutFolderAnchor(pageState.bookmarkCascadeRuntime.getAnchor());
     const icon = iconEditable ? getFolderItemIcon(target.bookmarkId) : null;
     openShortcutDialog({
       mode: SHORTCUT_DIALOG_MODE_EDIT,
@@ -5279,69 +4457,69 @@
   setContentSectionVisible(bookmarkSection, false);
   const bookmarkHeader = pageStructureRuntime.bookmark.header;
   bookmarkTitleWrap = pageStructureRuntime.bookmark.titleWrap;
-  bookmarkHeading = pageStructureRuntime.bookmark.heading;
+  pageState.bookmarkHeading = pageStructureRuntime.bookmark.heading;
   updateBookmarkHeading();
   bookmarkBreadcrumb = pageStructureRuntime.bookmark.breadcrumb;
-  bookmarkBreadcrumbController =
+  pageState.bookmarkBreadcrumbController =
     NEWTAB_BOOKMARK_BREADCRUMB.createBookmarkBreadcrumbController(
       bookmarkBreadcrumb,
       { onNavigate: navigateBookmarkFolder }
     );
-  bookmarkBreadcrumbController.render({ items: [] });
-  bookmarkModeMenu = createSectionModeSelect({
+  pageState.bookmarkBreadcrumbController.render({ items: [] });
+  pageState.bookmarkModeMenu = createSectionModeSelect({
     id: '_x_extension_newtab_bookmark_mode_2026_unique_',
     menuTitleKey: 'display_mode_title',
     menuTitleFallback: 'Display mode',
-    getValue: () => currentBookmarkViewMode,
+    getValue: () => pageState.currentBookmarkViewMode,
     onChange: setBookmarkViewMode,
     onAction: handleBookmarkModeMenuAction,
     getOptions: getBookmarkViewModeOptions
   });
   const bookmarkPager = pageStructureRuntime.bookmark.pager;
-  bookmarkPagerPrevButton = pageStructureRuntime.bookmark.previousButton;
-  bookmarkPagerNextButton = pageStructureRuntime.bookmark.nextButton;
-  bookmarkOpenManagerButton = pageStructureRuntime.bookmark.managerButton;
+  pageState.bookmarkPagerPrevButton = pageStructureRuntime.bookmark.previousButton;
+  pageState.bookmarkPagerNextButton = pageStructureRuntime.bookmark.nextButton;
+  pageState.bookmarkOpenManagerButton = pageStructureRuntime.bookmark.managerButton;
   bindBookmarkPagerTooltip(
-    bookmarkPagerPrevButton,
-    () => bookmarkPagerPrevButton.getAttribute('data-tooltip') || t('bookmarks_page_prev', '上一页')
+    pageState.bookmarkPagerPrevButton,
+    () => pageState.bookmarkPagerPrevButton.getAttribute('data-tooltip') || t('bookmarks_page_prev', '上一页')
   );
   bindBookmarkPagerTooltip(
-    bookmarkPagerNextButton,
-    () => bookmarkPagerNextButton.getAttribute('data-tooltip') || t('bookmarks_page_next', '下一页')
+    pageState.bookmarkPagerNextButton,
+    () => pageState.bookmarkPagerNextButton.getAttribute('data-tooltip') || t('bookmarks_page_next', '下一页')
   );
   bindBookmarkPagerTooltip(
-    bookmarkOpenManagerButton,
-    () => bookmarkOpenManagerButton.getAttribute('data-tooltip') || t('bookmarks_open_manager', '打开书签管理页')
+    pageState.bookmarkOpenManagerButton,
+    () => pageState.bookmarkOpenManagerButton.getAttribute('data-tooltip') || t('bookmarks_open_manager', '打开书签管理页')
   );
-  if (bookmarkModeMenu) {
-    bookmarkPager.appendChild(bookmarkModeMenu.control);
+  if (pageState.bookmarkModeMenu) {
+    bookmarkPager.appendChild(pageState.bookmarkModeMenu.control);
   }
-  bookmarkHeading.addEventListener('click', () => {
-    if (!bookmarkHeading._xCanNavigateRoot) {
+  pageState.bookmarkHeading.addEventListener('click', () => {
+    if (!pageState.bookmarkHeading._xCanNavigateRoot) {
       return;
     }
-    navigateBookmarkFolder(bookmarkRootFolderId);
+    navigateBookmarkFolder(pageState.bookmarkRootFolderId);
   });
-  bookmarkHeading.addEventListener('keydown', (event) => {
-    if (!bookmarkHeading._xCanNavigateRoot) {
+  pageState.bookmarkHeading.addEventListener('keydown', (event) => {
+    if (!pageState.bookmarkHeading._xCanNavigateRoot) {
       return;
     }
     if (event.key !== 'Enter' && event.key !== ' ') {
       return;
     }
     event.preventDefault();
-    navigateBookmarkFolder(bookmarkRootFolderId);
+    navigateBookmarkFolder(pageState.bookmarkRootFolderId);
   });
   updateBookmarkPagerLabels();
   updateBookmarkBreadcrumb();
-  bookmarkGrid = pageStructureRuntime.bookmark.grid;
-  bookmarkGrid.setAttribute('data-view-mode', currentBookmarkViewMode);
-  bookmarkGrid.addEventListener('pointerdown', handleBookmarkDragPointerDown, true);
+  pageState.bookmarkGrid = pageStructureRuntime.bookmark.grid;
+  pageState.bookmarkGrid.setAttribute('data-view-mode', pageState.currentBookmarkViewMode);
+  pageState.bookmarkGrid.addEventListener('pointerdown', handleBookmarkDragPointerDown, true);
   applyBookmarkGridColumns();
-  bookmarksView = NEWTAB_BOOKMARKS_VIEW.createBookmarksView({
+  pageState.bookmarksView = NEWTAB_BOOKMARKS_VIEW.createBookmarksView({
     documentObj: document,
     windowObj: window,
-    grid: bookmarkGrid,
+    grid: pageState.bookmarkGrid,
     cards: bookmarkCards,
     cardElementCache: bookmarkCardElementCache,
     folderIconsVisible: bookmarkFolderIconsVisible,
@@ -5377,11 +4555,10 @@
     navigateToUrl,
     openUrl: (url, options) => openUrlFromNewtabCard(url, { ...options, surface: 'bookmarks' })
   });
-  bookmarkCascadeRuntime = NEWTAB_BOOKMARK_CASCADE_MENU.createBookmarkCascadeMenuRuntime({
+  pageState.bookmarkCascadeRuntime = NEWTAB_BOOKMARK_CASCADE_MENU.createBookmarkCascadeMenuRuntime({
     documentObj: document,
     windowObj: window,
-    storageArea,
-    debugStorageKey: BOOKMARK_CASCADE_DEBUG_STORAGE_KEY,
+    dismissStack,
     positionUtils: NEWTAB_BOOKMARK_CASCADE_POSITION,
     crossSurfaceDrag: NEWTAB_CROSS_SURFACE_DRAG,
     menuSurface: globalThis.LumnoMenuSurface,
@@ -5424,49 +4601,49 @@
     getViewportTopPadding: getBookmarkCascadeViewportTopPaddingPx,
     view: NEWTAB_BOOKMARK_CASCADE_VIEW
   });
-  bookmarkTopbarRuntime = NEWTAB_BOOKMARKS_TOPBAR.createBookmarksTopbar({
+  pageState.bookmarkTopbarRuntime = NEWTAB_BOOKMARKS_TOPBAR.createBookmarksTopbar({
     documentObj: document,
     windowObj: window,
-    grid: bookmarkGrid,
-    modeControl: bookmarkModeMenu ? bookmarkModeMenu.control : null,
-    managerButton: bookmarkOpenManagerButton,
+    grid: pageState.bookmarkGrid,
+    modeControl: pageState.bookmarkModeMenu ? pageState.bookmarkModeMenu.control : null,
+    managerButton: pageState.bookmarkOpenManagerButton,
     ariaLabel: t('bookmark_view_mode_top', 'Top bookmarks bar'),
     onVisibilityChange: setNewtabTopOccupied
   });
   syncBookmarkTopbarSurfaceAppearance({ updateMenu: false, scheduleTone: false });
   syncBookmarkSurfaceMode();
-  let bookmarkRenderSignature = '';
-  let sectionDataRevision = 0;
-  let bookmarkLoadedOnce = false;
+  pageState.bookmarkRenderSignature = '';
+  pageState.sectionDataRevision = 0;
+  pageState.bookmarkLoadedOnce = false;
 
   setContentSectionVisible(recentSection, false);
   recentSection.addEventListener('pointerenter', (event) => {
     if (!event || event.pointerType !== 'mouse') {
       return;
     }
-    recentMouseInsideSection = true;
-    recentMouseLeftAt = 0;
+    pageState.recentMouseInsideSection = true;
+    pageState.recentMouseLeftAt = 0;
   });
   recentSection.addEventListener('pointerleave', (event) => {
     if (!event || event.pointerType !== 'mouse') {
       return;
     }
-    recentMouseInsideSection = false;
-    recentMouseLeftAt = Date.now();
+    pageState.recentMouseInsideSection = false;
+    pageState.recentMouseLeftAt = Date.now();
     hideTopActionTooltip();
   });
   recentSection.addEventListener('pointercancel', () => {
-    recentMouseInsideSection = false;
+    pageState.recentMouseInsideSection = false;
     hideTopActionTooltip();
   });
   recentHeader = pageStructureRuntime.recent.header;
-  recentHeading = pageStructureRuntime.recent.heading;
+  pageState.recentHeading = pageStructureRuntime.recent.heading;
   updateRecentHeading();
-  recentModeMenu = NEWTAB_RECENT_MODE_SWITCH.createRecentModeSwitch({
+  pageState.recentModeMenu = NEWTAB_RECENT_MODE_SWITCH.createRecentModeSwitch({
     documentObj: document,
     windowObj: window,
     t,
-    getValue: () => currentRecentMode,
+    getValue: () => pageState.currentRecentMode,
     onChange: (nextMode) => {
       setRecentMode(nextMode);
     },
@@ -5485,7 +4662,7 @@
   });
   recentGrid = pageStructureRuntime.recent.grid;
   applyRecentGridColumns();
-  recentSitesView = NEWTAB_RECENT_VIEW.createRecentSitesView({
+  pageState.recentSitesView = NEWTAB_RECENT_VIEW.createRecentSitesView({
     documentObj: document,
     windowObj: window,
     grid: recentGrid,
@@ -5506,7 +4683,7 @@
     applyCardTheme: applyRecentCardTheme,
     getCurrentRecentCount: () => getRecentLimit(),
     isPinned: isRecentSitePinned,
-    getPinnedCount: () => pinnedRecentSites.length,
+    getPinnedCount: () => pageState.pinnedRecentSites.length,
     getMaxPinnedCount: () => MAX_PINNED_RECENT_SITES,
     updatePinButton: updateRecentPinButton,
     showToast,
@@ -5526,20 +4703,20 @@
     toggleProgressTracking: toggleRecentProgressTracking
   });
   // The mode switch shows the current heading, so it stands in for the plain heading.
-  recentHeading.hidden = true;
-  recentHeader.appendChild(recentModeMenu.control);
-  let recentRenderSignature = '';
-  let recentLoadedOnce = false;
+  pageState.recentHeading.hidden = true;
+  recentHeader.appendChild(pageState.recentModeMenu.control);
+  pageState.recentRenderSignature = '';
+  pageState.recentLoadedOnce = false;
   const bottomDockRuntime = NEWTAB_DOCK.createBottomDockRuntime({
     documentObj: document,
     windowObj: window,
     layoutRuntime: NEWTAB_LAYOUT,
     root,
     searchLayer: () => searchLayer,
-    inputParts: () => inputParts,
-    topContentContainer: () => topContentContainer,
-    shortcutSection: () => shortcutSection,
-    quoteSection: () => quoteRuntime && quoteRuntime.element,
+    inputParts: () => pageState.inputParts,
+    topContentContainer: () => pageState.topContentContainer,
+    shortcutSection: () => pageState.shortcutSection,
+    quoteSection: () => pageState.quoteRuntime && pageState.quoteRuntime.element,
     bookmarkSection,
     recentSection,
     suggestionsContainer,
@@ -5569,20 +4746,20 @@
   applyNewtabWidthMode();
   markNewtabStartupMilestone('dock-runtime-created');
 
-  bookmarkPagerPrevButton.addEventListener('click', () => {
-    if (bookmarkCurrentPage <= 0) {
+  pageState.bookmarkPagerPrevButton.addEventListener('click', () => {
+    if (pageState.bookmarkCurrentPage <= 0) {
       return;
     }
-    switchBookmarkPage(bookmarkCurrentPage - 1);
+    switchBookmarkPage(pageState.bookmarkCurrentPage - 1);
   });
-  bookmarkPagerNextButton.addEventListener('click', () => {
+  pageState.bookmarkPagerNextButton.addEventListener('click', () => {
     const pageCount = getBookmarkPageCount();
-    if (bookmarkCurrentPage >= (pageCount - 1)) {
+    if (pageState.bookmarkCurrentPage >= (pageCount - 1)) {
       return;
     }
-    switchBookmarkPage(bookmarkCurrentPage + 1);
+    switchBookmarkPage(pageState.bookmarkCurrentPage + 1);
   });
-  bookmarkOpenManagerButton.addEventListener('click', () => {
+  pageState.bookmarkOpenManagerButton.addEventListener('click', () => {
     if (!chrome || !chrome.runtime || !chrome.runtime.sendMessage) {
       return;
     }
@@ -5604,20 +4781,20 @@
       return;
     }
     event.preventDefault();
-    if (bookmarkPageAnimating) {
+    if (pageState.bookmarkPageAnimating) {
       return;
     }
     const now = Date.now();
     if ((now - bookmarkWheelLastAt) < BOOKMARK_WHEEL_SWITCH_COOLDOWN_MS) {
       return;
     }
-    let targetPage = bookmarkCurrentPage;
-    if (deltaY > 0 && bookmarkCurrentPage < (pageCount - 1)) {
-      targetPage = bookmarkCurrentPage + 1;
-    } else if (deltaY < 0 && bookmarkCurrentPage > 0) {
-      targetPage = bookmarkCurrentPage - 1;
+    let targetPage = pageState.bookmarkCurrentPage;
+    if (deltaY > 0 && pageState.bookmarkCurrentPage < (pageCount - 1)) {
+      targetPage = pageState.bookmarkCurrentPage + 1;
+    } else if (deltaY < 0 && pageState.bookmarkCurrentPage > 0) {
+      targetPage = pageState.bookmarkCurrentPage - 1;
     }
-    if (targetPage === bookmarkCurrentPage) {
+    if (targetPage === pageState.bookmarkCurrentPage) {
       return;
     }
     bookmarkWheelLastAt = now;
@@ -5641,44 +4818,7 @@
     renderBookmarks: (...args) => renderBookmarks(...args),
     updateBookmarkSectionPosition,
     stableHashCode,
-    pageState: {
-      get bookmarkAllItems() {
-        return bookmarkAllItems;
-      },
-      get bookmarkCurrentPage() {
-        return bookmarkCurrentPage;
-      },
-      set bookmarkCurrentPage(value) {
-        bookmarkCurrentPage = value;
-      },
-      get bookmarkPagerPrevButton() {
-        return bookmarkPagerPrevButton;
-      },
-      get bookmarkPagerNextButton() {
-        return bookmarkPagerNextButton;
-      },
-      get bookmarkGrid() {
-        return bookmarkGrid;
-      },
-      get bookmarkCurrentFolderId() {
-        return bookmarkCurrentFolderId;
-      },
-      get bookmarkRootFolderId() {
-        return bookmarkRootFolderId;
-      },
-      get bookmarkRootTotalCount() {
-        return bookmarkRootTotalCount;
-      },
-      get bookmarkRootVisibleCount() {
-        return bookmarkRootVisibleCount;
-      },
-      get bookmarkPageAnimating() {
-        return bookmarkPageAnimating;
-      },
-      set bookmarkPageAnimating(value) {
-        bookmarkPageAnimating = value;
-      }
-    }
+    pageState
   });
 
   const NEWTAB_SHORTCUT_DRAG = globalThis.LumnoNewtabShortcutDrag;
@@ -5689,8 +4829,8 @@
     autoScrollShortcutArea,
     animateShortcutLayoutChange,
     scheduleShortcutDragMove,
-    suppressCanceledDragClick,
     finishShortcutDrag,
+    moveShortcutByKeyboard,
     isShortcutDragActive,
     isBookmarkSurfaceDragStateActive,
     handleShortcutDragPointerDown
@@ -5701,6 +4841,7 @@
     getShortcutTileId,
     getShortcutTileById,
     renderShortcuts,
+    flushDeferredShortcutRender,
     resetShortcutDockHover,
     NEWTAB_BOOKMARK_MOVE_HISTORY,
     persistShortcuts,
@@ -5744,44 +4885,7 @@
     closeShortcutContextMenu,
     moveShortcutGroupToIndex,
     fitShortcutGroupColumns,
-    pageState: {
-      get shortcutGrid() {
-        return shortcutGrid;
-      },
-      get shortcutDragState() {
-        return shortcutDragState;
-      },
-      set shortcutDragState(value) {
-        shortcutDragState = value;
-      },
-      get addShortcutButton() {
-        return addShortcutButton;
-      },
-      get newtabShortcuts() {
-        return newtabShortcuts;
-      },
-      set newtabShortcuts(value) {
-        newtabShortcuts = value;
-      },
-      get bookmarkMoveHistoryBusy() {
-        return bookmarkMoveHistoryBusy;
-      },
-      set bookmarkMoveHistoryBusy(value) {
-        bookmarkMoveHistoryBusy = value;
-      },
-      get bookmarkTopbarRuntime() {
-        return bookmarkTopbarRuntime;
-      },
-      get bookmarkGrid() {
-        return bookmarkGrid;
-      },
-      get bookmarkDragState() {
-        return bookmarkDragState;
-      },
-      get newtabShortcutIcons() {
-        return newtabShortcutIcons;
-      }
-    }
+    pageState
   });
 
   const NEWTAB_RECENT_CARD_DRAG = globalThis.LumnoNewtabRecentCardDrag;
@@ -5814,41 +4918,18 @@
     applyBookmarkShortcutTransfer,
     queueBookmarkLayoutAnimation,
     isEmptyBookmarkRootHidden,
-    renderCurrentBookmarkPage: (...args) => renderCurrentBookmarkPage(...args),
+    renderCurrentBookmarkPage,
     closeBookmarkCascadeMenu,
     closeRecentContextMenu,
     hideCursorTooltip,
     hideTopActionTooltip,
     resetShortcutDockHover,
-    suppressCanceledDragClick,
     scheduleWallpaperAdaptiveToneUpdate,
     showToast,
     t,
     formatMessage,
     getRiSvg,
-    pageState: {
-      get newtabShortcuts() {
-        return newtabShortcuts;
-      },
-      get bookmarkMoveHistoryBusy() {
-        return bookmarkMoveHistoryBusy;
-      },
-      set bookmarkMoveHistoryBusy(value) {
-        bookmarkMoveHistoryBusy = value;
-      },
-      get bookmarkTopbarRuntime() {
-        return bookmarkTopbarRuntime;
-      },
-      get bookmarkGrid() {
-        return bookmarkGrid;
-      },
-      get bookmarkDragState() {
-        return bookmarkDragState;
-      },
-      get shortcutDragState() {
-        return shortcutDragState;
-      }
-    }
+    pageState
   });
 
   const NEWTAB_SECTION_LOADERS = globalThis.LumnoNewtabSectionLoaders;
@@ -5902,104 +4983,7 @@
     getRecentSites,
     MAX_PINNED_RECENT_SITES,
     beginSearchEntryRestoreLayoutLock,
-    pageState: {
-      get bookmarkCurrentFolderId() {
-        return bookmarkCurrentFolderId;
-      },
-      get bookmarkRootFolderId() {
-        return bookmarkRootFolderId;
-      },
-      get bookmarkDragState() {
-        return bookmarkDragState;
-      },
-      get bookmarkGrid() {
-        return bookmarkGrid;
-      },
-      get bookmarksView() {
-        return bookmarksView;
-      },
-      get bookmarkRenderSignature() {
-        return bookmarkRenderSignature;
-      },
-      set bookmarkRenderSignature(value) {
-        bookmarkRenderSignature = value;
-      },
-      get currentBookmarkViewMode() {
-        return currentBookmarkViewMode;
-      },
-      get shortcutDragState() {
-        return shortcutDragState;
-      },
-      get hiddenRecentSites() {
-        return hiddenRecentSites;
-      },
-      get recentSourceItems() {
-        return recentSourceItems;
-      },
-      set recentSourceItems(value) {
-        recentSourceItems = value;
-      },
-      get recentSitesView() {
-        return recentSitesView;
-      },
-      get recentRenderSignature() {
-        return recentRenderSignature;
-      },
-      set recentRenderSignature(value) {
-        recentRenderSignature = value;
-      },
-      get sectionDataRevision() {
-        return sectionDataRevision;
-      },
-      get initialThemeApplied() {
-        return initialThemeApplied;
-      },
-      get bookmarkLoadedOnce() {
-        return bookmarkLoadedOnce;
-      },
-      set bookmarkLoadedOnce(value) {
-        bookmarkLoadedOnce = value;
-      },
-      get currentBookmarkCount() {
-        return currentBookmarkCount;
-      },
-      get bookmarkAllItems() {
-        return bookmarkAllItems;
-      },
-      set bookmarkAllItems(value) {
-        bookmarkAllItems = value;
-      },
-      get bookmarkRootTotalCount() {
-        return bookmarkRootTotalCount;
-      },
-      set bookmarkRootTotalCount(value) {
-        bookmarkRootTotalCount = value;
-      },
-      get bookmarkRootVisibleCount() {
-        return bookmarkRootVisibleCount;
-      },
-      set bookmarkRootVisibleCount(value) {
-        bookmarkRootVisibleCount = value;
-      },
-      get bookmarkCurrentPage() {
-        return bookmarkCurrentPage;
-      },
-      set bookmarkCurrentPage(value) {
-        bookmarkCurrentPage = value;
-      },
-      get newtabShortcuts() {
-        return newtabShortcuts;
-      },
-      get recentLoadedOnce() {
-        return recentLoadedOnce;
-      },
-      set recentLoadedOnce(value) {
-        recentLoadedOnce = value;
-      },
-      get currentRecentMode() {
-        return currentRecentMode;
-      }
-    }
+    pageState
   });
 
   function getCurrentSearchEntryPaddingTop() {
@@ -6063,13 +5047,13 @@
     if (layoutController && typeof layoutController.updateBottomDockLayout === 'function') {
       layoutController.updateBottomDockLayout({
         preserveSearchEntryLayout: Boolean(layoutOptions.preserveSearchEntryLayout) ||
-          newtabResizeLayoutLocked ||
+          pageState.newtabResizeLayoutLocked ||
           shouldPreserveSearchEntryLayout(),
-        stabilizeDockDensity: Boolean(layoutOptions.stabilizeDockDensity),
-        releaseDockDensityLock: Boolean(layoutOptions.releaseDockDensityLock),
+        // A live resize holds the dock's density until the resize settles.
+        stabilizeDockDensity: Boolean(layoutOptions.stabilizeDockDensity) || pageState.newtabResizeLayoutLocked,
         onRecentHidden: () => {
-          recentMouseInsideSection = false;
-          recentMouseLeftAt = 0;
+          pageState.recentMouseInsideSection = false;
+          pageState.recentMouseLeftAt = 0;
         }
       });
     }
@@ -6109,7 +5093,7 @@
       });
     }
     return recentHistoryDialogLoadPromise.then((controller) => {
-      if (progressTrackingEnabled) controller.open({ item });
+      if (pageState.progressTrackingEnabled) controller.open({ item });
     }).catch(() => {
       showToast(t('toast_error', '操作失败，请重试。'), true);
     });
@@ -6150,7 +5134,7 @@
       ), false, { duration: 0 });
     },
     onHoldEnd: hideToast,
-    instantActive: () => numberShortcutInstantEnabled
+    instantActive: () => pageState.numberShortcutInstantEnabled
   };
 
   function fallbackCopyText(text) {
@@ -6242,15 +5226,15 @@
   }
 
   function syncSearchModeMenuResultOffset() {
-    if (!inputModeController ||
-        typeof inputModeController.setModeMenuResultOffset !== 'function') {
+    if (!pageState.inputModeController ||
+        typeof pageState.inputModeController.setModeMenuResultOffset !== 'function') {
       return;
     }
     const fitMaxHeightProperty =
       '--x-nt-suggestions-menu-fit-max-height';
     const resultHeightLimit =
-      typeof inputModeController.fitModeMenuWithinViewport === 'function'
-        ? inputModeController.fitModeMenuWithinViewport({ bottomInset: 24 })
+      typeof pageState.inputModeController.fitModeMenuWithinViewport === 'function'
+        ? pageState.inputModeController.fitModeMenuWithinViewport({ bottomInset: 24 })
         : null;
     if (Number.isFinite(resultHeightLimit)) {
       suggestionsContainer.style.setProperty(
@@ -6260,7 +5244,7 @@
     } else {
       suggestionsContainer.style.removeProperty(fitMaxHeightProperty);
     }
-    inputModeController.setModeMenuResultOffset(
+    pageState.inputModeController.setModeMenuResultOffset(
       getSearchModeMenuResultOffset()
     );
   }
@@ -6403,15 +5387,15 @@
   }
 
   // Kick off favicon cache warmup early; theme tint work flushes when storage is ready.
-  faviconCacheRuntime.ensureCachesReady().then(() => {
+  pageState.faviconCacheRuntime.ensureCachesReady().then(() => {
     scheduleThemeResolutionFlush(0);
     refreshThemeAwareFavicons();
     scheduleThemeAwareFaviconRescue();
   });
 
   function openBookmarkCascadeMenu(item, anchorElement, options) {
-    if (bookmarkCascadeRuntime) {
-      bookmarkCascadeRuntime.open(item, anchorElement, {
+    if (pageState.bookmarkCascadeRuntime) {
+      pageState.bookmarkCascadeRuntime.open(item, anchorElement, {
         ...options,
         toggle: !options || options.dragMode !== true
       });
@@ -6419,20 +5403,14 @@
   }
 
   function closeBookmarkCascadeMenu() {
-    if (bookmarkCascadeRuntime) {
-      bookmarkCascadeRuntime.close();
+    if (pageState.bookmarkCascadeRuntime) {
+      pageState.bookmarkCascadeRuntime.close();
     }
   }
 
   function positionBookmarkCascadeLevels() {
-    if (bookmarkCascadeRuntime) {
-      bookmarkCascadeRuntime.positionLevels();
-    }
-  }
-
-  function setBookmarkCascadeDebugEnabled(enabled, options) {
-    if (bookmarkCascadeRuntime) {
-      bookmarkCascadeRuntime.setDebugEnabled(enabled, options);
+    if (pageState.bookmarkCascadeRuntime) {
+      pageState.bookmarkCascadeRuntime.positionLevels();
     }
   }
 
@@ -6440,17 +5418,17 @@
     const parsedLimit = Number.parseInt(limit, 10);
     const safeLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 0;
     return bookmarksRuntime.readFolder(
-      folderId || bookmarkCurrentFolderId || bookmarkRootFolderId,
+      folderId || pageState.bookmarkCurrentFolderId || pageState.bookmarkRootFolderId,
       {
         limit: safeLimit,
         rootTitle: t('bookmarks_heading', '书签')
       }
     ).then((result) => {
-      bookmarkRootFolderId = String(result.rootFolderId || '1');
-      bookmarkCurrentFolderId = String(result.folderId || bookmarkRootFolderId);
-      bookmarkFolderPath = Array.isArray(result.path)
+      pageState.bookmarkRootFolderId = String(result.rootFolderId || '1');
+      pageState.bookmarkCurrentFolderId = String(result.folderId || pageState.bookmarkRootFolderId);
+      pageState.bookmarkFolderPath = Array.isArray(result.path)
         ? result.path
-        : [{ id: bookmarkRootFolderId, title: t('bookmarks_heading', '书签') }];
+        : [{ id: pageState.bookmarkRootFolderId, title: t('bookmarks_heading', '书签') }];
       return Array.isArray(result.items) ? result.items : [];
     });
   }
@@ -6474,38 +5452,7 @@
     getUrlDisplay,
     isEnglishQuery,
     getKeywordSearchSuggestionState,
-    pageState: {
-      get autocompleteState() {
-        return autocompleteState;
-      },
-      set autocompleteState(value) {
-        autocompleteState = value;
-      },
-      get latestRawQuery() {
-        return latestRawQuery;
-      },
-      set latestRawQuery(value) {
-        latestRawQuery = value;
-      },
-      get inputParts() {
-        return inputParts;
-      },
-      get latestQuery() {
-        return latestQuery;
-      },
-      set latestQuery(value) {
-        latestQuery = value;
-      },
-      get searchResultPriorityMode() {
-        return searchResultPriorityMode;
-      },
-      get lastDeletionAt() {
-        return lastDeletionAt;
-      },
-      get siteSearchState() {
-        return siteSearchState;
-      }
-    }
+    pageState
   });
 
   const attachInputModeFaviconData =
@@ -6524,7 +5471,8 @@
     activateLocalSearchScope,
     clearLocalSearchScope,
     activateSiteSearch,
-    clearSiteSearch
+    clearSiteSearch,
+    handleSearchTabKey
   } = NEWTAB_SEARCH_MODES.createSearchModes({
     SEARCH_UTILS,
     defaultSiteSearchProviders,
@@ -6549,77 +5497,15 @@
     clearSiteSearchPrefix,
     setSiteSearchPrefix,
     getThemeForProvider,
-    pageState: {
-      get defaultSearchEngineState() {
-        return defaultSearchEngineState;
-      },
-      get siteSearchProvidersCache() {
-        return siteSearchProvidersCache;
-      },
-      get aggregateSearchesCache() {
-        return aggregateSearchesCache;
-      },
-      get siteSearchState() {
-        return siteSearchState;
-      },
-      set siteSearchState(value) {
-        siteSearchState = value;
-      },
-      get enabledSearchResultSourceTypes() {
-        return enabledSearchResultSourceTypes;
-      },
-      get localSearchScopeState() {
-        return localSearchScopeState;
-      },
-      set localSearchScopeState(value) {
-        localSearchScopeState = value;
-      },
-      get inputParts() {
-        return inputParts;
-      },
-      get inputModeController() {
-        return inputModeController;
-      },
-      get latestRawQuery() {
-        return latestRawQuery;
-      },
-      set latestRawQuery(value) {
-        latestRawQuery = value;
-      },
-      get latestQuery() {
-        return latestQuery;
-      },
-      set latestQuery(value) {
-        latestQuery = value;
-      },
-      get suggestionRequestSeq() {
-        return suggestionRequestSeq;
-      },
-      set suggestionRequestSeq(value) {
-        suggestionRequestSeq = value;
-      },
-      get localSearchScopeTriggerState() {
-        return localSearchScopeTriggerState;
-      },
-      set localSearchScopeTriggerState(value) {
-        localSearchScopeTriggerState = value;
-      },
-      get siteSearchTriggerState() {
-        return siteSearchTriggerState;
-      },
-      set siteSearchTriggerState(value) {
-        siteSearchTriggerState = value;
-      },
-      get inlineSearchState() {
-        return inlineSearchState;
-      },
-      set inlineSearchState(value) {
-        inlineSearchState = value;
-      }
-    }
+    getTopSiteMatchCandidate,
+    getSiteSearchTriggerCandidate,
+    getLocalSearchScopeCandidate,
+    getShortcutRules: (...args) => getShortcutRules(...args),
+    pageState
   });
 
   const NEWTAB_SEARCH_NAVIGATION = globalThis.LumnoNewtabSearchNavigation;
+  const { getNextSuggestionIndex } = NEWTAB_SEARCH_NAVIGATION;
   const {
     getShortcutRules,
     buildKeywordSuggestions,
@@ -6632,7 +5518,8 @@
     openSearchResultUrl,
     openMatchedTabSuggestion,
     refreshTabsForSearchContext,
-    resolveQuickNavigation
+    resolveQuickNavigation,
+    submitSearchQuery
   } = NEWTAB_SEARCH_NAVIGATION.createSearchNavigation({
     formatMessage,
     getExtensionResourceUrl,
@@ -6644,23 +5531,22 @@
     getSurfaceOpenDisposition,
     recordSearchSuggestionSelection,
     navigateToUrl,
-    pageState: {
-      get tabs() {
-        return tabs;
-      },
-      set tabs(value) {
-        tabs = value;
-      },
-      get openTabQuickSwitchEnabled() {
-        return openTabQuickSwitchEnabled;
-      },
-      get currentNewtabTabId() {
-        return currentNewtabTabId;
-      },
-      set currentNewtabTabId(value) {
-        currentNewtabTabId = value;
-      }
-    }
+    suggestionItems,
+    getAutoHighlightIndex: (...args) => getAutoHighlightIndex(...args),
+    renderSuggestions: (...args) => renderSuggestions(...args),
+    isSlashCommandInput: (...args) => isSlashCommandInput(...args),
+    getCommandMatch: (...args) => getCommandMatch(...args),
+    isModeCommand: (...args) => isModeCommand(...args),
+    isZenCommand: (...args) => isZenCommand(...args),
+    getNextThemeMode: (...args) => getNextThemeMode(...args),
+    setVisibleThemeMode: (...args) => setVisibleThemeMode(...args),
+    setZenModeEnabled: (...args) => setZenModeEnabled(...args),
+    activateSiteSearch,
+    focusSearchInputPreservingScroll: (...args) => focusSearchInputPreservingScroll(...args),
+    openCommunityQrDialog,
+    runSiteSearchProviderQuery,
+    navigateToQuery,
+    pageState
   });
 
   const NEWTAB_SUGGESTIONS_CONTROLLER = globalThis.LumnoNewtabSuggestionsController;
@@ -6754,148 +5640,9 @@
     sendRuntimeMessage,
     HELP_CENTER_SEARCH: window.LumnoHelpCenterSearch || null,
     COMMUNITY_LINKS: window.LumnoCommunityLinks || null,
-    openCommunityQrDialog: (...args) => openCommunityQrDialog(...args),
+    openCommunityQrDialog,
     getHelpCenterLocale,
-    pageState: {
-      get suggestionsView() {
-        return suggestionsView;
-      },
-      get numberShortcutInstantEnabled() {
-        return numberShortcutInstantEnabled;
-      },
-      get tabRankScoreDebugEnabled() {
-        return tabRankScoreDebugEnabled;
-      },
-      get selectedIndex() {
-        return selectedIndex;
-      },
-      set selectedIndex(value) {
-        selectedIndex = value;
-      },
-      get latestQuery() {
-        return latestQuery;
-      },
-      set latestQuery(value) {
-        latestQuery = value;
-      },
-      get inputParts() {
-        return inputParts;
-      },
-      get currentSuggestions() {
-        return currentSuggestions;
-      },
-      set currentSuggestions(value) {
-        currentSuggestions = value;
-      },
-      get tabs() {
-        return tabs;
-      },
-      set tabs(value) {
-        tabs = value;
-      },
-      get inlineSearchState() {
-        return inlineSearchState;
-      },
-      set inlineSearchState(value) {
-        inlineSearchState = value;
-      },
-      get siteSearchTriggerState() {
-        return siteSearchTriggerState;
-      },
-      set siteSearchTriggerState(value) {
-        siteSearchTriggerState = value;
-      },
-      get localSearchScopeTriggerState() {
-        return localSearchScopeTriggerState;
-      },
-      set localSearchScopeTriggerState(value) {
-        localSearchScopeTriggerState = value;
-      },
-      get lastSuggestionResponse() {
-        return lastSuggestionResponse;
-      },
-      set lastSuggestionResponse(value) {
-        lastSuggestionResponse = value;
-      },
-      get searchSuggestionsDismissed() {
-        return searchSuggestionsDismissed;
-      },
-      set searchSuggestionsDismissed(value) {
-        searchSuggestionsDismissed = value;
-      },
-      get suggestionRequestSeq() {
-        return suggestionRequestSeq;
-      },
-      set suggestionRequestSeq(value) {
-        suggestionRequestSeq = value;
-      },
-      get remoteSuggestionDebounceTimer() {
-        return remoteSuggestionDebounceTimer;
-      },
-      set remoteSuggestionDebounceTimer(value) {
-        remoteSuggestionDebounceTimer = value;
-      },
-      get suggestionRequestWatchdogTimer() {
-        return suggestionRequestWatchdogTimer;
-      },
-      set suggestionRequestWatchdogTimer(value) {
-        suggestionRequestWatchdogTimer = value;
-      },
-      get latestRawQuery() {
-        return latestRawQuery;
-      },
-      set latestRawQuery(value) {
-        latestRawQuery = value;
-      },
-      get localSearchScopeState() {
-        return localSearchScopeState;
-      },
-      get siteSearchState() {
-        return siteSearchState;
-      },
-      get globalThemeMode() {
-        return globalThemeMode;
-      },
-      set globalThemeMode(value) {
-        globalThemeMode = value;
-      },
-      get newtabThemeMode() {
-        return newtabThemeMode;
-      },
-      set newtabThemeMode(value) {
-        newtabThemeMode = value;
-      },
-      get newtabThemeScope() {
-        return newtabThemeScope;
-      },
-      set newtabThemeScope(value) {
-        newtabThemeScope = value;
-      },
-      get currentThemeMode() {
-        return currentThemeMode;
-      },
-      get siteSearchProvidersCache() {
-        return siteSearchProvidersCache;
-      },
-      get aggregateSearchesCache() {
-        return aggregateSearchesCache;
-      },
-      get simpleModeEnabled() {
-        return simpleModeEnabled;
-      },
-      get searchResultPriorityMode() {
-        return searchResultPriorityMode;
-      },
-      get searchResultDisplayLimit() {
-        return searchResultDisplayLimit;
-      },
-      get openTabQuickSwitchEnabled() {
-        return openTabQuickSwitchEnabled;
-      },
-      get currentNewtabTabId() {
-        return currentNewtabTabId;
-      }
-    }
+    pageState
   });
 
   const NEWTAB_INPUT_FOCUS = globalThis.LumnoNewtabInputFocus;
@@ -6909,23 +5656,7 @@
     refreshTabsIfIdle,
     initialNewtabInputAutoFocusReadyTask,
     isImeCompositionEvent,
-    pageState: {
-      get inputParts() {
-        return inputParts;
-      },
-      get newtabInputAutoFocusEnabled() {
-        return newtabInputAutoFocusEnabled;
-      },
-      get folderColorPicker() {
-        return folderColorPicker;
-      },
-      get inputModeController() {
-        return inputModeController;
-      },
-      get searchScopeIcon() {
-        return searchScopeIcon;
-      }
-    }
+    pageState
   });
 
   const NEWTAB_MODE_COMMANDS = globalThis.LumnoNewtabModeCommands;
@@ -6986,53 +5717,13 @@
     isNewtabThemeFollowingGlobal,
     normalizeNewtabThemeScope,
     NEWTAB_THEME_SCOPE_STORAGE_KEY,
-    pageState: {
-      get modeBadge() {
-        return modeBadge;
-      },
-      get zenModeEnabled() {
-        return zenModeEnabled;
-      },
-      set zenModeEnabled(value) {
-        zenModeEnabled = value;
-      },
-      get currentThemeMode() {
-        return currentThemeMode;
-      },
-      get inputParts() {
-        return inputParts;
-      },
-      get bookmarkTopbarRuntime() {
-        return bookmarkTopbarRuntime;
-      },
-      get currentBookmarkCount() {
-        return currentBookmarkCount;
-      },
-      get newtabThemeScope() {
-        return newtabThemeScope;
-      },
-      set newtabThemeScope(value) {
-        newtabThemeScope = value;
-      },
-      get globalThemeMode() {
-        return globalThemeMode;
-      },
-      set globalThemeMode(value) {
-        globalThemeMode = value;
-      },
-      get newtabThemeMode() {
-        return newtabThemeMode;
-      },
-      set newtabThemeMode(value) {
-        newtabThemeMode = value;
-      }
-    }
+    pageState
   });
 
   // Result labels follow where a plain click goes: 「前往」 in this tab, 「新开」 in a new one.
   const newtabSuggestionActionModel = Object.assign({}, SUGGESTION_ACTION_MODEL, {
     createSearchActionModel(input) {
-      const openInNewTab = newtabOpenInNewTab.search === true;
+      const openInNewTab = pageState.newtabOpenInNewTab.search === true;
       const model = SUGGESTION_ACTION_MODEL.createSearchActionModel({
         ...input,
         enterAction: openInNewTab ? 'openNewTab' : 'go'
@@ -7042,7 +5733,7 @@
         : model;
     }
   });
-  suggestionsView = NEWTAB_SUGGESTIONS_VIEW.createSuggestionsView({
+  pageState.suggestionsView = NEWTAB_SUGGESTIONS_VIEW.createSuggestionsView({
     document,
     container: suggestionsContainer,
     items: suggestionItems,
@@ -7051,12 +5742,12 @@
     getRiSvg,
     sanitizeDisplayText,
     formatTabRankDebugText,
-    isTabRankScoreDebugEnabled: () => tabRankScoreDebugEnabled,
+    isTabRankScoreDebugEnabled: () => pageState.tabRankScoreDebugEnabled,
     shouldBlockFaviconForHost,
     isLocalNetworkHost,
     getHostFromUrl,
     getUrlDisplay,
-    isSimpleModeEnabled: () => simpleModeEnabled,
+    isSimpleModeEnabled: () => pageState.simpleModeEnabled,
     getThemeHostForSuggestion,
     getImmediateThemeForSuggestion,
     getThemeForSuggestion,
@@ -7078,9 +5769,9 @@
     getPageFaviconRenderCandidates,
     setSuggestionsVisible,
     onSetSelectedIndex: (nextIndex) => {
-      selectedIndex = nextIndex;
+      pageState.selectedIndex = nextIndex;
     },
-    getSelectedIndex: () => selectedIndex,
+    getSelectedIndex: () => pageState.selectedIndex,
     onSwitchToTab: (tab, event) => {
       if (shouldOpenSearchResultInBackgroundTab(event) && tab && tab.url) {
         chrome.runtime.sendMessage({
@@ -7115,24 +5806,24 @@
   });
 
   function shouldRemoveSearchModeTagOnBackspace(event) {
-    if (!inputModeController ||
-        typeof inputModeController.shouldRemoveModeTagOnBackspace !== 'function') {
+    if (!pageState.inputModeController ||
+        typeof pageState.inputModeController.shouldRemoveModeTagOnBackspace !== 'function') {
       return true;
     }
-    const shouldRemove = inputModeController.shouldRemoveModeTagOnBackspace(event);
+    const shouldRemove = pageState.inputModeController.shouldRemoveModeTagOnBackspace(event);
     if (!shouldRemove && event && typeof event.preventDefault === 'function') {
       event.preventDefault();
     }
     return shouldRemove;
   }
 
-  inputParts = createSearchInput({
+  pageState.inputParts = createSearchInput({
     useImportantStyles: false,
     useInlineBaseStyles: false,
     containerId: '_x_extension_newtab_input_container_2024_unique_',
     inputId: '_x_extension_newtab_search_input_2024_unique_',
     iconId: '_x_extension_newtab_search_icon_2024_unique_',
-    placeholder: t('search_placeholder', defaultPlaceholderText),
+    placeholder: t('search_placeholder', pageState.defaultPlaceholderText),
     modeBadge: {
       id: '_x_extension_newtab_mode_badge_2024_unique_',
       className: 'x-lumno-search-input-mode__badge',
@@ -7192,7 +5883,7 @@
       }
     },
     onInput: function(event) {
-      searchSuggestionsDismissed = false;
+      pageState.searchSuggestionsDismissed = false;
       if (!isApplyingSearchInputHistory) {
         searchInputHistoryController.resetNavigation();
       }
@@ -7203,32 +5894,32 @@
       const isPaste = inputType === 'insertFromPaste';
       const isDelete = inputType && inputType.startsWith('delete');
       if (isDelete) {
-        lastDeletionAt = Date.now();
+        pageState.lastDeletionAt = Date.now();
       }
       if (imeKeyGuard.isComposing()) {
-        latestQuery = query;
-        latestRawQuery = rawValue;
+        pageState.latestQuery = query;
+        pageState.latestRawQuery = rawValue;
         return;
       }
       if (!query) {
-        latestQuery = '';
-        latestRawQuery = '';
+        pageState.latestQuery = '';
+        pageState.latestRawQuery = '';
         clearAutocomplete();
-        if (remoteSuggestionDebounceTimer) {
-          clearTimeout(remoteSuggestionDebounceTimer);
-          remoteSuggestionDebounceTimer = null;
+        if (pageState.remoteSuggestionDebounceTimer) {
+          clearTimeout(pageState.remoteSuggestionDebounceTimer);
+          pageState.remoteSuggestionDebounceTimer = null;
         }
-        if (suggestionRequestWatchdogTimer) {
-          clearTimeout(suggestionRequestWatchdogTimer);
-          suggestionRequestWatchdogTimer = null;
+        if (pageState.suggestionRequestWatchdogTimer) {
+          clearTimeout(pageState.suggestionRequestWatchdogTimer);
+          pageState.suggestionRequestWatchdogTimer = null;
         }
         clearSearchSuggestions();
         return;
       }
-      latestRawQuery = rawValue;
+      pageState.latestRawQuery = rawValue;
       clearAutocomplete();
-      if (!localSearchScopeState && isSlashCommandInput(query)) {
-        latestQuery = query;
+      if (!pageState.localSearchScopeState && isSlashCommandInput(query)) {
+        pageState.latestQuery = query;
         renderSuggestions([], query);
         return;
       }
@@ -7238,7 +5929,7 @@
         typeof directUrlSuggestion._xMatchedTabId === 'number'
       );
       if (isPaste || directUrlSuggestion) {
-        latestQuery = query;
+        pageState.latestQuery = query;
         if (!directUrlSuggestion || hasCachedOpenTabMatch) {
           renderPendingSuggestions(query);
         }
@@ -7257,22 +5948,22 @@
       dismissAutocompletePreviewOnNonTabKey(event);
       const suggestionNavigationKey =
         SUGGESTION_NAVIGATION.getSuggestionNavigationKey(event, {
-          macosCtrlEnabled: macosCtrlSuggestionNavigationEnabled,
+          macosCtrlEnabled: pageState.macosCtrlSuggestionNavigationEnabled,
           navigatorLike: typeof navigator === 'object' && navigator ? navigator : null
         });
       if (event.key !== 'Backspace' && !event.metaKey && !event.ctrlKey && !event.altKey) {
-        latestRawQuery = inputParts.input.value;
-        latestQuery = inputParts.input.value.trim();
+        pageState.latestRawQuery = pageState.inputParts.input.value;
+        pageState.latestQuery = pageState.inputParts.input.value.trim();
       }
-      if (event.key === 'Escape' && siteSearchState) {
+      if (event.key === 'Escape' && pageState.siteSearchState) {
         event.preventDefault();
         clearSiteSearch();
         return;
       }
-      if (event.key === 'Escape' && localSearchScopeState) {
+      if (event.key === 'Escape' && pageState.localSearchScopeState) {
         event.preventDefault();
         clearLocalSearchScope();
-        const fallbackQuery = inputParts.input.value.trim();
+        const fallbackQuery = pageState.inputParts.input.value.trim();
         if (fallbackQuery) {
           requestSuggestions(fallbackQuery, { immediate: true });
         } else {
@@ -7280,14 +5971,14 @@
         }
         return;
       }
-      if (event.key === 'Backspace' && siteSearchState && !inputParts.input.value) {
+      if (event.key === 'Backspace' && pageState.siteSearchState && !pageState.inputParts.input.value) {
         if (!shouldRemoveSearchModeTagOnBackspace(event)) {
           return;
         }
         clearSiteSearch();
         return;
       }
-      if (event.key === 'Backspace' && localSearchScopeState && !inputParts.input.value) {
+      if (event.key === 'Backspace' && pageState.localSearchScopeState && !pageState.inputParts.input.value) {
         if (!shouldRemoveSearchModeTagOnBackspace(event)) {
           return;
         }
@@ -7305,14 +5996,14 @@
         event.stopPropagation();
         const result = searchInputHistoryController.move(
           inputHistoryDirection,
-          inputParts.input.value
+          pageState.inputParts.input.value
         );
         if (result.handled) {
           isApplyingSearchInputHistory = true;
           try {
-            inputParts.input.value = result.value;
-            inputParts.input.setSelectionRange(result.value.length, result.value.length);
-            inputParts.input.dispatchEvent(new Event('input', { bubbles: true }));
+            pageState.inputParts.input.value = result.value;
+            pageState.inputParts.input.setSelectionRange(result.value.length, result.value.length);
+            pageState.inputParts.input.dispatchEvent(new Event('input', { bubbles: true }));
           } finally {
             isApplyingSearchInputHistory = false;
           }
@@ -7324,38 +6015,14 @@
           return;
         }
         event.preventDefault();
-        let didWrap = false;
-        if (suggestionNavigationKey === 'ArrowDown') {
-          if (selectedIndex === -1) {
-            const autoIndex = getAutoHighlightIndex();
-            selectedIndex = autoIndex >= 0
-              ? (autoIndex + 1) % suggestionItems.length
-              : 0;
-            didWrap = autoIndex >= 0 && selectedIndex === 0;
-          } else {
-            const previousIndex = selectedIndex;
-            selectedIndex = (selectedIndex + 1) % suggestionItems.length;
-            didWrap = previousIndex === suggestionItems.length - 1 && selectedIndex === 0;
-          }
-        } else {
-          if (selectedIndex === 0) {
-            selectedIndex = suggestionItems.length - 1;
-            didWrap = true;
-          } else if (selectedIndex === -1) {
-            const autoIndex = getAutoHighlightIndex();
-            if (autoIndex > 0) {
-              selectedIndex = autoIndex - 1;
-            } else if (autoIndex === 0) {
-              selectedIndex = suggestionItems.length - 1;
-              didWrap = true;
-            } else {
-              selectedIndex = suggestionItems.length - 1;
-              didWrap = true;
-            }
-          } else {
-            selectedIndex = selectedIndex - 1;
-          }
-        }
+        const next = getNextSuggestionIndex(
+          suggestionNavigationKey === 'ArrowDown' ? 1 : -1,
+          pageState.selectedIndex,
+          suggestionItems.length,
+          pageState.selectedIndex === -1 ? getAutoHighlightIndex() : -1
+        );
+        pageState.selectedIndex = next.index;
+        const didWrap = next.didWrap;
         updateSelection();
         scrollSelectedSuggestionIntoView(
           suggestionNavigationKey === 'ArrowDown' ? 'down' : 'up',
@@ -7375,154 +6042,14 @@
         return;
       }
       searchInputHistoryController.record(query);
-      const commandMatch = localSearchScopeState ? null : getCommandMatch(query);
-      if (commandMatch && selectedIndex === -1) {
-        if (commandMatch.command.type === 'commandNewTab') {
-          chrome.runtime.sendMessage({ action: 'openNewTab' });
-          return;
-        }
-        if (commandMatch.command.type === 'commandSettings') {
-          chrome.runtime.sendMessage({ action: 'openOptionsPage' });
-          return;
-        }
-      }
-      if (!localSearchScopeState && isModeCommand(query)) {
-        setVisibleThemeMode(getNextThemeMode(currentThemeMode));
-        return;
-      }
-      if (!localSearchScopeState && isZenCommand(query)) {
-        setZenModeEnabled(!zenModeEnabled);
-        return;
-      }
-      const executeSuggestion = (selectedSuggestion, event, activeSuggestionIndex) => {
-        if (!selectedSuggestion) {
-          return false;
-        }
-        const activeItem = Number.isInteger(activeSuggestionIndex)
-          ? suggestionItems[activeSuggestionIndex]
-          : null;
-        if (selectedSuggestion.type === 'modeSwitch') {
-          setVisibleThemeMode(selectedSuggestion.nextMode);
-          return true;
-        }
-        if (selectedSuggestion.type === 'zenSwitch') {
-          setZenModeEnabled(selectedSuggestion.nextEnabled);
-          return true;
-        }
-        if (selectedSuggestion.type === 'commandNewTab') {
-          chrome.runtime.sendMessage({ action: 'openNewTab' });
-          return true;
-        }
-        if (selectedSuggestion.type === 'commandSettings') {
-          chrome.runtime.sendMessage({ action: 'openOptionsPage' });
-          return true;
-        }
-        if (selectedSuggestion.type === 'siteSearchPrompt' && selectedSuggestion.provider) {
-          activateSiteSearch(selectedSuggestion.provider);
-          focusSearchInputPreservingScroll();
-          return true;
-        }
-        if (selectedSuggestion.type === 'helpFeedback' && selectedSuggestion.feedbackKey === 'community') {
-          openCommunityQrDialog(selectedSuggestion.url);
-          return true;
-        }
-        if (selectedSuggestion.provider && selectedSuggestion.searchQuery) {
-          return runSiteSearchProviderQuery(
-            selectedSuggestion.provider,
-            selectedSuggestion.searchQuery,
-            getSearchResultDisposition(event)
-          );
-        }
-        if (shouldSwitchMatchedTabSuggestion(selectedSuggestion, activeSuggestionIndex)) {
-          openMatchedTabSuggestion(selectedSuggestion, event, activeItem, query);
-          return true;
-        }
-        if (shouldOpenSearchResultInBackgroundTab(event) && selectedSuggestion.url) {
-          return openSearchResultUrl(selectedSuggestion, query, event);
-        }
-        if (selectedSuggestion.forceSearch && selectedSuggestion.searchQuery) {
-          navigateToQuery(selectedSuggestion.searchQuery, true, getSearchResultDisposition(event));
-          return true;
-        }
-        if (selectedSuggestion.url) {
-          return openSearchResultUrl(selectedSuggestion, query, event);
-        }
-        return false;
-      };
-      if (selectedIndex >= 0 && currentSuggestions[selectedIndex]) {
-        if (executeSuggestion(currentSuggestions[selectedIndex], event, selectedIndex)) {
-          return;
-        }
-      } else {
-        const autoIndex = getAutoHighlightIndex();
-        if (autoIndex >= 0 && currentSuggestions[autoIndex]) {
-          if (executeSuggestion(currentSuggestions[autoIndex], event, autoIndex)) {
-            return;
-          }
-        }
-      }
-      if (!localSearchScopeState && isSlashCommandInput(query)) {
-        renderSuggestions([], query);
-        return;
-      }
-      if (localSearchScopeState) {
-        return;
-      }
-      if (siteSearchState) {
-        if (runSiteSearchProviderQuery(
-          siteSearchState,
-          query,
-          getSearchResultDisposition(event)
-        )) {
-          return;
-        }
-      }
-      const currentRawInput = (latestRawQuery || inputParts.input.value || '').trim();
-      if (inlineSearchState && inlineSearchState.isAuto &&
-          inlineSearchState.rawInput === currentRawInput) {
-        if (inlineSearchState.provider && inlineSearchState.query) {
-          if (runSiteSearchProviderQuery(
-            inlineSearchState.provider,
-            inlineSearchState.query,
-            getSearchResultDisposition(event)
-          )) {
-            return;
-          }
-        } else if (inlineSearchState.url) {
-          openSearchResultUrl({
-            url: inlineSearchState.url,
-            title: inlineSearchState.url,
-            type: 'inlineSiteSearch'
-          }, query, event);
-          return;
-        }
-      }
-      if (autocompleteState && autocompleteState.url) {
-        openSearchResultUrl({
-          url: autocompleteState.url,
-          title: autocompleteState.title || '',
-          type: 'autocomplete'
-        }, query, event);
-        return;
-      }
-      resolveQuickNavigation(query).then((targetUrl) => {
-        if (targetUrl) {
-          openSearchResultUrl({
-            url: targetUrl,
-            title: query,
-            type: 'quickNavigation'
-          }, query, event);
-          return;
-        }
-        navigateToQuery(query, false, getSearchResultDisposition(event));
-      });
+      submitSearchQuery(query, event);
     }
   });
   markNewtabStartupMilestone('search-input-created');
 
   const handleBackgroundPointerFocus = NEWTAB_BACKGROUND_SEARCH_FOCUS.createBackgroundFocusHandler({
     getBackgroundTargets: () => [document.body, root, searchLayer],
-    getSearchValue: () => inputParts.input.value,
+    getSearchValue: () => pageState.inputParts.input.value,
     dismissSearchResults: dismissSearchSuggestionsFromBackground,
     focusSearch: focusSearchInputPreservingScroll
   });
@@ -7537,49 +6064,49 @@
     }
   }, true);
   window.addEventListener('pointerdown', handleBackgroundPointerFocus, true);
-  modeBadge = inputParts.modeBadge;
-  const searchInput = inputParts.input;
+  pageState.modeBadge = pageState.inputParts.modeBadge;
+  const searchInput = pageState.inputParts.input;
   searchInput.addEventListener('focus', restoreDismissedSearchSuggestions);
   searchInputRef = searchInput;
-  const searchScopeIcon = inputParts.icon;
-  const rightIcon = inputParts.rightIcon;
+  pageState.searchScopeIcon = pageState.inputParts.icon;
+  const rightIcon = pageState.inputParts.rightIcon;
   const searchScopeTooltipText = () => t(
     'shortcut_reference_search_open_scope_menu_title',
     '打开搜索范围面板'
   );
   function setSearchScopeIconVisualState(active) {
-    if (!searchScopeIcon) {
+    if (!pageState.searchScopeIcon) {
       return;
     }
-    const enabled = searchScopeIcon.getAttribute('aria-disabled') !== 'true';
-    searchScopeIcon.dataset.hoverActive = active && enabled ? 'true' : 'false';
+    const enabled = pageState.searchScopeIcon.getAttribute('aria-disabled') !== 'true';
+    pageState.searchScopeIcon.dataset.hoverActive = active && enabled ? 'true' : 'false';
   }
   function setSearchScopeIconEnabled(enabled) {
-    if (!searchScopeIcon) {
+    if (!pageState.searchScopeIcon) {
       return;
     }
     const nextEnabled = enabled !== false;
-    searchScopeIcon.setAttribute('aria-disabled', nextEnabled ? 'false' : 'true');
-    searchScopeIcon.setAttribute('tabindex', nextEnabled ? '0' : '-1');
-    searchScopeIcon.setAttribute('aria-label', searchScopeTooltipText());
+    pageState.searchScopeIcon.setAttribute('aria-disabled', nextEnabled ? 'false' : 'true');
+    pageState.searchScopeIcon.setAttribute('tabindex', nextEnabled ? '0' : '-1');
+    pageState.searchScopeIcon.setAttribute('aria-label', searchScopeTooltipText());
     if (nextEnabled) {
-      searchScopeIcon.setAttribute('data-tooltip', searchScopeTooltipText());
+      pageState.searchScopeIcon.setAttribute('data-tooltip', searchScopeTooltipText());
       return;
     }
-    searchScopeIcon.removeAttribute('data-tooltip');
+    pageState.searchScopeIcon.removeAttribute('data-tooltip');
     hideSearchInputCursorTooltip();
     setSearchScopeIconVisualState(false);
-    if (typeof searchScopeIcon.blur === 'function') {
-      searchScopeIcon.blur();
+    if (typeof pageState.searchScopeIcon.blur === 'function') {
+      pageState.searchScopeIcon.blur();
     }
   }
   onLanguageChange(() => {
-    if (searchScopeIcon) {
-      setSearchScopeIconEnabled(searchScopeIcon.getAttribute('aria-disabled') !== 'true');
+    if (pageState.searchScopeIcon) {
+      setSearchScopeIconEnabled(pageState.searchScopeIcon.getAttribute('aria-disabled') !== 'true');
     }
   });
   function activateSearchScopeIcon(event) {
-    if (!searchScopeIcon || searchScopeIcon.getAttribute('aria-disabled') === 'true') {
+    if (!pageState.searchScopeIcon || pageState.searchScopeIcon.getAttribute('aria-disabled') === 'true') {
       return;
     }
     if (event && typeof event.preventDefault === 'function') {
@@ -7590,39 +6117,39 @@
     }
     hideSearchInputCursorTooltip();
     setSearchScopeIconVisualState(false);
-    if (inputModeController &&
-        typeof inputModeController.resetModeMenuDoubleTab === 'function') {
-      inputModeController.resetModeMenuDoubleTab();
+    if (pageState.inputModeController &&
+        typeof pageState.inputModeController.resetModeMenuDoubleTab === 'function') {
+      pageState.inputModeController.resetModeMenuDoubleTab();
     }
     openSearchModeMenuFromDoubleTab();
-    if (searchScopeIcon && typeof searchScopeIcon.blur === 'function') {
-      searchScopeIcon.blur();
+    if (pageState.searchScopeIcon && typeof pageState.searchScopeIcon.blur === 'function') {
+      pageState.searchScopeIcon.blur();
     }
   }
-  if (searchScopeIcon) {
-    searchScopeIcon.dataset.searchScopeAction = 'true';
-    searchScopeIcon.setAttribute('role', 'button');
+  if (pageState.searchScopeIcon) {
+    pageState.searchScopeIcon.dataset.searchScopeAction = 'true';
+    pageState.searchScopeIcon.setAttribute('role', 'button');
     setSearchScopeIconEnabled(true);
     setSearchScopeIconVisualState(false);
-    searchScopeIcon.addEventListener('mouseenter', () => {
+    pageState.searchScopeIcon.addEventListener('mouseenter', () => {
       setSearchScopeIconVisualState(true);
     });
-    searchScopeIcon.addEventListener('focus', () => {
+    pageState.searchScopeIcon.addEventListener('focus', () => {
       setSearchScopeIconVisualState(true);
     });
     ['mouseleave', 'blur', 'pointerup', 'pointercancel'].forEach((type) => {
-      searchScopeIcon.addEventListener(type, () => {
+      pageState.searchScopeIcon.addEventListener(type, () => {
         setSearchScopeIconVisualState(false);
       });
     });
-    searchScopeIcon.addEventListener('click', activateSearchScopeIcon);
-    searchScopeIcon.addEventListener('keydown', (event) => {
+    pageState.searchScopeIcon.addEventListener('click', activateSearchScopeIcon);
+    pageState.searchScopeIcon.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') {
         return;
       }
       activateSearchScopeIcon(event);
     });
-    bindSearchInputCursorTooltip(searchScopeIcon, searchScopeTooltipText);
+    bindSearchInputCursorTooltip(pageState.searchScopeIcon, searchScopeTooltipText);
   }
   function openWordmarkUrl(event) {
     if (event && typeof event.preventDefault === 'function') {
@@ -7634,9 +6161,9 @@
     openExternalNewTabUrl(COMMUNITY_LINKS.getStoreListing().url, event);
   }
   const shouldAnimateWordmarkEntry = !shouldSkipNewtabEntryMotion();
-  topContentContainer = document.createElement('div');
-  topContentController = NEWTAB_TOP_CONTENT.createTopContentController(
-    topContentContainer,
+  pageState.topContentContainer = document.createElement('div');
+  pageState.topContentController = NEWTAB_TOP_CONTENT.createTopContentController(
+    pageState.topContentContainer,
     {
       onActivate(disposition) {
         openWordmarkUrl(disposition);
@@ -7652,12 +6179,12 @@
   applyNewtabTopContentVisibility();
   function updateNoticeClaimsSessionSlot() {
     return Boolean(
-      updateNoticeController &&
-      typeof updateNoticeController.hasSessionSlot === 'function' &&
-      updateNoticeController.hasSessionSlot()
+      pageState.updateNoticeController &&
+      typeof pageState.updateNoticeController.hasSessionSlot === 'function' &&
+      pageState.updateNoticeController.hasSessionSlot()
     );
   }
-  updateNoticeController = UPDATE_NOTICE.createUpdateNotice({
+  pageState.updateNoticeController = UPDATE_NOTICE.createUpdateNotice({
     documentObj: document,
     featureHints: FEATURE_HINTS,
     chromeApi: chrome,
@@ -7665,9 +6192,9 @@
     t,
     getRiSvg,
     onSessionSlotClaimed() {
-      if (engagementNoticeController &&
-          typeof engagementNoticeController.suppressForSession === 'function') {
-        engagementNoticeController.suppressForSession();
+      if (pageState.engagementNoticeController &&
+          typeof pageState.engagementNoticeController.suppressForSession === 'function') {
+        pageState.engagementNoticeController.suppressForSession();
       }
     },
     onDetailsClick(_notice, event) {
@@ -7687,22 +6214,22 @@
       locale: getFeedbackWebLocale(),
       t,
       getRiSvg,
-      exposureGate: updateNoticeController && updateNoticeController.ready,
+      exposureGate: pageState.updateNoticeController && pageState.updateNoticeController.ready,
       canShow() {
         const updateNoticeVisible = Boolean(
-          updateNoticeController &&
-          updateNoticeController.element &&
-          updateNoticeController.element.getAttribute('data-visible') === 'true'
+          pageState.updateNoticeController &&
+          pageState.updateNoticeController.element &&
+          pageState.updateNoticeController.element.getAttribute('data-visible') === 'true'
         );
         return !updateNoticeVisible &&
           !updateNoticeClaimsSessionSlot() &&
           document.visibilityState === 'visible' &&
-          !String(inputParts.input.value || '').trim() &&
+          !String(pageState.inputParts.input.value || '').trim() &&
           document.body.getAttribute('data-nt-suggestions-open') !== 'true' &&
           !isFeedbackPopoverOpen();
       },
       onReview(event) {
-        const links = feedbackLinks || LUMNO_FEEDBACK_LINKS_FALLBACK;
+        const links = pageState.feedbackLinks || LUMNO_FEEDBACK_LINKS_FALLBACK;
         openFeedbackExternalUrl(
           COMMUNITY_LINKS.getReviewUrl(links),
           getOpenDisposition(event, 'newTab')
@@ -7728,8 +6255,8 @@
   }
   // Help Center results and the page the search row opens both follow the interface language.
   function getHelpCenterLocale() {
-    return currentResolvedLocale ||
-      (currentLanguageMode === 'system' ? getSystemLocale() : normalizeLocale(currentLanguageMode));
+    return pageState.currentResolvedLocale ||
+      (pageState.currentLanguageMode === 'system' ? getSystemLocale() : normalizeLocale(pageState.currentLanguageMode));
   }
 
   // The WeChat group QR opens in a dialog over the page, never in a new tab.
@@ -7739,7 +6266,7 @@
     }
     COMMUNITY_QR_DIALOG.open({
       documentObj: document,
-      imageUrl: qrUrl || (feedbackLinks || LUMNO_FEEDBACK_LINKS_FALLBACK).wechatQr,
+      imageUrl: qrUrl || (pageState.feedbackLinks || LUMNO_FEEDBACK_LINKS_FALLBACK).wechatQr,
       title: t('newtab_feedback_wechat_panel_title', 'Bug 反馈 & 新功能提需'),
       alt: t('newtab_feedback_wechat_qr_alt', 'Lumno 微信群二维码'),
       closeLabel: t('newtab_feedback_wechat_close_tooltip', '关闭'),
@@ -7756,7 +6283,7 @@
         document.documentElement.getAttribute('data-nt-focus-route-pending') === 'true') {
       return newtabEntryAnimationReadyPromise.then(() => false);
     }
-    helpCenterAskHintController = FEATURE_HINTS.createFeatureHint({
+    pageState.helpCenterAskHintController = FEATURE_HINTS.createFeatureHint({
       documentObj: document,
       windowObj: window,
       chromeApi: chrome,
@@ -7770,44 +6297,44 @@
         if (helpCenterAskProvider) {
           activateSiteSearch(helpCenterAskProvider);
         }
-        inputParts.input.focus({ preventScroll: true });
+        pageState.inputParts.input.focus({ preventScroll: true });
       }
     });
-    if (!helpCenterAskHintController || !helpCenterAskHintController.element) {
+    if (!pageState.helpCenterAskHintController || !pageState.helpCenterAskHintController.element) {
       return newtabEntryAnimationReadyPromise.then(() => false);
     }
-    inputParts.container.appendChild(helpCenterAskHintController.element);
+    pageState.inputParts.container.appendChild(pageState.helpCenterAskHintController.element);
     const providerReady = getSiteSearchProviders()
       .then((items) => (Array.isArray(items) ? items : [])
         .find((item) => SEARCH_UTILS.isHelpCenterSiteSearchProvider(item)) || null)
       .catch(() => null);
-    return Promise.all([providerReady, helpCenterAskHintController.ready]).then(([provider]) => {
+    return Promise.all([providerReady, pageState.helpCenterAskHintController.ready]).then(([provider]) => {
       helpCenterAskProvider = provider;
-      helpCenterAskHintController.setVisible(Boolean(provider));
-      return helpCenterAskHintController.isVisible();
+      pageState.helpCenterAskHintController.setVisible(Boolean(provider));
+      return pageState.helpCenterAskHintController.isVisible();
     });
   })();
 
   function dismissHelpCenterAskHint() {
-    if (helpCenterAskHintController && !helpCenterAskHintController.isDismissed()) {
-      helpCenterAskHintController.dismiss();
+    if (pageState.helpCenterAskHintController && !pageState.helpCenterAskHintController.isDismissed()) {
+      pageState.helpCenterAskHintController.dismiss();
     }
   }
 
-  inputParts.input.addEventListener('input', function() {
+  pageState.inputParts.input.addEventListener('input', function() {
     // Typing a question in the Help Center search means the tip has done its job.
-    if (siteSearchState && SEARCH_UTILS.isHelpCenterSiteSearchProvider(siteSearchState)) {
+    if (pageState.siteSearchState && SEARCH_UTILS.isHelpCenterSiteSearchProvider(pageState.siteSearchState)) {
       dismissHelpCenterAskHint();
     }
   });
 
-  inputParts.input.addEventListener('input', function() {
-    if (!String(inputParts.input.value || '').trim() ||
-        !engagementNoticeController ||
-        typeof engagementNoticeController.recordMeaningfulUse !== 'function') {
+  pageState.inputParts.input.addEventListener('input', function() {
+    if (!String(pageState.inputParts.input.value || '').trim() ||
+        !pageState.engagementNoticeController ||
+        typeof pageState.engagementNoticeController.recordMeaningfulUse !== 'function') {
       return;
     }
-    engagementNoticeController.recordMeaningfulUse();
+    pageState.engagementNoticeController.recordMeaningfulUse();
   });
 
   if (rightIcon) {
@@ -7845,7 +6372,7 @@
     // It shares the space above the input with the Help Center tip, so it waits its turn.
     if (typeof FEATURE_HINTS.createFeatureHint === 'function' &&
         document.documentElement.getAttribute('data-nt-focus-route-pending') !== 'true') {
-      webdavFeatureHintController = FEATURE_HINTS.createFeatureHint({
+      pageState.webdavFeatureHintController = FEATURE_HINTS.createFeatureHint({
         documentObj: document,
         windowObj: window,
         chromeApi: chrome,
@@ -7863,18 +6390,18 @@
           });
         }
       });
-      if (webdavFeatureHintController && webdavFeatureHintController.element) {
-        inputParts.container.appendChild(webdavFeatureHintController.element);
+      if (pageState.webdavFeatureHintController && pageState.webdavFeatureHintController.element) {
+        pageState.inputParts.container.appendChild(pageState.webdavFeatureHintController.element);
         helpCenterAskHintSettled.then((helpTipShowing) => {
-          if (!helpTipShowing && webdavFeatureHintController) {
-            webdavFeatureHintController.setVisible(true);
+          if (!helpTipShowing && pageState.webdavFeatureHintController) {
+            pageState.webdavFeatureHintController.setVisible(true);
           }
         });
       }
     }
   }
 
-  const searchClearButton = inputParts.clearAction;
+  const searchClearButton = pageState.inputParts.clearAction;
   // Width the clear button adds left of the close-other-tabs button: 30px button + 6px gap.
   const SEARCH_CLEAR_BUTTON_INSET = 36;
   if (searchClearButton) {
@@ -7890,7 +6417,7 @@
     searchInput.addEventListener('input', updateInputRightPadding);
   }
 
-  const closeOtherTabsButton = inputParts.secondaryAction;
+  const closeOtherTabsButton = pageState.inputParts.secondaryAction;
   if (closeOtherTabsButton) {
     const closeOtherTabsTooltipText = () => t('overlay_close_other_tabs_tooltip', '关闭其他标签页');
     const applyCloseOtherTabsTooltip = () => {
@@ -7927,7 +6454,7 @@
     if (!event || event.isTrusted !== true) {
       return;
     }
-    const closeOtherTabsButton = inputParts && inputParts.secondaryAction;
+    const closeOtherTabsButton = pageState.inputParts && pageState.inputParts.secondaryAction;
     // The confirm button is going away with its bubble; keep typing in the field.
     searchInput.focus({ preventScroll: true });
     chrome.runtime.sendMessage({ action: 'closeOtherTabsForOverlay' }, (response) => {
@@ -7946,14 +6473,14 @@
   }
 
   function dismissWebdavFeatureHint() {
-    if (webdavFeatureHintController && typeof webdavFeatureHintController.dismiss === 'function') {
-      webdavFeatureHintController.dismiss();
+    if (pageState.webdavFeatureHintController && typeof pageState.webdavFeatureHintController.dismiss === 'function') {
+      pageState.webdavFeatureHintController.dismiss();
     }
   }
 
   function updateInputRightPadding() {
-    if (inputModeController) {
-      inputModeController.updateLayout();
+    if (pageState.inputModeController) {
+      pageState.inputModeController.updateLayout();
     }
   }
 
@@ -7974,13 +6501,13 @@
   }
 
   function applyNewtabActionButtonVisibility() {
-    if (!newtabFeedbackButtonVisible && feedbackReactController) {
+    if (!newtabFeedbackButtonVisible && pageState.feedbackReactController) {
       closeFeedbackPopover();
     }
-    if (!newtabAppearanceButtonVisible && wallpaperRuntime) {
+    if (!newtabAppearanceButtonVisible && pageState.wallpaperRuntime) {
       closeWallpaperPanel();
     }
-    setNewtabActionControlVisibility(feedbackControl, newtabFeedbackButtonVisible);
+    setNewtabActionControlVisibility(pageState.feedbackControl, newtabFeedbackButtonVisible);
     setNewtabActionControlVisibility(wallpaperControl, newtabAppearanceButtonVisible);
   }
 
@@ -8018,14 +6545,14 @@
   }
 
   function setSiteSearchTabHint(provider) {
-    if (inputModeController) {
-      inputModeController.setTabHintVisible(true, provider);
+    if (pageState.inputModeController) {
+      pageState.inputModeController.setTabHintVisible(true, provider);
     }
   }
 
   function clearSiteSearchTabHint() {
-    if (inputModeController) {
-      inputModeController.setTabHintVisible(false);
+    if (pageState.inputModeController) {
+      pageState.inputModeController.setTabHintVisible(false);
     }
   }
 
@@ -8039,42 +6566,42 @@
     ], (result) => {
       const raw = result ? result[SEARCH_RESULT_PRIORITY_STORAGE_KEY] : null;
       const nextMode = normalizeSearchResultPriority(raw);
-      searchResultPriorityMode = nextMode;
-      enabledSearchResultSourceTypes = normalizeEnabledSearchResultSourceTypes(
+      pageState.searchResultPriorityMode = nextMode;
+      pageState.enabledSearchResultSourceTypes = normalizeEnabledSearchResultSourceTypes(
         result ? result[SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY] : null
       );
       const rawDisplayLimit = result ? result[SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY] : null;
-      searchResultDisplayLimit = normalizeSearchResultDisplayLimit(rawDisplayLimit);
-      openTabQuickSwitchEnabled = normalizeOverlayTabPriorityMode(
+      pageState.searchResultDisplayLimit = normalizeSearchResultDisplayLimit(rawDisplayLimit);
+      pageState.openTabQuickSwitchEnabled = normalizeOverlayTabPriorityMode(
         result ? result[OVERLAY_TAB_PRIORITY_STORAGE_KEY] : null
       );
-      newtabOpenInNewTab = SETTINGS.normalizeNewtabOpenInNewTab(
+      pageState.newtabOpenInNewTab = SETTINGS.normalizeNewtabOpenInNewTab(
         result ? result[NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY] : null
       );
       if (raw !== nextMode) {
         storageArea.set({ [SEARCH_RESULT_PRIORITY_STORAGE_KEY]: nextMode });
       }
-      if (rawDisplayLimit !== searchResultDisplayLimit) {
-        storageArea.set({ [SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY]: searchResultDisplayLimit });
+      if (rawDisplayLimit !== pageState.searchResultDisplayLimit) {
+        storageArea.set({ [SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY]: pageState.searchResultDisplayLimit });
       }
-      if (latestQuery) {
-        renderSuggestions(lastSuggestionResponse, latestQuery);
+      if (pageState.latestQuery) {
+        renderSuggestions(pageState.lastSuggestionResponse, pageState.latestQuery);
       }
     });
   }
   const defaultPlaceholder = searchInput.placeholder;
   const defaultCaretColor = searchInput.style.caretColor || '#7DB7FF';
   const inputModePrefixTransition = 'opacity 140ms cubic-bezier(0.22, 1, 0.36, 1), transform 160ms cubic-bezier(0.22, 1, 0.36, 1), background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease, color 140ms ease';
-  inputModeController = SEARCH_INPUT_MODE.createInputModeController(inputParts, {
+  pageState.inputModeController = SEARCH_INPUT_MODE.createInputModeController(pageState.inputParts, {
     surface: 'newtab',
     useImportantStyles: false,
     prefixTransition: inputModePrefixTransition,
     defaultPlaceholder,
     defaultCaretColor,
-    modeBadgeElement: modeBadge,
+    modeBadgeElement: pageState.modeBadge,
     rightReserveBase: 100,
     rightAnchorOffset: 88,
-    getExtraRightInset: () => (inputParts.syncClearAction() ? SEARCH_CLEAR_BUTTON_INSET : 0),
+    getExtraRightInset: () => (pageState.inputParts.syncClearAction() ? SEARCH_CLEAR_BUTTON_INSET : 0),
     baseInputPaddingLeft: 44,
     getThemeForMode,
     defaultTheme,
@@ -8109,7 +6636,7 @@
       setSearchScopeIconEnabled(!active);
     },
     onModeMenuLayoutChange: syncSearchModeMenuResultOffset,
-    isTabHintSuppressed: () => Boolean(siteSearchState || localSearchScopeState)
+    isTabHintSuppressed: () => Boolean(pageState.siteSearchState || pageState.localSearchScopeState)
   });
   syncSearchModeMenuResultOffset();
   if (typeof window.ResizeObserver === 'function') {
@@ -8118,15 +6645,15 @@
     );
     searchModeMenuResultResizeObserver.observe(suggestionsContainer);
   }
-  siteSearchTabHint = inputModeController.tabHintElement;
+  siteSearchTabHint = pageState.inputModeController.tabHintElement;
   loadSiteSearchIconCache().then(() => {
-    if (!siteSearchState || !inputModeController) {
+    if (!pageState.siteSearchState || !pageState.inputModeController) {
       return;
     }
-    const activeProvider = siteSearchState;
+    const activeProvider = pageState.siteSearchState;
     setSiteSearchPrefix(activeProvider, defaultTheme);
     getThemeForProvider(activeProvider).then((theme) => {
-      if (siteSearchState === activeProvider) {
+      if (pageState.siteSearchState === activeProvider) {
         setSiteSearchPrefix(activeProvider, theme);
       }
     }).catch(() => {});
@@ -8134,20 +6661,20 @@
   markNewtabStartupMilestone('search-controller-created');
 
   function updateSiteSearchPrefixLayout() {
-    if (inputModeController) {
-      inputModeController.updateLayout();
+    if (pageState.inputModeController) {
+      pageState.inputModeController.updateLayout();
     }
   }
 
   function setSiteSearchPrefix(provider, theme, options) {
-    if (inputModeController) {
-      inputModeController.setProviderPrefix(provider, theme, options);
+    if (pageState.inputModeController) {
+      pageState.inputModeController.setProviderPrefix(provider, theme, options);
     }
   }
 
   function clearSiteSearchPrefix() {
-    if (inputModeController) {
-      inputModeController.clearProviderPrefix();
+    if (pageState.inputModeController) {
+      pageState.inputModeController.clearProviderPrefix();
     }
   }
 
@@ -8158,13 +6685,13 @@
     const previousBookmarkLimit = getBookmarkLimit();
     applyNewtabWidthMode();
     applyNewtabShortcutColumns();
-    const recentLayoutBefore = recentLoadedOnce && shouldAnimateNewtabLayoutShift()
+    const recentLayoutBefore = pageState.recentLoadedOnce && shouldAnimateNewtabLayoutShift()
       ? captureRecentCardLayout()
       : null;
     const recentColumnsChanged = applyRecentGridColumns();
     const bookmarkColumnsChanged = applyBookmarkGridColumns();
     updateSiteSearchPrefixLayout();
-    if (bookmarkColumnsChanged && bookmarkLoadedOnce) {
+    if (bookmarkColumnsChanged && pageState.bookmarkLoadedOnce) {
       keepBookmarkPageAnchorAfterLimitChange(previousBookmarkLimit);
       renderCurrentBookmarkPage();
     }
@@ -8175,16 +6702,16 @@
     });
     positionBookmarkCascadeLevels();
     updateSuggestionsFloatingLayout();
-    if (recentColumnsChanged && recentLoadedOnce) {
+    if (recentColumnsChanged && pageState.recentLoadedOnce) {
       cancelRecentResizeLayoutAnimations();
-      renderRecentSites(recentSourceItems);
+      renderRecentSites(pageState.recentSourceItems);
       animateRecentResizeLayout(recentLayoutBefore);
     }
   }
 
   window.addEventListener('resize', () => {
-    newtabReadyViewportRevision += 1;
-    newtabResizeLayoutLocked = true;
+    pageState.newtabReadyViewportRevision += 1;
+    pageState.newtabResizeLayoutLocked = true;
     if (newtabResizeSettleTimer) {
       window.clearTimeout(newtabResizeSettleTimer);
     }
@@ -8194,11 +6721,11 @@
         ? captureTopContentLayout()
         : null;
       cancelTopContentLayoutAnimations();
-      newtabResizeLayoutLocked = false;
-      updateBookmarkSectionPosition({ releaseDockDensityLock: true });
+      pageState.newtabResizeLayoutLocked = false;
+      updateBookmarkSectionPosition();
       animateTopContentLayout(fromLayout);
     }, NEWTAB_RESIZE_DENSITY_SETTLE_MS);
-    if (newtabReadyRequested &&
+    if (pageState.newtabReadyRequested &&
         document.body &&
         document.body.getAttribute('data-nt-ready') !== '1') {
       scheduleNewtabReadyAfterViewportSettle();
@@ -8209,127 +6736,21 @@
     newtabResizeFrame = window.requestAnimationFrame(handleNewtabResize);
   }, { passive: true });
 
-  handleTabKey = function(event) {
-    if (!event || event.defaultPrevented) {
-      return false;
-    }
-    if (inputModeController &&
-        typeof inputModeController.handleModeMenuTabFocusToggle === 'function' &&
-        inputModeController.handleModeMenuTabFocusToggle(event)) {
-      return true;
-    }
-    if (inputModeController &&
-        typeof inputModeController.shouldOpenModeMenuForActiveModeOnTab === 'function' &&
-        inputModeController.shouldOpenModeMenuForActiveModeOnTab(event)) {
-      inputModeController.openModeMenu('none');
-      return true;
-    }
-    if (siteSearchState || localSearchScopeState) {
-      return false;
-    }
-    const rawValue = inputParts.input.value;
-    const rawTrigger = latestRawQuery || rawValue;
-    const triggerInput = (rawTrigger || rawValue).trim();
-    if (!triggerInput && inputModeController &&
-        typeof inputModeController.shouldOpenModeMenuOnDoubleTab === 'function') {
-      const shouldOpenModeMenu = inputModeController.shouldOpenModeMenuOnDoubleTab(event);
-      if (shouldOpenModeMenu) {
-        openSearchModeMenuFromDoubleTab();
-      }
-      return Boolean(event.defaultPrevented);
-    }
-    if (siteSearchTriggerState &&
-        siteSearchTriggerState.rawInput === triggerInput &&
-        siteSearchTriggerState.provider) {
-      event.preventDefault();
-      activateSiteSearch(siteSearchTriggerState.provider);
-      return true;
-    }
-    if (localSearchScopeTriggerState &&
-        localSearchScopeTriggerState.rawInput === triggerInput &&
-        localSearchScopeTriggerState.scope) {
-      event.preventDefault();
-      return activateLocalSearchScope(localSearchScopeTriggerState.scope);
-    }
-    if (triggerInput) {
-      event.preventDefault();
-      const siteProviders = (siteSearchProvidersCache && siteSearchProvidersCache.length > 0)
-        ? siteSearchProvidersCache
-        : defaultSiteSearchProviders;
-      const providers = getSearchTriggerProviders(
-        siteProviders,
-        aggregateSearchesCache
-      );
-      const topSiteMatch = getTopSiteMatchCandidate(currentSuggestions, triggerInput);
-      const directProvider = getSiteSearchTriggerCandidate(triggerInput, providers, topSiteMatch);
-      if (directProvider) {
-        activateSiteSearch(directProvider);
-        return true;
-      }
-      const cachedRules = window._x_extension_shortcut_rules_2024_unique_;
-      const directLocalScope = getLocalSearchScopeCandidate(triggerInput, cachedRules);
-      if (siteSearchProvidersCache && directLocalScope) {
-        activateLocalSearchScope(directLocalScope);
-        return true;
-      }
-      Promise.all([
-        getSiteSearchProviders(),
-        getAggregateSearches(),
-        getShortcutRules()
-      ]).then(([items, definitions, rules]) => {
-        if (siteSearchState || localSearchScopeState ||
-            String(inputParts.input.value || '').trim() !== triggerInput) {
-          return;
-        }
-        const asyncTopSiteMatch = getTopSiteMatchCandidate(currentSuggestions, triggerInput);
-        const asyncProvider = getSiteSearchTriggerCandidate(
-          triggerInput,
-          getSearchTriggerProviders(items, definitions),
-          asyncTopSiteMatch
-        );
-        if (asyncProvider) {
-          activateSiteSearch(asyncProvider);
-          return;
-        }
-        const asyncLocalScope = getLocalSearchScopeCandidate(triggerInput, rules);
-        if (asyncLocalScope) {
-          activateLocalSearchScope(asyncLocalScope);
-          return;
-        }
-        if (autocompleteState && autocompleteState.completion) {
-          inputParts.input.value = autocompleteState.completion;
-          inputParts.input.setSelectionRange(autocompleteState.completion.length, autocompleteState.completion.length);
-          latestRawQuery = autocompleteState.completion;
-          latestQuery = autocompleteState.completion.trim();
-          autocompleteState = null;
-          inputParts.input.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-      });
-      return true;
-    }
-    if (autocompleteState && autocompleteState.completion) {
-      event.preventDefault();
-      inputParts.input.value = autocompleteState.completion;
-      inputParts.input.setSelectionRange(autocompleteState.completion.length, autocompleteState.completion.length);
-      latestRawQuery = autocompleteState.completion;
-      latestQuery = autocompleteState.completion.trim();
-      autocompleteState = null;
-      inputParts.input.dispatchEvent(new Event('input', { bubbles: true }));
-      return true;
-    }
-    return false;
-  };
+  handleTabKey = handleSearchTabKey;
 
-  document.addEventListener('keydown', function(event) {
-    if (folderColorPicker && folderColorPicker.isOpen()) return;
-    if (event && event.key === 'Escape' && (shortcutDragState || bookmarkDragState || recentCardDragRuntime.hasRecentCardDragSession())) {
+  // Escape cancels a drag before it closes any open layer.
+  dismissStack.register('drag', {
+    priority: 1,
+    isOpen: () => Boolean(pageState.shortcutDragState || pageState.bookmarkDragState || recentCardDragRuntime.hasRecentCardDragSession()),
+    close: () => {
       finishShortcutDrag(null, { cancel: true });
       finishBookmarkDrag(null, { canceled: true });
       recentCardDragRuntime.finishRecentCardDrag(null, { cancel: true });
-      event.preventDefault();
-      event.stopPropagation();
-      return;
     }
+  });
+
+  document.addEventListener('keydown', function(event) {
+    if (pageState.folderColorPicker && pageState.folderColorPicker.isOpen()) return;
     if (!event || event.defaultPrevented || event.altKey || isEditableElement(event.target)) {
       return;
     }
@@ -8350,7 +6771,7 @@
   }, true);
 
   document.addEventListener('keydown', function(event) {
-    if (folderColorPicker && folderColorPicker.isOpen()) return;
+    if (pageState.folderColorPicker && pageState.folderColorPicker.isOpen()) return;
     syncSuggestionActionModifiersFromEvent(event);
     if (SUGGESTION_NAVIGATION.handleNumberShortcutKeyEvent(
       event,
@@ -8363,7 +6784,7 @@
     if (event.key !== 'Tab') {
       return;
     }
-    if (document.activeElement !== inputParts.input) {
+    if (document.activeElement !== pageState.inputParts.input) {
       return;
     }
     if (handleTabKey) {
@@ -8386,31 +6807,28 @@
 
   getSiteSearchProviders();
   getAggregateSearches().then(() => {
-    if (inputModeController && typeof inputModeController.refreshModeMenu === 'function') {
-      inputModeController.refreshModeMenu();
+    if (pageState.inputModeController && typeof pageState.inputModeController.refreshModeMenu === 'function') {
+      pageState.inputModeController.refreshModeMenu();
     }
-    if (latestQuery) {
-      requestSuggestions(latestQuery, { immediate: true });
+    if (pageState.latestQuery) {
+      requestSuggestions(pageState.latestQuery, { immediate: true });
     }
   });
 
-  addStorageChangeListener((changes, areaName) => {
-    if (!isPrimaryStorageAreaName(areaName) || !(
-      changes[SITE_SEARCH_STORAGE_KEY] ||
-      changes[SITE_SEARCH_DISABLED_STORAGE_KEY] ||
-      changes[AGGREGATE_SEARCH_STORAGE_KEY]
-    )) {
-      return;
-    }
-    if (changes[AGGREGATE_SEARCH_STORAGE_KEY]) {
-      aggregateSearchesLoadVersion += 1;
-      aggregateSearchesLoadPromise = null;
-      aggregateSearchesCache = AGGREGATE_SEARCH_STORE.normalizeAggregateSearches(
-        changes[AGGREGATE_SEARCH_STORAGE_KEY].newValue
+  storageChanges.on([
+    SITE_SEARCH_STORAGE_KEY,
+    SITE_SEARCH_DISABLED_STORAGE_KEY,
+    pageState.AGGREGATE_SEARCH_STORAGE_KEY
+  ], (changes) => {
+    if (changes[pageState.AGGREGATE_SEARCH_STORAGE_KEY]) {
+      pageState.aggregateSearchesLoadVersion += 1;
+      pageState.aggregateSearchesLoadPromise = null;
+      pageState.aggregateSearchesCache = AGGREGATE_SEARCH_STORE.normalizeAggregateSearches(
+        changes[pageState.AGGREGATE_SEARCH_STORAGE_KEY].newValue
       );
-      if (isAggregateSearchProvider(siteSearchState)) {
-        const currentId = String(siteSearchState.aggregateId || '');
-        const updatedDefinition = aggregateSearchesCache.find(
+      if (isAggregateSearchProvider(pageState.siteSearchState)) {
+        const currentId = String(pageState.siteSearchState.aggregateId || '');
+        const updatedDefinition = pageState.aggregateSearchesCache.find(
           (item) => String(item && item.id ? item.id : '') === currentId
         );
         const updatedProvider = isAggregateSearchDefinitionAvailable(
@@ -8420,17 +6838,17 @@
           ? createAggregateSearchScopeProvider(updatedDefinition)
           : null;
         if (updatedProvider) {
-          siteSearchState = updatedProvider;
+          pageState.siteSearchState = updatedProvider;
           setSiteSearchPrefix(updatedProvider, defaultTheme, { animate: false });
         } else {
           clearSiteSearch();
         }
       }
-      if (inputModeController && typeof inputModeController.refreshModeMenu === 'function') {
-        inputModeController.refreshModeMenu();
+      if (pageState.inputModeController && typeof pageState.inputModeController.refreshModeMenu === 'function') {
+        pageState.inputModeController.refreshModeMenu();
       }
-      if (latestQuery) {
-        requestSuggestions(latestQuery, { immediate: true });
+      if (pageState.latestQuery) {
+        requestSuggestions(pageState.latestQuery, { immediate: true });
       }
     }
     if (!changes[SITE_SEARCH_STORAGE_KEY] && !changes[SITE_SEARCH_DISABLED_STORAGE_KEY]) {
@@ -8441,54 +6859,54 @@
     }
     const providerReload = reloadSiteSearchProvidersFromStorage();
     providerReload.promise.then(() => {
-      if (providerReload.version !== siteSearchProvidersLoadVersion) {
+      if (providerReload.version !== pageState.siteSearchProvidersLoadVersion) {
         return;
       }
-      if (isAggregateSearchProvider(siteSearchState)) {
-        const activeDefinition = (aggregateSearchesCache || []).find((item) => (
-          String(item && item.id ? item.id : '') === String(siteSearchState.aggregateId || '')
+      if (isAggregateSearchProvider(pageState.siteSearchState)) {
+        const activeDefinition = (pageState.aggregateSearchesCache || []).find((item) => (
+          String(item && item.id ? item.id : '') === String(pageState.siteSearchState.aggregateId || '')
         ));
-        if (!isAggregateSearchDefinitionAvailable(activeDefinition, siteSearchProvidersCache)) {
+        if (!isAggregateSearchDefinitionAvailable(activeDefinition, pageState.siteSearchProvidersCache)) {
           clearSiteSearch();
         }
       }
-      if (inputModeController && typeof inputModeController.refreshModeMenu === 'function') {
-        inputModeController.refreshModeMenu();
+      if (pageState.inputModeController && typeof pageState.inputModeController.refreshModeMenu === 'function') {
+        pageState.inputModeController.refreshModeMenu();
       }
-      if (latestQuery) {
-        requestSuggestions(latestQuery, { immediate: true });
+      if (pageState.latestQuery) {
+        requestSuggestions(pageState.latestQuery, { immediate: true });
       }
     });
   });
 
-  inputParts.input.addEventListener('compositionstart', function(event) {
-    suggestionRequestSeq += 1;
+  pageState.inputParts.input.addEventListener('compositionstart', function(event) {
+    pageState.suggestionRequestSeq += 1;
     directNavigationSettleController.cancel();
-    if (remoteSuggestionDebounceTimer) {
-      clearTimeout(remoteSuggestionDebounceTimer);
-      remoteSuggestionDebounceTimer = null;
+    if (pageState.remoteSuggestionDebounceTimer) {
+      clearTimeout(pageState.remoteSuggestionDebounceTimer);
+      pageState.remoteSuggestionDebounceTimer = null;
     }
-    if (suggestionRequestWatchdogTimer) {
-      clearTimeout(suggestionRequestWatchdogTimer);
-      suggestionRequestWatchdogTimer = null;
+    if (pageState.suggestionRequestWatchdogTimer) {
+      clearTimeout(pageState.suggestionRequestWatchdogTimer);
+      pageState.suggestionRequestWatchdogTimer = null;
     }
     imeKeyGuard.markCompositionStart(event);
     clearAutocomplete();
   });
 
-  inputParts.input.addEventListener('keyup', imeKeyGuard.markKeyUp, true);
+  pageState.inputParts.input.addEventListener('keyup', imeKeyGuard.markKeyUp, true);
 
-  inputParts.input.addEventListener('compositionend', function(event) {
+  pageState.inputParts.input.addEventListener('compositionend', function(event) {
     imeKeyGuard.markCompositionEnd(event);
     const rawValue = event.target.value;
     const query = rawValue.trim();
-    latestQuery = query;
-    latestRawQuery = rawValue;
+    pageState.latestQuery = query;
+    pageState.latestRawQuery = rawValue;
     clearAutocomplete();
     if (!query) {
-      if (remoteSuggestionDebounceTimer) {
-        clearTimeout(remoteSuggestionDebounceTimer);
-        remoteSuggestionDebounceTimer = null;
+      if (pageState.remoteSuggestionDebounceTimer) {
+        clearTimeout(pageState.remoteSuggestionDebounceTimer);
+        pageState.remoteSuggestionDebounceTimer = null;
       }
       clearSearchSuggestions();
       return;
@@ -8509,9 +6927,6 @@
     requestSuggestions(query);
   });
 
-  if (BOOKMARK_CASCADE_DEBUG_UI_ENABLED && bookmarkCascadeRuntime) {
-    bookmarkCascadeRuntime.createDebugControls();
-  }
   createWallpaperControls();
   createFeedbackControls();
   markNewtabStartupMilestone('auxiliary-controls-created');
@@ -8520,51 +6935,43 @@
       return;
     }
     const target = event && event.target ? event.target : null;
-    if (feedbackControl && (target === feedbackControl || feedbackControl.contains(target))) {
+    if (pageState.feedbackControl && (target === pageState.feedbackControl || pageState.feedbackControl.contains(target))) {
       return;
     }
     closeFeedbackPopover();
-  }, true);
-  document.addEventListener('keydown', function(event) {
-    if (!event || event.key !== 'Escape' || !isFeedbackPopoverOpen()) {
-      return;
-    }
-    event.preventDefault();
-    closeFeedbackPopover({ restoreFocus: true });
   }, true);
   document.addEventListener('pointerdown', function(event) {
     if (!isWallpaperPanelOpen()) {
       return;
     }
     const target = event && event.target ? event.target : null;
-    if (wallpaperRuntime && wallpaperRuntime.containsTarget(target)) {
+    if (pageState.wallpaperRuntime && pageState.wallpaperRuntime.containsTarget(target)) {
       return;
     }
     closeWallpaperPanel();
   }, true);
-  document.addEventListener('keydown', function(event) {
-    if (!event || event.key !== 'Escape' || !isWallpaperPanelOpen()) {
-      return;
+  dismissStack.register('wallpaper-panel', {
+    isOpen: isWallpaperPanelOpen,
+    close: () => {
+      // Escape dismisses an open filter menu before it closes the whole panel.
+      if (pageState.wallpaperRuntime.closeOpenMenu()) {
+        return;
+      }
+      closeWallpaperPanel({ restoreFocus: true });
     }
-    event.preventDefault();
-    // Escape dismisses an open filter menu before it closes the whole panel.
-    if (wallpaperRuntime.closeOpenMenu()) {
-      return;
-    }
-    closeWallpaperPanel({ restoreFocus: true });
-  }, true);
+  });
 
-  document.body.insertBefore(topContentContainer, root);
-  searchLayer.appendChild(inputParts.container);
+  document.body.insertBefore(pageState.topContentContainer, root);
+  searchLayer.appendChild(pageState.inputParts.container);
   root.appendChild(searchLayer);
   const newtabUpdateNoticeAnchor = root.nextSibling;
-  if (shortcutSection) {
-    document.body.insertBefore(shortcutSection, newtabUpdateNoticeAnchor);
+  if (pageState.shortcutSection) {
+    document.body.insertBefore(pageState.shortcutSection, newtabUpdateNoticeAnchor);
   }
-  if (updateNoticeController && updateNoticeController.element) {
-    document.body.insertBefore(updateNoticeController.element, newtabUpdateNoticeAnchor);
-    if (typeof updateNoticeController.recordExposure === 'function') {
-      updateNoticeController.recordExposure();
+  if (pageState.updateNoticeController && pageState.updateNoticeController.element) {
+    document.body.insertBefore(pageState.updateNoticeController.element, newtabUpdateNoticeAnchor);
+    if (typeof pageState.updateNoticeController.recordExposure === 'function') {
+      pageState.updateNoticeController.recordExposure();
     }
   }
   document.body.insertBefore(suggestionsSurface, newtabUpdateNoticeAnchor);
@@ -8573,44 +6980,41 @@
   // 等首轮语言解析完成后再创建，避免默认文案在新标签页首帧短暂闪现。
   Promise.all([
     initialLanguageReadyPromise,
-    updateNoticeController && updateNoticeController.ready
-      ? updateNoticeController.ready
+    pageState.updateNoticeController && pageState.updateNoticeController.ready
+      ? pageState.updateNoticeController.ready
       : Promise.resolve(false)
   ]).then(() => {
-    if (engagementNoticeController) {
+    if (pageState.engagementNoticeController) {
       return;
     }
-    engagementNoticeController = createNewtabEngagementNoticeController();
-    if (!engagementNoticeController || !engagementNoticeController.element) {
+    pageState.engagementNoticeController = createNewtabEngagementNoticeController();
+    if (!pageState.engagementNoticeController || !pageState.engagementNoticeController.element) {
       return;
     }
     const engagementNoticeAnchor = suggestionsSurface.parentNode === document.body
       ? suggestionsSurface
       : newtabUpdateNoticeAnchor;
-    document.body.insertBefore(engagementNoticeController.element, engagementNoticeAnchor);
-    if (String(inputParts.input.value || '').trim() &&
-        typeof engagementNoticeController.recordMeaningfulUse === 'function') {
-      engagementNoticeController.recordMeaningfulUse();
+    document.body.insertBefore(pageState.engagementNoticeController.element, engagementNoticeAnchor);
+    if (String(pageState.inputParts.input.value || '').trim() &&
+        typeof pageState.engagementNoticeController.recordMeaningfulUse === 'function') {
+      pageState.engagementNoticeController.recordMeaningfulUse();
     }
   });
-  if (bookmarkTopbarRuntime) {
-    bookmarkTopbarRuntime.mount(document.body);
+  if (pageState.bookmarkTopbarRuntime) {
+    pageState.bookmarkTopbarRuntime.mount(document.body);
   }
   bottomDockRuntime.mount(document.body);
-  const initialQuoteReadyTask = quoteRuntime
-    ? quoteRuntime.mount().catch(() => true)
+  const initialQuoteReadyTask = pageState.quoteRuntime
+    ? pageState.quoteRuntime.mount().catch(() => true)
     : Promise.resolve(true);
   if (wallpaperControl) {
     document.body.appendChild(wallpaperControl);
   }
-  if (feedbackControl) {
-    document.body.appendChild(feedbackControl);
+  if (pageState.feedbackControl) {
+    document.body.appendChild(pageState.feedbackControl);
   }
-  if (shortcutDialogController) {
-    shortcutDialogController.mount(document.body);
-  }
-  if (BOOKMARK_CASCADE_DEBUG_UI_ENABLED && bookmarkCascadeRuntime && bookmarkCascadeRuntime.getDebugControl()) {
-    document.body.appendChild(bookmarkCascadeRuntime.getDebugControl());
+  if (pageState.shortcutDialogController) {
+    pageState.shortcutDialogController.mount(document.body);
   }
   markNewtabStartupMilestone('dom-mounted');
 
@@ -8655,14 +7059,14 @@
     }
     bookmarksRuntime.subscribe((change) => {
       // Folder entries remain useful even when the bookmarks section is hidden.
-      if (newtabShortcuts.some((shortcut) => shortcut.type === 'folder')) {
+      if (pageState.newtabShortcuts.some((shortcut) => shortcut.type === 'folder')) {
         refreshShortcutFolderReferences();
       }
       scheduleFolderColorSync();
       const cascadeOpen = Boolean(
-        bookmarkCascadeRuntime &&
-        typeof bookmarkCascadeRuntime.isOpen === 'function' &&
-        bookmarkCascadeRuntime.isOpen()
+        pageState.bookmarkCascadeRuntime &&
+        typeof pageState.bookmarkCascadeRuntime.isOpen === 'function' &&
+        pageState.bookmarkCascadeRuntime.isOpen()
       );
       if (change.isControlled) {
         markBookmarkTreeDirty({
@@ -8693,9 +7097,19 @@
   });
   window.addEventListener('visibilitychange', handleRecentVisibilityChange);
   window.addEventListener('resize', scheduleWallpaperAdaptiveToneUpdate, { passive: true });
+  // An open folder menu follows its anchor once per frame while the page
+  // scrolls; scroll events run before that frame's animation callbacks, so
+  // the menu never trails the page.
+  let bookmarkCascadeScrollFrame = 0;
   window.addEventListener('scroll', () => {
     scheduleWallpaperAdaptiveToneUpdate();
-    positionBookmarkCascadeLevels();
+    if (bookmarkCascadeScrollFrame || !pageState.bookmarkCascadeRuntime || !pageState.bookmarkCascadeRuntime.isOpen()) {
+      return;
+    }
+    bookmarkCascadeScrollFrame = window.requestAnimationFrame(() => {
+      bookmarkCascadeScrollFrame = 0;
+      positionBookmarkCascadeLevels();
+    });
   }, { passive: true });
   bottomDockRuntime.onScroll(scheduleWallpaperAdaptiveToneUpdate, { passive: true });
   const actionButtonVisibilityReadyPromise = loadNewtabActionButtonVisibility();
@@ -8746,8 +7160,8 @@
     // Run one authoritative data pass after every layout-affecting preference
     // has settled. This keeps cached/default geometry from becoming visible and
     // then moving the entire entry when bookmarks or history arrive.
-    sectionDataRevision += 1;
-    const initialSectionDataRevision = sectionDataRevision;
+    pageState.sectionDataRevision += 1;
+    const initialSectionDataRevision = pageState.sectionDataRevision;
     const recentSitesReadyTask = loadRecentSites({
       force: true,
       sectionDataRevision: initialSectionDataRevision

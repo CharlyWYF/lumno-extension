@@ -5,19 +5,11 @@ const bookmarkDrag = require('../src/newtab/bookmark-drag.js');
 const crossSurfaceDrag = require('../src/newtab/cross-surface-drag.js');
 const bookmarkMoveHistory = require('../src/newtab/bookmark-move-history.js');
 const { readNewtabRuntimeSource } = require('./helpers/newtab-source');
+const { extractFunction: extractFunctionFrom } = require('./helpers/extract-function');
 
 const source = readNewtabRuntimeSource();
 function extractFunction(name, text = source) {
-  let start = text.indexOf(`function ${name}(`);
-  assert.ok(start >= 0, `missing ${name}`);
-  const body = text.indexOf('{', start);
-  if (text.slice(start - 6, start) === 'async ') start -= 6;
-  let depth = 0;
-  for (let index = body; index < text.length; index += 1) {
-    if (text[index] === '{') depth += 1;
-    if (text[index] === '}' && --depth === 0) return text.slice(start, index + 1);
-  }
-  throw new Error(`unterminated ${name}`);
+  return extractFunctionFrom(text, name);
 }
 
 function rect(left, top, width, height) {

@@ -243,7 +243,16 @@
     });
   }
 
+  // Drag reorders slide tiles and cards with inline transitions; with
+  // reduced motion asked for, they move straight to where they land.
+  function prefersReducedMotion(windowObj) {
+    const win = windowObj || (typeof window !== 'undefined' ? window : null);
+    return Boolean(win && typeof win.matchMedia === 'function' &&
+      win.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
   return Object.freeze({
+    prefersReducedMotion,
     getInsertionGapNeighbors,
     getRowInsertionSlot,
     isBookmarkFolderDropTarget,

@@ -5,6 +5,7 @@ const path = require('path');
 const vm = require('vm');
 const { readPageSource } = require('./helpers/page-source');
 const { readNewtabRuntimeSource } = require('./helpers/newtab-source');
+const { extractFunction } = require('./helpers/extract-function');
 
 const repoRoot = path.resolve(__dirname, '..');
 const newtabSource = readNewtabRuntimeSource();
@@ -14,25 +15,6 @@ const overlaySource = fs.readFileSync(path.join(repoRoot, 'src/overlay/search-pa
 const overlayCssSource = readStylesheet('src/overlay/suggestions-view.css');
 const backgroundSource = fs.readFileSync(path.join(repoRoot, 'src/background/background.js'), 'utf8');
 const localeNames = ['en', 'ja', 'zh_CN', 'zh_TW'];
-
-function extractFunction(source, name) {
-  const marker = `function ${name}(`;
-  const start = source.indexOf(marker);
-  assert.ok(start >= 0, `expected ${name} to exist`);
-  const bodyStart = source.indexOf('{', start);
-  let depth = 0;
-  for (let index = bodyStart; index < source.length; index += 1) {
-    if (source[index] === '{') {
-      depth += 1;
-    } else if (source[index] === '}') {
-      depth -= 1;
-      if (depth === 0) {
-        return source.slice(start, index + 1);
-      }
-    }
-  }
-  throw new Error(`could not extract ${name}`);
-}
 
 function createCommandMatcher(source, documentPipEnabled) {
   const definitionsMatch = source.match(
@@ -252,16 +234,6 @@ assert.match(
   'overlay should show a command-specific empty state without falling back to search'
 );
 
-assert.match(
-  backgroundSource,
-  /actions:\s*\[[\s\S]*?'copyCurrentPageUrl'[\s\S]*?handler:\s*handleShortcutMessage/,
-  'background router should expose the existing current-page copy behavior to slash commands'
-);
-assert.match(
-  backgroundSource,
-  /case 'copyCurrentPageUrl':[\s\S]*?triggerCopyCurrentUrlForTab\(senderTab, 'slash-command',[\s\S]*?sendResponse\(\{ ok:/,
-  'copy slash command should reuse the existing copy-and-toast path'
-);
 assert.match(
   overlaySource,
   /type === 'commandOpenTabs'[\s\S]*?activateOpenTabsSearchMode\(\)[\s\S]*?type === 'commandCopyUrl'[\s\S]*?action:\s*'copyCurrentPageUrl'/,

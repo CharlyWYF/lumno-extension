@@ -43,6 +43,19 @@ stylesheets.forEach((file) => {
   assert.deepStrictEqual(bare, [], `${file} is injected into web pages; give every token a fallback`);
 });
 
+// Every page loads tokens.css first, so its page-wide rules reach every component:
+// reduced motion drops transitions and finishes animations at once (they still end,
+// so animationend fires), and keyboard focus always shows a ring.
+const tokensCss = read('src/shared/tokens.css');
+const reducedMotion = tokensCss.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/);
+assert.ok(reducedMotion, 'tokens.css should hold the page-wide reduced-motion rule');
+assert.match(reducedMotion[1], /\*[^{]*\{[^}]*animation-duration:\s*0\.01ms !important/,
+  'reduced motion should finish every animation at once without removing it');
+assert.match(reducedMotion[1], /\*[^{]*\{[^}]*transition-duration:\s*0s !important/,
+  'reduced motion should drop every transition');
+assert.match(tokensCss, /:focus-visible \{[^}]*outline: 2px solid var\(--lumno-color-focus-ring\)/,
+  'tokens.css should give every control the shared focus ring');
+
 // Shared components are defined once; pages only resize them.
 const optionsCss = read('src/options/options.css');
 const newtabCss = read('src/newtab/newtab.css');
@@ -58,10 +71,10 @@ assert.doesNotMatch(optionsCss, /^\._x_extension_toast_2024_unique_ \{[^}]*backg
 // One indicator implementation: classic scripts call the shared module.
 assert.doesNotMatch(read('src/options/options.js'), /function measure\w*Indicator/,
   'options.js should not measure segmented indicators itself');
-['src/newtab/wallpaper.js', 'src/newtab/quotes.js'].forEach((file) => {
-  assert.match(read(file), /globalThis\.LumnoSegmentedIndicator/,
-    `${file} should position indicators through the shared segmented indicator`);
-});
+assert.match(read('src/newtab/quotes.js'), /globalThis\.LumnoSegmentedIndicator/,
+  'quotes.js should position indicators through the shared segmented indicator');
+// The appearance panel's segmented controls are React components that use the shared
+// hook; react-src/newtab/wallpaper-view.test.tsx checks their indicators move.
 ['react-src/newtab/react-islands-entry.ts', 'react-src/options/options-islands-entry.ts'].forEach((file) => {
   assert.match(read(file), /runtime\.LumnoSegmentedIndicator = createSegmentedIndicatorApi\(\)/,
     `${file} should expose the shared segmented indicator to classic scripts`);

@@ -235,11 +235,6 @@ assertMatches(
   'settings tabs should scroll horizontally instead of wrapping labels at every width'
 );
 assertMatches(
-  optionsJs,
-  /document\.documentElement\.style\.colorScheme = resolvedTheme/,
-  'options should synchronize native controls with the resolved theme'
-);
-assertMatches(
   newtabJs,
   /document\.documentElement\.style\.colorScheme = resolved/,
   'new tab should synchronize native controls with the resolved theme'

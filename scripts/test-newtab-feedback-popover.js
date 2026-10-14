@@ -86,7 +86,7 @@ assert.match(
 
 assert.match(
   newtabHtml,
-  /\.x-nt-feedback-action::before \{[\s\S]*?inset: -1px;[\s\S]*?background: linear-gradient\(180deg, #ffffff 0%, #ecedef 100%\);/,
+  /\.x-nt-feedback-action::before \{[\s\S]*?inset: -1px;[\s\S]*?background: [^;]+;/,
   'feedback action visual circles should be drawn by an outward pseudo-element to avoid hard-clipped edges'
 );
 

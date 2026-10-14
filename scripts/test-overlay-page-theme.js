@@ -2,7 +2,10 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 
+const { JSDOM } = require('jsdom');
+
 const pageTheme = require('../src/overlay/page-theme.js');
+const faviconTheme = require('../src/newtab/favicon-theme.js');
 
 function createElement(config) {
   const element = {
@@ -198,74 +201,148 @@ function testWappalyzerLikeLightPageSignalsResolveLight() {
   );
 }
 
-function testSearchPanelFusesThemeColorAndVisualSignals() {
-  const searchPanelSource = fs.readFileSync(path.join(__dirname, '../src/overlay/search-panel.js'), 'utf8');
-  const themeColorSignalIndex = searchPanelSource.indexOf('getThemeSignalFromRgb(themeColorRgb');
-  const visualSignalIndex = searchPanelSource.indexOf('const visualSignal = detectPageVisualThemeSignal();');
-  const fusedThemeIndex = searchPanelSource.indexOf('const fusedTheme = resolvePageThemeSignals');
-  const themeColorIndex = searchPanelSource.indexOf("const themeColor = getHeadMetaContent('theme-color').trim();");
-  const bodyBackgroundIndex = searchPanelSource.indexOf('const bodyStyle = body ? window.getComputedStyle(body) : null;');
-  assert.ok(themeColorSignalIndex > 0, 'search-panel should convert theme-color into a weighted signal');
-  assert.ok(visualSignalIndex > 0, 'search-panel should convert visual sampling into a weighted signal');
-  assert.ok(fusedThemeIndex > 0, 'search-panel should fuse theme-color and visual sampling signals');
-  assert.ok(
-    themeColorIndex < fusedThemeIndex && visualSignalIndex < fusedThemeIndex,
-    'theme-color and visual sampling should both be gathered before resolving the final theme'
-  );
-  assert.ok(
-    fusedThemeIndex < bodyBackgroundIndex,
-    'fused signal resolution should run before the legacy body/html background fallback'
-  );
-  assert.ok(
-    !searchPanelSource.includes('strongThemeColorTheme'),
-    'theme-color should not hard-prioritize over visual sampling'
-  );
+function createThemedPage(html, options) {
+  const settings = options || {};
+  const dom = new JSDOM(`<!doctype html><html${settings.htmlAttributes || ''}><head>${settings.head || ''}</head><body${settings.bodyAttributes || ''}>${html || ''}</body></html>`, {
+    pretendToBeVisual: true
+  });
+  const { window } = dom;
+  if (settings.visualSample) {
+    // JSDOM has no layout; let every viewport sample land on one element.
+    const sample = window.document.createElement('div');
+    sample.style.backgroundColor = settings.visualSample.backgroundColor;
+    sample.style.color = settings.visualSample.color;
+    sample.style.opacity = '1';
+    window.document.body.appendChild(sample);
+    window.document.elementFromPoint = () => sample;
+  }
+  return window;
 }
 
-function testSearchPanelDoesNotShortCircuitExplicitThemeHints() {
-  const searchPanelSource = fs.readFileSync(path.join(__dirname, '../src/overlay/search-panel.js'), 'utf8');
-  const candidateThemeIndex = searchPanelSource.indexOf('const candidateTheme = getPageThemeCandidateElements');
-  const fusedThemeIndex = searchPanelSource.indexOf('const fusedTheme = resolvePageThemeSignals');
-  assert.ok(
-    candidateThemeIndex > 0 && candidateThemeIndex < fusedThemeIndex,
-    'explicit class/attribute theme hints should be gathered before signal fusion'
-  );
-  assert.ok(
-    searchPanelSource.includes('getThemeSignalFromTheme(candidateTheme'),
-    'explicit class/attribute theme hints should become weighted signals'
-  );
-  assert.ok(
-    searchPanelSource.includes('getThemeSignalFromSchemeValue(colorSchemeMeta'),
-    'color-scheme meta hints should become weighted signals'
-  );
-  assert.ok(
-    searchPanelSource.includes('getThemeSignalFromSchemeValue(schemeValue'),
-    'computed color-scheme hints should become weighted signals'
-  );
-  assert.ok(
-    !searchPanelSource.includes('if (candidateTheme) {\n        return candidateTheme;\n      }'),
-    'explicit class/attribute hints should not short-circuit darker visual signals'
-  );
-  assert.ok(
-    !searchPanelSource.includes("if (schemeValue.includes('light') && !schemeValue.includes('dark')) {\n        return 'light';\n      }"),
-    'computed color-scheme should not short-circuit darker visual signals'
-  );
+function detectTheme(window) {
+  return pageTheme.detectPageTheme({
+    document: window.document,
+    window,
+    parseThemeColorRgb: faviconTheme.parseCssColor
+  });
 }
 
-function testSearchPanelAvoidsBusinessClassNameThemeMatches() {
-  const searchPanelSource = fs.readFileSync(path.join(__dirname, '../src/overlay/search-panel.js'), 'utf8');
-  assert.ok(
-    searchPanelSource.includes('function getThemeClassTokenTheme(token)'),
-    'class theme detection should use per-token semantic classification'
-  );
-  assert.ok(
-    !searchPanelSource.includes('(^|[\\s_-])(light|lightmode|light-theme|theme-light|day)([\\s_-]|$)'),
-    'class theme detection should not treat business names like light-rays as light theme'
-  );
-  assert.ok(
-    !searchPanelSource.includes('(^|[\\s_-])(dark|darkmode|dark-theme|theme-dark|night)([\\s_-]|$)'),
-    'class theme detection should not treat business names like dark-veil as dark theme'
-  );
+function testPageThemeFusesThemeColorWithVisualSignals() {
+  const darkBrandOnLightPage = createThemedPage('', {
+    head: '<meta name="theme-color" content="#1a0b3d">',
+    visualSample: { backgroundColor: 'rgb(255, 255, 255)', color: 'rgb(17, 24, 39)' },
+    bodyAttributes: ' style="background-color: rgb(255, 255, 255)"'
+  });
+  assert.strictEqual(detectTheme(darkBrandOnLightPage), 'light',
+    'a dark brand theme-color must not override a visibly light page');
+  darkBrandOnLightPage.close();
+
+  const themeColorOnly = createThemedPage('', {
+    head: '<meta name="theme-color" content="#111111">'
+  });
+  assert.strictEqual(detectTheme(themeColorOnly), 'dark',
+    'theme-color still counts as a weighted signal when nothing else speaks');
+  themeColorOnly.close();
+
+  const transparentThemeColor = createThemedPage('', {
+    head: '<meta name="theme-color" content="transparent">'
+  });
+  assert.strictEqual(detectTheme(transparentThemeColor), null,
+    'an unparseable theme-color adds no signal');
+  transparentThemeColor.close();
+}
+
+function testPageThemeDoesNotShortCircuitExplicitHints() {
+  const darkClassOnLightPage = createThemedPage('', {
+    htmlAttributes: ' class="dark"',
+    visualSample: { backgroundColor: 'rgb(255, 255, 255)', color: 'rgb(17, 24, 39)' },
+    bodyAttributes: ' style="background-color: rgb(255, 255, 255)"'
+  });
+  assert.strictEqual(detectTheme(darkClassOnLightPage), 'light',
+    'an explicit dark class hint is weighed against a visibly light page, not returned outright');
+  darkClassOnLightPage.close();
+
+  const explicitDark = createThemedPage('', { htmlAttributes: ' data-theme="dark"' });
+  assert.strictEqual(detectTheme(explicitDark), 'dark',
+    'an explicit theme attribute decides when nothing contradicts it');
+  explicitDark.close();
+
+  const schemeMeta = createThemedPage('', { head: '<meta name="color-scheme" content="dark">' });
+  assert.strictEqual(detectTheme(schemeMeta), 'dark', 'a dark color-scheme meta becomes a signal');
+  schemeMeta.close();
+
+  const lightSchemeOnDarkPage = createThemedPage('', {
+    head: '<meta name="color-scheme" content="light">',
+    visualSample: { backgroundColor: 'rgb(18, 18, 18)', color: 'rgb(240, 240, 240)' },
+    bodyAttributes: ' style="background-color: rgb(18, 18, 18)"'
+  });
+  assert.strictEqual(detectTheme(lightSchemeOnDarkPage), 'dark',
+    'a light color-scheme hint must not short-circuit a visibly dark page');
+  lightSchemeOnDarkPage.close();
+}
+
+function testPageThemeIgnoresBusinessClassNames() {
+  assert.strictEqual(pageTheme.getThemeClassTokenTheme('light-rays'), null);
+  assert.strictEqual(pageTheme.getThemeClassTokenTheme('dark-veil'), null);
+  assert.strictEqual(pageTheme.getThemeClassTokenTheme('theme-dark'), 'dark');
+  assert.strictEqual(pageTheme.getThemeClassTokenTheme('light-mode'), 'light');
+  assert.strictEqual(pageTheme.getThemeClassTokenTheme('night'), 'dark');
+  const businessClasses = createThemedPage('<div class="light-rays dark-veil"></div>', {
+    bodyAttributes: ' class="dark-veil"'
+  });
+  assert.strictEqual(detectTheme(businessClasses), null,
+    'business class names must not be read as theme switches');
+  businessClasses.close();
+}
+
+function testPageThemeObserverBatchesChangesPerFrame() {
+  const window = createThemedPage('');
+  const frames = [];
+  window.requestAnimationFrame = (callback) => {
+    frames.push(callback);
+    return frames.length;
+  };
+  window.cancelAnimationFrame = (id) => {
+    frames[id - 1] = null;
+  };
+  let changes = 0;
+  const observer = pageTheme.createPageThemeObserver(window, () => {
+    changes += 1;
+  });
+  observer.start();
+  observer.start();
+  assert.strictEqual(observer.active, true);
+  assert.strictEqual(frames.length, 1, 'starting schedules one initial sync');
+  frames.shift()();
+  assert.strictEqual(changes, 1);
+  observer.stop();
+  assert.strictEqual(observer.active, false);
+  window.close();
+}
+
+async function testPageThemeObserverReactsToThemeAttributes() {
+  const window = createThemedPage('');
+  window.requestAnimationFrame = (callback) => setTimeout(callback, 0);
+  window.cancelAnimationFrame = (id) => clearTimeout(id);
+  let changes = 0;
+  const observer = pageTheme.createPageThemeObserver(window, () => {
+    changes += 1;
+  });
+  observer.start();
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  const afterStart = changes;
+  window.document.documentElement.setAttribute('data-theme', 'dark');
+  window.document.documentElement.setAttribute('data-color-mode', 'dark');
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.strictEqual(changes, afterStart + 1, 'theme attribute bursts collapse into one sync');
+  window.document.documentElement.setAttribute('aria-label', 'unrelated');
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.strictEqual(changes, afterStart + 1, 'unrelated attributes are ignored');
+  observer.stop();
+  window.document.documentElement.setAttribute('data-theme', 'light');
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.strictEqual(changes, afterStart + 1, 'a stopped observer stays quiet');
+  window.close();
 }
 
 function testSearchPanelAppliesInitialSystemThemeBeforeAppend() {
@@ -345,10 +422,16 @@ testVisualThemeIgnoresLumnoOverlayElements();
 testVisualThemeSamplesOverlayFootprint();
 testTransparentCssColorsDoNotBecomeDarkThemeSignals();
 testWappalyzerLikeLightPageSignalsResolveLight();
-testSearchPanelFusesThemeColorAndVisualSignals();
-testSearchPanelDoesNotShortCircuitExplicitThemeHints();
-testSearchPanelAvoidsBusinessClassNameThemeMatches();
+testPageThemeFusesThemeColorWithVisualSignals();
+testPageThemeDoesNotShortCircuitExplicitHints();
+testPageThemeIgnoresBusinessClassNames();
+testPageThemeObserverBatchesChangesPerFrame();
 testSearchPanelAppliesInitialSystemThemeBeforeAppend();
 testSearchPanelExcludesInputExtensionsBeforeMountAndFocus();
 
-console.log('overlay page theme tests passed');
+testPageThemeObserverReactsToThemeAttributes().then(() => {
+  console.log('overlay page theme tests passed');
+}).catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

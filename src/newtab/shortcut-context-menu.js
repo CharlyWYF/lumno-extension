@@ -1,6 +1,8 @@
 (function(root) {
   // Right-click menu for shortcut tiles and the add-shortcut tile.
   function createShortcutContextMenu(deps) {
+    // Escape closes the menu through the page's dismiss stack.
+    const dismissStack = root.LumnoNewtabDismissStack.getDismissStack();
     const {
       getShortcutDockIcon,
       setShortcutDockHover,
@@ -34,7 +36,7 @@
       confirmDeleteShortcutGroupWithSites
     } = deps;
 
-    // Page state still owned by newtab.js; read and written through accessors.
+    // The page state object shared with newtab.js and the other modules.
     const pageState = deps.pageState;
 
     const SHORTCUT_CONTEXT_MENU_MIN_WIDTH_PX = 124;
@@ -284,12 +286,10 @@
       });
     }
 
-    function handleShortcutContextMenuDocumentKeyDown(event) {
-      if (event && event.key === 'Escape' &&
-          (pageState.shortcutContextMenuTarget || isShortcutContextMenuOpen())) {
-        closeShortcutContextMenu();
-      }
-    }
+    dismissStack.register('shortcut-context-menu', {
+      isOpen: () => Boolean(pageState.shortcutContextMenuTarget || isShortcutContextMenuOpen()),
+      close: () => closeShortcutContextMenu()
+    });
 
     function handleShortcutContextMenuDocumentFocusIn(event) {
       if (pageState.shortcutContextMenuTarget && !isShortcutContextMenuNode(event.target)) {
@@ -344,7 +344,6 @@
       });
       menu.addEventListener('click', handleShortcutContextMenuActionClick);
       document.addEventListener('pointerdown', handleShortcutContextMenuDocumentPointerDown, true);
-      document.addEventListener('keydown', handleShortcutContextMenuDocumentKeyDown, true);
       document.addEventListener('focusin', handleShortcutContextMenuDocumentFocusIn, true);
       (document.body || pageState.shortcutSection || document.documentElement).appendChild(control);
       return {

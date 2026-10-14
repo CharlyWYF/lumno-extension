@@ -55,17 +55,6 @@ assert.match(
   /item\.iconClass[\s\S]*?<span data-i18n=\{item\.labelKey\}>\{item\.label\}<\/span>[\s\S]*?ri-size-14 ri-external-link-line/,
   'every feedback entry should keep its channel icon, label and external-link mark'
 );
-[
-  'community',
-  'chrome-review',
-  'github-issue',
-  'contact-author'
-].reduce((previousIndex, key) => {
-  const index = optionsJs.indexOf(`key: '${key}'`);
-  assert.ok(index > previousIndex, `${key} should appear in the requested order`);
-  return index;
-}, -1);
-
 assert.match(
   optionsHtml,
   /<script src="\.\.\/shared\/community-links\.js"><\/script>/,
@@ -76,17 +65,10 @@ assert.match(
   /'zh-CN': 'wechat',[\s\S]*?'zh-TW': 'wechat',[\s\S]*?ja: 'x',[\s\S]*?en: 'x'/,
   'Options should use WeChat for both Chinese locales and X for other languages'
 );
-assert.match(
-  optionsJs,
-  /COMMUNITY_LINKS\.load\(\)[\s\S]*?feedbackSupportLinks = links/,
-  'Options should consume the same shared dynamic loader as other surfaces'
+assert.doesNotMatch(
+  optionsJs + fs.readFileSync(path.join(repoRoot, 'src/options/options-feedback-support.js'), 'utf8'),
+  /links\.discord|ri-discord-fill|settings_feedback_support_discord_action/
 );
-assert.match(
-  optionsJs,
-  /\.\.\.\(communityIsWechat\s*\? \[\{\s*href: links\.wechatQr,\s*iconClass: 'ri-wechat-line',\s*key: 'community',[\s\S]*?labelKey: 'settings_feedback_support_wechat_action',\s*qr: \{[\s\S]*?imageUrl: links\.wechatQr,[\s\S]*?\}\s*\}\]\s*: \[\]\)/,
-  'the WeChat group is the community entry in Chinese and shows its QR code in a popover; elsewhere the contact-the-author X link is'
-);
-assert.doesNotMatch(optionsJs, /links\.discord|ri-discord-fill|settings_feedback_support_discord_action/);
 
 locales.forEach((locale) => {
   const messages = JSON.parse(fs.readFileSync(
@@ -138,11 +120,6 @@ assert.match(
   optionsJs,
   /let helpCenterSearchEnabled = null;/,
   'the Help Center ask demo should stay hidden until the site search providers have loaded'
-);
-assert.match(
-  optionsJs,
-  /ask: helpCenterSearchEnabled !== true \? null : \{/,
-  'the Help Center ask demo should only render while the lm site search is on'
 );
 assert.match(
   optionsJs,

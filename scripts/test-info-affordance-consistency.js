@@ -54,8 +54,7 @@ for (const [source, selector, label] of [
 
 assert.match(infoButtonSource, /ri-information-line/, 'the shared component should use the information icon');
 assert.doesNotMatch(infoButtonSource, /ri-question-line/, 'the shared component should not use the question icon');
-assert.match(infoButtonSource, /tabIndex=\{0\}/, 'the shared component should support keyboard focus');
-assert.match(infoButtonSource, /role="img"/, 'the shared component should expose an image role');
+// Its button element, name and description are covered by react-src/options/info-button.test.tsx.
 
 const staticHosts = [
   '_x_extension_restricted_action_info_2026_unique_',

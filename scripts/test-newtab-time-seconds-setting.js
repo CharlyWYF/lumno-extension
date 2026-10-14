@@ -8,11 +8,6 @@ const optionsHtml = readPageSource('src/options/options.html');
 const optionsSource = fs.readFileSync('src/options/options.js', 'utf8');
 const newtabHtml = readPageSource('newtab.html');
 const newtabSource = readNewtabRuntimeSource();
-const wallpaperSource = fs.readFileSync('src/newtab/wallpaper.js', 'utf8');
-const wallpaperViewSource = fs.readFileSync(
-  'react-src/newtab/wallpaper-view.tsx',
-  'utf8'
-);
 const wordmarkSource = fs.readFileSync('react-src/newtab/wordmark.tsx', 'utf8');
 
 function getFunctionSource(source, name) {
@@ -122,60 +117,10 @@ assert.match(
   getFunctionSource(optionsSource, 'renderNewtabTimeFontWeightControl'),
   /min: NEWTAB_TIME_FONT_WEIGHT_MIN[\s\S]*?max: NEWTAB_TIME_FONT_WEIGHT_MAX[\s\S]*?step: 1[\s\S]*?value: currentNewtabTimeFontWeight/
 );
-assert.match(
-  optionsSource,
-  /NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY[\s\S]*?_x_extension_newtab_time_font_weight_2026_unique_/
-);
-assert.match(
-  optionsSource,
-  /newtabTimeSecondsToggle\.addEventListener\('change',[\s\S]*?NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY/
-);
-assert.match(
-  optionsSource,
-  /changes\[NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY\][\s\S]*?setOptionsToggleState\(newtabTimeSecondsToggle, next\)/
-);
 
-assert.match(wallpaperViewSource, /ref\('topContentWeightControl'\)/);
-assert.match(wallpaperViewSource, /ref\('topContentWeightSlider'\)/);
-assert.match(wallpaperViewSource, /ref\('topContentWeightSliderValueInput'\)/);
-assert.match(
-  wallpaperViewSource,
-  /max=\{String\(timeFontWeightMax\)\}[\s\S]*?min=\{String\(timeFontWeightMin\)\}[\s\S]*?step="1"[\s\S]*?defaultValue=\{String\(timeFontWeightDefault\)\}/
-);
-assert.match(wallpaperViewSource, /ref\('topContentSecondsRow'\)/);
-assert.match(wallpaperViewSource, /data-visible="false"[\s\S]*?hidden/);
-assert.match(wallpaperViewSource, /name="topContentSecondsToggle"/);
-const updateWallpaperFontWeightUi = getFunctionSource(
-  wallpaperSource,
-  'updateTimeFontWeightUi'
-);
-assert.match(updateWallpaperFontWeightUi, /currentTopContentMode === 'time'/);
-assert.match(updateWallpaperFontWeightUi, /topContentWeightControl\.hidden = !visible/);
-assert.match(updateWallpaperFontWeightUi, /topContentWeightSlider\.step = '1'/);
-assert.match(updateWallpaperFontWeightUi, /syncWallpaperSliderValueInput\(topContentWeightSlider\)/);
-assert.match(
-  wallpaperSource,
-  /topContentWeightSlider\.addEventListener\('input',[\s\S]*?persistTimeFontWeight/
-);
-assert.match(
-  wallpaperSource,
-  /changes\[NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY\][\s\S]*?applyTimeFontWeight\(nextValue\)/
-);
-const updateWallpaperSecondsUi = getFunctionSource(
-  wallpaperSource,
-  'updateTimeSecondsVisibleUi'
-);
-assert.match(updateWallpaperSecondsUi, /currentTopContentMode === 'time'/);
-assert.match(updateWallpaperSecondsUi, /topContentSecondsRow\.hidden = !visible/);
-assert.match(updateWallpaperSecondsUi, /topContentSecondsToggle\.checked = currentTimeSecondsVisible/);
-assert.match(
-  wallpaperSource,
-  /topContentSecondsToggle\.addEventListener\('change',[\s\S]*?persistTimeSecondsVisible/
-);
-assert.match(
-  wallpaperSource,
-  /changes\[NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY\][\s\S]*?applyTimeSecondsVisible\(nextValue\)/
-);
+// The appearance panel is a React view driven by the wallpaper runtime; its controls are
+// tested by behavior in react-src/newtab/wallpaper-view.test.tsx and
+// scripts/test-newtab-wallpaper-panel.js rather than by matching source text here.
 
 assert.match(newtabSource, /fontWeight: newtabTimeFontWeight/);
 assert.match(newtabSource, /showSeconds: newtabTimeSecondsVisible/);

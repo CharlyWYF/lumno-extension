@@ -105,85 +105,42 @@
   // WebDAV carries them together with the wallpapers. The legacy single color
   // is migrated into the light and dark colors on each device.
   const BOOKMARK_TOPBAR_WEBDAV_STORAGE_KEYS = Object.freeze(BOOKMARK_TOPBAR_LOCAL_STORAGE_KEYS.slice(0, 3));
-  // User-controlled preferences that are safe to store in chrome.storage.sync.
-  // Keep generated caches, device state, and custom wallpaper media out of this list.
-  const CHROME_SYNC_STORAGE_KEYS = Object.freeze([
-    '_x_extension_theme_mode_2024_unique_',
-    '_x_extension_language_2024_unique_',
-    '_x_extension_recent_mode_2024_unique_',
-    '_x_extension_recent_count_2024_unique_',
-    '_x_extension_newtab_width_mode_2026_unique_',
-    '_x_extension_newtab_search_width_2026_unique_',
-    '_x_extension_newtab_input_auto_focus_enabled_2026_unique_',
-    NEWTAB_QUOTE_PREFS_STORAGE_KEY,
-    '_x_extension_newtab_theme_mode_2026_unique_',
-    '_x_extension_newtab_theme_scope_2026_unique_',
-    '_x_extension_newtab_zen_mode_2026_unique_',
-    '_x_extension_newtab_wallpaper_2026_unique_',
-    NEWTAB_ONLINE_WALLPAPER_STORAGE_KEY,
-    NEWTAB_LINK_WALLPAPERS_STORAGE_KEY,
-    NEWTAB_DAILY_WALLPAPER_PICKS_STORAGE_KEY,
-    '_x_extension_newtab_wallpaper_overlay_2026_unique_',
-    '_x_extension_newtab_wallpaper_effect_2026_unique_',
-    '_x_extension_newtab_favicon_2026_unique_',
-    '_x_extension_overlay_size_mode_2026_unique_',
-    '_x_extension_overlay_enter_animation_2026_unique_',
-    '_x_extension_overlay_page_theme_adaptation_enabled_2026_unique_',
-    '_x_extension_bookmark_count_2024_unique_',
-    '_x_extension_bookmark_columns_2024_unique_',
-    '_x_extension_bookmark_view_mode_2026_unique_',
-    '_x_extension_bookmark_folder_icons_visible_2026_unique_',
-    BOOKMARK_FOLDER_COLOR_REFS_STORAGE_KEY,
-    BOOKMARK_FOLDER_COLOR_PRESETS_STORAGE_KEY,
-    '_x_extension_newtab_pinned_recent_sites_2026_unique_',
-    '_x_extension_newtab_hidden_recent_sites_2026_unique_',
-    '_x_extension_newtab_shortcuts_2026_unique_',
-    NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY,
-    NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY,
-    ...NEWTAB_SHORTCUTS_V2_STORAGE_KEYS,
-    '_x_extension_newtab_shortcuts_visible_2026_unique_',
-    '_x_extension_newtab_shortcut_add_visible_2026_unique_',
-    '_x_extension_newtab_shortcut_dock_magnification_enabled_2026_unique_',
-    NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY,
-    NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY,
-    NEWTAB_SHORTCUT_WIDTH_STORAGE_KEY,
-    NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY,
-    NEWTAB_SHORTCUT_SIZE_STORAGE_KEY,
-    NEWTAB_SHORTCUT_GAP_STORAGE_KEY,
-    '_x_extension_update_notice_enabled_2026_unique_',
-    '_x_extension_motion_effects_enabled_2026_unique_',
-    '_x_extension_simple_mode_enabled_2026_unique_',
-    '_x_extension_number_shortcut_instant_enabled_2026_unique_',
-    '_x_extension_macos_ctrl_suggestion_navigation_enabled_2026_unique_',
-    '_x_extension_auto_pip_enabled_2026_unique_',
-    '_x_extension_tab_switcher_enabled_2026_unique_',
-    '_x_extension_document_pip_enabled_2026_unique_',
-    '_x_extension_pinned_tab_recovery_enabled_2026_unique_',
-    '_x_extension_selection_quick_actions_enabled_2026_unique_',
-    '_x_extension_selection_quick_actions_provider_2026_unique_',
-    '_x_extension_selection_quick_actions_group_enabled_2026_unique_',
-    '_x_extension_overlay_tab_priority_2024_unique_',
-    '_x_extension_newtab_wordmark_visible_2026_unique_',
-    '_x_extension_newtab_time_font_weight_2026_unique_',
-    '_x_extension_newtab_time_seconds_visible_2026_unique_',
-    '_x_extension_restricted_action_2024_unique_',
-    '_x_extension_search_result_priority_2026_unique_',
-    '_x_extension_search_result_source_types_2026_unique_',
-    '_x_extension_search_result_display_limit_2026_unique_',
-    SEARCH_RESULT_TAB_POSITION_STORAGE_KEY,
-    '_x_extension_overlay_open_tabs_default_visible_2026_unique_',
-    '_x_extension_fallback_hotkey_2024_unique_',
-    '_x_extension_site_search_custom_2024_unique_',
-    '_x_extension_site_search_disabled_2024_unique_',
-    AGGREGATE_SEARCH_STORAGE_KEY,
-    AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY,
-    PROGRESS_TRACKING_ENABLED_STORAGE_KEY,
-    NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY,
-    '_x_extension_search_blacklist_2026_unique_',
-    '_x_extension_favicon_request_blacklist_2026_unique_',
-    '_x_extension_favicon_enhanced_fetch_enabled_2026_unique_',
-    '_x_extension_default_search_engine_2024_unique_'
-  ]);
+  const LANGUAGE_STORAGE_KEY = '_x_extension_language_2024_unique_';
+  const RECENT_MODE_STORAGE_KEY = '_x_extension_recent_mode_2024_unique_';
+  const RECENT_COUNT_STORAGE_KEY = '_x_extension_recent_count_2024_unique_';
+  const NEWTAB_WIDTH_MODE_STORAGE_KEY = '_x_extension_newtab_width_mode_2026_unique_';
+  const NEWTAB_SEARCH_WIDTH_STORAGE_KEY = '_x_extension_newtab_search_width_2026_unique_';
+  const NEWTAB_ZEN_MODE_STORAGE_KEY = '_x_extension_newtab_zen_mode_2026_unique_';
+  const NEWTAB_WALLPAPER_STORAGE_KEY = '_x_extension_newtab_wallpaper_2026_unique_';
+  const NEWTAB_WALLPAPER_OVERLAY_STORAGE_KEY = '_x_extension_newtab_wallpaper_overlay_2026_unique_';
+  const NEWTAB_WALLPAPER_EFFECT_STORAGE_KEY = '_x_extension_newtab_wallpaper_effect_2026_unique_';
+  const NEWTAB_FAVICON_STORAGE_KEY = '_x_extension_newtab_favicon_2026_unique_';
+  const OVERLAY_SIZE_MODE_STORAGE_KEY = '_x_extension_overlay_size_mode_2026_unique_';
+  const BOOKMARK_COUNT_STORAGE_KEY = '_x_extension_bookmark_count_2024_unique_';
+  const BOOKMARK_COLUMNS_STORAGE_KEY = '_x_extension_bookmark_columns_2024_unique_';
+  const BOOKMARK_VIEW_MODE_STORAGE_KEY = '_x_extension_bookmark_view_mode_2026_unique_';
+  const PINNED_RECENT_SITES_STORAGE_KEY = '_x_extension_newtab_pinned_recent_sites_2026_unique_';
+  const HIDDEN_RECENT_SITES_STORAGE_KEY = '_x_extension_newtab_hidden_recent_sites_2026_unique_';
+  const NEWTAB_SHORTCUTS_STORAGE_KEY = '_x_extension_newtab_shortcuts_2026_unique_';
+  const AUTO_PIP_ENABLED_STORAGE_KEY = '_x_extension_auto_pip_enabled_2026_unique_';
+  const TAB_SWITCHER_ENABLED_STORAGE_KEY = '_x_extension_tab_switcher_enabled_2026_unique_';
+  const DOCUMENT_PIP_ENABLED_STORAGE_KEY = '_x_extension_document_pip_enabled_2026_unique_';
+  const PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY = '_x_extension_pinned_tab_recovery_enabled_2026_unique_';
+  const OVERLAY_TAB_PRIORITY_STORAGE_KEY = '_x_extension_overlay_tab_priority_2024_unique_';
+  const RESTRICTED_ACTION_STORAGE_KEY = '_x_extension_restricted_action_2024_unique_';
+  const SEARCH_RESULT_PRIORITY_STORAGE_KEY = '_x_extension_search_result_priority_2026_unique_';
+  const SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY = '_x_extension_search_result_source_types_2026_unique_';
+  const FALLBACK_SHORTCUT_STORAGE_KEY = '_x_extension_fallback_hotkey_2024_unique_';
+  const SITE_SEARCH_STORAGE_KEY = '_x_extension_site_search_custom_2024_unique_';
+  const SITE_SEARCH_DISABLED_STORAGE_KEY = '_x_extension_site_search_disabled_2024_unique_';
+  const SEARCH_BLACKLIST_STORAGE_KEY = '_x_extension_search_blacklist_2026_unique_';
+  const FAVICON_REQUEST_BLACKLIST_STORAGE_KEY = '_x_extension_favicon_request_blacklist_2026_unique_';
+  const DEFAULT_SEARCH_ENGINE_STORAGE_KEY = '_x_extension_default_search_engine_2024_unique_';
+  // When and how settings last synced (manual sync or an import); written to the primary area.
+  const SYNC_META_STORAGE_KEY = '_x_extension_sync_meta_2024_unique_';
+  const RESTRICTED_ACTION_AUTO_BROWSER_SETTING_DONE_STORAGE_KEY = '_x_extension_restricted_action_auto_browser_setting_done_2026_unique_';
+  // localStorage: the Options page theme from its last load, applied before its scripts load.
+  const OPTIONS_THEME_PRELOAD_STORAGE_KEY = '_x_extension_options_theme_preload_2026_unique_';
   const SELECTION_QUICK_ACTIONS_PROVIDER_KEYS = Object.freeze([
     'gpt',
     'gm',
@@ -206,6 +163,134 @@
   const NEWTAB_TIME_FONT_WEIGHT_DEFAULT = 320;
   const NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY =
     '_x_extension_newtab_time_seconds_visible_2026_unique_';
+  // User-controlled preferences that are safe to store in chrome.storage.sync.
+  // Keep generated caches, device state, and custom wallpaper media out of this list.
+  const CHROME_SYNC_STORAGE_KEYS = Object.freeze([
+    THEME_STORAGE_KEY,
+    LANGUAGE_STORAGE_KEY,
+    RECENT_MODE_STORAGE_KEY,
+    RECENT_COUNT_STORAGE_KEY,
+    NEWTAB_WIDTH_MODE_STORAGE_KEY,
+    NEWTAB_SEARCH_WIDTH_STORAGE_KEY,
+    NEWTAB_INPUT_AUTO_FOCUS_ENABLED_STORAGE_KEY,
+    NEWTAB_QUOTE_PREFS_STORAGE_KEY,
+    NEWTAB_THEME_MODE_STORAGE_KEY,
+    NEWTAB_THEME_SCOPE_STORAGE_KEY,
+    NEWTAB_ZEN_MODE_STORAGE_KEY,
+    NEWTAB_WALLPAPER_STORAGE_KEY,
+    NEWTAB_ONLINE_WALLPAPER_STORAGE_KEY,
+    NEWTAB_LINK_WALLPAPERS_STORAGE_KEY,
+    NEWTAB_DAILY_WALLPAPER_PICKS_STORAGE_KEY,
+    NEWTAB_WALLPAPER_OVERLAY_STORAGE_KEY,
+    NEWTAB_WALLPAPER_EFFECT_STORAGE_KEY,
+    NEWTAB_FAVICON_STORAGE_KEY,
+    OVERLAY_SIZE_MODE_STORAGE_KEY,
+    OVERLAY_ENTER_ANIMATION_STORAGE_KEY,
+    OVERLAY_PAGE_THEME_ADAPTATION_ENABLED_STORAGE_KEY,
+    BOOKMARK_COUNT_STORAGE_KEY,
+    BOOKMARK_COLUMNS_STORAGE_KEY,
+    BOOKMARK_VIEW_MODE_STORAGE_KEY,
+    BOOKMARK_FOLDER_ICONS_VISIBLE_STORAGE_KEY,
+    BOOKMARK_FOLDER_COLOR_REFS_STORAGE_KEY,
+    BOOKMARK_FOLDER_COLOR_PRESETS_STORAGE_KEY,
+    PINNED_RECENT_SITES_STORAGE_KEY,
+    HIDDEN_RECENT_SITES_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY,
+    ...NEWTAB_SHORTCUTS_V2_STORAGE_KEYS,
+    NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY,
+    NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY,
+    NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY,
+    NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY,
+    NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY,
+    NEWTAB_SHORTCUT_WIDTH_STORAGE_KEY,
+    NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY,
+    NEWTAB_SHORTCUT_SIZE_STORAGE_KEY,
+    NEWTAB_SHORTCUT_GAP_STORAGE_KEY,
+    UPDATE_NOTICE_ENABLED_STORAGE_KEY,
+    MOTION_EFFECTS_ENABLED_STORAGE_KEY,
+    SIMPLE_MODE_ENABLED_STORAGE_KEY,
+    NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY,
+    MACOS_CTRL_SUGGESTION_NAVIGATION_ENABLED_STORAGE_KEY,
+    AUTO_PIP_ENABLED_STORAGE_KEY,
+    TAB_SWITCHER_ENABLED_STORAGE_KEY,
+    DOCUMENT_PIP_ENABLED_STORAGE_KEY,
+    PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY,
+    SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY,
+    SELECTION_QUICK_ACTIONS_PROVIDER_STORAGE_KEY,
+    SELECTION_QUICK_ACTIONS_GROUP_ENABLED_STORAGE_KEY,
+    OVERLAY_TAB_PRIORITY_STORAGE_KEY,
+    NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
+    NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
+    NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY,
+    RESTRICTED_ACTION_STORAGE_KEY,
+    SEARCH_RESULT_PRIORITY_STORAGE_KEY,
+    SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY,
+    SEARCH_RESULT_DISPLAY_LIMIT_STORAGE_KEY,
+    SEARCH_RESULT_TAB_POSITION_STORAGE_KEY,
+    OVERLAY_OPEN_TABS_DEFAULT_VISIBLE_STORAGE_KEY,
+    FALLBACK_SHORTCUT_STORAGE_KEY,
+    SITE_SEARCH_STORAGE_KEY,
+    SITE_SEARCH_DISABLED_STORAGE_KEY,
+    AGGREGATE_SEARCH_STORAGE_KEY,
+    AGGREGATE_SEARCH_AUTO_GROUP_ENABLED_STORAGE_KEY,
+    PROGRESS_TRACKING_ENABLED_STORAGE_KEY,
+    NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY,
+    SEARCH_BLACKLIST_STORAGE_KEY,
+    FAVICON_REQUEST_BLACKLIST_STORAGE_KEY,
+    FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY,
+    DEFAULT_SEARCH_ENGINE_STORAGE_KEY
+  ]);
+
+  // Copies settings this device saved locally into sync where sync has none.
+  // Sync is read again just before writing so a value another device synced
+  // meanwhile is never overwritten. The grouped shortcut keys move as one
+  // save keyed off their head: all of them while sync lacks a head (replacing
+  // any stray chunk there), none once it has one. Nothing is ever removed.
+  function migrateLocalSettingsToSync(localArea, syncArea, keys) {
+    const [groupHeadKey] = NEWTAB_SHORTCUTS_V2_STORAGE_KEYS;
+    const isGroupKey = (key) => NEWTAB_SHORTCUTS_V2_STORAGE_KEYS.includes(key);
+    localArea.get(keys, (localResult) => {
+      const hasLocal = keys.some((key) => typeof localResult[key] !== 'undefined');
+      if (!hasLocal) {
+        return;
+      }
+      syncArea.get(keys, (syncResult) => {
+        const groupMissing = typeof localResult[groupHeadKey] !== 'undefined'
+          && typeof syncResult[groupHeadKey] === 'undefined';
+        const missingSyncValues = {};
+        keys.forEach((key) => {
+          if (typeof localResult[key] === 'undefined') {
+            return;
+          }
+          const missing = isGroupKey(key) ? groupMissing : typeof syncResult[key] === 'undefined';
+          if (missing) {
+            missingSyncValues[key] = localResult[key];
+          }
+        });
+        const missingKeys = Object.keys(missingSyncValues);
+        if (missingKeys.length === 0) {
+          return;
+        }
+        syncArea.get(missingKeys, (latestSyncResult) => {
+          const groupStillMissing = typeof latestSyncResult[groupHeadKey] === 'undefined';
+          const stillMissingSyncValues = {};
+          missingKeys.forEach((key) => {
+            const missing = isGroupKey(key)
+              ? groupStillMissing
+              : typeof latestSyncResult[key] === 'undefined';
+            if (missing) {
+              stillMissingSyncValues[key] = missingSyncValues[key];
+            }
+          });
+          if (Object.keys(stillMissingSyncValues).length > 0) {
+            syncArea.set(stillMissingSyncValues);
+          }
+        });
+      });
+    });
+  }
 
   function normalizeLocale(locale) {
     const raw = String(locale || '').trim();
@@ -246,7 +331,7 @@
   function normalizeNewtabSearchWidth(value, options) {
     const config = options || {};
     const allowNull = Boolean(config.allowNull);
-    const min = Number.isFinite(Number(config.min)) ? Number(config.min) : 720;
+    const min = Number.isFinite(Number(config.min)) ? Number(config.min) : 640;
     const max = Number.isFinite(Number(config.max)) ? Number(config.max) : 1040;
     const fallback = Number.isFinite(Number(config.fallback)) ? Number(config.fallback) : 920;
     const number = Number(value);
@@ -688,45 +773,72 @@
     });
   }
 
-  function writeStorageValues(storageArea, chromeApi, values) {
+  // chrome.storage.sync refuses a burst of writes (dragging a slider, several
+  // pages saving at once) with an error naming the exhausted quota. Its
+  // buckets refill about one write every two seconds, so a single later
+  // attempt goes through unless the burst keeps going.
+  const STORAGE_RATE_LIMIT_RETRY_MS = 2500;
+  const STORAGE_RATE_LIMIT_PATTERN = /MAX_(?:SUSTAINED_)?WRITE_OPERATIONS_PER_(?:MINUTE|HOUR)/;
+  function isStorageRateLimitError(error) {
+    return STORAGE_RATE_LIMIT_PATTERN.test(String(error && error.message || error || ''));
+  }
+  function getStorageRetryDelay(options) {
+    const delay = options && Number(options.retryDelayMs);
+    return Number.isFinite(delay) && delay >= 0 ? delay : STORAGE_RATE_LIMIT_RETRY_MS;
+  }
+  // Provider areas retry refused bursts themselves; wrapping one must not
+  // retry the same write twice.
+  const rateLimitRetryingAreas = new WeakSet();
+
+  function writeStorageValues(storageArea, chromeApi, values, options) {
     const payload = values && typeof values === 'object' && !Array.isArray(values)
       ? { ...values }
       : {};
+    const retryDelayMs = getStorageRetryDelay(options);
     return new Promise((resolve, reject) => {
       if (!storageArea || typeof storageArea.set !== 'function') {
         resolve(payload);
         return;
       }
-      let settled = false;
-      const finish = (error) => {
-        if (settled) {
-          return;
+      let retries = rateLimitRetryingAreas.has(storageArea) ? 0 : 1;
+      const attempt = () => {
+        let settled = false;
+        const finish = (error) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          if (error && retries > 0 && isStorageRateLimitError(error)) {
+            retries -= 1;
+            setTimeout(attempt, retryDelayMs);
+            return;
+          }
+          if (error) {
+            reject(error instanceof Error ? error : new Error(String(error)));
+            return;
+          }
+          resolve(payload);
+        };
+        const callback = () => {
+          const runtimeError = chromeApi && chromeApi.runtime
+            ? chromeApi.runtime.lastError
+            : null;
+          finish(runtimeError
+            ? new Error(String(runtimeError.message || 'storage-write-failed'))
+            : null);
+        };
+        try {
+          const maybePromise = storageArea.set(payload, callback);
+          if (maybePromise && typeof maybePromise.then === 'function') {
+            maybePromise.then(() => {
+              Promise.resolve().then(() => finish(null));
+            }).catch(finish);
+          }
+        } catch (error) {
+          finish(error);
         }
-        settled = true;
-        if (error) {
-          reject(error instanceof Error ? error : new Error(String(error)));
-          return;
-        }
-        resolve(payload);
       };
-      const callback = () => {
-        const runtimeError = chromeApi && chromeApi.runtime
-          ? chromeApi.runtime.lastError
-          : null;
-        finish(runtimeError
-          ? new Error(String(runtimeError.message || 'storage-write-failed'))
-          : null);
-      };
-      try {
-        const maybePromise = storageArea.set(payload, callback);
-        if (maybePromise && typeof maybePromise.then === 'function') {
-          maybePromise.then(() => {
-            Promise.resolve().then(() => finish(null));
-          }).catch(finish);
-        }
-      } catch (error) {
-        finish(error);
-      }
+      attempt();
     });
   }
 
@@ -947,37 +1059,62 @@
 
   const providerStorageRuntimes = new WeakMap();
 
-  function createProviderStorageRuntime(chromeApi) {
+  // Reading the local-primary flag picks the area every setting comes from,
+  // so a failed read is retried instead of silently choosing browser sync.
+  const MODE_READ_RETRY_DELAYS_MS = [100, 400, 1600];
+
+  function createProviderStorageRuntime(chromeApi, options) {
     if (chromeApi && providerStorageRuntimes.has(chromeApi)) {
       return providerStorageRuntimes.get(chromeApi);
     }
     const storage = chromeApi && chromeApi.storage ? chromeApi.storage : null;
     const syncArea = storage && storage.sync ? storage.sync : null;
     const localArea = storage && storage.local ? storage.local : syncArea;
+    const retryDelayMs = getStorageRetryDelay(options);
+    const modeRetryDelays = options && Array.isArray(options.modeRetryDelaysMs)
+      ? options.modeRetryDelaysMs : MODE_READ_RETRY_DELAYS_MS;
     let activeAreaName = syncArea ? 'sync' : (localArea ? 'local' : '');
     let observedModeChange = false;
+    let modeKnown = true;
     const modeReady = new Promise((resolve) => {
       if (!localArea || typeof localArea.get !== 'function') {
         resolve(activeAreaName);
         return;
       }
-      let settled = false;
-      const finish = (result) => {
-        if (settled) return;
-        settled = true;
-        if (!observedModeChange && result && result[LOCAL_PRIMARY_STORAGE_KEY] === true) activeAreaName = 'local';
-        resolve(activeAreaName);
+      const readMode = (attempt) => {
+        let settled = false;
+        const finish = (result, error) => {
+          if (settled) return;
+          settled = true;
+          const lastError = error || (chromeApi && chromeApi.runtime && chromeApi.runtime.lastError);
+          if (lastError && !observedModeChange) {
+            if (attempt < modeRetryDelays.length) {
+              setTimeout(() => readMode(attempt + 1), modeRetryDelays[attempt]);
+              return;
+            }
+            // Still unreadable: keep the default, but say so, so callers that
+            // would copy settings elsewhere can refuse instead of guessing.
+            modeKnown = false;
+            try { console.warn('[Lumno] Could not read the settings storage mode.', lastError); } catch (_error) { /* ignore */ }
+          }
+          if (!lastError && !observedModeChange && result && result[LOCAL_PRIMARY_STORAGE_KEY] === true) activeAreaName = 'local';
+          resolve(activeAreaName);
+        };
+        try {
+          const pending = localArea.get([LOCAL_PRIMARY_STORAGE_KEY], (result) => finish(result));
+          if (pending && typeof pending.then === 'function') {
+            pending.then((result) => finish(result)).catch((error) => finish(null, error || new Error('storage-read-failed')));
+          }
+        } catch (error) { finish(null, error); }
       };
-      try {
-        const pending = localArea.get([LOCAL_PRIMARY_STORAGE_KEY], finish);
-        if (pending && typeof pending.then === 'function') pending.then(finish).catch(() => finish({}));
-      } catch (_error) { finish({}); }
+      readMode(0);
     });
     const onChanged = storage && storage.onChanged;
     if (onChanged && typeof onChanged.addListener === 'function') {
       onChanged.addListener((changes, areaName) => {
         if (areaName === 'local' && changes[LOCAL_PRIMARY_STORAGE_KEY]) {
           observedModeChange = true;
+          modeKnown = true;
           activeAreaName = changes[LOCAL_PRIMARY_STORAGE_KEY].newValue === true
             ? 'local' : (syncArea ? 'sync' : 'local');
         }
@@ -988,9 +1125,27 @@
       return activeAreaName === 'local' ? localArea : (syncArea || localArea);
     }
 
+    // The latest write of each key, so a refused write that a newer one has
+    // replaced is not retried over it.
+    let writeSequence = 0;
+    const latestWrites = new Map();
+    function writtenKeys(method, values) {
+      if (method === 'set') return Object.keys(values[0] && typeof values[0] === 'object' ? values[0] : {});
+      if (method === 'remove') return (Array.isArray(values[0]) ? values[0] : [values[0]]).map(String);
+      return [];
+    }
+
+    // A callback receives the storage error as its second argument (Chrome
+    // also leaves it in runtime.lastError while the callback runs); without a
+    // callback the returned promise rejects. A write refused for exceeding
+    // the sync write quota is retried once after the quota refills.
     function invoke(method, args) {
       const values = Array.from(args || []);
       const callback = typeof values[values.length - 1] === 'function' ? values.pop() : null;
+      const isWrite = method === 'set' || method === 'remove';
+      const keys = isWrite ? writtenKeys(method, values) : [];
+      const sequence = ++writeSequence;
+      keys.forEach((key) => latestWrites.set(key, sequence));
       return modeReady.then(() => new Promise((resolve, reject) => {
         const area = getActiveArea();
         if (!area || typeof area[method] !== 'function') {
@@ -998,23 +1153,50 @@
           resolve(method === 'get' ? {} : undefined);
           return;
         }
-        let settled = false;
-        const finish = (result) => {
-          if (settled) return;
-          settled = true;
-          const lastError = chromeApi && chromeApi.runtime && chromeApi.runtime.lastError;
-          if (callback) callback(result);
-          if (lastError && !callback) reject(new Error(lastError.message || 'Storage operation failed'));
+        let retried = false;
+        const complete = (result, error) => {
+          if (callback) callback(result, error || undefined);
+          if (error && callback && isWrite) {
+            try { console.warn('[Lumno] Could not save settings.', error); } catch (_error) { /* ignore */ }
+          }
+          if (error && !callback) reject(error);
           else resolve(result);
         };
-        try {
-          const maybePromise = area[method](...values, finish);
-          if (maybePromise && typeof maybePromise.then === 'function') {
-            maybePromise.then(finish).catch(reject);
+        const attempt = () => {
+          let settled = false;
+          const finish = (result, failure) => {
+            if (settled) return;
+            settled = true;
+            const lastError = failure || (chromeApi && chromeApi.runtime && chromeApi.runtime.lastError);
+            if (lastError && isWrite && !retried && isStorageRateLimitError(lastError)) {
+              retried = true;
+              if (keys.length && keys.every((key) => latestWrites.get(key) > sequence)) {
+                // A newer write carries every value; report this one once the
+                // refusal has left runtime.lastError.
+                Promise.resolve().then(() => complete(undefined, null));
+                return;
+              }
+              setTimeout(attempt, retryDelayMs);
+              return;
+            }
+            complete(result, lastError
+              ? (lastError instanceof Error ? lastError : new Error(lastError.message || 'Storage operation failed'))
+              : null);
+          };
+          try {
+            const maybePromise = area[method](...values, (result) => finish(result));
+            if (maybePromise && typeof maybePromise.then === 'function') {
+              maybePromise.then((result) => finish(result))
+                .catch((error) => finish(undefined, error || new Error('Storage operation failed')));
+            }
+          } catch (error) {
+            if (!settled) {
+              settled = true;
+              reject(error);
+            }
           }
-        } catch (error) {
-          reject(error);
-        }
+        };
+        attempt();
       }));
     }
 
@@ -1024,16 +1206,34 @@
       remove(...args) { return invoke('remove', args); },
       clear(...args) { return invoke('clear', args); }
     });
+    rateLimitRetryingAreas.add(area);
 
     const runtime = Object.freeze({
       area,
       get name() { return activeAreaName; },
       ready: modeReady,
       getActiveAreaName() { return activeAreaName; },
-      isActiveAreaName(areaName) { return String(areaName || '') === activeAreaName; }
+      isActiveAreaName(areaName) { return String(areaName || '') === activeAreaName; },
+      // False only when the mode could not be read at all; the active area is
+      // then the default, not a choice the user made.
+      isModeKnown() { return modeKnown; }
     });
     if (chromeApi) providerStorageRuntimes.set(chromeApi, runtime);
     return runtime;
+  }
+
+  // The area provider-scoped settings live in, plus the runtime that tracks
+  // it. The runtime always exists (it falls back to local storage when sync
+  // is missing), so callers need no sync/local fallback chain of their own.
+  // areaName is the name at the time of the call; ask the runtime for the
+  // current one once local-primary mode may have been read.
+  function getProviderStorage(chromeApi) {
+    const runtime = createProviderStorageRuntime(chromeApi);
+    return Object.freeze({
+      runtime,
+      area: runtime.area,
+      areaName: runtime.name
+    });
   }
 
   function addStorageChangeListener(chromeApi, listener) {
@@ -1053,12 +1253,47 @@
     WEBDAV_DISMISSED_CONNECTIONS_STORAGE_KEY,
     ASSET_REVISION_STORAGE_KEY,
     THEME_STORAGE_KEY,
+    LANGUAGE_STORAGE_KEY,
+    RECENT_MODE_STORAGE_KEY,
+    RECENT_COUNT_STORAGE_KEY,
+    NEWTAB_WIDTH_MODE_STORAGE_KEY,
+    NEWTAB_SEARCH_WIDTH_STORAGE_KEY,
+    NEWTAB_ZEN_MODE_STORAGE_KEY,
+    NEWTAB_WALLPAPER_STORAGE_KEY,
+    NEWTAB_WALLPAPER_OVERLAY_STORAGE_KEY,
+    NEWTAB_WALLPAPER_EFFECT_STORAGE_KEY,
+    NEWTAB_FAVICON_STORAGE_KEY,
+    OVERLAY_SIZE_MODE_STORAGE_KEY,
+    BOOKMARK_COUNT_STORAGE_KEY,
+    BOOKMARK_COLUMNS_STORAGE_KEY,
+    BOOKMARK_VIEW_MODE_STORAGE_KEY,
+    PINNED_RECENT_SITES_STORAGE_KEY,
+    HIDDEN_RECENT_SITES_STORAGE_KEY,
+    NEWTAB_SHORTCUTS_STORAGE_KEY,
+    AUTO_PIP_ENABLED_STORAGE_KEY,
+    TAB_SWITCHER_ENABLED_STORAGE_KEY,
+    DOCUMENT_PIP_ENABLED_STORAGE_KEY,
+    PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY,
+    OVERLAY_TAB_PRIORITY_STORAGE_KEY,
+    RESTRICTED_ACTION_STORAGE_KEY,
+    SEARCH_RESULT_PRIORITY_STORAGE_KEY,
+    SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY,
+    FALLBACK_SHORTCUT_STORAGE_KEY,
+    SITE_SEARCH_STORAGE_KEY,
+    SITE_SEARCH_DISABLED_STORAGE_KEY,
+    SEARCH_BLACKLIST_STORAGE_KEY,
+    FAVICON_REQUEST_BLACKLIST_STORAGE_KEY,
+    DEFAULT_SEARCH_ENGINE_STORAGE_KEY,
+    SYNC_META_STORAGE_KEY,
+    RESTRICTED_ACTION_AUTO_BROWSER_SETTING_DONE_STORAGE_KEY,
+    OPTIONS_THEME_PRELOAD_STORAGE_KEY,
     NEWTAB_THEME_MODE_STORAGE_KEY,
     NEWTAB_THEME_SCOPE_STORAGE_KEY,
     NEWTAB_SHORTCUTS_VISIBLE_STORAGE_KEY,
     NEWTAB_SHORTCUTS_CHUNK_2_STORAGE_KEY,
     NEWTAB_SHORTCUTS_CHUNK_3_STORAGE_KEY,
     NEWTAB_SHORTCUTS_V2_STORAGE_KEYS,
+    migrateLocalSettingsToSync,
     NEWTAB_SHORTCUT_ADD_VISIBLE_STORAGE_KEY,
     NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY,
     NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY,
@@ -1180,9 +1415,12 @@
     readStorageValue,
     writeStorageValue,
     writeStorageValues,
+    isStorageRateLimitError,
     createStorageReadBatch,
     prefetchStorageRead,
     createProviderStorageRuntime,
+    getProviderStorage,
     addStorageChangeListener
   });
 });
+

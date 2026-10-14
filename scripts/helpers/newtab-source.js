@@ -37,11 +37,11 @@ const NEWTAB_RUNTIME_MODULES = [
 ];
 
 // Returns newtab.js followed by the modules split out of it, so source checks
-// can locate a function regardless of which file now holds it. Split modules
-// reach page-owned variables through `pageState.name` accessors that map 1:1
-// onto the newtab.js bindings. The prefix and the factory's extra indentation
-// are dropped so checks and extracted functions see the same code they would
-// in a single closure.
+// can locate a function regardless of which file now holds it. newtab.js and
+// the split modules share page state as properties of one `pageState`
+// object. The prefix and the factory's extra indentation are dropped so
+// checks and extracted functions see the same code they would in a single
+// closure, with page state as plain variables.
 function readNewtabRuntimeSource() {
   const modules = NEWTAB_RUNTIME_MODULES.map((file) => fs.readFileSync(path.join(repoRoot, file), 'utf8')
     .replace(/^  /gm, ''));

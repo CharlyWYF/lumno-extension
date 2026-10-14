@@ -116,6 +116,11 @@
   box-shadow: var(--x-range-slider-thumb-shadow), 0 0 0 4px var(--x-range-slider-ring);
 }
 
+/* Keyboard focus rings the thumb in the shared focus color; hover keeps the faint halo. */
+.x-range-slider-input:not(:disabled):focus-visible::-moz-range-thumb {
+  box-shadow: var(--x-range-slider-thumb-shadow), 0 0 0 2px var(--lumno-color-focus-ring);
+}
+
 .x-range-slider-input:not(:disabled):active::-moz-range-thumb {
   transform: scale(1.12);
 }
@@ -139,6 +144,10 @@
 .x-range-slider-input:not(:disabled):hover::-webkit-slider-thumb,
 .x-range-slider-input:not(:disabled):focus-visible::-webkit-slider-thumb {
   box-shadow: var(--x-range-slider-thumb-shadow), 0 0 0 4px var(--x-range-slider-ring);
+}
+
+.x-range-slider-input:not(:disabled):focus-visible::-webkit-slider-thumb {
+  box-shadow: var(--x-range-slider-thumb-shadow), 0 0 0 2px var(--lumno-color-focus-ring);
 }
 
 .x-range-slider-input:not(:disabled):active::-webkit-slider-thumb {

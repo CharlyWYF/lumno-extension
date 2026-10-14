@@ -2696,6 +2696,12 @@
   "webdav_error_chrome_capacity__firefox": {
     "message": "配置超过 Firefox 同步容量，WebDAV 未应用该版本。原有 Firefox 同步和本机数据保留，请减少配置内容后重试。"
   },
+  "webdav_warning_chrome_backup": {
+    "message": "本机配置超过 Chrome 同步容量，暂未备份到 Chrome 同步。WebDAV 同步照常进行，本机数据保留；减少配置内容后会完成备份。"
+  },
+  "webdav_warning_chrome_backup__firefox": {
+    "message": "本机配置超过 Firefox 同步容量，暂未备份到 Firefox 同步。WebDAV 同步照常进行，本机数据保留；减少配置内容后会完成备份。"
+  },
   "webdav_error_network": {
     "message": "连接失败或超时，请检查网络、服务器地址和证书。本机数据已保留。"
   },

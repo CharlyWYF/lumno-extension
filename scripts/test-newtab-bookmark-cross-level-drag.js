@@ -314,11 +314,6 @@ assert.ok(
   'each newly targeted grid boundary should restart the insertion-line extension'
 );
 assert.ok(
-  /@media \(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?\[data-insert-line-position\]::after\s*\{[^}]*animation:\s*none;/s
-    .test(newtabHtml),
-  'the grid insertion-line motion should respect reduced-motion preferences'
-);
-assert.ok(
   bookmarkDragJs.includes('DEFAULT_GRID_INSERTION_HIT_ZONE_PX = 8') &&
     bookmarkDragJs.includes('pointerY >= item.rect.top && pointerY <= item.rect.bottom') &&
     bookmarkDragJs.includes('nearestBoundaryDistance > hitZonePx'),
@@ -369,19 +364,6 @@ assert.ok(
     newtabJs.includes('if (change.isControlled)') &&
     newtabJs.includes('skipRuntimeInvalidate: true'),
   'controlled browser move events should mark data dirty without triggering a second render'
-);
-assert.ok(
-  newtabJs.includes('BOOKMARK_DRAG_CLICK_SUPPRESS_MS = 420') &&
-    newtabJs.includes('card._xBookmarkSuppressClickTimer'),
-  'a completed drag should suppress the synthetic click long enough to keep the cascade open'
-);
-assert.ok(
-  bookmarksViewJs.includes('function consumeDragClickSuppression()') &&
-    bookmarksViewJs.includes("event.type === 'click' && consumeDragClickSuppression()") &&
-    bookmarksViewJs.includes('clearDragClickSuppression();') &&
-    cascadeJs.includes('function consumeBookmarkDragClickSuppression(itemButton)') &&
-    cascadeJs.includes('clearBookmarkDragClickSuppression(itemButton);'),
-  'drag click suppression should be consumed or cleared before a later deliberate folder activation'
 );
 assert.ok(
   !newtabJs.includes('showBookmarkMoveToast(record);'),

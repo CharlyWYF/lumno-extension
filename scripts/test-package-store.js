@@ -105,11 +105,14 @@ assert(
     `${file} should retain the debug surface in development source`
   );
 });
-const packagedBackground = readPackagedText('src/background/background.js');
-assert(
-  !/codex-debug-(?:bridge|surface)\.js|LumnoCodexDebug|codexDebugBridge/.test(packagedBackground),
-  'store background should not retain development-only debug bridge references'
-);
+const { getBackgroundServiceFiles } = require('./helpers/background-source');
+['src/background/background.js'].concat(getBackgroundServiceFiles()).forEach((file) => {
+  assert(entries.includes(file), `store package should include ${file}`);
+  assert(
+    !/codex-debug-(?:bridge|surface)\.js|LumnoCodexDebug|codexDebugBridge/.test(readPackagedText(file)),
+    `store ${file} should not retain development-only debug bridge references`
+  );
+});
 assert(
   /codex-debug-bridge\.js/.test(fs.readFileSync(path.join(repoRoot, 'src/background/background.js'), 'utf8')),
   'development background should retain the Codex debug bridge'

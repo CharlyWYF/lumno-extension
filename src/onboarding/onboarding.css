@@ -323,7 +323,6 @@ button[aria-busy="true"]:disabled,
   --page-strip-active: rgba(17, 24, 39, 0.14);
   --page-strip-hover: rgba(17, 24, 39, 0.085);
   --page-strip-active-hover: rgba(17, 24, 39, 0.18);
-  --page-strip-focus: rgba(17, 24, 39, 0.16);
   width: min(280px, 100%);
   display: grid;
   grid-template-columns: repeat(var(--page-strip-count, 4), minmax(0, 1fr));
@@ -362,7 +361,7 @@ button[aria-busy="true"]:disabled,
 }
 
 .page-strip-segment:focus-visible {
-  outline: 2px solid var(--page-strip-focus);
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 3px;
 }
 
@@ -404,20 +403,12 @@ button[aria-busy="true"]:disabled,
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .page-strip[data-entering="true"],
-  .page-strip[data-entering="true"] .page-strip-segment {
-    animation: none;
-  }
-}
-
 @media (prefers-color-scheme: dark) {
   .page-strip {
     --page-strip-track: rgba(255, 255, 255, 0.08);
     --page-strip-active: rgba(255, 255, 255, 0.22);
     --page-strip-hover: rgba(255, 255, 255, 0.14);
     --page-strip-active-hover: rgba(255, 255, 255, 0.3);
-    --page-strip-focus: rgba(255, 255, 255, 0.22);
   }
 }
 
@@ -616,10 +607,6 @@ html[lang="en"] .onboarding-shell[data-active-slide="intro"] .title-logo-mark {
     filter    var(--panel-open-dur) var(--panel-ease);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .t-panel-slide { transition: none !important; }
-}
-
 .title.t-copy-swap,
 .body-copy.t-copy-swap {
   transform: translateY(0);
@@ -645,12 +632,6 @@ html[lang="en"] .onboarding-shell[data-active-slide="intro"] .title-logo-mark {
   filter: blur(var(--text-swap-blur));
   opacity: 0;
   transition: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .t-resize { transition: none !important; }
-  .t-text-swap { transition: none !important; }
-  .t-copy-swap { transition: none !important; }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -850,8 +831,8 @@ html[lang="en"] .onboarding-shell[data-active-slide="intro"] .title-logo-mark {
 .interaction-slot:focus-visible,
 .interaction-accordion-trigger:focus-visible,
 .onboarding-action-button:focus-visible {
-  outline: var(--onboarding-action-focus-outline, 2px solid rgba(37, 99, 235, 0.46));
-  outline-offset: var(--onboarding-action-focus-outline-offset, 3px);
+  outline: 2px solid var(--lumno-color-focus-ring);
+  outline-offset: 3px;
 }
 
 .interaction-icon {
@@ -1005,7 +986,7 @@ html[lang="en"] .onboarding-shell[data-active-slide="intro"] .title-logo-mark {
 }
 
 .interaction-info-button:focus-visible {
-  outline: 2px solid rgba(37, 99, 235, 0.46);
+  outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 3px;
 }
 
@@ -1125,8 +1106,6 @@ html[lang="en"] .onboarding-shell[data-active-slide="intro"] .title-logo-mark {
   --onboarding-action-color: var(--lumno-color-on-primary);
   --onboarding-action-shadow: var(--lumno-shadow-primary);
   --onboarding-action-before-shadow: var(--lumno-shadow-primary-sheen);
-  --onboarding-action-focus-outline: none;
-  --onboarding-action-focus-outline-offset: 0;
   --onboarding-action-hover-bg: var(--lumno-color-primary-hover);
   --onboarding-action-hover-shadow: var(--lumno-shadow-primary-hover);
 }
@@ -1305,11 +1284,6 @@ html[lang="en"] .onboarding-shell[data-active-slide="intro"] .title-logo-mark {
 }
 
 @media (max-height: 559px) and (min-width: 860px) {
-  .onboarding-shell {
-    --onboarding-shell-padding-y: 16px;
-    --onboarding-shell-lift-y: 0px;
-  }
-
   .copy-panel {
     --onboarding-copy-padding-x: 44px;
     --onboarding-copy-padding-y: 36px;
@@ -1328,19 +1302,10 @@ html[lang="en"] .onboarding-shell[data-active-slide="intro"] .title-logo-mark {
     font-size: 15px;
     line-height: 1.52;
   }
-
-  .visual-panel-slot {}
 }
 
+/* The shell itself for these widths is set by the narrow-or-short block below. */
 @media (max-width: 859px) {
-  .onboarding-shell {
-    --onboarding-shell-padding-x: 16px;
-    --onboarding-shell-padding-y: 16px;
-    --onboarding-shell-lift-y: 0px;
-    --onboarding-stacked-copy-min-height: 588px;
-    place-items: start center;
-  }
-
   .onboarding-frame {
     width: min(720px, 100%);
     height: auto;
@@ -1391,20 +1356,6 @@ html[lang="en"] .onboarding-shell[data-active-slide="intro"] .title-logo-mark {
   .body-copy {
     font-size: 15px;
     line-height: 1.54;
-  }
-
-  .visual-panel-slot {}
-}
-
-@media (max-width: 380px) {
-  .onboarding-shell {
-    --onboarding-stacked-copy-min-height: 638px;
-  }
-}
-
-@media (max-width: 340px) {
-  .onboarding-shell {
-    --onboarding-stacked-copy-min-height: 660px;
   }
 }
 
@@ -4852,18 +4803,5 @@ html[lang="en"] .onboarding-shell[data-active-slide="intro"] .title-logo-mark {
     opacity: 1;
     transform: translate3d(0, 0, 0) rotate(-6deg);
     animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .onboarding-frame,
-  .visual-panel { transition: none !important; }
-  *,
-  *::before,
-  *::after {
-    animation-duration: 1ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition: none !important;
   }
 }

@@ -30,7 +30,7 @@
       SETTINGS
     } = deps;
 
-    // Page state still owned by newtab.js; read and written through accessors.
+    // The page state object shared with newtab.js and the other modules.
     const pageState = deps.pageState;
 
     let siteSearchProvidersLoadPromise = null;

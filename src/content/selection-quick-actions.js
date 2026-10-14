@@ -11,8 +11,8 @@
   const TOAST = globalThis.LumnoToast;
   const SETTINGS = globalThis.LumnoSettings;
 
-  const ENABLED_STORAGE_KEY = '_x_extension_selection_quick_actions_enabled_2026_unique_';
-  const LANGUAGE_STORAGE_KEY = '_x_extension_language_2024_unique_';
+  const ENABLED_STORAGE_KEY = SETTINGS.SELECTION_QUICK_ACTIONS_ENABLED_STORAGE_KEY;
+  const LANGUAGE_STORAGE_KEY = SETTINGS.LANGUAGE_STORAGE_KEY;
   const HOST_ID = '_x_extension_selection_quick_actions_host_2026_unique_';
   const DEVELOPMENT_EXTENSION_ID = 'kkcjcneagmlhpeaafngjdlpcfjakejgb';
   const RUNTIME_REVISION = 'selection-toolbar-v32';
@@ -21,9 +21,6 @@
     ? String(chrome.runtime.id)
     : '';
   const RUNTIME_PRIORITY = RUNTIME_ID === DEVELOPMENT_EXTENSION_ID ? 2 : 1;
-  // One-click source switch for local selection diagnostics. Keep disabled in releases.
-  const SELECTION_DEBUG_MODE = false;
-  const DEBUG_HOST_ID = '_x_extension_selection_quick_actions_debug_host_2026_unique_';
   const TOAST_HOST_ID = '_x_extension_selection_quick_actions_toast_host_2026_unique_';
   const TOAST_STYLE_ID = '_x_extension_selection_quick_actions_toast_style_2026_unique_';
   const ENTRY_DELAY_MS = 320;
@@ -31,20 +28,13 @@
   const SELECTION_GESTURE_TIMEOUT_MS = 1600;
   const ENTRY_DISMISS_MS = 2200;
   const TOOLBAR_DISMISS_MS = 3600;
-  const DEBUG_DISMISS_MS = 7200;
   const ACTION_SUCCESS_DISMISS_MS = 900;
   const ACTION_FAILURE_DISMISS_MS = 2200;
   const VIEWPORT_SAFE_MARGIN_PX = 12;
   const TEXT_INPUT_TYPES = new Set(['text', 'search', 'url', 'tel', 'email']);
-  const providerStorageRuntime = SETTINGS.createProviderStorageRuntime(chrome);
-  const storageArea = providerStorageRuntime
-    ? providerStorageRuntime.area
-    : (chrome && chrome.storage && chrome.storage.sync
-        ? chrome.storage.sync
-        : (chrome && chrome.storage ? chrome.storage.local : null));
-  const storageAreaName = providerStorageRuntime ? providerStorageRuntime.name : (storageArea && storageArea === (chrome && chrome.storage ? chrome.storage.sync : null)
-    ? 'sync'
-    : 'local');
+  const providerStorage = SETTINGS.getProviderStorage(chrome);
+  const providerStorageRuntime = providerStorage.runtime;
+  const storageArea = providerStorage.area;
 
   let enabled = false;
   let languageMode = 'system';
@@ -79,10 +69,7 @@
   let toolbarEntranceCleanupTimer = null;
   let viewportRepositionFrame = null;
   let hostHorizontalAnchor = 'left';
-  let debugHost = null;
-  let debugBubble = null;
-  let debugDismissTimer = null;
-  let debugRenderState = null;
+  let attachedPageListeners = null;
 
   const HOST_ISOLATION_STYLES = Object.freeze({
     all: 'initial',
@@ -169,14 +156,6 @@
     }
   }
 
-  function formatDebugMessage(key, fallback, replacements = {}) {
-    let message = getMessage(key, fallback);
-    Object.entries(replacements).forEach(([name, value]) => {
-      message = message.split(`{${name}}`).join(String(value));
-    });
-    return message;
-  }
-
   function applyNoTranslate(element) {
     if (!element || typeof element.setAttribute !== 'function') {
       return element;
@@ -231,12 +210,6 @@
       localeMessages = response && response.messages ? response.messages : null;
       if (menu && !menu.hidden && currentCandidate) {
         renderMenu();
-      } else if (debugRenderState && debugRenderState.kind === 'decision') {
-        renderSelectionDecisionDebug(
-          debugRenderState.snapshot,
-          debugRenderState.classification,
-          debugRenderState.target
-        );
       }
     });
   }
@@ -440,356 +413,6 @@
     return Math.min(safeMaximum, Math.max(minimum, value));
   }
 
-  function hideDebugBubble() {
-    if (debugDismissTimer) {
-      window.clearTimeout(debugDismissTimer);
-      debugDismissTimer = null;
-    }
-    debugRenderState = null;
-    if (debugHost) {
-      debugHost.style.setProperty('display', 'none', 'important');
-    }
-  }
-
-  function ensureDebugBubble() {
-    if (!SELECTION_DEBUG_MODE) {
-      return false;
-    }
-    if (debugHost && debugHost.isConnected && debugBubble) {
-      return true;
-    }
-    const staleHost = document.getElementById(DEBUG_HOST_ID);
-    if (staleHost) {
-      staleHost.remove();
-    }
-    debugHost = document.createElement('div');
-    debugHost.id = DEBUG_HOST_ID;
-    debugHost.setAttribute('aria-hidden', 'true');
-    applyNoTranslate(debugHost);
-    Object.entries(HOST_ISOLATION_STYLES).forEach(([property, value]) => {
-      debugHost.style.setProperty(property, value, 'important');
-    });
-    debugHost.style.setProperty('pointer-events', 'none', 'important');
-    debugHost.style.setProperty('display', 'none', 'important');
-
-    const debugShadow = debugHost.attachShadow({ mode: 'open' });
-    const style = document.createElement('style');
-    style.textContent = `
-      :host {
-        all: initial;
-        position: fixed;
-        z-index: 2147483647;
-        display: block;
-        pointer-events: none;
-        color-scheme: dark;
-        font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      }
-      :host::before,
-      :host::after { content: none !important; display: none !important; }
-      .lumno-selection-debug-bubble {
-        box-sizing: border-box;
-        width: min(360px, calc(100vw - 24px));
-        padding: 10px 12px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        border-radius: 12px;
-        background: rgba(17, 20, 27, 0.96);
-        color: #f5f7fa;
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.34), 0 2px 8px rgba(0, 0, 0, 0.24);
-        -webkit-backdrop-filter: blur(14px) saturate(135%);
-        backdrop-filter: blur(14px) saturate(135%);
-        font: 12px/1.45 "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        letter-spacing: 0;
-        text-align: left;
-        white-space: normal;
-      }
-      .lumno-selection-debug-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 6px;
-      }
-      .lumno-selection-debug-title { font-weight: 650; color: #ffffff; }
-      .lumno-selection-debug-status {
-        flex: 0 0 auto;
-        padding: 1px 7px;
-        border-radius: 999px;
-        background: rgba(148, 163, 184, 0.18);
-        color: #dce3ec;
-        font-size: 11px;
-      }
-      .lumno-selection-debug-status[data-state="show"] {
-        background: rgba(34, 197, 94, 0.18);
-        color: #86efac;
-      }
-      .lumno-selection-debug-status[data-state="hide"] {
-        background: rgba(251, 146, 60, 0.18);
-        color: #fdba74;
-      }
-      .lumno-selection-debug-reason { color: #eef2f7; }
-      .lumno-selection-debug-meta,
-      .lumno-selection-debug-footer {
-        margin-top: 5px;
-        color: #9faabc;
-        font-size: 11px;
-      }
-      .lumno-selection-debug-rows {
-        display: grid;
-        gap: 4px;
-      }
-      .lumno-selection-debug-row {
-        display: grid;
-        grid-template-columns: 18px max-content minmax(0, 1fr);
-        gap: 5px;
-        align-items: start;
-      }
-      .lumno-selection-debug-rank { color: #778397; }
-      .lumno-selection-debug-action { color: #ffffff; font-weight: 600; }
-      .lumno-selection-debug-cause { color: #c7d0dc; }
-    `;
-    debugBubble = document.createElement('div');
-    debugBubble.className = 'lumno-selection-debug-bubble';
-    debugShadow.append(style, debugBubble);
-    (document.documentElement || document.body).appendChild(debugHost);
-    return true;
-  }
-
-  function positionDebugBubble() {
-    if (!SELECTION_DEBUG_MODE || !debugHost || !debugBubble) {
-      return;
-    }
-    const viewport = getViewportBounds();
-    const layoutHeight = window.innerHeight || document.documentElement.clientHeight || viewport.bottom;
-    const bottomOffset = Math.max(
-      VIEWPORT_SAFE_MARGIN_PX,
-      layoutHeight - viewport.bottom + VIEWPORT_SAFE_MARGIN_PX
-    );
-    const bubbleWidth = Math.max(
-      0,
-      Math.min(360, viewport.right - viewport.left - VIEWPORT_SAFE_MARGIN_PX * 2)
-    );
-    debugBubble.style.width = `${Math.floor(bubbleWidth)}px`;
-    debugHost.style.setProperty(
-      'left',
-      `${Math.round(viewport.left + VIEWPORT_SAFE_MARGIN_PX)}px`,
-      'important'
-    );
-    debugHost.style.setProperty('right', 'auto', 'important');
-    debugHost.style.setProperty('top', 'auto', 'important');
-    debugHost.style.setProperty('bottom', `${Math.round(bottomOffset)}px`, 'important');
-    debugHost.style.setProperty('display', 'block', 'important');
-  }
-
-  function appendDebugText(className, text) {
-    const element = document.createElement('div');
-    element.className = className;
-    element.textContent = text;
-    return element;
-  }
-
-  function getDebugActionReason(classification) {
-    const features = classification && classification.features ? classification.features : {};
-    switch (classification && classification.action) {
-      case 'calculate':
-        return getMessage('selection_debug_reason_calculate', 'Detected an expression, currency, or unit conversion');
-      case 'ask':
-        return getMessage('selection_debug_reason_question', 'Detected an explicit question');
-      case 'summarize':
-        return getMessage('selection_debug_reason_prose', 'Detected sufficiently rich continuous prose');
-      case 'search':
-        return getMessage('selection_debug_reason_search', 'Detected a lookup intent');
-      case 'translate':
-        return getMessage('selection_debug_reason_translate', "Selected text differs from Lumno's UI language");
-      case 'explain':
-        if (features.errorLike) {
-          return getMessage('selection_debug_reason_error', 'Detected an error or exception');
-        }
-        if (features.codeLike) {
-          return getMessage('selection_debug_reason_code', 'Detected code syntax or a code context');
-        }
-        if (features.meaningfulTermLike) {
-          return getMessage('selection_debug_reason_term', 'Detected a meaningful term or short phrase');
-        }
-        return getMessage('selection_debug_reason_explain_score', 'Explain received the highest score');
-      default:
-        return getMessage('selection_debug_reason_top_score', 'This action received the highest matching score');
-    }
-  }
-
-  function getDebugRejectionReason(classification, target) {
-    if (!enabled) {
-      return getMessage('selection_debug_rejection_disabled', 'Selection Quick Actions are disabled');
-    }
-    if (!classification) {
-      return isSensitiveElement(target)
-        ? getMessage(
-            'selection_debug_rejection_sensitive',
-            'Sensitive password or payment field; content was not read'
-          )
-        : getMessage('selection_debug_rejection_no_selection', 'No valid text selection detected');
-    }
-    const text = classification.text || '';
-    const features = classification.features || {};
-    if (text.length < 2) {
-      return getMessage('selection_debug_rejection_too_short', 'Fewer than 2 characters');
-    }
-    if (text.length > 2400) {
-      return getMessage('selection_debug_rejection_too_long', 'More than 2400 characters');
-    }
-    if (features.urlLike) {
-      return getMessage('selection_debug_rejection_url', 'Complete URL');
-    }
-    if (features.emailLike) {
-      return getMessage('selection_debug_rejection_email', 'Email address');
-    }
-    if (features.genericUiLike) {
-      return getMessage('selection_debug_rejection_generic_ui', 'Generic UI copy');
-    }
-    if (/^\d+(?:[.,]\d+)?$/.test(text)) {
-      return getMessage(
-        'selection_debug_rejection_plain_number',
-        'Plain number without a calculation or conversion'
-      );
-    }
-    if (features.symbolRatio >= 0.3) {
-      return getMessage('selection_debug_rejection_symbols', 'Symbol ratio is too high');
-    }
-    return getMessage(
-      'selection_debug_rejection_no_intent',
-      'Did not match an explicit task, meaningful term, or substantial prose'
-    );
-  }
-
-  function getDebugConfidenceLabel(confidence) {
-    const normalized = ['high', 'medium', 'low'].includes(confidence) ? confidence : 'low';
-    const fallbacks = { high: 'High', medium: 'Medium', low: 'Low' };
-    return getMessage(`selection_debug_confidence_${normalized}`, fallbacks[normalized]);
-  }
-
-  function hasSensitiveSelection(element) {
-    if (!isSensitiveElement(element)) {
-      return false;
-    }
-    const selectionStart = Number(element && element.selectionStart);
-    const selectionEnd = Number(element && element.selectionEnd);
-    if (Number.isInteger(selectionStart) && Number.isInteger(selectionEnd) && selectionEnd > selectionStart) {
-      return true;
-    }
-    const selection = window.getSelection ? window.getSelection() : null;
-    return Boolean(selection && !selection.isCollapsed && selection.rangeCount > 0);
-  }
-
-  function renderSelectionDecisionDebug(snapshot, classification, target) {
-    if (!SELECTION_DEBUG_MODE || !ensureDebugBubble()) {
-      return;
-    }
-    debugRenderState = { kind: 'decision', snapshot, classification, target };
-    const targetElement = target && target.nodeType === Node.ELEMENT_NODE
-      ? target
-      : (target && target.parentElement ? target.parentElement : null);
-    const willShow = Boolean(
-      enabled && classification && !classification.suppressed && classification.triggerable === true
-    );
-    const header = document.createElement('div');
-    header.className = 'lumno-selection-debug-header';
-    header.append(
-      appendDebugText(
-        'lumno-selection-debug-title',
-        getMessage('selection_debug_decision_title', 'Selection decision')
-      ),
-      appendDebugText(
-        'lumno-selection-debug-status',
-        willShow
-          ? getMessage('selection_debug_status_show', 'Show')
-          : getMessage('selection_debug_status_hide', "Don't show")
-      )
-    );
-    header.lastElementChild.dataset.state = willShow ? 'show' : 'hide';
-    const reason = appendDebugText(
-      'lumno-selection-debug-reason',
-      willShow ? getDebugActionReason(classification) : getDebugRejectionReason(classification, targetElement)
-    );
-    debugBubble.replaceChildren(header, reason);
-    if (willShow) {
-      const action = getActionLabel(classification.action);
-      const confidence = getDebugConfidenceLabel(classification.confidence);
-      debugBubble.append(appendDebugText(
-        'lumno-selection-debug-meta',
-        formatDebugMessage(
-          'selection_debug_primary_meta',
-          'Primary: {action} · Score {score} · {confidence} confidence',
-          { action, score: Number(classification.score || 0).toFixed(2), confidence }
-        )
-      ));
-    }
-    positionDebugBubble();
-    if (debugDismissTimer) {
-      window.clearTimeout(debugDismissTimer);
-    }
-    debugDismissTimer = window.setTimeout(hideDebugBubble, DEBUG_DISMISS_MS);
-  }
-
-  function renderSelectionSortingDebug(candidate, actions) {
-    if (!SELECTION_DEBUG_MODE || !candidate || !ensureDebugBubble()) {
-      return;
-    }
-    debugRenderState = { kind: 'sorting', candidate, actions: actions.slice() };
-    const classification = candidate.classification;
-    const header = document.createElement('div');
-    header.className = 'lumno-selection-debug-header';
-    header.append(
-      appendDebugText(
-        'lumno-selection-debug-title',
-        getMessage('selection_debug_sort_title', 'Menu order')
-      ),
-      appendDebugText(
-        'lumno-selection-debug-status',
-        formatDebugMessage('selection_debug_item_count', '{count} items', { count: actions.length })
-      )
-    );
-    const rows = document.createElement('div');
-    rows.className = 'lumno-selection-debug-rows';
-    actions.forEach((action, index) => {
-      const row = document.createElement('div');
-      row.className = 'lumno-selection-debug-row';
-      const cause = index === 0
-        ? formatDebugMessage(
-            'selection_debug_sort_primary_cause',
-            '{reason}, score {score}',
-            {
-              reason: getDebugActionReason(classification),
-              score: Number(classification.score || 0).toFixed(2)
-            }
-          )
-        : getMessage(
-            'selection_debug_sort_fallback_cause',
-            'General fallback, filled in fixed order and deduplicated'
-          );
-      row.append(
-        appendDebugText('lumno-selection-debug-rank', `${index + 1}.`),
-        appendDebugText('lumno-selection-debug-action', getActionLabel(action)),
-        appendDebugText('lumno-selection-debug-cause', cause)
-      );
-      rows.append(row);
-    });
-    debugBubble.replaceChildren(
-      header,
-      rows,
-      appendDebugText(
-        'lumno-selection-debug-footer',
-        getMessage(
-          'selection_debug_sort_footer',
-          'The first item uses the highest intent score; remaining items follow Explain → Research → Translate.'
-        )
-      )
-    );
-    positionDebugBubble();
-    if (debugDismissTimer) {
-      window.clearTimeout(debugDismissTimer);
-    }
-    debugDismissTimer = window.setTimeout(hideDebugBubble, DEBUG_DISMISS_MS);
-  }
-
   function applySurfaceViewportLimit(viewport) {
     if (!surface || !viewport) {
       return;
@@ -841,9 +464,6 @@
   }
 
   function scheduleViewportClamp() {
-    if (SELECTION_DEBUG_MODE && debugHost && debugHost.style.display !== 'none') {
-      positionDebugBubble();
-    }
     if (!host || host.hidden || !surface) {
       return;
     }
@@ -1120,9 +740,7 @@
   }
 
   function getActiveStorageAreaName() {
-    return providerStorageRuntime
-      ? providerStorageRuntime.getActiveAreaName()
-      : storageAreaName;
+    return providerStorageRuntime.getActiveAreaName();
   }
 
   function updateRuntimeDebugState() {
@@ -1428,24 +1046,8 @@
     return 'mixed';
   }
 
-  function ensureSurface() {
-    if (host && host.isConnected) {
-      updateRuntimeDebugState();
-      return true;
-    }
-    if (!reconcileSurfaceOwnership()) {
-      return false;
-    }
-    host = document.createElement('div');
-    host.id = HOST_ID;
-    applyNoTranslate(host);
-    setHostHidden(true);
-    host.dataset.visible = 'false';
-    updateRuntimeDebugState();
-    shadow = host.attachShadow({ mode: 'closed' });
-
-    const style = document.createElement('style');
-    style.textContent = `
+  // Stylesheet for the toolbar's closed shadow root.
+  const SELECTION_SURFACE_STYLES = `
       :host {
         all: initial;
         position: fixed;
@@ -1774,16 +1376,24 @@
         }
       }
     `;
-    shadow.appendChild(style);
 
-    surface = document.createElement('div');
-    surface.className = 'lumno-selection-surface';
-    surface.setAttribute('role', 'group');
+  function createSurfaceHost() {
+    host = document.createElement('div');
+    host.id = HOST_ID;
+    applyNoTranslate(host);
+    setHostHidden(true);
+    host.dataset.visible = 'false';
+    updateRuntimeDebugState();
+    shadow = host.attachShadow({ mode: 'closed' });
+  }
 
-    material = document.createElement('span');
-    material.className = 'lumno-selection-material';
-    material.setAttribute('aria-hidden', 'true');
+  function createSurfaceStyle() {
+    const style = document.createElement('style');
+    style.textContent = SELECTION_SURFACE_STYLES;
+    return style;
+  }
 
+  function createMainButton() {
     mainButton = document.createElement('button');
     mainButton.type = 'button';
     mainButton.className = 'lumno-selection-main';
@@ -1798,7 +1408,9 @@
     mainButton.append(mainLabel);
     mainButton.setAttribute('aria-controls', 'lumno-selection-toolbar');
     mainButton.setAttribute('aria-expanded', 'false');
+  }
 
+  function createToolbar() {
     primaryDivider = document.createElement('span');
     primaryDivider.className = 'lumno-selection-primary-divider';
     primaryDivider.hidden = true;
@@ -1816,6 +1428,19 @@
     menu.setAttribute('role', 'toolbar');
     menu.setAttribute('aria-label', getMessage('selection_quick_action_open_menu', '使用 Lumno 处理所选文字'));
     actionsViewport.append(menu);
+  }
+
+  function buildSurfaceTree() {
+    surface = document.createElement('div');
+    surface.className = 'lumno-selection-surface';
+    surface.setAttribute('role', 'group');
+
+    material = document.createElement('span');
+    material.className = 'lumno-selection-material';
+    material.setAttribute('aria-hidden', 'true');
+
+    createMainButton();
+    createToolbar();
 
     contentViewport = document.createElement('div');
     contentViewport.className = 'lumno-selection-content';
@@ -1823,14 +1448,16 @@
 
     surface.append(material, contentViewport);
     applyNoTranslateDeep(surface);
-    shadow.appendChild(surface);
-    (document.documentElement || document.body).appendChild(host);
+  }
 
+  function observeSurfaceSize() {
     if (typeof window.ResizeObserver === 'function') {
       surfaceResizeObserver = new window.ResizeObserver(scheduleViewportClamp);
       surfaceResizeObserver.observe(surface);
     }
+  }
 
+  function bindSurfaceInteractions() {
     surface.addEventListener('pointerdown', (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -1856,6 +1483,23 @@
       }
       openLabsSettings();
     });
+  }
+
+  function ensureSurface() {
+    if (host && host.isConnected) {
+      updateRuntimeDebugState();
+      return true;
+    }
+    if (!reconcileSurfaceOwnership()) {
+      return false;
+    }
+    createSurfaceHost();
+    shadow.appendChild(createSurfaceStyle());
+    buildSurfaceTree();
+    shadow.appendChild(surface);
+    (document.documentElement || document.body).appendChild(host);
+    observeSurfaceSize();
+    bindSurfaceInteractions();
     return true;
   }
 
@@ -2042,7 +1686,6 @@
     const primary = currentCandidate.classification.action;
     const actions = getToolbarActions(primary);
     const actionButtons = actions.map(buildMenuAction);
-    renderSelectionSortingDebug(currentCandidate, actions);
     surface.dataset.iconOnly = 'false';
     mainButton.hidden = false;
     mainButton.dataset.iconOnly = 'false';
@@ -2163,11 +1806,10 @@
     };
   }
 
-  function evaluateSelection(snapshot, target) {
+  function evaluateSelection(snapshot) {
     hideSurface();
     const resolvedSnapshot = snapshot || getUnifiedSelectionSnapshot(document.activeElement);
     const classification = classifySelectionSnapshot(resolvedSnapshot);
-    renderSelectionDecisionDebug(resolvedSnapshot, classification, target);
     if (!enabled) {
       return;
     }
@@ -2217,11 +1859,10 @@
     pointerDownState = null;
     resetSelectionGesture();
     hideSurface();
-    hideDebugBubble();
   }
 
   function scheduleSelectionChangeEvaluation() {
-    if ((!enabled && !SELECTION_DEBUG_MODE) || !selectionGestureActive || pointerDownState) {
+    if (!enabled || !selectionGestureActive || pointerDownState) {
       return;
     }
     if (selectionChangeTimer) {
@@ -2229,21 +1870,21 @@
     }
     selectionChangeTimer = window.setTimeout(() => {
       selectionChangeTimer = null;
-      if ((!enabled && !SELECTION_DEBUG_MODE) || !selectionGestureActive || pointerDownState || currentCandidate) {
+      if (!enabled || !selectionGestureActive || pointerDownState || currentCandidate) {
         return;
       }
       const snapshot = getUnifiedSelectionSnapshot(document.activeElement);
       if (!snapshot || !snapshot.text) {
         return;
       }
-      evaluateSelection(snapshot, snapshot.element);
+      evaluateSelection(snapshot);
     }, SELECTION_CHANGE_DELAY_MS);
   }
 
   function handlePointerUp(event) {
     const pointerDown = pointerDownState;
     pointerDownState = null;
-    if (event.button !== 0 || (!enabled && !SELECTION_DEBUG_MODE) ||
+    if (event.button !== 0 || !enabled ||
         event.isPrimary === false ||
         !pointerDown ||
         (pointerDown.pointerId != null && event.pointerId != null && pointerDown.pointerId !== event.pointerId) ||
@@ -2255,24 +1896,18 @@
     const selectionChanged = !isSameSelection(pointerDown.selection, snapshot);
     const isMultiClick = Number(event.detail) >= 2;
     if (!snapshot || !snapshot.text) {
-      const targetElement = event.target && event.target.nodeType === Node.ELEMENT_NODE
-        ? event.target
-        : (event.target && event.target.parentElement ? event.target.parentElement : null);
-      if (SELECTION_DEBUG_MODE && hasSensitiveSelection(targetElement)) {
-        renderSelectionDecisionDebug(null, null, targetElement);
-      }
       scheduleSelectionChangeEvaluation();
       return;
     }
     if (!selectionChanged && !isMultiClick) {
       return;
     }
-    evaluateSelection(snapshot, event.target);
+    evaluateSelection(snapshot);
   }
 
   function handlePointerDown(event) {
     pointerDownState = null;
-    if (event.button !== 0 || (!enabled && !SELECTION_DEBUG_MODE) ||
+    if (event.button !== 0 || !enabled ||
         event.isPrimary === false ||
         (host && event.composedPath && event.composedPath().includes(host))) {
       return;
@@ -2282,7 +1917,6 @@
       selection: getUnifiedSelectionSnapshot(event.target, event)
     };
     hideSurface();
-    hideDebugBubble();
     armSelectionGesture();
   }
 
@@ -2291,7 +1925,7 @@
     if (currentCandidate && snapshot && !isSameSelection(currentCandidate.snapshot, snapshot)) {
       hideSurface();
     }
-    if (!snapshot || !snapshot.text || (!enabled && !SELECTION_DEBUG_MODE) ||
+    if (!snapshot || !snapshot.text || !enabled ||
         !selectionGestureActive || pointerDownState || currentCandidate) {
       return;
     }
@@ -2302,14 +1936,14 @@
     const pointerDown = pointerDownState;
     pointerDownState = null;
     const snapshot = getUnifiedSelectionSnapshot(document.activeElement);
-    if ((enabled || SELECTION_DEBUG_MODE) && selectionGestureActive && snapshot && snapshot.text &&
+    if (enabled && selectionGestureActive && snapshot && snapshot.text &&
         (!pointerDown || !isSameSelection(pointerDown.selection, snapshot))) {
       scheduleSelectionChangeEvaluation();
     }
   }
 
   function handleSelectStart(event) {
-    if ((!enabled && !SELECTION_DEBUG_MODE) ||
+    if (!enabled ||
         (host && event.composedPath && event.composedPath().includes(host))) {
       return;
     }
@@ -2323,10 +1957,62 @@
     cancelSelectionGesture();
   }
 
-  function hydrateSettings() {
-    if (!storageArea || typeof storageArea.get !== 'function') {
+  function handleKeyDown(event) {
+    if (event.key === 'Escape') {
+      cancelSelectionGesture();
       return;
     }
+    if (event.shiftKey || ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === 'a')) {
+      armSelectionGesture();
+    }
+  }
+
+  // Page listeners exist only while the feature is enabled, so a disabled
+  // feature costs nothing on selectionchange, scroll, resize and the rest.
+  // The storage listener below stays attached so the feature can turn back on.
+  function getPageListeners() {
+    const listeners = [
+      [document, 'pointerup', handlePointerUp, true],
+      [document, 'pointerdown', handlePointerDown, true],
+      [document, 'pointercancel', handlePointerCancel, true],
+      [document, 'selectstart', handleSelectStart, true],
+      [document, 'selectionchange', handleSelectionChange, true],
+      [document, 'copy', cancelSelectionGesture, true],
+      [document, 'scroll', cancelSelectionGesture, true],
+      [document, 'keydown', handleKeyDown, true],
+      [window, 'blur', handleWindowBlur, true],
+      [window, 'resize', scheduleViewportClamp, true],
+      [window, 'orientationchange', scheduleViewportClamp, true]
+    ];
+    if (window.visualViewport) {
+      listeners.push(
+        [window.visualViewport, 'resize', scheduleViewportClamp, false],
+        [window.visualViewport, 'scroll', scheduleViewportClamp, false]
+      );
+    }
+    return listeners;
+  }
+
+  function setPageListenersActive(active) {
+    if (active && !attachedPageListeners) {
+      attachedPageListeners = getPageListeners();
+      attachedPageListeners.forEach(([target, type, listener, capture]) => {
+        target.addEventListener(type, listener, capture);
+      });
+    } else if (!active && attachedPageListeners) {
+      attachedPageListeners.forEach(([target, type, listener, capture]) => {
+        target.removeEventListener(type, listener, capture);
+      });
+      attachedPageListeners = null;
+    }
+  }
+
+  function setFeatureActive(active) {
+    setPageListenersActive(active);
+    setOwnershipMonitoring(active);
+  }
+
+  function hydrateSettings() {
     storageArea.get([
       ENABLED_STORAGE_KEY,
       LANGUAGE_STORAGE_KEY
@@ -2343,7 +2029,7 @@
         cancelSelectionGesture();
         clearOwnedSurface();
       }
-      setOwnershipMonitoring(enabled);
+      setFeatureActive(enabled);
       if (currentCandidate && host && !host.hidden) {
         updateSelectionMark();
       } else {
@@ -2352,41 +2038,14 @@
     });
   }
 
-  document.addEventListener('pointerup', handlePointerUp, true);
-  document.addEventListener('pointerdown', handlePointerDown, true);
-  document.addEventListener('pointercancel', handlePointerCancel, true);
-  document.addEventListener('selectstart', handleSelectStart, true);
-  document.addEventListener('selectionchange', handleSelectionChange, true);
-  document.addEventListener('copy', cancelSelectionGesture, true);
-  document.addEventListener('scroll', cancelSelectionGesture, true);
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      cancelSelectionGesture();
-      return;
-    }
-    if (event.shiftKey || ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === 'a')) {
-      armSelectionGesture();
-    }
-  }, true);
-  window.addEventListener('blur', handleWindowBlur, true);
-  window.addEventListener('resize', scheduleViewportClamp, true);
-  window.addEventListener('orientationchange', scheduleViewportClamp, true);
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', scheduleViewportClamp);
-    window.visualViewport.addEventListener('scroll', scheduleViewportClamp);
-  }
-
   if (chrome && chrome.storage && chrome.storage.onChanged) {
     chrome.storage.onChanged.addListener((changes, areaName) => {
-      const isPrimaryArea = providerStorageRuntime
-        ? providerStorageRuntime.isActiveAreaName(areaName)
-        : areaName === storageAreaName;
-      if (!isPrimaryArea) {
+      if (!providerStorageRuntime.isActiveAreaName(areaName)) {
         return;
       }
-      if (isPrimaryArea && changes[ENABLED_STORAGE_KEY]) {
+      if (changes[ENABLED_STORAGE_KEY]) {
         enabled = changes[ENABLED_STORAGE_KEY].newValue === true;
-        setOwnershipMonitoring(enabled);
+        setFeatureActive(enabled);
         if (!enabled) {
           cancelSelectionGesture();
           clearOwnedSurface();

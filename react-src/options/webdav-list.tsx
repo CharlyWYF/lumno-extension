@@ -23,6 +23,8 @@ export interface WebDavConnection {
   needsRecovery?: boolean;
   conflictsText?: string;
   remoteMissing?: boolean;
+  // A standing condition that does not stop sync, such as an incomplete browser-sync backup.
+  warningText?: string;
 }
 export interface WebDavListModel {
   connections: WebDavConnection[];
@@ -470,6 +472,12 @@ function ConnectionCard({ item, expanded, model, now, options, onEdit, onClose }
             <i className="ri-icon ri-size-14 ri-refresh-line" aria-hidden="true" />{copy.webdav_retry}
           </button>
         </div>
+      </div>
+    );
+  } else if (!expanded && item.warningText) {
+    notice = (
+      <div className="lumno-webdav-notice" data-tone="warning">
+        <p className={classes('setting_desc')} role="status">{item.warningText}</p>
       </div>
     );
   }

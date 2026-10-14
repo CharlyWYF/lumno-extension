@@ -21,7 +21,7 @@
       BOOKMARK_TOPBAR_LAYOUT_ACTION
     } = deps;
 
-    // Page state still owned by newtab.js; read and written through accessors.
+    // The page state object shared with newtab.js and the other modules.
     const pageState = deps.pageState;
 
     const BOOKMARK_TOPBAR_SURFACE_COLOR_STORAGE_KEY =
@@ -500,6 +500,17 @@
       });
     }
 
+    // The top bar's material and layout live in local storage only.
+    function registerStorageChangeHandlers(storageChanges) {
+      storageChanges.on([
+        BOOKMARK_TOPBAR_SURFACE_MODE_STORAGE_KEY,
+        BOOKMARK_TOPBAR_SURFACE_COLOR_LIGHT_STORAGE_KEY,
+        BOOKMARK_TOPBAR_SURFACE_COLOR_DARK_STORAGE_KEY,
+        BOOKMARK_TOPBAR_SURFACE_COLOR_STORAGE_KEY
+      ], handleBookmarkTopbarSurfaceColorStorageChanges, { area: 'local' });
+      storageChanges.on(BOOKMARK_TOPBAR_LAYOUT_STORAGE_KEY, handleBookmarkTopbarLayoutStorageChanges, { area: 'local' });
+    }
+
     function handleBookmarkTopbarSurfaceColorStorageChanges(changes, areaName) {
       if (areaName !== 'local') {
         return false;
@@ -633,6 +644,7 @@
       syncBookmarkTopbarSurfaceColorForTheme,
       loadInitialBookmarkTopbarSurfaceColors,
       handleBookmarkTopbarSurfaceColorStorageChanges,
+      registerStorageChangeHandlers,
       handleBookmarkModeMenuAction
     };
   }

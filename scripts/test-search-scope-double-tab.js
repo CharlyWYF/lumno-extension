@@ -90,7 +90,7 @@ for (const [surface, source] of [
 ]) {
   assert.match(
     source,
-    /function handleTabKey|handleTabKey = function/,
+    /function handleTabKey|function handleSearchTabKey/,
     `${surface} should expose its Tab handler`
   );
   assert.match(
@@ -131,7 +131,7 @@ for (const [surface, source] of [
 
 const overlayTabHandlerStart = overlaySource.indexOf('function handleTabKey(e) {');
 const overlayTabHandlerEnd = overlaySource.indexOf(
-  'captureTabHandler = function(e) {',
+  'function shouldRemoveSearchModeTagOnBackspace(event) {',
   overlayTabHandlerStart
 );
 const overlayTabHandlerSource = overlaySource.slice(

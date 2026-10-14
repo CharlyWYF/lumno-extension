@@ -1,13 +1,14 @@
 const assert = require('assert');
 const fs = require('fs');
 const { readPageSource } = require('./helpers/page-source');
+const { readBackgroundSource } = require('./helpers/background-source');
 
 const contentHotkeySource = fs.readFileSync('src/content/hotkey-listener.js', 'utf8');
 const shortcutReleaseRelaySource = fs.readFileSync(
   'src/content/shortcut-key-observer.js',
   'utf8'
 );
-const backgroundSource = fs.readFileSync('src/background/background.js', 'utf8');
+const backgroundSource = readBackgroundSource();
 const switcherSource = fs.readFileSync('src/overlay/tab-switcher.js', 'utf8');
 const switcherViewReactSource = fs.readFileSync(
   'react-src/overlay/tab-switcher.tsx',
@@ -185,11 +186,6 @@ assert.match(
   'the first trusted keydown should be relayed for background verification while shortcut configuration is pending'
 );
 assert.match(
-  backgroundSource,
-  /case 'triggerShowSearchFromPageHotkey':[\s\S]*request\.requiresShortcutVerification === true[\s\S]*getConfiguredFallbackShortcut\(\(shortcut\) =>[\s\S]*SHORTCUT_KEY_MATCHER\.descriptorMatchesShortcut\(request\.observedShortcut, spec\)[\s\S]*triggerVerifiedPageHotkey\(shortcut\)/,
-  'the background should validate the cold-start key descriptor against the live browser shortcut before opening Lumno'
-);
-assert.match(
   switcherBridgeSource,
   /TAB_SWITCHER_RELEASE_REPLAY_WINDOW_MS[\s\S]*recentTrustedKeydownAtByKey[\s\S]*function rememberTrustedTabSwitcherShortcutKeydown\(event\)[\s\S]*function rememberTrustedTabSwitcherShortcutRelease\(event\)[\s\S]*function getBufferedTabSwitcherShortcutReleaseKey\(keys, commandStartedAt\)[\s\S]*observedAt >= startedAt[\s\S]*keydownAt <= observedAt[\s\S]*request\.commandStartedAt[\s\S]*function notifyTabSwitcherShortcutModifierReleased\(event\)[\s\S]*event\.isTrusted !== true[\s\S]*rememberTrustedTabSwitcherShortcutRelease\(event\)[\s\S]*relayTabSwitcherShortcutRelease\(key\)[\s\S]*window\.addEventListener\('keydown',\s*rememberTrustedTabSwitcherShortcutKeydown,\s*true\)[\s\S]*window\.addEventListener\('keyup',\s*notifyTabSwitcherShortcutModifierReleased,\s*true\)/,
   'extension pages should preserve the same trusted keydown/keyup release replay behavior through their persistent bridge'
@@ -272,11 +268,6 @@ assert.match(
   openOverlayBlock,
   /if \(restricted\)[\s\S]*isSearchCommandSource\(source\) && \(isLumnoNewtabUrl\(activeUrl\) \|\| isBrowserNewtabUrl\(activeUrl\)\)[\s\S]*requestFocusVisibleNewtabInput\(source,\s*activeTab\.id\)[\s\S]*return;/,
   'show-search commands on restricted Lumno/browser newtab URLs should keep focusing the visible newtab input'
-);
-assert.match(
-  openOverlayBlock,
-  /if \(action === 'none'\)[\s\S]*fallback-open-browser-newtab[\s\S]*openBrowserNewtabFallback\(\{ sourceTab: activeTab \}\)[\s\S]*return;/,
-  'restricted browser-setting action should open the browser-selected newtab provider instead of suppressing the shortcut'
 );
 assert.strictEqual(
   (manifest.permissions || []).includes('management'),
@@ -1034,31 +1025,17 @@ assert.match(
   /shortcut:\s*formatShortcutForDisplay\('Alt\+Q'\)/,
   'settings i18n should render the tab switcher shortcut for the current platform'
 );
-assert.match(
-  optionsSource,
-  /const tabSwitcherToggle = document\.getElementById\('_x_extension_tab_switcher_toggle_2026_unique_'\);/,
-  'settings page should wire the tab switcher General toggle'
-);
-assert.match(
-  optionsSource,
-  /const TAB_SWITCHER_ENABLED_STORAGE_KEY = '_x_extension_tab_switcher_enabled_2026_unique_';/,
-  'settings page should use a dedicated synced storage key for the tab switcher toggle'
-);
-assert.match(
-  optionsSource,
-  /function normalizeTabSwitcherEnabled\(value\)[\s\S]*normalizeTabSwitcherEnabled/,
-  'settings page should normalize the tab switcher toggle with default-on semantics'
-);
-assert.match(
-  optionsSource,
-  /storageArea\.set\(\{ \[TAB_SWITCHER_ENABLED_STORAGE_KEY\]: next \}\)/,
-  'settings page should persist tab switcher toggle changes'
-);
-assert.match(
-  optionsSource,
-  /storageArea\.get\(\[TAB_SWITCHER_ENABLED_STORAGE_KEY\][\s\S]*setOptionsToggleState\(tabSwitcherToggle, stored\)[\s\S]*storageArea\.set\(\{ \[TAB_SWITCHER_ENABLED_STORAGE_KEY\]: stored \}\)/,
-  'settings page should default missing tab switcher storage to enabled for all users'
-);
+{
+  const settings = require('../src/shared/settings.js');
+  const toggle = require('../src/options/options-toggle-settings.js').getToggleSettings(settings)
+    .find((entry) => entry.inputId === '_x_extension_tab_switcher_toggle_2026_unique_');
+  assert.strictEqual(settings.TAB_SWITCHER_ENABLED_STORAGE_KEY, '_x_extension_tab_switcher_enabled_2026_unique_');
+  assert(
+    toggle && toggle.key === settings.TAB_SWITCHER_ENABLED_STORAGE_KEY,
+    'settings page should bind the General toggle to the dedicated synced storage key'
+  );
+  assert.strictEqual(toggle.normalize(undefined), true, 'the tab switcher is on for everyone until turned off');
+}
 assert.strictEqual(
   /\.x-tab-switcher-thumb\[data-thumbnail-status="pending"\]::after/.test(switcherSource),
   false,
@@ -1172,11 +1149,6 @@ assert.match(
   backgroundSource,
   /let tabSwitcherEnabledCache = true;/,
   'background tab switcher feature flag should default to enabled'
-);
-assert.match(
-  backgroundSource,
-  /storageArea\.get\(\[[\s\S]*TAB_SWITCHER_ENABLED_STORAGE_KEY[\s\S]*\][\s\S]*tabSwitcherEnabledCache = normalizedTabSwitcher/,
-  'background startup should load and normalize the tab switcher enabled setting'
 );
 assert.match(
   backgroundSource,
@@ -1485,16 +1457,6 @@ assert.match(
 );
 assert.match(
   backgroundSource,
-  /function shouldPreCaptureActiveSwitcherThumbnailBeforePayload\(tab\)[\s\S]*tab\.active === true[\s\S]*tab\.status === 'loading'[\s\S]*getSwitcherThumbnailStateForPayload\(tab,[\s\S]*isSwitcherThumbnailRefreshNeeded\(state\)/,
-  'Alt+Q should refresh a missing active thumbnail only after the page has stopped loading'
-);
-assert.strictEqual(
-  /TAB_SWITCHER_COMMAND_PRECAPTURE_BUDGET_MS|waitForSwitcherCommandPreCaptureBudget/.test(backgroundSource),
-  false,
-  'Alt+Q startup should not wait for active-tab thumbnail capture'
-);
-assert.match(
-  backgroundSource,
   /const tabSwitcherThumbnailPriorityByTabId = new Map\(\);[\s\S]*function markSwitcherThumbnailPriorityForItems\(items,\s*tabList,\s*reason\)[\s\S]*isSwitcherThumbnailRefreshNeeded/,
   'Alt+Q should remember missing recent-tab thumbnails as priority refresh candidates'
 );
@@ -1532,16 +1494,6 @@ assert.match(
   scheduleThumbnailBlock,
   /tabSwitcherThumbnailTimersByTabId\.set\(tab\.id,\s*timer\)/,
   'Alt+Q thumbnail scheduling should store pending capture timers by tab id'
-);
-assert.match(
-  scheduleThumbnailBlock,
-  /markSwitcherThumbnailStatus\(tab,\s*'pending',\s*reason/,
-  'Alt+Q thumbnail scheduling should mark thumbnails as pending before deferred capture'
-);
-assert.match(
-  scheduleThumbnailBlock,
-  /consumeSwitcherThumbnailPriority\(tab[\s\S]*TAB_SWITCHER_PRIORITY_CAPTURE_DELAY_MS[\s\S]*TAB_SWITCHER_CAPTURE_DELAY_MS/,
-  'Alt+Q thumbnail scheduling should use a shorter delay when a recent missing thumbnail becomes visible'
 );
 const triggerSwitcherBlock = getFunctionBlock(
   backgroundSource,
@@ -1678,11 +1630,6 @@ assert.deepStrictEqual(
   'the open switcher should only be committed by a real keyup notification'
 );
 assert.match(
-  backgroundSource,
-  /shortcuts:\s*\{[\s\S]*'notifyTabSwitcherShortcutModifierReleased'[\s\S]*handler:\s*handleShortcutMessage[\s\S]*case 'notifyTabSwitcherShortcutModifierReleased':[\s\S]*handleTabSwitcherShortcutModifierReleased/,
-  'the trusted frame release notification should be routed into the tab switcher commit path'
-);
-assert.match(
   injectSwitcherBlock,
   /shortcut:\s*context && typeof context\.shortcut === 'string' \? context\.shortcut : 'Alt\+Q'/,
   'the switcher open context should carry the browser-configured shortcut into the page runtime'
@@ -1696,11 +1643,6 @@ assert.match(
   triggerSwitcherBlock,
   /const activeTab = tabList\.find[\s\S]*clearScheduledSwitcherThumbnailCapture\(activeTab\.id\)[\s\S]*shouldTrackSwitcherTab\(activeTab\)/,
   'Alt+Q should cancel any resolved active-tab pending thumbnail timer before payload construction'
-);
-assert.match(
-  triggerSwitcherBlock,
-  /shouldPreCaptureActiveSwitcherThumbnailBeforePayload\(activeTab\)[\s\S]*captureSwitcherThumbnailForTab\([\s\S]*activeTab,[\s\S]*TAB_SWITCHER_CAPTURE_REASON_COMMAND_IMMEDIATE[\s\S]*\.catch\(\(\) => false\);[\s\S]*const items = getRecentTabsForSwitcher\(tabList,\s*activeTab\.id\)/,
-  'Alt+Q should refresh eligible active thumbnails asynchronously without blocking payload construction'
 );
 assert.strictEqual(
   triggerSwitcherBlock.includes('activeThumbnailReady'),

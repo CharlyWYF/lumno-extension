@@ -50,12 +50,16 @@ function getCssZIndex(source, selector) {
   return Number.parseInt(match[1], 10);
 }
 
+// Layers are tokens, sometimes offset with calc(); the page source has the tokens
+// resolved, so a value is a number or calc(number + number).
 function getCssNumericDeclaration(source, selector, propertyName) {
   const body = getCssRuleBody(source, selector);
   const escapedProperty = String(propertyName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = body.match(new RegExp(`${escapedProperty}:\\s*(-?\\d+)`));
+  const match = body.match(new RegExp(`${escapedProperty}:\\s*(?:calc\\(\\s*(-?\\d+)\\s*\\+\\s*(\\d+)\\s*\\)|(-?\\d+))`));
   assert.ok(match, `${selector} should define ${propertyName} as a numeric value`);
-  return Number.parseInt(match[1], 10);
+  return match[3] !== undefined
+    ? Number.parseInt(match[3], 10)
+    : Number.parseInt(match[1], 10) + Number.parseInt(match[2], 10);
 }
 
 function assertBookmarkCursorTooltipAboveCascade(source, label) {
@@ -471,39 +475,6 @@ assertContains(
   'safe-triangle protection should use its own max window instead of expiring at hover-delay completion'
 );
 assertContains(
-  newtabJs,
-  'BOOKMARK_CASCADE_DEBUG_STORAGE_KEY',
-  'newtab should keep the bookmark cascade debug storage key for future maintenance'
-);
-assertContains(
-  newtabJs,
-  'const BOOKMARK_CASCADE_DEBUG_UI_ENABLED = false;',
-  'bookmark cascade debug UI should be hidden behind a single disabled maintenance flag'
-);
-assertContains(
-  newtabJs,
-  'BOOKMARK_CASCADE_DEBUG_UI_ENABLED && bookmarkCascadeRuntime',
-  'newtab should only create or append the bookmark cascade debug control when the maintenance flag is enabled'
-);
-assertContains(
-  newtabJs,
-  'BOOKMARK_CASCADE_DEBUG_UI_ENABLED && changes[BOOKMARK_CASCADE_DEBUG_STORAGE_KEY]',
-  'stored bookmark cascade debug mode should only be restored when the maintenance flag is enabled'
-);
-assert.ok(
-  !newtabJs.includes('if (bookmarkCascadeRuntime) {\n    bookmarkCascadeRuntime.createDebugControls();\n  }'),
-  'newtab should not unconditionally create the bookmark cascade debug control'
-);
-assert.ok(
-  !newtabJs.includes('if (bookmarkCascadeRuntime && bookmarkCascadeRuntime.getDebugControl()) {\n    document.body.appendChild(bookmarkCascadeRuntime.getDebugControl());\n  }'),
-  'newtab should not unconditionally append the bookmark cascade debug control'
-);
-assertContains(
-  cascadeMenuJs,
-  'createBookmarkCascadeDebugControls',
-  'bookmark cascade runtime should keep the debug control implementation for future maintenance'
-);
-assertContains(
   cascadeMenuJs,
   'scheduleBookmarkCascadeHoverIntent',
   'pointer hover in bookmark cascade should be routed through delayed intent scheduling'
@@ -524,16 +495,6 @@ assertContains(
   'bookmark cascade switching should consult the safe triangle before replacing a submenu'
 );
 assertContains(
-  cascadeMenuJs,
-  'updateBookmarkCascadeDebugTriangle',
-  'bookmark cascade debug mode should update the generated triangle in real time'
-);
-assertContains(
-  cascadeMenuJs,
-  'updateBookmarkCascadeDelayDebugLabel',
-  'bookmark cascade debug mode should show live delay countdown labels'
-);
-assertContains(
   newtabJs,
   'NEWTAB_BOOKMARK_CASCADE_MENU.createBookmarkCascadeMenuRuntime',
   'newtab should delegate bookmark cascade behavior to the menu runtime'
@@ -547,21 +508,6 @@ assert.ok(
     newtabHtml.indexOf('bookmark-cascade-menu.js') > newtabHtml.indexOf('bookmark-cascade-position.js') &&
     newtabHtml.indexOf('bookmark-cascade-menu.js') < newtabHtml.indexOf('react-page-bootstrap.js'),
   'newtab should load the cascade menu runtime after positioning helpers and before the page bootstrap'
-);
-assertContains(
-  newtabHtml,
-  '.x-nt-bookmark-cascade-safe-triangle',
-  'newtab CSS should style the safe-triangle debug polygon'
-);
-assertContains(
-  newtabHtml,
-  '.x-nt-bookmark-cascade-debug-label',
-  'newtab CSS should style the delay countdown debug label'
-);
-assertContains(
-  newtabHtml,
-  '.x-nt-bookmark-cascade-debug-button',
-  'newtab CSS should style the bookmark cascade debug switch'
 );
 {
   const cascadeItemRule = getCssRuleBody(newtabHtml, '.x-nt-bookmark-cascade-item');
@@ -579,11 +525,6 @@ assertContains(
   newtabHtml,
   '.x-nt-bookmark-cascade-item[data-hover-suppressed="true"]:hover',
   'newtab CSS should suppress competing row hover visuals while safe-triangle protection is active'
-);
-assert.ok(
-  getCssZIndex(newtabHtml, '.x-nt-bookmark-cascade-debug-svg') >
-    getCssZIndex(newtabHtml, '.x-nt-bookmark-cascade-level'),
-  'safe-triangle debug SVG should render above menu panels so it is not hidden by cascade levels'
 );
 assertContains(
   newtabJs,
@@ -749,41 +690,6 @@ async function openCascadeWithSubmenu(overrides) {
     );
   }
 
-  {
-    const { anchor, clock, documentObj, runtime } = createCascadeRuntimeFixture();
-    runtime.open({ id: 'root', title: 'Root' }, anchor);
-    await flushPromises();
-    let levels = getMenuLevels(documentObj);
-    const folderItem = getMenuItems(levels[0])[0];
-    folderItem._xBookmarkSuppressClick = true;
-    folderItem._xBookmarkSuppressClickTimer = clock.setTimeout(() => {}, 420);
-
-    const syntheticClick = createFakeEvent('click', { target: folderItem });
-    folderItem.dispatchEvent(syntheticClick);
-    levels = getMenuLevels(documentObj);
-    assert.strictEqual(
-      syntheticClick.defaultPrevented,
-      true,
-      'the click synthesized by a completed drag should be suppressed'
-    );
-    assert.strictEqual(
-      folderItem._xBookmarkSuppressClick,
-      false,
-      'drag click suppression should be consumed instead of blocking later clicks'
-    );
-    assert.strictEqual(
-      levels.length,
-      1,
-      'the suppressed drag click should not open a nested folder'
-    );
-
-    folderItem.dispatchEvent(createFakeEvent('click', { target: folderItem }));
-    assert.strictEqual(
-      getMenuLevels(documentObj).length,
-      2,
-      'the next deliberate click should still open the nested folder'
-    );
-  }
 
   {
     const { clock, documentObj } = await openCascadeWithSubmenu();

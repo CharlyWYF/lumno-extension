@@ -1,11 +1,4 @@
 import { act } from 'react';
-import optionsSource from '../../src/options/options.js?raw';
-import optionsHtml from '../../src/options/options.html?raw';
-import settingsSource from '../../src/shared/settings.js?raw';
-import messagesSource from '../../_locales/zh_CN/messages.json?raw';
-import enMessagesSource from '../../_locales/en/messages.json?raw';
-import jaMessagesSource from '../../_locales/ja/messages.json?raw';
-import zhTwMessagesSource from '../../_locales/zh_TW/messages.json?raw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createSelectControlApi,
@@ -110,82 +103,6 @@ describe('Options select control React island', () => {
       .toBe('Simplified Chinese');
   });
 
-  it.each([
-    ['zh_CN', messagesSource],
-    ['zh_TW', zhTwMessagesSource],
-    ['en', enMessagesSource],
-    ['ja', jaMessagesSource]
-  ])('uses content sizing for %s tab-position options while saving and restoring selections', (_locale, source) => {
-    const messages = JSON.parse(source);
-    const settings = new Function('module', settingsSource + '\nreturn globalThis.LumnoSettings;')(undefined);
-    const selectId = '_x_extension_search_result_tab_position_select_2026_unique_';
-    const parsed = new DOMParser().parseFromString(optionsHtml, 'text/html');
-    const template = parsed.getElementById(selectId)?.closest('._x_extension_custom_select_2024_unique_');
-    expect(template).toBeTruthy();
-    const host = document.importNode(template!, true) as HTMLElement;
-    document.body.appendChild(host);
-    const select = host.querySelector<HTMLSelectElement>('select')!;
-    const setStorage = vi.fn();
-    const mount = new Function(
-      'optionsSelectControlApi', 'chrome', 'getMessage', 'languageSelect', 'tabsRow',
-      'selectionQuickActionsProviderSelect', 'searchResultTabPositionSelect', 'SETTINGS', 'storageArea',
-      optionsSource.slice(
-        optionsSource.indexOf('  const SEARCH_RESULT_TAB_POSITION_STORAGE_KEY ='),
-        optionsSource.indexOf('  const SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY =')
-      ) + optionsSource.slice(
-        optionsSource.indexOf('  const optionsSelectControlRecords = new Map();'),
-        optionsSource.indexOf('  const newtabTimeFontWeightController =')
-      ) + '\nfunction refreshCustomSelects() { renderOptionsSelectControl(searchResultTabPositionSelect); }\n' +
-      optionsSource.slice(
-        optionsSource.indexOf('  if (searchResultTabPositionSelect) {'),
-        optionsSource.indexOf('  if (searchResultPriorityTabButtons.length > 0) {')
-      ) + '\nreturn { renderOptionsSelectControl };'
-    );
-    let adapter: { renderOptionsSelectControl(select: HTMLSelectElement): void };
-    act(() => {
-      adapter = mount({
-        createSelectControlController: (node: HTMLElement, options: Parameters<typeof createSelectControlController>[1]) => {
-          const controller = createSelectControlController(node, options);
-          controllers.push(controller);
-          return controller;
-        }
-      }, {}, (key: string, fallback: string) => messages[key]?.message || fallback,
-      null, null, null, select, settings, { set: setStorage });
-    });
-    expect(host.dataset.selectKind).toBe('search-result-tab-position');
-    expect(host.querySelector('._x_extension_select_label_2024_unique_')?.textContent)
-      .toBe(messages.search_result_tab_position_end.message);
-    expect(host.querySelectorAll('[role="option"]')).toHaveLength(3);
-
-    act(() => host.querySelector<HTMLButtonElement>('button')?.click());
-    const menu = host.querySelector<HTMLElement>('[role="listbox"]')!;
-    // The auto-width wrapper must not pin longer localized options to the trigger width.
-    expect(menu.dataset.menuSurfaceWidth).toBe('content');
-    expect(menu.style.getPropertyValue('--x-extension-menu-surface-min-width')).toBe('100%');
-    // React owns the labels: no data-i18n hooks for the classic i18n pass to overwrite.
-    expect(menu.querySelector('[data-i18n]')).toBeNull();
-    expect(Array.from(
-      menu.querySelectorAll('._x_extension_select_option_label_2026_unique_'),
-      (option) => option.textContent
-    ))
-      .toEqual([
-        messages.search_result_tab_position_end.message,
-        messages.search_result_tab_position_after_current.message,
-        messages.search_result_tab_position_before_current.message
-      ]);
-    act(() => host.querySelector<HTMLElement>('[data-value="beforeCurrent"]')?.click());
-    expect(setStorage).toHaveBeenCalledWith({ [settings.SEARCH_RESULT_TAB_POSITION_STORAGE_KEY]: 'beforeCurrent' });
-    expect(host.querySelector('._x_extension_select_label_2024_unique_')?.textContent)
-      .toBe(messages.search_result_tab_position_before_current.message);
-
-    // The adapter receives persisted/synced selections through the original select.
-    act(() => {
-      select.value = 'afterCurrent';
-      adapter!.renderOptionsSelectControl(select);
-    });
-    expect(host.querySelector('._x_extension_select_label_2024_unique_')?.textContent)
-      .toBe(messages.search_result_tab_position_after_current.message);
-  });
   it('chooses an option with the keyboard and returns focus to the trigger', () => {
     const host = document.createElement('div');
     const onSelect = vi.fn();

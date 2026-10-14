@@ -83,7 +83,7 @@ assertContains(
 );
 
 assert.ok(
-  /body\s+\.x-nt-bookmarks-topbar\s+\.x-nt-section-mode-select\s+\._x_extension_select_trigger_2024_unique_\s+\._x_extension_select_icon_2024_unique_\s*\{[^}]*color:\s*inherit;/.test(newtabHtml),
+  /\.x-nt-bookmarks-topbar\s+\.x-nt-section-mode-select\s+\._x_extension_select_trigger_2024_unique_\s+\._x_extension_select_icon_2024_unique_\s*\{[^}]*color:\s*inherit;/.test(newtabHtml),
   'the topbar more icon should inherit the same color as the bookmark manager button in every interaction state'
 );
 

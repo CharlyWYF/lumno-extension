@@ -49,7 +49,6 @@ export interface RecentCardElement extends HTMLDivElement {
   _xPinButton?: HTMLButtonElement | null;
   _xDisposeRecentCard?: () => void;
   // Set while a drag of the card ends, so its click does not open the site.
-  _xRecentSuppressClick?: boolean;
 }
 
 export interface RecentSitesViewOptions {
@@ -836,8 +835,7 @@ function RecentSiteCard({
   }
 
   function handleClick(event: ReactMouseEvent<RecentCardElement>): void {
-    const card = cardRef.current;
-    if (suppressClickRef.current || card?._xRecentSuppressClick) {
+    if (suppressClickRef.current) {
       suppressClickRef.current = false;
       event.preventDefault();
       return;

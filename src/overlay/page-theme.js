@@ -465,6 +465,351 @@
     return signal && signal.theme ? signal.theme : null;
   }
 
+  function pushThemeCandidate(candidates, element) {
+    if (!element || candidates.includes(element)) {
+      return;
+    }
+    candidates.push(element);
+  }
+
+  function getFirstElementByTagName(doc, tagName) {
+    if (typeof doc.getElementsByTagName !== 'function') {
+      return null;
+    }
+    const elements = doc.getElementsByTagName(tagName);
+    return elements && elements.length > 0 ? elements[0] : null;
+  }
+
+  // Elements whose class or theme attributes usually carry a site's explicit
+  // light/dark choice: the root, the body, common app roots and the first
+  // few body children.
+  function getPageThemeCandidateElements(doc) {
+    const docEl = doc.documentElement;
+    const body = doc.body;
+    const candidates = [];
+    pushThemeCandidate(candidates, docEl);
+    pushThemeCandidate(candidates, body);
+    ['app', 'root', '__next', '__nuxt'].forEach((id) => {
+      if (typeof doc.getElementById === 'function') {
+        pushThemeCandidate(candidates, doc.getElementById(id));
+      }
+    });
+    pushThemeCandidate(candidates, getFirstElementByTagName(doc, 'ytd-app'));
+    pushThemeCandidate(candidates, getFirstElementByTagName(doc, 'ytm-app'));
+    if (body && body.children && body.children.length) {
+      const candidateLimit = Math.min(body.children.length, 8);
+      for (let i = 0; i < candidateLimit; i += 1) {
+        pushThemeCandidate(candidates, body.children[i]);
+      }
+    }
+    return candidates;
+  }
+
+  function classifyThemeToken(value) {
+    const normalized = String(value || '').toLowerCase();
+    if (!normalized) {
+      return null;
+    }
+    if (
+      normalized.includes('dark') ||
+      normalized.includes('night') ||
+      normalized === '1' ||
+      normalized === 'true' ||
+      normalized === 'on'
+    ) {
+      return 'dark';
+    }
+    if (
+      normalized.includes('light') ||
+      normalized.includes('day') ||
+      normalized === '0' ||
+      normalized === 'false' ||
+      normalized === 'off'
+    ) {
+      return 'light';
+    }
+    return null;
+  }
+
+  // Classifies one class token; business names such as "light-rays" or
+  // "dark-veil" are not theme switches.
+  function getThemeClassTokenTheme(token) {
+    const normalized = String(token || '').toLowerCase().trim();
+    if (!normalized) {
+      return null;
+    }
+    if (normalized === 'dark' || normalized === 'darkmode' || normalized === 'night') {
+      return 'dark';
+    }
+    if (normalized === 'light' || normalized === 'lightmode' || normalized === 'day') {
+      return 'light';
+    }
+    if (/^(theme|mode|scheme|color-scheme|appearance|is|has)-(dark|night)$/.test(normalized) ||
+        /^(dark|night)-(theme|mode|scheme|color-scheme|appearance)$/.test(normalized)) {
+      return 'dark';
+    }
+    if (/^(theme|mode|scheme|color-scheme|appearance|is|has)-(light|day)$/.test(normalized) ||
+        /^(light|day)-(theme|mode|scheme|color-scheme|appearance)$/.test(normalized)) {
+      return 'light';
+    }
+    return null;
+  }
+
+  function getElementClassTheme(element) {
+    if (!element) {
+      return null;
+    }
+    const className = typeof element.className === 'string'
+      ? element.className
+      : (typeof element.getAttribute === 'function' ? element.getAttribute('class') : '');
+    const classText = String(className || '').toLowerCase();
+    if (!classText) {
+      return null;
+    }
+    const tokenList = classText.split(/\s+/);
+    for (let i = 0; i < tokenList.length; i += 1) {
+      const theme = getThemeClassTokenTheme(tokenList[i]);
+      if (theme) {
+        return theme;
+      }
+    }
+    return null;
+  }
+
+  function getElementAttributeTheme(element) {
+    if (!element || typeof element.hasAttribute !== 'function') {
+      return null;
+    }
+    if (element.hasAttribute('dark') ||
+        element.hasAttribute('data-dark') ||
+        element.hasAttribute('dark-mode')) {
+      return 'dark';
+    }
+    if (element.hasAttribute('light')) {
+      return 'light';
+    }
+    const attrNames = [
+      'data-theme',
+      'data-color-scheme',
+      'data-color-mode',
+      'data-mode',
+      'data-appearance',
+      'color-scheme',
+      'theme',
+      'data-bs-theme'
+    ];
+    for (let i = 0; i < attrNames.length; i += 1) {
+      const value = typeof element.getAttribute === 'function'
+        ? element.getAttribute(attrNames[i])
+        : '';
+      const theme = classifyThemeToken(value);
+      if (theme) {
+        return theme;
+      }
+    }
+    return getElementClassTheme(element);
+  }
+
+  function getHeadMetaContent(doc, name) {
+    const head = doc.head;
+    if (!head || typeof head.querySelector !== 'function') {
+      return '';
+    }
+    const meta = head.querySelector(`meta[name="${name}"]`);
+    return meta ? String(meta.getAttribute('content') || '') : '';
+  }
+
+  function getThemeSignalWeight(weight) {
+    return Number.isFinite(Number(weight)) ? Math.max(0, Number(weight)) : 1;
+  }
+
+  function getThemeSignalFromLuminance(luminance, weight) {
+    if (luminance < 0.42) {
+      return {
+        theme: 'dark',
+        confidence: clampNumber((0.42 - luminance) / 0.42, 0, 1),
+        weight: getThemeSignalWeight(weight)
+      };
+    }
+    if (luminance > 0.58) {
+      return {
+        theme: 'light',
+        confidence: clampNumber((luminance - 0.58) / 0.42, 0, 1),
+        weight: getThemeSignalWeight(weight)
+      };
+    }
+    return null;
+  }
+
+  function getThemeSignalFromTheme(theme, weight, confidence) {
+    if (theme !== 'dark' && theme !== 'light') {
+      return null;
+    }
+    return {
+      theme,
+      confidence: clampNumber(
+        Number.isFinite(Number(confidence)) ? Number(confidence) : 0.7,
+        0,
+        1
+      ),
+      weight: getThemeSignalWeight(weight)
+    };
+  }
+
+  function getThemeSignalFromSchemeValue(value, weight) {
+    const normalized = String(value || '').toLowerCase();
+    if (!normalized) {
+      return null;
+    }
+    const hasDark = normalized.includes('dark');
+    const hasLight = normalized.includes('light');
+    if (hasDark && !hasLight) {
+      return getThemeSignalFromTheme('dark', weight, 0.62);
+    }
+    if (hasLight && !hasDark) {
+      return getThemeSignalFromTheme('light', weight, 0.62);
+    }
+    return null;
+  }
+
+  function normalizeThemeSignal(signal, defaultWeight) {
+    if (!signal || (signal.theme !== 'dark' && signal.theme !== 'light')) {
+      return null;
+    }
+    return {
+      theme: signal.theme,
+      confidence: clampNumber(signal.confidence, 0, 1),
+      weight: Number.isFinite(Number(signal.weight))
+        ? Math.max(0, Number(signal.weight))
+        : getThemeSignalWeight(defaultWeight)
+    };
+  }
+
+  // The host page's theme, fused from weighted signals: explicit class and
+  // attribute hints, color-scheme meta and computed values, the theme-color
+  // meta, root/body backgrounds and a visual sample of the viewport. No
+  // single hint short-circuits the others. `parseThemeColorRgb` reads the
+  // theme-color meta as an [r, g, b] triple (the favicon-theme parser).
+  function detectPageTheme(options) {
+    const settings = options && typeof options === 'object' ? options : {};
+    const doc = settings.document || (typeof document !== 'undefined' ? document : null);
+    const win = settings.window || (doc && doc.defaultView) || null;
+    const docEl = doc ? doc.documentElement : null;
+    if (!docEl || !win) {
+      return null;
+    }
+    const body = doc.body;
+    const candidateTheme = getPageThemeCandidateElements(doc)
+      .map(getElementAttributeTheme)
+      .find(Boolean);
+    const colorSchemeMeta = getHeadMetaContent(doc, 'color-scheme').toLowerCase();
+    const schemeValue = (win.getComputedStyle(docEl).colorScheme || '').toLowerCase();
+    const themeColor = getHeadMetaContent(doc, 'theme-color').trim();
+    const themeColorRgb = typeof settings.parseThemeColorRgb === 'function'
+      ? settings.parseThemeColorRgb(themeColor)
+      : null;
+    const docStyleForSignals = win.getComputedStyle(docEl);
+    const bodyStyleForSignals = body ? win.getComputedStyle(body) : null;
+    const visualSignal = detectPageVisualThemeSignal({ document: doc, window: win });
+    const fusedTheme = resolvePageThemeSignals([
+      getThemeSignalFromTheme(candidateTheme, 0.48, 0.74),
+      getThemeSignalFromSchemeValue(colorSchemeMeta, 0.4),
+      getThemeSignalFromSchemeValue(schemeValue, 0.26),
+      themeColorRgb && themeColorRgb.length === 3
+        ? getThemeSignalFromLuminance(getRelativeLuminance(themeColorRgb), 0.72)
+        : null,
+      getCssColorThemeSignal(docStyleForSignals.backgroundColor, 0.78),
+      getCssColorThemeSignal(bodyStyleForSignals && bodyStyleForSignals.backgroundColor, 0.58),
+      normalizeThemeSignal(visualSignal, 1.05)
+    ]);
+    if (fusedTheme) {
+      return fusedTheme;
+    }
+    const bodyStyle = body ? win.getComputedStyle(body) : null;
+    const docStyle = win.getComputedStyle(docEl);
+    const bgColor = (bodyStyle && bodyStyle.backgroundColor && bodyStyle.backgroundColor !== 'transparent')
+      ? bodyStyle.backgroundColor
+      : docStyle.backgroundColor;
+    const backgroundSignal = getCssColorThemeSignal(bgColor, 1);
+    return backgroundSignal ? backgroundSignal.theme : null;
+  }
+
+  const PAGE_THEME_ATTRIBUTE_FILTER = Object.freeze([
+    'class',
+    'style',
+    'data-theme',
+    'data-color-scheme',
+    'data-color-mode',
+    'data-mode',
+    'data-appearance',
+    'theme',
+    'color-scheme',
+    'dark',
+    'light',
+    'data-bs-theme'
+  ]);
+
+  // Watches the host page for theme switches (root/body theme attributes and
+  // head meta changes) and calls `onChange` at most once per frame.
+  function createPageThemeObserver(win, onChange) {
+    const doc = win && win.document;
+    let observer = null;
+    let frame = null;
+
+    function scheduleChange() {
+      if (frame !== null) {
+        return;
+      }
+      frame = win.requestAnimationFrame(() => {
+        frame = null;
+        if (typeof onChange === 'function') {
+          onChange();
+        }
+      });
+    }
+
+    function start() {
+      if (observer || !doc || typeof win.MutationObserver !== 'function') {
+        return;
+      }
+      observer = new win.MutationObserver(scheduleChange);
+      [doc.documentElement, doc.body].forEach((element) => {
+        if (element) {
+          observer.observe(element, {
+            attributes: true,
+            attributeFilter: PAGE_THEME_ATTRIBUTE_FILTER.slice()
+          });
+        }
+      });
+      if (doc.head) {
+        observer.observe(doc.head, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['name', 'content', 'media']
+        });
+      }
+      scheduleChange();
+    }
+
+    function stop() {
+      if (frame !== null) {
+        win.cancelAnimationFrame(frame);
+        frame = null;
+      }
+      if (observer) {
+        observer.disconnect();
+        observer = null;
+      }
+    }
+
+    return Object.freeze({
+      start,
+      stop,
+      get active() { return observer !== null; }
+    });
+  }
+
   function resolveOverlayTheme(options) {
     const settings = options && typeof options === 'object' ? options : {};
     const mode = settings.mode === 'dark' || settings.mode === 'light'
@@ -519,6 +864,9 @@
     resolvePageThemeSignals,
     detectPageVisualThemeSignal,
     detectPageVisualTheme,
+    detectPageTheme,
+    getThemeClassTokenTheme,
+    createPageThemeObserver,
     resolveOverlayTheme,
     shouldStrengthenDarkOverlayBackground,
     shouldObservePageTheme,

@@ -16,19 +16,6 @@ export interface CascadeLevelView {
   items: CascadeItemView[];
 }
 
-export interface CascadeDebugOverlayView {
-  destroy(): void;
-  label: HTMLDivElement;
-  polygon: SVGPolygonElement;
-  svg: SVGSVGElement;
-}
-
-export interface CascadeDebugControlView {
-  button: HTMLButtonElement;
-  destroy(): void;
-  element: HTMLDivElement;
-}
-
 interface CascadeItem {
   host?: string;
   id?: string | number;
@@ -209,111 +196,6 @@ export function createCascadeMenu(documentObj: Document = document) {
   return element;
 }
 
-export function createCascadeDebugOverlay(
-  menu: HTMLElement
-): CascadeDebugOverlayView {
-  const documentObj = menu.ownerDocument || document;
-  const rootHost = documentObj.createElement('div');
-  const root = createRoot(rootHost);
-  let svg: SVGSVGElement | null = null;
-  let polygon: SVGPolygonElement | null = null;
-  let label: HTMLDivElement | null = null;
-  flushSync(() => {
-    root.render(
-      <>
-        {createPortal(
-          <svg
-            aria-hidden="true"
-            className="x-nt-bookmark-cascade-debug-svg"
-            focusable="false"
-            ref={(element) => {
-              svg = element;
-            }}
-          >
-            <polygon
-              className="x-nt-bookmark-cascade-safe-triangle"
-              data-visible="false"
-              ref={(element) => {
-                polygon = element;
-              }}
-            />
-          </svg>,
-          menu
-        )}
-        {createPortal(
-          <div
-            aria-hidden="true"
-            className="x-nt-bookmark-cascade-debug-label"
-            data-visible="false"
-            ref={(element) => {
-              label = element;
-            }}
-          />,
-          menu
-        )}
-      </>
-    );
-  });
-  if (!svg || !polygon || !label) {
-    flushSync(() => root.unmount());
-    throw new Error('Lumno React bookmark cascade debug overlay did not mount.');
-  }
-  let destroyed = false;
-  return {
-    destroy() {
-      if (destroyed) {
-        return;
-      }
-      destroyed = true;
-      flushSync(() => root.unmount());
-    },
-    label,
-    polygon,
-    svg
-  };
-}
-
-export function createCascadeDebugControl(
-  documentObj: Document = document
-): CascadeDebugControlView {
-  const element = documentObj.createElement('div');
-  element.className = 'x-nt-bookmark-cascade-debug-control';
-  element.dataset.reactIsland = 'newtab-bookmark-cascade-debug-control';
-  const root = createRoot(element);
-  let button: HTMLButtonElement | null = null;
-  flushSync(() => {
-    root.render(
-      <button
-        aria-label="Bookmark menu diagnostics"
-        aria-pressed="false"
-        className="x-nt-bookmark-cascade-debug-button"
-        ref={(node) => {
-          button = node;
-        }}
-        type="button"
-      >
-        <i aria-hidden="true" className="ri-icon ri-size-16 ri-triangle-line" />
-      </button>
-    );
-  });
-  if (!button) {
-    flushSync(() => root.unmount());
-    throw new Error('Lumno React bookmark cascade debug control did not mount.');
-  }
-  let destroyed = false;
-  return {
-    button,
-    destroy() {
-      if (destroyed) {
-        return;
-      }
-      destroyed = true;
-      flushSync(() => root.unmount());
-    },
-    element
-  };
-}
-
 export function createCascadeLevel(config: Record<string, any>): CascadeLevelView {
   const documentObj: Document = config.documentObj || document;
   const levelIndex = Math.max(0, Number.parseInt(config.levelIndex, 10) || 0);
@@ -392,8 +274,6 @@ export function createCascadeLevel(config: Record<string, any>): CascadeLevelVie
 export function createBookmarkCascadeViewApi() {
   return Object.freeze({
     implementation: 'react',
-    createDebugControl: createCascadeDebugControl,
-    createDebugOverlay: createCascadeDebugOverlay,
     createLevel: createCascadeLevel,
     createMenu: createCascadeMenu
   });

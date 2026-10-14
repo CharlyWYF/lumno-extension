@@ -14,7 +14,7 @@
       showTopActionTooltip
     } = deps;
 
-    // Page state still owned by newtab.js; read and written through accessors.
+    // The page state object shared with newtab.js and the other modules.
     const pageState = deps.pageState;
 
     const LUMNO_FEEDBACK_QR_REFRESH_TIMEOUT_MS = 5000;
@@ -190,6 +190,11 @@
         pageState.feedbackReactController.close(options);
       }
     }
+
+    root.LumnoNewtabDismissStack.getDismissStack().register('feedback-popover', {
+      isOpen: () => Boolean(pageState.feedbackReactController && isFeedbackPopoverOpen()),
+      close: () => closeFeedbackPopover({ restoreFocus: true })
+    });
 
     function createFeedbackControls() {
       pageState.feedbackControl = document.createElement('div');

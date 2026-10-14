@@ -44,7 +44,13 @@ importScripts(
   chrome.runtime.getURL('src/shared/progress-history.js'),
   chrome.runtime.getURL('src/background/progress-tracker.js'),
   chrome.runtime.getURL('src/background/overlay-loading-lifecycle.js'),
-  chrome.runtime.getURL('src/background/dev-extension-startup.js')
+  chrome.runtime.getURL('src/background/dev-extension-startup.js'),
+  // Background services split out of this file. They share its global scope
+  // and only define functions and their own state while loading.
+  chrome.runtime.getURL('src/background/tab-switcher-service.js'),
+  chrome.runtime.getURL('src/background/pinned-tab-recovery.js'),
+  chrome.runtime.getURL('src/background/favicon-service.js'),
+  chrome.runtime.getURL('src/background/search-suggestions-service.js')
 );
 // pinyin-pro (~320 KB) only matters when a Han-character title is matched
 // against a pinyin query, so the worker loads it on first use instead of on
@@ -91,7 +97,6 @@ const openNewtabFallback = BACKGROUND_NEWTAB_FALLBACK.openNewtabFallback;
 const openNewtabFallbackForUrl = BACKGROUND_NEWTAB_FALLBACK.openNewtabFallbackForUrl;
 const swapNewtabForFocus = BACKGROUND_NEWTAB_FALLBACK.swapNewtabForFocus;
 const BACKGROUND_SHORTCUT_RULES = globalThis.LumnoShortcutRules;
-const RECENT_TAB_SWITCHER = globalThis.LumnoRecentTabSwitcher;
 const OVERLAY_LOADING_LIFECYCLE = globalThis.LumnoOverlayLoadingLifecycle;
 const DEV_EXTENSION_STARTUP = globalThis.LumnoDevExtensionStartup;
 const CODEX_DEBUG_BRIDGE = globalThis.LumnoCodexDebugBackground;
@@ -205,735 +210,6 @@ function moveTabToSourceGroupContext(tab, sourceContext, callback, createPropert
   BACKGROUND_TAB_GROUPS.moveTabToSourceGroupContext(chrome, tab, sourceContext, callback, createProperties);
 }
 
-function hasTabSwitcherExtensionPagePort(tab) {
-  if (!tab || typeof tab.id !== 'number') {
-    return false;
-  }
-  const record = tabSwitcherExtensionPagePortsByTabId.get(tab.id);
-  return Boolean(record && record.port && typeof record.port.postMessage === 'function');
-}
-
-function isTabSwitcherExtensionPageMessageTarget(tab) {
-  if (!tab || typeof tab.id !== 'number') {
-    return false;
-  }
-  const url = getResolvedTabUrl(tab);
-  if (isOwnExtensionPageUrl(url)) {
-    return true;
-  }
-  return isBrowserNewtabUrl(url) && hasTabSwitcherExtensionPagePort(tab);
-}
-
-function shouldTrackSwitcherTab(tab) {
-  if (!tab || typeof tab.id !== 'number' || typeof tab.windowId !== 'number' || tab.incognito === true) {
-    return false;
-  }
-  const url = getResolvedTabUrl(tab);
-  if (!url) {
-    return false;
-  }
-  if (isBrowserInternalUrl(url)) {
-    return true;
-  }
-  try {
-    const parsed = new URL(url);
-    const protocol = String(parsed.protocol || '').toLowerCase();
-    return Boolean(protocol) && protocol !== 'javascript:';
-  } catch (error) {
-    return false;
-  }
-}
-
-function canHostSwitcherSurface(tab) {
-  if (!tab || typeof tab.id !== 'number' || typeof tab.windowId !== 'number') {
-    return false;
-  }
-  const url = getResolvedTabUrl(tab);
-  return isOwnExtensionPageUrl(url) ||
-    (isBrowserNewtabUrl(url) && hasTabSwitcherExtensionPagePort(tab)) ||
-    canOpenOverlayOnUrl(url);
-}
-
-function isTabSwitcherEligibleTab(tab) {
-  return canHostSwitcherSurface(tab);
-}
-
-function getPortSenderTabId(port) {
-  const senderTab = port && port.sender && port.sender.tab ? port.sender.tab : null;
-  return senderTab && typeof senderTab.id === 'number' ? senderTab.id : null;
-}
-
-function getPortMessageTabId(port, message) {
-  if (message && typeof message.tabId === 'number') {
-    return message.tabId;
-  }
-  return getPortSenderTabId(port);
-}
-
-function clearTabSwitcherExtensionPagePending(record, ok, reason) {
-  if (!record || !record.pending || typeof record.pending.forEach !== 'function') {
-    return;
-  }
-  record.pending.forEach((pending) => {
-    if (!pending) {
-      return;
-    }
-    if (pending.timer) {
-      clearTimeout(pending.timer);
-    }
-    if (typeof pending.callback === 'function') {
-      pending.callback(Boolean(ok), reason || '');
-    }
-  });
-  record.pending.clear();
-}
-
-function deleteTabSwitcherExtensionPagePort(tabId, port) {
-  if (typeof tabId !== 'number') {
-    return;
-  }
-  const record = tabSwitcherExtensionPagePortsByTabId.get(tabId);
-  if (!record || (port && record.port !== port)) {
-    return;
-  }
-  clearTabSwitcherExtensionPagePending(record, false, 'disconnected');
-  tabSwitcherExtensionPagePortsByTabId.delete(tabId);
-}
-
-function registerTabSwitcherExtensionPagePort(port, message) {
-  const tabId = getPortMessageTabId(port, message);
-  if (typeof tabId !== 'number') {
-    return null;
-  }
-  const previous = tabSwitcherExtensionPagePortsByTabId.get(tabId);
-  if (previous && previous.port !== port) {
-    clearTabSwitcherExtensionPagePending(previous, false, 'replaced');
-  }
-  const record = previous && previous.port === port
-    ? previous
-    : {
-      port,
-      tabId,
-      pending: new Map()
-    };
-  record.url = message && typeof message.url === 'string' ? message.url : (record.url || '');
-  record.title = message && typeof message.title === 'string' ? message.title : (record.title || '');
-  tabSwitcherExtensionPagePortsByTabId.set(tabId, record);
-  return record;
-}
-
-function handleTabSwitcherExtensionPagePortMessage(port, message) {
-  if (!message || typeof message !== 'object') {
-    return;
-  }
-  if (message.action === 'registerTabSwitcherExtensionPage') {
-    registerTabSwitcherExtensionPagePort(port, message);
-    return;
-  }
-  if (message.action !== 'tabSwitcherExtensionPageResponse') {
-    return;
-  }
-  const tabId = getPortMessageTabId(port, message);
-  if (typeof tabId !== 'number' || typeof message.requestId !== 'number') {
-    return;
-  }
-  const record = tabSwitcherExtensionPagePortsByTabId.get(tabId);
-  if (!record || record.port !== port || !record.pending) {
-    return;
-  }
-  const pending = record.pending.get(message.requestId);
-  if (!pending) {
-    return;
-  }
-  record.pending.delete(message.requestId);
-  if (pending.timer) {
-    clearTimeout(pending.timer);
-  }
-  if (typeof pending.callback === 'function') {
-    pending.callback(Boolean(message.ok), message.reason || '', message);
-  }
-}
-
-function registerTabSwitcherExtensionPagePortConnection(port) {
-  if (!port || port.name !== TAB_SWITCHER_EXTENSION_PAGE_PORT_NAME) {
-    return;
-  }
-  registerTabSwitcherExtensionPagePort(port, {
-    action: 'registerTabSwitcherExtensionPage',
-    tabId: getPortSenderTabId(port),
-    url: port.sender && typeof port.sender.url === 'string' ? port.sender.url : '',
-    title: ''
-  });
-  port.onMessage.addListener((message) => {
-    handleTabSwitcherExtensionPagePortMessage(port, message);
-  });
-  port.onDisconnect.addListener(() => {
-    deleteTabSwitcherExtensionPagePort(getPortSenderTabId(port), port);
-    Array.from(tabSwitcherExtensionPagePortsByTabId.entries()).forEach(([tabId, record]) => {
-      if (record && record.port === port) {
-        deleteTabSwitcherExtensionPagePort(tabId, port);
-      }
-    });
-  });
-}
-
-function postTabSwitcherMessageToExtensionPage(tab, message, callback) {
-  if (!tab || typeof tab.id !== 'number' || !isTabSwitcherExtensionPageMessageTarget(tab)) {
-    if (typeof callback === 'function') {
-      callback(false, 'not-extension-page');
-    }
-    return false;
-  }
-  const startedAt = Date.now();
-  const attemptPost = () => {
-    const record = tabSwitcherExtensionPagePortsByTabId.get(tab.id);
-    if (!record || !record.port || typeof record.port.postMessage !== 'function') {
-      if (Date.now() - startedAt < TAB_SWITCHER_EXTENSION_PAGE_PORT_WAIT_MS) {
-        setTimeout(attemptPost, TAB_SWITCHER_EXTENSION_PAGE_PORT_RETRY_MS);
-        return true;
-      }
-      if (typeof callback === 'function') {
-        callback(false, 'extension-page-port-missing');
-      }
-      return false;
-    }
-    const requestId = ++tabSwitcherExtensionPageRequestSeq;
-    const payload = {
-      ...(message && typeof message === 'object' ? message : {}),
-      requestId
-    };
-    const timer = setTimeout(() => {
-      if (!record.pending || !record.pending.has(requestId)) {
-        return;
-      }
-      record.pending.delete(requestId);
-      if (typeof callback === 'function') {
-        callback(false, 'extension-page-timeout');
-      }
-    }, 1000);
-    record.pending.set(requestId, {
-      callback,
-      timer
-    });
-    try {
-      record.port.postMessage(payload);
-      return true;
-    } catch (error) {
-      clearTimeout(timer);
-      record.pending.delete(requestId);
-      if (typeof callback === 'function') {
-        callback(false, error && error.message ? error.message : 'extension-page-post-failed');
-      }
-      return false;
-    }
-  };
-  return attemptPost();
-}
-
-function setTabSwitcherCaptureVisibilityInPage(hidden, hostId) {
-  const host = document.getElementById(hostId);
-  if (!host) {
-    return { ok: true, reason: 'tab_switcher_host_missing' };
-  }
-  const markerKey = 'lumnoCaptureVisibilityHidden';
-  const valueKey = 'lumnoCapturePreviousVisibility';
-  const priorityKey = 'lumnoCapturePreviousVisibilityPriority';
-  const hadValueKey = 'lumnoCaptureHadVisibility';
-  if (hidden) {
-    if (host.dataset[markerKey] !== 'true') {
-      const previousValue = host.style.getPropertyValue('visibility');
-      host.dataset[markerKey] = 'true';
-      host.dataset[valueKey] = previousValue || '';
-      host.dataset[priorityKey] = host.style.getPropertyPriority('visibility') || '';
-      host.dataset[hadValueKey] = previousValue ? 'true' : 'false';
-    }
-    host.style.setProperty('visibility', 'hidden', 'important');
-    return { ok: true };
-  }
-  if (host.dataset[markerKey] === 'true') {
-    if (host.dataset[hadValueKey] === 'true') {
-      host.style.setProperty(
-        'visibility',
-        host.dataset[valueKey] || '',
-        host.dataset[priorityKey] || ''
-      );
-    } else {
-      host.style.removeProperty('visibility');
-    }
-    delete host.dataset[markerKey];
-    delete host.dataset[valueKey];
-    delete host.dataset[priorityKey];
-    delete host.dataset[hadValueKey];
-  }
-  return { ok: true };
-}
-
-function getOpenTabSwitcherStateInPage(hostId) {
-  const host = document.getElementById(hostId);
-  return {
-    ok: true,
-    open: Boolean(host)
-  };
-}
-
-function updateTabSwitcherThumbnailInPage(update, hostId) {
-  const host = document.getElementById(hostId);
-  if (!host || typeof host._lumnoTabSwitcherUpdateThumbnail !== 'function') {
-    return { ok: false, reason: 'tab_switcher_host_missing' };
-  }
-  return host._lumnoTabSwitcherUpdateThumbnail(update) || { ok: true };
-}
-
-function commitOpenTabSwitcherFromShortcutReleaseInPage(hostId) {
-  const host = document.getElementById(hostId);
-  if (!host || typeof host._lumnoTabSwitcherCommitFromShortcutRelease !== 'function') {
-    return { ok: false, committed: false };
-  }
-  return {
-    ok: true,
-    committed: host._lumnoTabSwitcherCommitFromShortcutRelease() === true
-  };
-}
-
-function getFailedOpenTabSwitcherState() {
-  return { ok: false, open: false };
-}
-
-function normalizeTabSwitcherHostOkResponse(response) {
-  return response && response.ok === true ? true : null;
-}
-
-function normalizeTabSwitcherCommitResponse(response) {
-  if (!response || response.ok !== true || typeof response.committed !== 'boolean') {
-    return null;
-  }
-  return response.committed === true;
-}
-
-function normalizeOpenTabSwitcherStateResponse(response) {
-  if (!response || response.ok !== true || typeof response.open !== 'boolean') {
-    return null;
-  }
-  return {
-    ok: true,
-    open: response.open === true
-  };
-}
-
-function normalizeTabSwitcherHostOkScriptResults(results) {
-  return Array.isArray(results) &&
-    results.some((item) => item && item.result && item.result.ok === true)
-    ? true
-    : null;
-}
-
-function normalizeTabSwitcherCommitScriptResults(results) {
-  const result = Array.isArray(results)
-    ? results.find((item) => (
-      item &&
-      item.result &&
-      item.result.ok === true &&
-      typeof item.result.committed === 'boolean'
-    ))
-    : null;
-  return result && result.result ? result.result.committed === true : null;
-}
-
-function normalizeOpenTabSwitcherStateScriptResults(results) {
-  const result = Array.isArray(results)
-    ? results.find((item) => (
-      item &&
-      item.result &&
-      item.result.ok === true &&
-      typeof item.result.open === 'boolean'
-    ))
-    : null;
-  return result && result.result
-    ? {
-      ok: true,
-      open: result.result.open === true
-    }
-    : null;
-}
-
-function runTabSwitcherHostScript(tabId, scriptFunc, scriptArgs, normalizeResults, fallbackValue) {
-  if (typeof tabId !== 'number' ||
-      !chrome ||
-      !chrome.scripting ||
-      typeof chrome.scripting.executeScript !== 'function' ||
-      typeof scriptFunc !== 'function') {
-    return Promise.resolve(fallbackValue);
-  }
-  const normalize = typeof normalizeResults === 'function'
-    ? normalizeResults
-    : normalizeTabSwitcherHostOkScriptResults;
-  return new Promise((resolve) => {
-    try {
-      chrome.scripting.executeScript({
-        target: { tabId },
-        func: scriptFunc,
-        args: Array.isArray(scriptArgs) ? scriptArgs : []
-      }, (results) => {
-        if (chrome.runtime && chrome.runtime.lastError) {
-          resolve(fallbackValue);
-          return;
-        }
-        const normalized = normalize(results);
-        resolve(normalized === null ? fallbackValue : normalized);
-      });
-    } catch (error) {
-      resolve(fallbackValue);
-    }
-  });
-}
-
-function sendTabSwitcherHostMessage(tab, payload, optionsArg) {
-  const tabId = tab && typeof tab.id === 'number' ? tab.id : null;
-  const options = optionsArg && typeof optionsArg === 'object' ? optionsArg : {};
-  const fallbackValue = Object.prototype.hasOwnProperty.call(options, 'fallbackValue')
-    ? options.fallbackValue
-    : false;
-  if (typeof tabId !== 'number' || !payload || typeof payload !== 'object') {
-    return Promise.resolve(fallbackValue);
-  }
-  const normalizeResponse = typeof options.normalizeResponse === 'function'
-    ? options.normalizeResponse
-    : normalizeTabSwitcherHostOkResponse;
-  const runScriptFallback = () => runTabSwitcherHostScript(
-    tabId,
-    options.scriptFunc,
-    options.scriptArgs,
-    options.normalizeScriptResults,
-    fallbackValue
-  );
-  if (isTabSwitcherExtensionPageMessageTarget(tab)) {
-    return new Promise((resolve) => {
-      postTabSwitcherMessageToExtensionPage(tab, payload, (ok, _reason, response) => {
-        if (ok) {
-          const normalized = normalizeResponse(response || { ok: true });
-          if (normalized !== null) {
-            resolve(normalized);
-            return;
-          }
-        }
-        runScriptFallback().then(resolve).catch(() => resolve(fallbackValue));
-      });
-    });
-  }
-  if (!chrome || !chrome.tabs || typeof chrome.tabs.sendMessage !== 'function') {
-    return runScriptFallback();
-  }
-  return new Promise((resolve) => {
-    try {
-      chrome.tabs.sendMessage(tabId, payload, (response) => {
-        if (!(chrome.runtime && chrome.runtime.lastError)) {
-          const normalized = normalizeResponse(response);
-          if (normalized !== null) {
-            resolve(normalized);
-            return;
-          }
-        }
-        runScriptFallback().then(resolve).catch(() => resolve(fallbackValue));
-      });
-    } catch (error) {
-      runScriptFallback().then(resolve).catch(() => resolve(fallbackValue));
-    }
-  });
-}
-
-function setTabSwitcherCaptureVisibility(tab, hidden) {
-  const payload = {
-    action: 'setTabSwitcherCaptureVisibility',
-    hidden: Boolean(hidden)
-  };
-  return sendTabSwitcherHostMessage(tab, payload, {
-    scriptFunc: setTabSwitcherCaptureVisibilityInPage,
-    scriptArgs: [Boolean(hidden), TAB_SWITCHER_HOST_ID],
-    fallbackValue: false
-  });
-}
-
-function getOpenTabSwitcherState(tab) {
-  const payload = {
-    action: 'getOpenTabSwitcherState'
-  };
-  return sendTabSwitcherHostMessage(tab, payload, {
-    scriptFunc: getOpenTabSwitcherStateInPage,
-    scriptArgs: [TAB_SWITCHER_HOST_ID],
-    normalizeResponse: normalizeOpenTabSwitcherStateResponse,
-    normalizeScriptResults: normalizeOpenTabSwitcherStateScriptResults,
-    fallbackValue: getFailedOpenTabSwitcherState()
-  });
-}
-
-function postTabSwitcherThumbnailUpdate(tab, update) {
-  if (!update || typeof update !== 'object') {
-    return Promise.resolve(false);
-  }
-  const payload = {
-    action: 'updateTabSwitcherThumbnail',
-    ...update
-  };
-  return sendTabSwitcherHostMessage(tab, payload, {
-    scriptFunc: updateTabSwitcherThumbnailInPage,
-    scriptArgs: [payload, TAB_SWITCHER_HOST_ID],
-    fallbackValue: false
-  });
-}
-
-function commitOpenTabSwitcherFromShortcutReleaseOnTab(tab) {
-  return sendTabSwitcherHostMessage(tab, {
-    action: 'commitOpenTabSwitcherFromShortcutRelease'
-  }, {
-    scriptFunc: commitOpenTabSwitcherFromShortcutReleaseInPage,
-    scriptArgs: [TAB_SWITCHER_HOST_ID],
-    normalizeResponse: normalizeTabSwitcherCommitResponse,
-    normalizeScriptResults: normalizeTabSwitcherCommitScriptResults,
-    fallbackValue: false
-  });
-}
-
-function prepareShortcutKeyObserver(tab) {
-  if (!tab || typeof tab.id !== 'number') {
-    return Promise.resolve(false);
-  }
-  if (isTabSwitcherExtensionPageMessageTarget(tab)) {
-    return Promise.resolve(true);
-  }
-  if (!chrome || !chrome.scripting || typeof chrome.scripting.executeScript !== 'function') {
-    return Promise.resolve(false);
-  }
-  return new Promise((resolve) => {
-    try {
-      chrome.scripting.executeScript({
-        target: {
-          tabId: tab.id,
-          allFrames: true
-        },
-        files: ['src/shared/shortcut-key-matcher.js', 'src/content/shortcut-key-observer.js']
-      }, () => {
-        const error = chrome.runtime && chrome.runtime.lastError
-          ? chrome.runtime.lastError.message || 'unknown'
-          : '';
-        recordTabSwitcherShortcutDebug(
-          error ? 'release-observer-injection-failed' : 'release-observer-ready',
-          {
-            tabId: tab.id,
-            windowId: typeof tab.windowId === 'number' ? tab.windowId : null,
-            error
-          }
-        );
-        resolve(!error);
-      });
-    } catch (error) {
-      recordTabSwitcherShortcutDebug('release-observer-injection-failed', {
-        tabId: tab.id,
-        windowId: typeof tab.windowId === 'number' ? tab.windowId : null,
-        error: error && error.message ? error.message : String(error || 'unknown')
-      });
-      resolve(false);
-    }
-  });
-}
-
-function prepareShortcutKeyObserversInOpenTabs() {
-  if (!chrome || !chrome.tabs || typeof chrome.tabs.query !== 'function') {
-    return;
-  }
-  chrome.tabs.query({}, (tabs) => {
-    if (chrome.runtime && chrome.runtime.lastError) {
-      return;
-    }
-    (Array.isArray(tabs) ? tabs : []).forEach((tab) => {
-      prepareShortcutKeyObserver(tab);
-    });
-  });
-}
-
-function findOpenTabSwitcherHostInWindow(windowId) {
-  if (typeof windowId !== 'number' || !chrome || !chrome.tabs || typeof chrome.tabs.query !== 'function') {
-    return Promise.resolve(null);
-  }
-  const readStateWithTimeout = (tab) => new Promise((resolve) => {
-    let settled = false;
-    const finish = (open) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      clearTimeout(timer);
-      resolve({ tab, open: open === true });
-    };
-    const timer = setTimeout(() => finish(false), TAB_SWITCHER_HOST_STATE_TIMEOUT_MS);
-    getOpenTabSwitcherState(tab)
-      .then((state) => finish(Boolean(state && state.open === true)))
-      .catch(() => finish(false));
-  });
-  return new Promise((resolve) => {
-    chrome.tabs.query({ windowId }, (tabs) => {
-      if (chrome.runtime && chrome.runtime.lastError) {
-        resolve(null);
-        return;
-      }
-      const knownHostTabId = tabSwitcherHostTabIdByWindowId.get(windowId);
-      const candidates = (Array.isArray(tabs) ? tabs : [])
-        .filter((tab) => tab && typeof tab.id === 'number' && canHostSwitcherSurface(tab))
-        .sort((left, right) => {
-          const leftPriority = left.id === knownHostTabId ? 2 : Number(left.active === true);
-          const rightPriority = right.id === knownHostTabId ? 2 : Number(right.active === true);
-          return rightPriority - leftPriority;
-        });
-      Promise.all(candidates.map(readStateWithTimeout)).then((states) => {
-        const openHost = states.find((state) => state.open === true);
-        resolve(openHost ? openHost.tab : null);
-      }).catch(() => resolve(null));
-    });
-  });
-}
-
-function getTabForTabSwitcherCommit(tabId) {
-  if (typeof tabId !== 'number' || !chrome || !chrome.tabs || typeof chrome.tabs.get !== 'function') {
-    return Promise.resolve(null);
-  }
-  return new Promise((resolve) => {
-    chrome.tabs.get(tabId, (tab) => {
-      if (chrome.runtime && chrome.runtime.lastError) {
-        resolve(null);
-        return;
-      }
-      resolve(tab && typeof tab.id === 'number' ? tab : null);
-    });
-  });
-}
-
-function commitOpenTabSwitcherInWindow(windowId, source) {
-  recordTabSwitcherShortcutDebug('commit-search-start', {
-    windowId,
-    source: String(source || '')
-  });
-  const finishCommit = (hostTab, path) => {
-    recordTabSwitcherShortcutDebug('commit-host-resolved', {
-      windowId,
-      source: String(source || ''),
-      hostTabId: hostTab && typeof hostTab.id === 'number' ? hostTab.id : null,
-      path
-    });
-    if (!hostTab) {
-      return false;
-    }
-    return commitOpenTabSwitcherFromShortcutReleaseOnTab(hostTab).then((didCommit) => {
-      recordTabSwitcherShortcutDebug('commit-finished', {
-        windowId,
-        source: String(source || ''),
-        hostTabId: hostTab.id,
-        committed: didCommit === true
-      });
-      if (didCommit === true && tabSwitcherHostTabIdByWindowId.get(windowId) === hostTab.id) {
-        tabSwitcherHostTabIdByWindowId.delete(windowId);
-      }
-      return didCommit === true;
-    });
-  };
-  const findAndCommit = () => findOpenTabSwitcherHostInWindow(windowId)
-    .then((hostTab) => finishCommit(hostTab, 'window-scan'));
-  const knownHostTabId = tabSwitcherHostTabIdByWindowId.get(windowId);
-  if (typeof knownHostTabId !== 'number') {
-    return findAndCommit().catch(() => false);
-  }
-  return getTabForTabSwitcherCommit(knownHostTabId)
-    .then((hostTab) => finishCommit(hostTab, 'known-host'))
-    .then((didCommit) => {
-      if (didCommit === true) {
-        return true;
-      }
-      if (tabSwitcherHostTabIdByWindowId.get(windowId) === knownHostTabId) {
-        tabSwitcherHostTabIdByWindowId.delete(windowId);
-      }
-      return findAndCommit();
-    })
-    .catch(() => findAndCommit().catch(() => false));
-}
-
-function handleTabSwitcherShortcutModifierReleased(senderTab, releasedKey, callback) {
-  const finish = typeof callback === 'function' ? callback : () => {};
-  if (!senderTab || typeof senderTab.windowId !== 'number') {
-    finish(false);
-    return;
-  }
-  const key = String(releasedKey || '');
-  getConfiguredTabSwitcherShortcut((shortcut) => {
-    const expectedKeys = RECENT_TAB_SWITCHER.getShortcutReleaseEventKeys(shortcut);
-    if (!expectedKeys.includes(key)) {
-      recordTabSwitcherShortcutDebug('release-rejected', {
-        windowId: senderTab.windowId,
-        key,
-        shortcut,
-        expectedKeys
-      });
-      finish(false);
-      return;
-    }
-    recordTabSwitcherShortcutDebug('release-accepted', {
-      windowId: senderTab.windowId,
-      key,
-      shortcut,
-      expectedKeys
-    });
-    commitOpenTabSwitcherInWindow(senderTab.windowId, 'keyup')
-      .then((didCommit) => finish(didCommit === true))
-      .catch(() => finish(false));
-  });
-}
-
-function armTabSwitcherShortcutReleaseObservers(tabs, windowId, shortcut, commandStartedAt) {
-  if (typeof windowId !== 'number') {
-    return;
-  }
-  const keys = RECENT_TAB_SWITCHER.getShortcutReleaseEventKeys(shortcut);
-  if (!keys.length) {
-    return;
-  }
-  const message = {
-    action: 'armTabSwitcherShortcutRelease',
-    keys,
-    commandStartedAt: Number(commandStartedAt) || 0
-  };
-  (Array.isArray(tabs) ? tabs : []).forEach((item) => {
-    if (!item || typeof item.id !== 'number' || item.windowId !== windowId) {
-      return;
-    }
-    if (isTabSwitcherExtensionPageMessageTarget(item)) {
-      postTabSwitcherMessageToExtensionPage(item, message, () => {});
-      return;
-    }
-    if (!chrome || !chrome.tabs || typeof chrome.tabs.sendMessage !== 'function') {
-      return;
-    }
-    try {
-      chrome.tabs.sendMessage(item.id, message, () => {
-        void (chrome.runtime && chrome.runtime.lastError);
-      });
-    } catch (error) {
-      // Restricted tabs simply cannot participate in the release relay.
-    }
-  });
-}
-
-function waitForTabSwitcherCapturePaint() {
-  return new Promise((resolve) => {
-    setTimeout(resolve, TAB_SWITCHER_CAPTURE_HIDE_PAINT_WAIT_MS);
-  });
-}
-
-function withTabSwitcherHiddenForCapture(tab, capture) {
-  const runCapture = typeof capture === 'function' ? capture : () => Promise.resolve(false);
-  return setTabSwitcherCaptureVisibility(tab, true)
-    .catch(() => false)
-    .then(() => waitForTabSwitcherCapturePaint())
-    .then(() => runCapture())
-    .finally(() => setTabSwitcherCaptureVisibility(tab, false));
-}
-
 const pipOwnership = globalThis.LumnoPipOwnership.create({
   chromeApi: chrome,
   getResolvedTabUrl: getResolvedTabUrl
@@ -942,18 +218,6 @@ const pipOwnership = globalThis.LumnoPipOwnership.create({
 const pipMainWorld = globalThis.LumnoPipMainWorld.create({
   chromeApi: chrome
 });
-
-async function requestGlobalPipOwnership(sender, kind) {
-  return pipOwnership.requestGlobalPipOwnership(sender, kind);
-}
-
-async function releaseGlobalPipOwnership(sender, token) {
-  return pipOwnership.releaseGlobalPipOwnership(sender, token);
-}
-
-function clearGlobalPipOwnerForTabId(tabId) {
-  pipOwnership.clearGlobalPipOwnerForTabId(tabId);
-}
 
 function isLumnoNewtabUrl(url) {
   const value = String(url || '');
@@ -1081,6 +345,14 @@ function getBrowserNewtabProviderType(tab) {
 
 function setRestrictedActionFromBrowserNewtabProvider(providerType, tab, stage) {
   if (providerType !== 'other-extension') {
+    return;
+  }
+  if (!backgroundSettingsLoaded) {
+    // The one-time auto choice must not overwrite a later manual choice just
+    // because the done flag has not been read yet on this wake.
+    whenBackgroundSettingsReady(() => {
+      setRestrictedActionFromBrowserNewtabProvider(providerType, tab, stage);
+    });
     return;
   }
   if (restrictedActionAutoBrowserSettingDoneCache) {
@@ -1300,32 +572,6 @@ function requestFocusVisibleNewtabInput(source, tabId) {
 }
 
 const HOTKEY_DEBUG_ENABLED = false;
-const TAB_SWITCHER_SHORTCUT_DEBUG_LIMIT = 50;
-const tabSwitcherShortcutDebugEvents = [];
-
-function recordTabSwitcherShortcutDebug(stage, payload) {
-  tabSwitcherShortcutDebugEvents.push({
-    at: new Date().toISOString(),
-    stage: String(stage || ''),
-    ...(payload && typeof payload === 'object' ? payload : {})
-  });
-  if (tabSwitcherShortcutDebugEvents.length > TAB_SWITCHER_SHORTCUT_DEBUG_LIMIT) {
-    tabSwitcherShortcutDebugEvents.splice(
-      0,
-      tabSwitcherShortcutDebugEvents.length - TAB_SWITCHER_SHORTCUT_DEBUG_LIMIT
-    );
-  }
-}
-
-globalThis._lumnoTabSwitcherShortcutDebug = Object.freeze({
-  snapshot() {
-    return tabSwitcherShortcutDebugEvents.map((event) => ({ ...event }));
-  },
-  clear() {
-    tabSwitcherShortcutDebugEvents.length = 0;
-  }
-});
-
 function logHotkeyDebug(stage, payload) {
   if (!HOTKEY_DEBUG_ENABLED) {
     return;
@@ -1336,6 +582,22 @@ function logHotkeyDebug(stage, payload) {
   } catch (e) {
     // Ignore logging errors.
   }
+}
+
+// Callback for chrome.* calls whose failure is routine for a background that
+// talks to arbitrary tabs and storage: a tab or frame that closed or navigated
+// ("No tab with id", "Frame was removed"), a restricted page, or a best-effort
+// cleanup. Reading lastError keeps Chrome from logging it as unchecked.
+function ignoreExpectedChromeError() {
+  void (chrome && chrome.runtime && chrome.runtime.lastError);
+}
+
+// Rejection handler for work that is not expected to fail (storage writes,
+// startup restores). Failures stay non-fatal but leave a trace with context.
+function warnBackgroundFailure(context) {
+  return (error) => {
+    console.warn(`[Lumno] ${context}`, error);
+  };
 }
 
 const providerStorageRuntime = globalThis.LumnoSettings.createProviderStorageRuntime(chrome);
@@ -1426,8 +688,6 @@ const SEARCH_RESULT_PRIORITY_STORAGE_KEY = '_x_extension_search_result_priority_
 const SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY = '_x_extension_search_result_source_types_2026_unique_';
 const SEARCH_SELECTION_STATS_STORAGE_KEY = '_x_extension_search_selection_stats_2026_unique_';
 const FAVICON_VISIT_DIRTY_STORAGE_KEY = '_x_extension_favicon_visit_dirty_2026_unique_';
-const FAVICON_VISIT_DIRTY_TTL_MS = 1000 * 60 * 60 * 24;
-const FAVICON_VISIT_DIRTY_MAX_ENTRIES = 600;
 const PINNED_TAB_SNAPSHOT_STORAGE_KEY = '_x_extension_pinned_tab_snapshot_2026_unique_';
 const REMOVED_AI_SYNC_STORAGE_KEYS = [
   '_x_extension_ai_search_mode_2026_unique_',
@@ -1441,15 +701,6 @@ const SHOW_SEARCH_COMMAND_NAME = 'show-search';
 const SHOW_SEARCH_PREFILL_COMMAND_NAME = 'show-search-prefill';
 const SHOW_SEARCH_PREFILL_V_COMMAND_NAME = 'show-search-prefill-v';
 const SHOW_TAB_SWITCHER_COMMAND_NAME = 'show-tab-switcher';
-const TAB_SWITCHER_EXTENSION_PAGE_PORT_NAME = 'lumno-tab-switcher-extension-page';
-const TAB_SWITCHER_EXTENSION_PAGE_PORT_WAIT_MS = 650;
-const TAB_SWITCHER_EXTENSION_PAGE_PORT_RETRY_MS = 50;
-const TAB_SWITCHER_HOST_ID = '_x_extension_tab_switcher_host_2026_unique_';
-const tabSwitcherExtensionPagePortsByTabId = new Map();
-const TAB_SWITCHER_OPENING_GUARD_MS = 2000;
-const tabSwitcherOpeningByWindowKey = new Map();
-const TAB_SWITCHER_HOST_STATE_TIMEOUT_MS = 400;
-const tabSwitcherHostTabIdByWindowId = new Map();
 const HOTKEY_DUP_GUARD_MS = 180;
 const OVERLAY_OPENING_GUARD_MS = 5000;
 const OVERLAY_RUNTIME_VERSION = '2026-10-01-favicon-source-scope-v16';
@@ -1471,27 +722,20 @@ const OVERLAY_LOADING_PRE_COMPLETE_RETRY_MS = 120;
 const OVERLAY_LOADING_STABLE_COMPLETE_MS = 1500;
 const PAGE_HOTKEY_NEWTAB_RECOVER_MS = 1200;
 const BROWSER_NEWTAB_PROVIDER_DETECTION_MS = 6000;
-const TAB_SWITCHER_LIMIT = 5;
-const TAB_SWITCHER_CAPTURE_DELAY_MS = 220;
-const TAB_SWITCHER_PRIORITY_CAPTURE_DELAY_MS = 90;
-const TAB_SWITCHER_CAPTURE_HIDE_PAINT_WAIT_MS = 48;
-const TAB_SWITCHER_CAPTURE_MIN_INTERVAL_MS = 650;
-const TAB_SWITCHER_CAPTURE_JPEG_QUALITY = 42;
-const TAB_SWITCHER_CAPTURE_REASON_COMMAND_IMMEDIATE = 'command-immediate';
 const TAB_SWITCHER_THUMBNAIL_STORAGE_KEY = '_x_extension_tab_switcher_state_2026_unique_';
-const TAB_SWITCHER_THUMBNAIL_LIMIT = 12;
-const TAB_SWITCHER_THUMBNAIL_TTL_MS = 1000 * 60 * 60 * 2;
-const TAB_SWITCHER_THUMBNAIL_PERSIST_DEBOUNCE_MS = 350;
-const TAB_SWITCHER_THUMBNAIL_TARGET_WIDTH = 320;
-const TAB_SWITCHER_THUMBNAIL_TARGET_HEIGHT = 200;
 const TAB_SWITCH_WINDOW_SHORT_MS = 30 * 60 * 1000;
 const TAB_SWITCH_WINDOW_DAY_MS = 24 * 60 * 60 * 1000;
 const TAB_SWITCH_HIGH_FREQ_SHORT_THRESHOLD = 2;
 const TAB_SWITCH_HIGH_FREQ_DAY_THRESHOLD = 5;
 const TAB_SWITCH_EVENT_HISTORY_LIMIT = 60;
 const TAB_SWITCH_STATS_STORAGE_KEY = '_x_extension_tab_switch_stats_2026_unique_';
-const PINNED_TAB_SNAPSHOT_DEBOUNCE_MS = 600;
-const PINNED_TAB_RESTORE_MAX_TABS = 24;
+// Service-worker lifetime: everything below is lost when the worker suspends
+// and is re-created on the next wake. Each group says how it survives that;
+// the service scripts in the first importScripts block document their own.
+//
+// Settings mirrors, re-read from storage on every wake (see the storageArea.get
+// below). Until that read lands they hold defaults, so event paths that act on
+// them wait for backgroundSettingsReady (see whenBackgroundSettingsReady).
 let restrictedActionCache = 'default';
 let restrictedActionAutoBrowserSettingDoneCache = false;
 let documentPipEnabledCache = false;
@@ -1502,147 +746,35 @@ const documentPipEnabledReady = new Promise((resolve) => {
   resolveDocumentPipEnabledReady = resolve;
 });
 let tabSwitcherEnabledCache = true;
-let pinnedTabRecoveryEnabledCache = false;
+let backgroundSettingsLoaded = false;
+let resolveBackgroundSettingsReady = () => {};
+const backgroundSettingsReady = new Promise((resolve) => {
+  resolveBackgroundSettingsReady = resolve;
+});
+// Short-lived guards (<= a few seconds) that may be lost: a fresh worker simply
+// treats the next hotkey/open as new.
 const hotkeyInvokeAtByTabId = new Map();
 const overlayOpeningByTabId = new Map();
-const overlayNavigationStateByTabId = new Map();
-const overlayLoadingRecordsByTabId = new Map();
 const overlayLoadingRecoveryInFlightByTabId = new Set();
 const overlayLoadingPendingUpdateByTabId = new Map();
 const browserNewtabProviderCandidateTabIds = new Map();
 let lastPageHotkeyContext = null;
+// Write-through caches of chrome.storage.session records, re-read on a miss.
+const overlayNavigationStateByTabId = new Map();
+const overlayLoadingRecordsByTabId = new Map();
+// Tab switch stats: persisted on every change to session storage and merged
+// back by ensureTabSwitchStatsLoaded on wake.
 const tabSwitchEventsByTabId = new Map();
+// Rebuilt from tab.lastAccessed on the next tab listing.
 const tabLastAccessedByTabId = new Map();
+// Debug counter and request sequence numbers; restarting them is harmless.
 let tabSwitchEventDebugTotal = 0;
 let tabOverlayFetchSeq = 0;
 let tabSwitchStatsLoaded = false;
 let tabSwitchStatsLoadPromise = null;
-let pinnedTabSnapshotTimer = null;
-let pinnedTabSnapshotPersistOptions = null;
-let pinnedTabRecoverySettingLoaded = false;
-let pinnedTabRecoverySettingLoadPromise = null;
-let pinnedTabRestorePromise = null;
-const tabSwitcherThumbnailTimersByTabId = new Map();
-const tabSwitcherThumbnailPriorityByTabId = new Map();
-let tabSwitcherThumbnailCaptureChain = Promise.resolve(false);
-let tabSwitcherLastCaptureAt = 0;
-let tabSwitcherStateLoaded = false;
-let tabSwitcherStateLoadPromise = null;
-let tabSwitcherStatePersistTimer = null;
-let tabSwitcherStateDirtyBeforeLoad = false;
-let tabSwitcherExtensionPageRequestSeq = 0;
-const recentTabTracker = RECENT_TAB_SWITCHER.createRecentTabTracker({
-  limit: TAB_SWITCHER_LIMIT,
-  thumbnailLimit: TAB_SWITCHER_THUMBNAIL_LIMIT,
-  thumbnailTtlMs: TAB_SWITCHER_THUMBNAIL_TTL_MS,
-  shouldIncludeTab: shouldTrackSwitcherTab
-});
-const faviconVisitDirtyWriteDebounceMs = 400;
-const faviconVisitDirtyMarkThrottleMs = 2 * 60 * 1000;
-const faviconVisitDirtyMarkCache = new Map();
-let faviconVisitDirtyPersistTimer = null;
-
-function normalizeFaviconVisitDirtyHost(hostname) {
-  if (!hostname) {
-    return '';
-  }
-  return normalizeHost(String(hostname).trim());
-}
-
-function getFaviconVisitDirtyStorageArea() {
-  if (!chrome || !chrome.storage || !chrome.storage.local) {
-    return null;
-  }
-  return chrome.storage.local;
-}
-
-function getValidFaviconVisitDirtyEntries(rawEntries) {
-  const now = Date.now();
-  const input = rawEntries && typeof rawEntries === 'object' ? rawEntries : {};
-  const valid = [];
-  Object.keys(input).forEach((key) => {
-    const updatedAt = Number(input[key] || 0);
-    if (!key || !Number.isFinite(updatedAt)) {
-      return;
-    }
-    if (now - updatedAt > FAVICON_VISIT_DIRTY_TTL_MS) {
-      return;
-    }
-    valid.push({ key, updatedAt });
-  });
-  valid.sort((a, b) => b.updatedAt - a.updatedAt);
-  return valid.slice(0, FAVICON_VISIT_DIRTY_MAX_ENTRIES);
-}
-
-function schedulePersistFaviconVisitDirtyHost(hostname) {
-  const host = normalizeFaviconVisitDirtyHost(hostname);
-  const storageArea = getFaviconVisitDirtyStorageArea();
-  if (!host || !storageArea) {
-    return;
-  }
-  const now = Date.now();
-  const lastMarkedAt = Number(faviconVisitDirtyMarkCache.get(host) || 0);
-  if (lastMarkedAt && (now - lastMarkedAt) < faviconVisitDirtyMarkThrottleMs) {
-    return;
-  }
-  faviconVisitDirtyMarkCache.set(host, now);
-  if (faviconVisitDirtyPersistTimer !== null) {
-    clearTimeout(faviconVisitDirtyPersistTimer);
-  }
-  faviconVisitDirtyPersistTimer = setTimeout(() => {
-    faviconVisitDirtyPersistTimer = null;
-    storageArea.get([FAVICON_VISIT_DIRTY_STORAGE_KEY], (result) => {
-      const payload = result && result[FAVICON_VISIT_DIRTY_STORAGE_KEY];
-      const existing = getValidFaviconVisitDirtyEntries(payload && payload.entries ? payload.entries : null);
-      const merged = new Map(existing.map((item) => [item.key, item.updatedAt]));
-      faviconVisitDirtyMarkCache.forEach((updatedAt, key) => {
-        merged.set(key, updatedAt);
-      });
-      const serializedEntries = Array.from(merged.entries())
-        .map(([key, updatedAt]) => ({
-          key: String(key || ''),
-          updatedAt: Number(updatedAt || 0)
-        }))
-        .filter((item) => item.key && Number.isFinite(item.updatedAt))
-        .sort((a, b) => b.updatedAt - a.updatedAt)
-        .slice(0, FAVICON_VISIT_DIRTY_MAX_ENTRIES);
-      const serialized = {};
-      serializedEntries.forEach((item) => {
-        serialized[item.key] = item.updatedAt;
-      });
-      storageArea.set({
-        [FAVICON_VISIT_DIRTY_STORAGE_KEY]: {
-          version: 1,
-          entries: serialized,
-          updatedAt: Date.now()
-        }
-      }, () => {
-        faviconVisitDirtyMarkCache.clear();
-      });
-    });
-  }, faviconVisitDirtyWriteDebounceMs);
-}
-
-function markFaviconDirtyForUrl(url) {
-  if (!url) {
-    return;
-  }
-  let parsed = null;
-  try {
-    parsed = new URL(url);
-  } catch (e) {
-    return;
-  }
-  if (!/^https?:$/i.test(parsed.protocol)) {
-    return;
-  }
-  const host = normalizeFaviconVisitDirtyHost(parsed.hostname);
-  if (!host || shouldBlockFaviconForHost(host)) {
-    return;
-  }
-  schedulePersistFaviconVisitDirtyHost(host);
-}
-
+// Tabs whose stats were cleared before the stored stats were merged back; the
+// merge skips their stored entries so a cleared stat is not resurrected.
+const tabSwitchStatsClearedBeforeLoad = new Set();
 function cleanupRemovedAiStorageKeys() {
   if (!chrome || !chrome.storage) {
     return;
@@ -1650,10 +782,10 @@ function cleanupRemovedAiStorageKeys() {
   const syncArea = chrome.storage.sync;
   const localArea = chrome.storage.local;
   if (syncArea && typeof syncArea.remove === 'function') {
-    syncArea.remove(REMOVED_AI_SYNC_STORAGE_KEYS, () => {});
+    syncArea.remove(REMOVED_AI_SYNC_STORAGE_KEYS, ignoreExpectedChromeError);
   }
   if (localArea && typeof localArea.remove === 'function') {
-    localArea.remove(REMOVED_AI_LOCAL_STORAGE_KEYS, () => {});
+    localArea.remove(REMOVED_AI_LOCAL_STORAGE_KEYS, ignoreExpectedChromeError);
   }
 }
 
@@ -1663,9 +795,7 @@ function cleanupLocalOnlyBookmarkTopbarSyncStorage() {
       BOOKMARK_TOPBAR_LOCAL_STORAGE_KEYS.length === 0) {
     return;
   }
-  chrome.storage.sync.remove(BOOKMARK_TOPBAR_LOCAL_STORAGE_KEYS, () => {
-    void (chrome.runtime && chrome.runtime.lastError);
-  });
+  chrome.storage.sync.remove(BOOKMARK_TOPBAR_LOCAL_STORAGE_KEYS, ignoreExpectedChromeError);
 }
 
 function getTabSwitchStorageArea() {
@@ -1679,89 +809,6 @@ function getTabSwitchStorageArea() {
     return chrome.storage.local;
   }
   return null;
-}
-
-function getTabSwitcherStateStorageArea() {
-  if (!chrome || !chrome.storage) {
-    return null;
-  }
-  return chrome.storage.session || chrome.storage.local || null;
-}
-
-function getTabSwitcherStateFromStorage() {
-  const storageArea = getTabSwitcherStateStorageArea();
-  if (!storageArea || typeof storageArea.get !== 'function') {
-    return Promise.resolve(null);
-  }
-  return new Promise((resolve) => {
-    storageArea.get([TAB_SWITCHER_THUMBNAIL_STORAGE_KEY], (result) => {
-      if (chrome.runtime && chrome.runtime.lastError) {
-        resolve(null);
-        return;
-      }
-      resolve(result ? result[TAB_SWITCHER_THUMBNAIL_STORAGE_KEY] : null);
-    });
-  });
-}
-
-function setTabSwitcherStateToStorage(state) {
-  const storageArea = getTabSwitcherStateStorageArea();
-  if (!storageArea || typeof storageArea.set !== 'function') {
-    return Promise.resolve(false);
-  }
-  return new Promise((resolve) => {
-    storageArea.set({ [TAB_SWITCHER_THUMBNAIL_STORAGE_KEY]: state }, () => {
-      resolve(!(chrome.runtime && chrome.runtime.lastError));
-    });
-  });
-}
-
-function ensureTabSwitcherStateLoaded() {
-  if (tabSwitcherStateLoaded) {
-    return Promise.resolve(true);
-  }
-  if (tabSwitcherStateLoadPromise) {
-    return tabSwitcherStateLoadPromise;
-  }
-  tabSwitcherStateLoadPromise = getTabSwitcherStateFromStorage()
-    .then((state) => {
-      if (state) {
-        recentTabTracker.hydrateState(state, {
-          merge: tabSwitcherStateDirtyBeforeLoad === true
-        });
-      }
-      tabSwitcherStateLoaded = true;
-      if (tabSwitcherStateDirtyBeforeLoad) {
-        schedulePersistTabSwitcherState();
-      }
-      return true;
-    })
-    .catch(() => {
-      tabSwitcherStateLoaded = true;
-      return false;
-    })
-    .finally(() => {
-      tabSwitcherStateLoadPromise = null;
-      tabSwitcherStateDirtyBeforeLoad = false;
-    });
-  return tabSwitcherStateLoadPromise;
-}
-
-function persistTabSwitcherState() {
-  tabSwitcherStatePersistTimer = null;
-  return setTabSwitcherStateToStorage(recentTabTracker.exportState());
-}
-
-function schedulePersistTabSwitcherState() {
-  if (!tabSwitcherStateLoaded) {
-    tabSwitcherStateDirtyBeforeLoad = true;
-  }
-  if (tabSwitcherStatePersistTimer !== null) {
-    clearTimeout(tabSwitcherStatePersistTimer);
-  }
-  tabSwitcherStatePersistTimer = setTimeout(() => {
-    persistTabSwitcherState().catch(() => {});
-  }, TAB_SWITCHER_THUMBNAIL_PERSIST_DEBOUNCE_MS);
 }
 
 function normalizeTabSwitchStatEntry(raw, now) {
@@ -1810,7 +857,7 @@ function applyPersistedTabSwitchStats(payload) {
   }
   Object.keys(payload).forEach((tabIdKey) => {
     const tabId = Number.parseInt(tabIdKey, 10);
-    if (!Number.isFinite(tabId)) {
+    if (!Number.isFinite(tabId) || tabSwitchStatsClearedBeforeLoad.has(tabId)) {
       return;
     }
     const incoming = normalizeTabSwitchStatEntry(payload[tabIdKey], now);
@@ -1846,6 +893,11 @@ function persistTabSwitchStatsNow() {
   if (!area) {
     return Promise.resolve(false);
   }
+  if (!tabSwitchStatsLoaded) {
+    // A tab activation can wake the worker; writing before the stored stats
+    // are merged back would replace them with just this one event.
+    return ensureTabSwitchStatsLoaded().then(() => persistTabSwitchStatsNow());
+  }
   const snapshot = exportTabSwitchStatsSnapshot();
   return new Promise((resolve) => {
     area.set({ [TAB_SWITCH_STATS_STORAGE_KEY]: snapshot }, () => {
@@ -1870,532 +922,13 @@ function ensureTabSwitchStatsLoaded() {
     area.get([TAB_SWITCH_STATS_STORAGE_KEY], (result) => {
       const payload = result ? result[TAB_SWITCH_STATS_STORAGE_KEY] : null;
       applyPersistedTabSwitchStats(payload);
+      tabSwitchStatsClearedBeforeLoad.clear();
       tabSwitchStatsLoaded = true;
       tabSwitchStatsLoadPromise = null;
       resolve();
     });
   });
   return tabSwitchStatsLoadPromise;
-}
-
-function normalizePinnedTabRecoveryEnabled(value) {
-  return value === true;
-}
-
-function normalizeTabSwitcherEnabled(value) {
-  return SETTINGS.normalizeTabSwitcherEnabled(value);
-}
-
-function applyPinnedTabRecoverySetting(rawValue) {
-  const normalized = normalizePinnedTabRecoveryEnabled(rawValue);
-  pinnedTabRecoveryEnabledCache = normalized;
-  pinnedTabRecoverySettingLoaded = true;
-  if (rawValue !== normalized && storageArea && typeof storageArea.set === 'function') {
-    storageArea.set({ [PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY]: normalized });
-  }
-  return normalized;
-}
-
-function ensurePinnedTabRecoverySettingLoaded() {
-  if (pinnedTabRecoverySettingLoaded) {
-    return Promise.resolve(pinnedTabRecoveryEnabledCache);
-  }
-  if (pinnedTabRecoverySettingLoadPromise) {
-    return pinnedTabRecoverySettingLoadPromise;
-  }
-  if (!storageArea || typeof storageArea.get !== 'function') {
-    pinnedTabRecoverySettingLoaded = true;
-    pinnedTabRecoveryEnabledCache = false;
-    return Promise.resolve(false);
-  }
-  pinnedTabRecoverySettingLoadPromise = new Promise((resolve) => {
-    storageArea.get([PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY], (result) => {
-      if (chrome.runtime && chrome.runtime.lastError) {
-        pinnedTabRecoverySettingLoaded = true;
-        pinnedTabRecoveryEnabledCache = false;
-        resolve(false);
-        return;
-      }
-      const rawValue = result ? result[PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY] : undefined;
-      resolve(applyPinnedTabRecoverySetting(rawValue));
-    });
-  }).finally(() => {
-    pinnedTabRecoverySettingLoadPromise = null;
-  });
-  return pinnedTabRecoverySettingLoadPromise;
-}
-
-function queryTabsForPinnedSnapshot(queryInfo) {
-  return new Promise((resolve) => {
-    if (!chrome || !chrome.tabs || typeof chrome.tabs.query !== 'function') {
-      resolve([]);
-      return;
-    }
-    chrome.tabs.query(queryInfo || {}, (tabs) => {
-      if (chrome.runtime && chrome.runtime.lastError) {
-        resolve([]);
-        return;
-      }
-      resolve(Array.isArray(tabs) ? tabs : []);
-    });
-  });
-}
-
-function getPinnedSnapshotFromStorage() {
-  return new Promise((resolve) => {
-    if (!chrome || !chrome.storage || !chrome.storage.local) {
-      resolve(null);
-      return;
-    }
-    chrome.storage.local.get([PINNED_TAB_SNAPSHOT_STORAGE_KEY], (result) => {
-      if (chrome.runtime && chrome.runtime.lastError) {
-        resolve(null);
-        return;
-      }
-      resolve(result ? result[PINNED_TAB_SNAPSHOT_STORAGE_KEY] : null);
-    });
-  });
-}
-
-function setPinnedSnapshotToStorage(snapshot) {
-  return new Promise((resolve) => {
-    if (!chrome || !chrome.storage || !chrome.storage.local) {
-      resolve(false);
-      return;
-    }
-    chrome.storage.local.set({ [PINNED_TAB_SNAPSHOT_STORAGE_KEY]: snapshot }, () => {
-      if (chrome.runtime && chrome.runtime.lastError) {
-        resolve(false);
-        return;
-      }
-      resolve(true);
-    });
-  });
-}
-
-function createPinnedTabForRestore(url, windowId) {
-  return new Promise((resolve) => {
-    if (!chrome || !chrome.tabs || typeof chrome.tabs.create !== 'function') {
-      resolve({ ok: false, tab: null });
-      return;
-    }
-    const createWithWindow = (typeof windowId === 'number')
-      ? { windowId, url, pinned: true, active: false }
-      : { url, pinned: true, active: false };
-    chrome.tabs.create(createWithWindow, (tab) => {
-      if (!(chrome.runtime && chrome.runtime.lastError)) {
-        resolve({ ok: true, tab: tab || null });
-        return;
-      }
-      if (typeof windowId !== 'number') {
-        resolve({ ok: false, tab: null });
-        return;
-      }
-      chrome.tabs.create({ url, pinned: true, active: false }, (fallbackTab) => {
-        resolve({
-          ok: !(chrome.runtime && chrome.runtime.lastError),
-          tab: fallbackTab || null
-        });
-      });
-    });
-  });
-}
-
-function getLastFocusedWindowIdForRestore() {
-  return new Promise((resolve) => {
-    if (!chrome || !chrome.windows || typeof chrome.windows.getLastFocused !== 'function') {
-      resolve(null);
-      return;
-    }
-    chrome.windows.getLastFocused({}, (windowInfo) => {
-      if (chrome.runtime && chrome.runtime.lastError) {
-        resolve(null);
-        return;
-      }
-      const canUse = windowInfo &&
-        typeof windowInfo.id === 'number' &&
-        windowInfo.incognito !== true &&
-        (!windowInfo.type || windowInfo.type === 'normal');
-      resolve(canUse ? windowInfo.id : null);
-    });
-  });
-}
-
-function getNormalWindowCountForPinnedSnapshot() {
-  return new Promise((resolve) => {
-    if (!chrome || !chrome.windows || typeof chrome.windows.getAll !== 'function') {
-      resolve(0);
-      return;
-    }
-    chrome.windows.getAll({ windowTypes: ['normal'] }, (windows) => {
-      if (chrome.runtime && chrome.runtime.lastError) {
-        resolve(0);
-        return;
-      }
-      const count = Array.isArray(windows)
-        ? windows.filter((windowInfo) =>
-          windowInfo &&
-          windowInfo.incognito !== true &&
-          (!windowInfo.type || windowInfo.type === 'normal')
-        ).length
-        : 0;
-      resolve(count);
-    });
-  });
-}
-
-function getPinnedTabUngroupedId() {
-  return chrome &&
-    chrome.tabGroups &&
-    typeof chrome.tabGroups.TAB_GROUP_ID_NONE === 'number'
-    ? chrome.tabGroups.TAB_GROUP_ID_NONE
-    : -1;
-}
-
-function isTabInGroup(tab) {
-  return Boolean(
-    tab &&
-    typeof tab.groupId === 'number' &&
-    tab.groupId !== getPinnedTabUngroupedId()
-  );
-}
-
-function normalizePinnedTabGroupSnapshot(rawValue) {
-  if (!rawValue || typeof rawValue !== 'object') {
-    return null;
-  }
-  const key = String(rawValue.key || '').trim();
-  const title = String(rawValue.title || '').replace(/\s+/g, ' ').trim().slice(0, 80);
-  const color = String(rawValue.color || '').trim();
-  if (!key && !title && !color) {
-    return null;
-  }
-  const snapshot = {};
-  if (key) {
-    snapshot.key = key;
-  }
-  if (title) {
-    snapshot.title = title;
-  }
-  if (color) {
-    snapshot.color = color;
-  }
-  return snapshot;
-}
-
-function normalizePinnedTabSnapshotEntry(rawValue) {
-  const raw = typeof rawValue === 'string'
-    ? { url: rawValue }
-    : (rawValue && typeof rawValue === 'object' ? rawValue : null);
-  if (!raw) {
-    return null;
-  }
-  const url = String(raw.url || '').trim();
-  if (!url || isRestrictedUrl(url)) {
-    return null;
-  }
-  const entry = { url };
-  const group = normalizePinnedTabGroupSnapshot(raw.group);
-  if (group) {
-    entry.group = group;
-  }
-  return entry;
-}
-
-function normalizePinnedTabSnapshot(rawValue) {
-  const entries = [];
-  const appendEntry = (item) => {
-    const entry = normalizePinnedTabSnapshotEntry(item);
-    if (entry) {
-      entries.push(entry);
-    }
-  };
-  if (Array.isArray(rawValue)) {
-    rawValue.forEach(appendEntry);
-    return entries.slice(0, PINNED_TAB_RESTORE_MAX_TABS);
-  }
-  if (!rawValue || typeof rawValue !== 'object') {
-    return [];
-  }
-  if (Array.isArray(rawValue.entries)) {
-    rawValue.entries.forEach(appendEntry);
-    return entries.slice(0, PINNED_TAB_RESTORE_MAX_TABS);
-  }
-  if (Array.isArray(rawValue.urls)) {
-    rawValue.urls.forEach(appendEntry);
-  }
-  return entries.slice(0, PINNED_TAB_RESTORE_MAX_TABS);
-}
-
-function countUrls(urls) {
-  const map = new Map();
-  urls.forEach((url) => {
-    const current = map.get(url) || 0;
-    map.set(url, current + 1);
-  });
-  return map;
-}
-
-function getMissingPinnedTabEntries(savedEntries, existingPinnedUrls) {
-  const existing = countUrls(existingPinnedUrls);
-  const missingEntries = [];
-  (Array.isArray(savedEntries) ? savedEntries : []).forEach((entry) => {
-    const url = entry && entry.url ? String(entry.url) : '';
-    if (!url) {
-      return;
-    }
-    const remaining = existing.get(url) || 0;
-    if (remaining > 0) {
-      existing.set(url, remaining - 1);
-      return;
-    }
-    missingEntries.push(entry);
-  });
-  return missingEntries;
-}
-
-function getTabGroupById(groupId) {
-  return new Promise((resolve) => {
-    if (!chrome ||
-        !chrome.tabGroups ||
-        typeof chrome.tabGroups.get !== 'function' ||
-        typeof groupId !== 'number') {
-      resolve(null);
-      return;
-    }
-    try {
-      chrome.tabGroups.get(groupId, (group) => {
-        if (chrome.runtime && chrome.runtime.lastError) {
-          resolve(null);
-          return;
-        }
-        resolve(group || null);
-      });
-    } catch (error) {
-      resolve(null);
-    }
-  });
-}
-
-async function getPinnedTabGroupSnapshot(tab) {
-  if (!isTabInGroup(tab)) {
-    return null;
-  }
-  const group = await getTabGroupById(tab.groupId);
-  const snapshot = normalizePinnedTabGroupSnapshot({
-    key: `${typeof tab.windowId === 'number' ? tab.windowId : 'window'}:${tab.groupId}`,
-    title: group && typeof group.title === 'string' ? group.title : '',
-    color: group && typeof group.color === 'string' ? group.color : ''
-  });
-  return snapshot;
-}
-
-function getPinnedRestoreGroupKey(group) {
-  const snapshot = normalizePinnedTabGroupSnapshot(group);
-  if (!snapshot) {
-    return '';
-  }
-  return snapshot.key || `${snapshot.title || ''}::${snapshot.color || ''}`;
-}
-
-function updateRestoredTabGroup(groupId, group) {
-  return new Promise((resolve) => {
-    const snapshot = normalizePinnedTabGroupSnapshot(group);
-    if (!snapshot ||
-        typeof groupId !== 'number' ||
-        !chrome ||
-        !chrome.tabGroups ||
-        typeof chrome.tabGroups.update !== 'function') {
-      resolve(false);
-      return;
-    }
-    const updates = {};
-    if (snapshot.title) {
-      updates.title = snapshot.title;
-    }
-    if (snapshot.color) {
-      updates.color = snapshot.color;
-    }
-    if (Object.keys(updates).length === 0) {
-      resolve(false);
-      return;
-    }
-    try {
-      chrome.tabGroups.update(groupId, updates, () => {
-        resolve(!(chrome.runtime && chrome.runtime.lastError));
-      });
-    } catch (error) {
-      resolve(false);
-    }
-  });
-}
-
-function groupRestoredPinnedTab(tab, group, existingGroupId) {
-  return new Promise((resolve) => {
-    const snapshot = normalizePinnedTabGroupSnapshot(group);
-    if (!snapshot ||
-        !tab ||
-        typeof tab.id !== 'number' ||
-        !chrome ||
-        !chrome.tabs ||
-        typeof chrome.tabs.group !== 'function') {
-      resolve(null);
-      return;
-    }
-    const groupOptions = { tabIds: tab.id };
-    if (typeof existingGroupId === 'number') {
-      groupOptions.groupId = existingGroupId;
-    }
-    try {
-      chrome.tabs.group(groupOptions, (groupId) => {
-        if (chrome.runtime && chrome.runtime.lastError) {
-          resolve(null);
-          return;
-        }
-        const resolvedGroupId = typeof groupId === 'number' ? groupId : existingGroupId;
-        if (typeof resolvedGroupId !== 'number') {
-          resolve(null);
-          return;
-        }
-        updateRestoredTabGroup(resolvedGroupId, snapshot)
-          .catch(() => false)
-          .finally(() => resolve(resolvedGroupId));
-      });
-    } catch (error) {
-      resolve(null);
-    }
-  });
-}
-
-async function persistPinnedTabSnapshotNow(options) {
-  if (!pinnedTabRecoveryEnabledCache) {
-    return;
-  }
-  const opts = options && typeof options === 'object' ? options : {};
-  const tabs = await queryTabsForPinnedSnapshot({ pinned: true });
-  const snapshotTabs = tabs
-    .filter((tab) => tab && tab.incognito !== true)
-    .sort((a, b) => {
-      const winA = typeof a.windowId === 'number' ? a.windowId : 0;
-      const winB = typeof b.windowId === 'number' ? b.windowId : 0;
-      if (winA !== winB) {
-        return winA - winB;
-      }
-      const indexA = typeof a.index === 'number' ? a.index : 0;
-      const indexB = typeof b.index === 'number' ? b.index : 0;
-      return indexA - indexB;
-    });
-  const entries = [];
-  for (let i = 0; i < snapshotTabs.length; i += 1) {
-    if (entries.length >= PINNED_TAB_RESTORE_MAX_TABS) {
-      break;
-    }
-    const tab = snapshotTabs[i];
-    const url = getResolvedTabUrl(tab);
-    if (!url || isRestrictedUrl(url)) {
-      continue;
-    }
-    const entry = { url };
-    const group = await getPinnedTabGroupSnapshot(tab);
-    if (group) {
-      entry.group = group;
-    }
-    entries.push(entry);
-  }
-  if (!entries.length && opts.skipEmptyWhenNoNormalWindows === true) {
-    const normalWindowCount = await getNormalWindowCountForPinnedSnapshot();
-    if (normalWindowCount <= 0) {
-      return;
-    }
-  }
-  await setPinnedSnapshotToStorage({
-    version: 2,
-    urls: entries.map((entry) => entry.url),
-    entries,
-    capturedAt: Date.now()
-  });
-}
-
-function mergePinnedTabSnapshotPersistOptions(options) {
-  if (!options || typeof options !== 'object') {
-    return;
-  }
-  pinnedTabSnapshotPersistOptions = {
-    skipEmptyWhenNoNormalWindows: Boolean(
-      (pinnedTabSnapshotPersistOptions && pinnedTabSnapshotPersistOptions.skipEmptyWhenNoNormalWindows) ||
-      options.skipEmptyWhenNoNormalWindows
-    )
-  };
-}
-
-function schedulePersistPinnedTabSnapshot(options) {
-  if (!pinnedTabRecoveryEnabledCache) {
-    if (pinnedTabSnapshotTimer !== null) {
-      clearTimeout(pinnedTabSnapshotTimer);
-      pinnedTabSnapshotTimer = null;
-    }
-    pinnedTabSnapshotPersistOptions = null;
-    return;
-  }
-  mergePinnedTabSnapshotPersistOptions(options);
-  if (pinnedTabSnapshotTimer !== null) {
-    clearTimeout(pinnedTabSnapshotTimer);
-  }
-  pinnedTabSnapshotTimer = setTimeout(() => {
-    const persistOptions = pinnedTabSnapshotPersistOptions;
-    pinnedTabSnapshotPersistOptions = null;
-    pinnedTabSnapshotTimer = null;
-    persistPinnedTabSnapshotNow(persistOptions).catch(() => {});
-  }, PINNED_TAB_SNAPSHOT_DEBOUNCE_MS);
-}
-
-async function restorePinnedTabsFromSnapshotNow() {
-  const enabled = await ensurePinnedTabRecoverySettingLoaded();
-  if (!enabled) {
-    return;
-  }
-  const savedRaw = await getPinnedSnapshotFromStorage();
-  const savedEntries = normalizePinnedTabSnapshot(savedRaw);
-  if (!savedEntries.length) {
-    return;
-  }
-  const currentTabs = await queryTabsForPinnedSnapshot({});
-  const existingPinnedUrls = currentTabs
-    .filter((tab) => tab && tab.pinned && tab.incognito !== true)
-    .map((tab) => getResolvedTabUrl(tab))
-    .filter((url) => Boolean(url) && !isRestrictedUrl(url));
-  const missingEntries = getMissingPinnedTabEntries(savedEntries, existingPinnedUrls);
-  if (!missingEntries.length) {
-    return;
-  }
-  const targetWindowId = await getLastFocusedWindowIdForRestore();
-  const restoredGroupIds = new Map();
-  for (let i = 0; i < missingEntries.length && i < PINNED_TAB_RESTORE_MAX_TABS; i += 1) {
-    const entry = missingEntries[i];
-    const result = await createPinnedTabForRestore(entry.url, targetWindowId);
-    if (!result || !result.ok || !entry.group) {
-      continue;
-    }
-    const groupKey = getPinnedRestoreGroupKey(entry.group);
-    const existingGroupId = groupKey ? restoredGroupIds.get(groupKey) : null;
-    const groupId = await groupRestoredPinnedTab(result.tab, entry.group, existingGroupId);
-    if (groupKey && typeof groupId === 'number') {
-      restoredGroupIds.set(groupKey, groupId);
-    }
-  }
-  setTimeout(() => {
-    schedulePersistPinnedTabSnapshot();
-  }, 800);
-}
-
-function restorePinnedTabsFromSnapshotOnStartup() {
-  if (pinnedTabRestorePromise) {
-    return pinnedTabRestorePromise;
-  }
-  pinnedTabRestorePromise = restorePinnedTabsFromSnapshotNow().finally(() => {
-    pinnedTabRestorePromise = null;
-  });
-  return pinnedTabRestorePromise;
 }
 
 function getTabSwitchStat(tabId, createIfMissing) {
@@ -2439,7 +972,7 @@ function recordTabSwitchEvent(tabId, at) {
   stat.lastSwitchAt = now;
   tabSwitchEventDebugTotal += 1;
   pruneTabSwitchStat(stat, now);
-  persistTabSwitchStatsNow().catch(() => {});
+  persistTabSwitchStatsNow().catch(warnBackgroundFailure('Failed to save tab switch stats.'));
 }
 
 function clearTabSwitchStat(tabId) {
@@ -2447,8 +980,13 @@ function clearTabSwitchStat(tabId) {
     return;
   }
   tabLastAccessedByTabId.delete(tabId);
-  if (tabSwitchEventsByTabId.delete(tabId)) {
-    persistTabSwitchStatsNow().catch(() => {});
+  const hadStat = tabSwitchEventsByTabId.delete(tabId);
+  if (!tabSwitchStatsLoaded) {
+    // The stored copy of this stat has not been merged in yet; drop it too.
+    tabSwitchStatsClearedBeforeLoad.add(tabId);
+  }
+  if (hadStat || !tabSwitchStatsLoaded) {
+    persistTabSwitchStatsNow().catch(warnBackgroundFailure('Failed to save tab switch stats.'));
   }
 }
 
@@ -2607,7 +1145,8 @@ if (storageArea) {
     DOCUMENT_PIP_ENABLED_STORAGE_KEY,
     TAB_SWITCHER_ENABLED_STORAGE_KEY,
     PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY
-  ], (result) => {
+  ], (storedResult) => {
+    const result = storedResult || {};
     const stored = result[RESTRICTED_ACTION_STORAGE_KEY];
     const normalized = stored === 'none' ? 'none' : 'default';
     if (normalized !== stored) {
@@ -2623,16 +1162,34 @@ if (storageArea) {
     documentPipEnabledCache = normalizedDocumentPip;
     resolveDocumentPipEnabledReady();
     const tabSwitcherStored = result[TAB_SWITCHER_ENABLED_STORAGE_KEY];
-    const normalizedTabSwitcher = normalizeTabSwitcherEnabled(tabSwitcherStored);
+    const normalizedTabSwitcher = SETTINGS.normalizeTabSwitcherEnabled(tabSwitcherStored);
     if (tabSwitcherStored !== normalizedTabSwitcher) {
       storageArea.set({ [TAB_SWITCHER_ENABLED_STORAGE_KEY]: normalizedTabSwitcher });
     }
-    tabSwitcherEnabledCache = normalizedTabSwitcher;
+    applyTabSwitcherEnabledSetting(normalizedTabSwitcher);
     const pinnedTabRecoveryStored = result[PINNED_TAB_RECOVERY_ENABLED_STORAGE_KEY];
     applyPinnedTabRecoverySetting(pinnedTabRecoveryStored);
+    markBackgroundSettingsLoaded();
   });
 } else {
   resolveDocumentPipEnabledReady();
+  markBackgroundSettingsLoaded();
+}
+
+function markBackgroundSettingsLoaded() {
+  backgroundSettingsLoaded = true;
+  resolveBackgroundSettingsReady();
+}
+
+// A worker woken by a command, a tab event or a page hotkey runs that handler
+// before its stored settings arrive. Run the callback now when they are known,
+// otherwise as soon as they are, so a disabled feature stays disabled.
+function whenBackgroundSettingsReady(callback) {
+  if (backgroundSettingsLoaded) {
+    callback();
+    return;
+  }
+  backgroundSettingsReady.then(callback);
 }
 
 function migrateStorageIfNeeded(keys) {
@@ -2642,35 +1199,7 @@ function migrateStorageIfNeeded(keys) {
   if (isPrimaryStorageAreaName('local')) {
     return;
   }
-  chrome.storage.local.get(keys, (localResult) => {
-    const hasLocal = keys.some((key) => typeof localResult[key] !== 'undefined');
-    if (!hasLocal) {
-      return;
-    }
-    storageArea.get(keys, (syncResult) => {
-      const missingSyncValues = {};
-      keys.forEach((key) => {
-        if (typeof localResult[key] !== 'undefined' && typeof syncResult[key] === 'undefined') {
-          missingSyncValues[key] = localResult[key];
-        }
-      });
-      const missingKeys = Object.keys(missingSyncValues);
-      if (missingKeys.length === 0) {
-        return;
-      }
-      storageArea.get(missingKeys, (latestSyncResult) => {
-        const stillMissingSyncValues = {};
-        missingKeys.forEach((key) => {
-          if (typeof latestSyncResult[key] === 'undefined') {
-            stillMissingSyncValues[key] = missingSyncValues[key];
-          }
-        });
-        if (Object.keys(stillMissingSyncValues).length > 0) {
-          storageArea.set(stillMissingSyncValues);
-        }
-      });
-    });
-  });
+  SETTINGS.migrateLocalSettingsToSync(chrome.storage.local, storageArea, keys);
 }
 
 function shouldIgnoreDuplicateHotkey(tabId) {
@@ -2753,15 +1282,11 @@ function clearRecentPageHotkeyContext() {
   lastPageHotkeyContext = null;
 }
 
-function buildPrefillQueryForCurrentPage(tab) {
-  return getResolvedTabUrl(tab);
-}
-
 function getOverlayPrefillQueryForSource(tab, source) {
   if (source !== 'page-hotkey-prefill' && source !== 'commands-prefill') {
     return '';
   }
-  return buildPrefillQueryForCurrentPage(tab);
+  return getResolvedTabUrl(tab);
 }
 
 function recoverFromPageHotkeyNewtab(newTabId, windowId) {
@@ -2810,937 +1335,7 @@ function recoverFromPageHotkeyNewtab(newTabId, windowId) {
   });
 }
 
-function recordRecentSwitcherTab(tab, at) {
-  const snapshot = recentTabTracker.recordTab(tab, at);
-  if (snapshot) {
-    schedulePersistTabSwitcherState();
-  }
-  return snapshot;
-}
-
-function updateRecentSwitcherTab(tab, at) {
-  const snapshot = recentTabTracker.updateTab(tab, at);
-  if (snapshot) {
-    schedulePersistTabSwitcherState();
-  }
-  return snapshot;
-}
-
-function removeRecentSwitcherTab(tabId) {
-  clearSwitcherThumbnailPriority(tabId);
-  if (recentTabTracker.removeTab(tabId)) {
-    schedulePersistTabSwitcherState();
-  }
-}
-
-function getSwitcherThumbnailStateForTab(tabId, url) {
-  return recentTabTracker.getThumbnailState(tabId, url);
-}
-
-function getSwitcherThumbnailStateForPayload(tab, url) {
-  // Also drops blurred captures saved before such pages were skipped.
-  if (isFirefoxPrivilegedPageUrl(url)) {
-    return { status: 'restricted', reason: 'restricted-browser-page', dataUrl: '', capturedAt: 0, updatedAt: 0 };
-  }
-  const status = typeof tab._xSwitcherThumbnailStatus === 'string' ? tab._xSwitcherThumbnailStatus : '';
-  if (status) {
-    return {
-      status,
-      reason: typeof tab._xSwitcherThumbnailReason === 'string' ? tab._xSwitcherThumbnailReason : '',
-      dataUrl: typeof tab._xSwitcherThumbnail === 'string' ? tab._xSwitcherThumbnail : '',
-      capturedAt: 0,
-      updatedAt: 0
-    };
-  }
-  return getSwitcherThumbnailStateForTab(tab.id, url);
-}
-
-function isSwitcherThumbnailRefreshNeeded(state) {
-  const status = String(state && state.status ? state.status : '').trim().toLowerCase();
-  if (status === 'restricted' || status === 'pending') {
-    return false;
-  }
-  if (status === 'missing' || status === 'stale' || status === 'failed') {
-    return true;
-  }
-  if (status === 'ok') {
-    return !(state && typeof state.dataUrl === 'string' && state.dataUrl.startsWith('data:image/'));
-  }
-  return !status;
-}
-
-function shouldPreCaptureActiveSwitcherThumbnailBeforePayload(tab) {
-  const isActive = tab && tab.active === true;
-  if (!isActive || tab.status === 'loading' || !canCaptureSwitcherThumbnail(tab)) {
-    return false;
-  }
-  const state = getSwitcherThumbnailStateForPayload(tab, getResolvedTabUrl(tab));
-  return isSwitcherThumbnailRefreshNeeded(state);
-}
-
-function findSwitcherTabById(tabList, tabId) {
-  if (typeof tabId !== 'number') {
-    return null;
-  }
-  return (Array.isArray(tabList) ? tabList : []).find((tab) =>
-    tab && typeof tab.id === 'number' && tab.id === tabId
-  ) || null;
-}
-
-function markSwitcherThumbnailPriorityForItems(items, tabList, reason) {
-  if (!Array.isArray(items) || !items.length) {
-    return;
-  }
-  items.forEach((item) => {
-    if (!item || typeof item.id !== 'number') {
-      return;
-    }
-    if (!isSwitcherThumbnailRefreshNeeded({
-      status: item.thumbnailStatus,
-      dataUrl: item.thumbnail
-    })) {
-      return;
-    }
-    const tab = findSwitcherTabById(tabList, item.id) || item;
-    if (!canCaptureSwitcherThumbnail(tab)) {
-      return;
-    }
-    tabSwitcherThumbnailPriorityByTabId.set(item.id, {
-      url: getResolvedTabUrl(tab) || item.url || '',
-      status: item.thumbnailStatus || 'missing',
-      reason: reason || '',
-      markedAt: Date.now()
-    });
-  });
-}
-
-function clearSwitcherThumbnailPriority(tabId) {
-  if (typeof tabId !== 'number') {
-    return;
-  }
-  tabSwitcherThumbnailPriorityByTabId.delete(tabId);
-}
-
-function consumeSwitcherThumbnailPriority(tab, reason) {
-  const tabId = tab && typeof tab.id === 'number' ? tab.id : null;
-  if (typeof tabId !== 'number') {
-    return false;
-  }
-  const entry = tabSwitcherThumbnailPriorityByTabId.get(tabId);
-  if (!entry) {
-    return false;
-  }
-  const url = getResolvedTabUrl(tab);
-  if (entry.url && url && entry.url !== url) {
-    clearSwitcherThumbnailPriority(tabId);
-    return false;
-  }
-  const state = getSwitcherThumbnailStateForTab(tabId, url);
-  if (!isSwitcherThumbnailRefreshNeeded(state)) {
-    clearSwitcherThumbnailPriority(tabId);
-    return false;
-  }
-  clearSwitcherThumbnailPriority(tabId);
-  logHotkeyDebug('tab-switcher-thumbnail-priority-consumed', {
-    tabId,
-    url,
-    reason: reason || '',
-    markedReason: entry.reason || '',
-    status: entry.status || ''
-  });
-  return true;
-}
-
-function markSwitcherThumbnailStatus(tab, status, requestReason, failureReason) {
-  if (!tab || typeof tab.id !== 'number') {
-    return false;
-  }
-  const didSet = recentTabTracker.setThumbnailStatus(tab.id, status, Date.now(), {
-    url: getResolvedTabUrl(tab),
-    reason: failureReason || requestReason || ''
-  });
-  if (didSet) {
-    schedulePersistTabSwitcherState();
-  }
-  return didSet;
-}
-
-// Firefox gives its about: pages chrome:// icons that web pages cannot load,
-// and those monochrome icons would vanish on a dark switcher anyway. The
-// switcher shows the browser's own logo (Firefox, Zen, ...) for them instead,
-// rasterized once into a data URL that any page can render.
-let firefoxBrandIconDataUrl = '';
-function loadFirefoxBrandIcon() {
-  if (!BROWSER_PROFILE.isFirefoxExtensionRuntime() || typeof Image !== 'function' || typeof document === 'undefined') {
-    return;
-  }
-  const image = new Image();
-  image.onload = () => {
-    try {
-      const canvas = document.createElement('canvas');
-      canvas.width = 64;
-      canvas.height = 64;
-      canvas.getContext('2d').drawImage(image, 0, 0, 64, 64);
-      firefoxBrandIconDataUrl = canvas.toDataURL('image/png');
-    } catch (error) {
-      firefoxBrandIconDataUrl = '';
-    }
-  };
-  image.src = 'chrome://branding/content/icon64.png';
-}
 loadFirefoxBrandIcon();
-
-function isFirefoxPrivilegedPageUrl(url) {
-  return /^about:/i.test(String(url || '')) && BROWSER_PROFILE.isFirefoxExtensionRuntime();
-}
-
-function buildSwitcherTabFavicon(tab, url) {
-  const resolved = String(url || getResolvedTabUrl(tab) || '').trim();
-  if (firefoxBrandIconDataUrl && isFirefoxPrivilegedPageUrl(resolved) &&
-      !/^(?:data:image\/|https?:)/i.test(String(tab && tab.favIconUrl || ''))) {
-    return firefoxBrandIconDataUrl;
-  }
-  const resolver = getBackgroundFaviconUrlResolver();
-  return resolver ? resolver.resolveFaviconSource(tab && tab.favIconUrl, resolved) : '';
-}
-
-function getSwitcherRegistrableThemeHost(host) {
-  const normalizedHost = normalizeFaviconHost(host);
-  if (!normalizedHost ||
-      normalizedHost === 'localhost' ||
-      normalizedHost.endsWith('.localhost') ||
-      /^\d{1,3}(?:\.\d{1,3}){3}$/.test(normalizedHost) ||
-      normalizedHost.includes(':')) {
-    return normalizedHost;
-  }
-  const labels = normalizedHost.split('.').filter(Boolean);
-  if (labels.length <= 2) {
-    return normalizedHost;
-  }
-  const suffix = labels.slice(-2).join('.');
-  const multipartSuffixes = new Set([
-    'co.uk',
-    'com.au',
-    'com.br',
-    'com.cn',
-    'com.hk',
-    'com.sg',
-    'co.jp',
-    'co.kr',
-    'co.nz',
-    'com.tw',
-    'org.uk',
-    'net.au'
-  ]);
-  const tailLength = multipartSuffixes.has(suffix) && labels.length >= 3 ? 3 : 2;
-  return labels.slice(-tailLength).join('.');
-}
-
-function getSwitcherThemeHostCandidates(host) {
-  const normalizedHost = normalizeFaviconHost(host);
-  const candidates = [];
-  const addCandidate = (candidate) => {
-    const normalized = normalizeFaviconHost(candidate);
-    if (normalized && !candidates.includes(normalized)) {
-      candidates.push(normalized);
-    }
-  };
-  const sharedHost = getSwitcherRegistrableThemeHost(normalizedHost);
-  addCandidate(sharedHost);
-  if (normalizedHost === 'app.dodopayments.com' ||
-      normalizedHost === 'customer.dodopayments.com' ||
-      normalizedHost === 'checkout.dodopayments.com') {
-    addCandidate('dodopayments.com');
-  }
-  addCandidate(normalizedHost);
-  return candidates;
-}
-
-function getCachedSiteThemeColorForSwitcher(host, origin) {
-  const normalizedHost = normalizeFaviconHost(host);
-  const normalizedOrigin = String(origin || '').trim();
-  if (!normalizedHost) {
-    return null;
-  }
-  const candidateHosts = getSwitcherThemeHostCandidates(normalizedHost);
-  for (const candidateHost of candidateHosts) {
-    const exactKey = `${candidateHost}::${normalizedOrigin}::auto`;
-    const exact = normalizedOrigin ? siteThemeColorCache.get(exactKey) : null;
-    if (exact && normalizeThemeAccentRgb(exact.accentRgb)) {
-      return exact;
-    }
-  }
-  for (const [key, value] of siteThemeColorCache.entries()) {
-    if (!value || !normalizeThemeAccentRgb(value.accentRgb)) {
-      continue;
-    }
-    const cachedHost = normalizeFaviconHost(String(key || '').split('::')[0]);
-    if (!cachedHost) {
-      continue;
-    }
-    if (candidateHosts.some((candidateHost) =>
-      cachedHost === candidateHost ||
-        cachedHost.endsWith(`.${candidateHost}`)
-    )) {
-      return value;
-    }
-  }
-  return null;
-}
-
-function getPersistedSiteThemeColorForSwitcher(host) {
-  const runtime = getBackgroundFaviconCacheRuntime();
-  if (!runtime || typeof runtime.getPersistedThemeEntry !== 'function') {
-    return null;
-  }
-  const candidateHosts = getSwitcherThemeHostCandidates(host);
-  for (const candidateHost of candidateHosts) {
-    const entry = runtime.getPersistedThemeEntry(candidateHost);
-    const accentRgb = normalizeThemeAccentRgb(entry && entry.accentRgb);
-    if (accentRgb) {
-      return {
-        accentRgb,
-        source: entry.source || 'cache',
-        neutral: entry.neutral === true,
-        confidence: entry.confidence || getThemeColorConfidence(accentRgb)
-      };
-    }
-  }
-  return null;
-}
-
-function persistSiteThemeColorForSwitcher(host, result) {
-  const runtime = getBackgroundFaviconCacheRuntime();
-  const accentRgb = normalizeThemeAccentRgb(result && result.accentRgb);
-  if (!runtime ||
-      typeof runtime.setPersistedThemeEntry !== 'function' ||
-      !host ||
-      !accentRgb) {
-    return false;
-  }
-  return runtime.setPersistedThemeEntry(host, {
-    accentRgb,
-    source: result.source || 'meta',
-    neutral: result.neutral === true,
-    confidence: result.confidence || getThemeColorConfidence(accentRgb)
-  });
-}
-
-function getNewtabBrandAccentForSwitcher(host, url) {
-  const normalizedHost = normalizeFaviconHost(host);
-  let accentRgb = null;
-  if (normalizedHost) {
-    accentRgb = NEWTAB_FAVICON_THEME.getBrandAccentForHost(normalizedHost);
-  }
-  if (!accentRgb) {
-    accentRgb = NEWTAB_FAVICON_THEME.getBrandAccentForUrl(url);
-  }
-  return normalizeThemeAccentRgb(accentRgb);
-}
-
-function normalizeSwitcherAccentRgbForPayload(accentRgb) {
-  const rgb = normalizeThemeAccentRgb(accentRgb);
-  if (!rgb) {
-    return null;
-  }
-  if (getThemeColorConfidence(rgb) === 'neutral') {
-    return normalizeThemeAccentRgb(NEWTAB_FAVICON_THEME.defaultAccentColor) || [59, 130, 246];
-  }
-  return rgb;
-}
-
-function warmSwitcherTabThemeColor(host, url) {
-  const normalizedHost = normalizeFaviconHost(host);
-  const resolved = String(url || '').trim();
-  if (!normalizedHost || !resolved) {
-    return;
-  }
-  let parsed = null;
-  try {
-    parsed = new URL(resolved);
-  } catch (error) {
-    return;
-  }
-  if (!/^https?:$/i.test(parsed.protocol) ||
-      shouldBlockFaviconForHost(parsed.hostname) ||
-      shouldBlockFaviconForHost(normalizedHost)) {
-    return;
-  }
-  const cacheKey = `${normalizedHost}::${parsed.origin}::auto`;
-  if (siteThemeColorCache.has(cacheKey) || siteThemeColorPending.has(cacheKey)) {
-    return;
-  }
-  if (switcherThemeColorWarmups.has(cacheKey)) {
-    return;
-  }
-  switcherThemeColorWarmups.add(cacheKey);
-  resolveSiteThemeColor(resolved, normalizedHost, '')
-    .then((result) => {
-      const accentRgb = normalizeThemeAccentRgb(result && result.accentRgb);
-      const sharedHost = getSwitcherRegistrableThemeHost(normalizedHost);
-      if (accentRgb && sharedHost && sharedHost !== normalizedHost) {
-        const sharedKey = `${sharedHost}::${parsed.origin}::auto`;
-        FAVICON_UTILS.setBoundedCacheEntry(
-          siteThemeColorCache,
-          sharedKey,
-          result,
-          BACKGROUND_SITE_THEME_CACHE_MAX_ENTRIES
-        );
-        persistSiteThemeColorForSwitcher(sharedHost, result);
-      }
-    })
-    .catch(() => null)
-    .finally(() => {
-      switcherThemeColorWarmups.delete(cacheKey);
-    });
-}
-
-function getSwitcherTabAccentRgb(tab, url) {
-  const resolved = String(url || getResolvedTabUrl(tab) || '').trim();
-  if (!resolved) {
-    return null;
-  }
-  let parsed = null;
-  try {
-    parsed = new URL(resolved);
-  } catch (error) {
-    return null;
-  }
-  if (!/^https?:$/i.test(parsed.protocol) || shouldBlockFaviconForHost(parsed.hostname)) {
-    return null;
-  }
-  const host = normalizeFaviconHost(parsed.hostname);
-  const brandAccent = getNewtabBrandAccentForSwitcher(host, resolved);
-  warmSwitcherTabThemeColor(host, resolved);
-  if (brandAccent) {
-    return brandAccent;
-  }
-  const cached = getCachedSiteThemeColorForSwitcher(host, parsed.origin) ||
-    getPersistedSiteThemeColorForSwitcher(host);
-  return normalizeSwitcherAccentRgbForPayload(cached && cached.accentRgb);
-}
-
-async function prepareSwitcherThumbnailDataUrl(dataUrl) {
-  const source = typeof dataUrl === 'string' ? dataUrl : '';
-  if (!source.startsWith('data:image/')) {
-    return '';
-  }
-  if (typeof OffscreenCanvas !== 'function' ||
-      typeof createImageBitmap !== 'function' ||
-      typeof fetch !== 'function') {
-    return source;
-  }
-  try {
-    const response = await fetch(source);
-    const blob = response && typeof response.blob === 'function' ? await response.blob() : null;
-    if (!blob) {
-      return source;
-    }
-    const bitmap = await createImageBitmap(blob);
-    const sourceWidth = Math.max(1, bitmap.width || 1);
-    const sourceHeight = Math.max(1, bitmap.height || 1);
-    const targetRatio = TAB_SWITCHER_THUMBNAIL_TARGET_WIDTH / TAB_SWITCHER_THUMBNAIL_TARGET_HEIGHT;
-    const sourceRatio = sourceWidth / sourceHeight;
-    let cropX = 0;
-    let cropY = 0;
-    let cropWidth = sourceWidth;
-    let cropHeight = sourceHeight;
-    if (sourceRatio > targetRatio) {
-      cropWidth = Math.max(1, Math.round(sourceHeight * targetRatio));
-      cropX = Math.max(0, Math.round((sourceWidth - cropWidth) / 2));
-    } else if (sourceRatio < targetRatio) {
-      cropHeight = Math.max(1, Math.round(sourceWidth / targetRatio));
-    }
-    const canvas = new OffscreenCanvas(TAB_SWITCHER_THUMBNAIL_TARGET_WIDTH, TAB_SWITCHER_THUMBNAIL_TARGET_HEIGHT);
-    const context = canvas.getContext('2d');
-    if (!context) {
-      if (typeof bitmap.close === 'function') {
-        bitmap.close();
-      }
-      return source;
-    }
-    context.drawImage(
-      bitmap,
-      cropX,
-      cropY,
-      cropWidth,
-      cropHeight,
-      0,
-      0,
-      TAB_SWITCHER_THUMBNAIL_TARGET_WIDTH,
-      TAB_SWITCHER_THUMBNAIL_TARGET_HEIGHT
-    );
-    if (typeof bitmap.close === 'function') {
-      bitmap.close();
-    }
-    const outputBlob = await canvas.convertToBlob({
-      type: 'image/webp',
-      quality: 0.68
-    });
-    const buffer = await outputBlob.arrayBuffer();
-    return `data:${outputBlob.type || 'image/webp'};base64,${arrayBufferToBase64(buffer)}`;
-  } catch (error) {
-    return source;
-  }
-}
-
-function canCaptureSwitcherThumbnail(tab) {
-  return getSwitcherThumbnailCaptureFailureReason(tab) === '';
-}
-
-function getSwitcherThumbnailCaptureFailureReason(tab) {
-  if (!tab || typeof tab.id !== 'number' || typeof tab.windowId !== 'number') {
-    return 'invalid-tab';
-  }
-  if (!shouldTrackSwitcherTab(tab)) {
-    return 'untracked-tab';
-  }
-  const url = getResolvedTabUrl(tab);
-  try {
-    const parsed = new URL(url);
-    const protocol = String(parsed.protocol || '').toLowerCase();
-    if (!protocol || protocol === 'javascript:') {
-      return 'unsupported-protocol';
-    }
-    // Firefox only returns a small, deliberately blurred capture of its
-    // privileged pages; show the icon fallback instead, as for chrome:// pages.
-    if (isFirefoxPrivilegedPageUrl(url)) {
-      return 'restricted-browser-page';
-    }
-    return '';
-  } catch (error) {
-    return 'invalid-url';
-  }
-}
-
-function logSwitcherThumbnailCaptureFailure(tab, failureReason, requestReason) {
-  markSwitcherThumbnailStatus(tab, getSwitcherThumbnailStatusForFailureReason(failureReason), requestReason, failureReason);
-  logHotkeyDebug('tab-switcher-thumbnail-failed', {
-    tabId: tab && typeof tab.id === 'number' ? tab.id : null,
-    windowId: tab && typeof tab.windowId === 'number' ? tab.windowId : null,
-    url: getResolvedTabUrl(tab),
-    reason: failureReason || 'unknown',
-    requestReason: requestReason || ''
-  });
-}
-
-function getSwitcherThumbnailStatusForFailureReason(reason) {
-  const text = String(reason || '').toLowerCase();
-  if (text.includes('restricted') ||
-      text.includes('permission') ||
-      text.includes('not allowed') ||
-      text.includes('not permitted') ||
-      text.includes('cannot access') ||
-      text.includes('chrome://') ||
-      text.includes('web store') ||
-      text.includes('unsupported-protocol') ||
-      text.includes('untracked-tab')) {
-    return 'restricted';
-  }
-  return 'failed';
-}
-
-function logSwitcherThumbnailCaptureSuccess(tab, requestReason) {
-  logHotkeyDebug('tab-switcher-thumbnail-captured', {
-    tabId: tab && typeof tab.id === 'number' ? tab.id : null,
-    windowId: tab && typeof tab.windowId === 'number' ? tab.windowId : null,
-    url: getResolvedTabUrl(tab),
-    requestReason: requestReason || ''
-  });
-}
-
-function waitForSwitcherThumbnailCaptureSlot() {
-  const sinceLast = Date.now() - tabSwitcherLastCaptureAt;
-  const waitMs = Math.max(0, TAB_SWITCHER_CAPTURE_MIN_INTERVAL_MS - sinceLast);
-  if (waitMs <= 0) {
-    return Promise.resolve();
-  }
-  return new Promise((resolve) => {
-    setTimeout(resolve, waitMs);
-  });
-}
-
-function clearScheduledSwitcherThumbnailCapture(tabId) {
-  if (typeof tabId !== 'number') {
-    return;
-  }
-  const timer = tabSwitcherThumbnailTimersByTabId.get(tabId);
-  if (timer !== undefined) {
-    clearTimeout(timer);
-    tabSwitcherThumbnailTimersByTabId.delete(tabId);
-  }
-}
-
-function enqueueSwitcherThumbnailCapture(tab, reason) {
-  markSwitcherThumbnailStatus(tab, 'pending', reason, '');
-  const runCapture = () => waitForSwitcherThumbnailCaptureSlot()
-    .then(() => captureSwitcherThumbnailForTab(tab, reason));
-  const queued = tabSwitcherThumbnailCaptureChain
-    .catch(() => false)
-    .then(runCapture);
-  tabSwitcherThumbnailCaptureChain = queued.catch(() => false);
-  return queued;
-}
-
-function isTabSwitcherOpeningForCapture(tab) {
-  const key = getTabSwitcherOpeningWindowKey(tab);
-  if (!key) {
-    return false;
-  }
-  const opening = tabSwitcherOpeningByWindowKey.get(key);
-  return Boolean(opening && opening.expiresAt > Date.now());
-}
-
-function isSwitcherCommandCaptureReason(reason) {
-  const requestReason = String(reason || '');
-  return requestReason === TAB_SWITCHER_CAPTURE_REASON_COMMAND_IMMEDIATE;
-}
-
-function shouldSkipSwitcherThumbnailCaptureForOpenSwitcher(tab, reason) {
-  if (isSwitcherCommandCaptureReason(reason)) {
-    return Promise.resolve(false);
-  }
-  if (isTabSwitcherOpeningForCapture(tab)) {
-    return Promise.resolve(true);
-  }
-  return getOpenTabSwitcherState(tab)
-    .then((state) => Boolean(state && state.open === true))
-    .catch(() => false);
-}
-
-function captureSwitcherThumbnailForTab(tab, reason) {
-  const tabId = tab && typeof tab.id === 'number' ? tab.id : null;
-  const windowId = tab && typeof tab.windowId === 'number' ? tab.windowId : null;
-  clearScheduledSwitcherThumbnailCapture(tabId);
-  if (typeof tabId !== 'number' || typeof windowId !== 'number') {
-    logSwitcherThumbnailCaptureFailure(tab, 'invalid-tab', reason);
-    return Promise.resolve(false);
-  }
-  if (!chrome || !chrome.tabs || typeof chrome.tabs.captureVisibleTab !== 'function') {
-    logSwitcherThumbnailCaptureFailure(tab, 'capture-api-unavailable', reason);
-    return Promise.resolve(false);
-  }
-  const captureResolvedTab = (resolvedTab) => new Promise((resolve) => {
-    const failureReason = getSwitcherThumbnailCaptureFailureReason(resolvedTab);
-    if (failureReason) {
-      logSwitcherThumbnailCaptureFailure(resolvedTab || tab, failureReason, reason);
-      resolve(false);
-      return;
-    }
-    if (!resolvedTab || resolvedTab.active !== true) {
-      logSwitcherThumbnailCaptureFailure(resolvedTab || tab, 'inactive-tab', reason);
-      resolve(false);
-      return;
-    }
-    shouldSkipSwitcherThumbnailCaptureForOpenSwitcher(resolvedTab, reason).then((shouldSkip) => {
-      if (shouldSkip) {
-        logSwitcherThumbnailCaptureFailure(resolvedTab, 'tab-switcher-open', reason);
-        resolve(false);
-        return;
-      }
-      tabSwitcherLastCaptureAt = Date.now();
-      withTabSwitcherHiddenForCapture(resolvedTab, () => new Promise((captureResolve) => {
-        try {
-          chrome.tabs.captureVisibleTab(windowId, {
-            format: 'jpeg',
-            quality: TAB_SWITCHER_CAPTURE_JPEG_QUALITY
-          }, (dataUrl) => {
-            if (chrome.runtime && chrome.runtime.lastError) {
-              captureResolve({
-                ok: false,
-                reason: chrome.runtime.lastError.message || 'capture-visible-tab-failed'
-              });
-              return;
-            }
-            captureResolve({
-              ok: true,
-              dataUrl
-            });
-          });
-        } catch (error) {
-          captureResolve({
-            ok: false,
-            reason: error && error.message ? error.message : 'capture-visible-tab-threw'
-          });
-        }
-      })).then((captureResult) => {
-        if (!captureResult || captureResult.ok !== true) {
-          logSwitcherThumbnailCaptureFailure(
-            resolvedTab,
-            captureResult && captureResult.reason ? captureResult.reason : 'capture-visible-tab-failed',
-            reason
-          );
-          resolve(false);
-          return;
-        }
-        prepareSwitcherThumbnailDataUrl(captureResult.dataUrl).then((thumbnailDataUrl) => {
-          if (!thumbnailDataUrl) {
-            logSwitcherThumbnailCaptureFailure(resolvedTab, 'empty-thumbnail-data', reason);
-            resolve(false);
-            return;
-          }
-          const didSet = recentTabTracker.setThumbnail(resolvedTab.id, thumbnailDataUrl, Date.now(), {
-            url: getResolvedTabUrl(resolvedTab)
-          });
-          if (didSet) {
-            schedulePersistTabSwitcherState();
-            if (isSwitcherCommandCaptureReason(reason)) {
-              postTabSwitcherThumbnailUpdate(resolvedTab, {
-                tabId: resolvedTab.id,
-                url: getResolvedTabUrl(resolvedTab),
-                thumbnail: thumbnailDataUrl,
-                thumbnailStatus: 'ok',
-                thumbnailReason: ''
-              }).catch(() => {});
-            }
-            logSwitcherThumbnailCaptureSuccess(resolvedTab, reason);
-          } else {
-            logSwitcherThumbnailCaptureFailure(resolvedTab, 'thumbnail-cache-rejected', reason);
-          }
-          resolve(Boolean(didSet));
-        }).catch(() => {
-          logSwitcherThumbnailCaptureFailure(resolvedTab, 'prepare-thumbnail-failed', reason);
-          resolve(false);
-        });
-      }).catch(() => {
-        logSwitcherThumbnailCaptureFailure(resolvedTab, 'capture-visible-tab-failed', reason);
-        resolve(false);
-      });
-    }).catch(() => {
-      logSwitcherThumbnailCaptureFailure(resolvedTab, 'tab-switcher-open-state-failed', reason);
-      resolve(false);
-    });
-  });
-  if (typeof chrome.tabs.get !== 'function') {
-    return captureResolvedTab(tab);
-  }
-  return new Promise((resolve) => {
-    chrome.tabs.get(tabId, (freshTab) => {
-      if (chrome.runtime && chrome.runtime.lastError) {
-        logSwitcherThumbnailCaptureFailure(tab, chrome.runtime.lastError.message || 'tabs-get-failed', reason);
-        resolve(false);
-        return;
-      }
-      captureResolvedTab(freshTab || tab).then(resolve).catch(() => {
-        resolve(false);
-      });
-    });
-  });
-}
-
-function captureSwitcherThumbnailNow(request) {
-  const tabId = request && typeof request.tabId === 'number' ? request.tabId : null;
-  const windowId = request && typeof request.windowId === 'number' ? request.windowId : null;
-  if (typeof tabId !== 'number' || typeof windowId !== 'number') {
-    return;
-  }
-  captureSwitcherThumbnailForTab({
-    id: tabId,
-    windowId
-  }, request && request.reason).catch(() => {});
-}
-
-function scheduleSwitcherThumbnailCapture(tab, reason) {
-  if (!canCaptureSwitcherThumbnail(tab)) {
-    logSwitcherThumbnailCaptureFailure(tab, getSwitcherThumbnailCaptureFailureReason(tab), reason);
-    return;
-  }
-  if (!chrome || !chrome.tabs || typeof chrome.tabs.captureVisibleTab !== 'function') {
-    logSwitcherThumbnailCaptureFailure(tab, 'capture-api-unavailable', reason);
-    return;
-  }
-  const hasPriority = consumeSwitcherThumbnailPriority(tab, reason);
-  reason = hasPriority ? `priority-${reason || 'visible'}` : reason;
-  clearScheduledSwitcherThumbnailCapture(tab.id);
-  markSwitcherThumbnailStatus(tab, 'pending', reason, '');
-  const now = Date.now();
-  const delay = hasPriority ? TAB_SWITCHER_PRIORITY_CAPTURE_DELAY_MS : TAB_SWITCHER_CAPTURE_DELAY_MS;
-  const request = {
-    tabId: tab.id,
-    windowId: tab.windowId,
-    reason: reason || '',
-    requestedAt: now
-  };
-  const timer = setTimeout(() => {
-    tabSwitcherThumbnailTimersByTabId.delete(tab.id);
-    enqueueSwitcherThumbnailCapture({
-      id: request.tabId,
-      windowId: request.windowId
-    }, request.reason).catch(() => {});
-  }, delay);
-  tabSwitcherThumbnailTimersByTabId.set(tab.id, timer);
-}
-
-function normalizeSwitcherTabForPayload(tab, currentTabId) {
-  if (!tab || typeof tab.id !== 'number') {
-    return null;
-  }
-  const url = getResolvedTabUrl(tab);
-  if (!url) {
-    return null;
-  }
-  const thumbnailState = getSwitcherThumbnailStateForPayload(tab, url);
-  return {
-    id: tab.id,
-    windowId: typeof tab.windowId === 'number' ? tab.windowId : null,
-    url,
-    title: String(tab.title || '').replace(/\s+/g, ' ').trim() || url,
-    favIconUrl: buildSwitcherTabFavicon(tab, url),
-    accentRgb: getSwitcherTabAccentRgb(tab, url),
-    active: Boolean(tab.active),
-    pinned: Boolean(tab.pinned),
-    current: typeof currentTabId === 'number' && tab.id === currentTabId,
-    thumbnail: thumbnailState.dataUrl,
-    thumbnailStatus: thumbnailState.status,
-    thumbnailReason: thumbnailState.reason
-  };
-}
-
-function getRecentTabsForSwitcher(tabList, currentTabId) {
-  const normalizedTabs = (Array.isArray(tabList) ? tabList : [])
-    .map((tab) => ({
-      ...tab,
-      url: getResolvedTabUrl(tab)
-    }))
-    .filter(shouldTrackSwitcherTab);
-  return recentTabTracker
-    .getRecentTabs(normalizedTabs, { limit: TAB_SWITCHER_LIMIT })
-    .map((tab) => normalizeSwitcherTabForPayload(tab, currentTabId))
-    .filter(Boolean);
-}
-
-function getDefaultSwitcherSelectedIndex(items, currentTabId) {
-  const list = Array.isArray(items) ? items : [];
-  if (list.length <= 0) {
-    return 0;
-  }
-  if (list.length === 1) {
-    return 0;
-  }
-  if (typeof currentTabId !== 'number') {
-    return 0;
-  }
-  const currentIndex = list.findIndex((item) => item && item.id === currentTabId);
-  if (currentIndex === 0) {
-    return 1;
-  }
-  if (currentIndex > 0) {
-    return currentIndex;
-  }
-  return 0;
-}
-
-function focusWindowAndActivateTab(tabId, windowId, callback) {
-  const run = (resolvedWindowId) => {
-    RECENT_TAB_SWITCHER.focusWindowAndActivateTab(chrome, {
-      tabId,
-      windowId: typeof resolvedWindowId === 'number' ? resolvedWindowId : null
-    })
-      .then((result) => {
-        if (result && result.ok && typeof tabId === 'number') {
-          recordTabSwitchEvent(tabId);
-        }
-        if (typeof callback === 'function') {
-          callback(result || { ok: false });
-        }
-      })
-      .catch((error) => {
-        if (typeof callback === 'function') {
-          callback({
-            ok: false,
-            tabId,
-            windowId: typeof resolvedWindowId === 'number' ? resolvedWindowId : null,
-            reason: error && error.message ? error.message : 'switch-failed'
-          });
-        }
-      });
-  };
-  if (typeof windowId === 'number' ||
-      !chrome ||
-      !chrome.tabs ||
-      typeof chrome.tabs.get !== 'function') {
-    run(windowId);
-    return;
-  }
-  chrome.tabs.get(tabId, (tab) => {
-    if (chrome.runtime && chrome.runtime.lastError) {
-      run(null);
-      return;
-    }
-    run(tab && typeof tab.windowId === 'number' ? tab.windowId : null);
-  });
-}
-
-function getTabSwitcherOpeningWindowKey(tab) {
-  if (tab && typeof tab.windowId === 'number') {
-    return `window:${tab.windowId}`;
-  }
-  if (tab && typeof tab.id === 'number') {
-    return `tab:${tab.id}`;
-  }
-  return '';
-}
-
-function finishTabSwitcherOpening(opening) {
-  if (!opening || !opening.key) {
-    return;
-  }
-  const current = tabSwitcherOpeningByWindowKey.get(opening.key);
-  if (current !== opening) {
-    return;
-  }
-  if (opening.timer) {
-    clearTimeout(opening.timer);
-    opening.timer = null;
-  }
-  tabSwitcherOpeningByWindowKey.delete(opening.key);
-}
-
-function beginTabSwitcherOpening(tab, source) {
-  const key = getTabSwitcherOpeningWindowKey(tab);
-  if (!key) {
-    return null;
-  }
-  const now = Date.now();
-  const existing = tabSwitcherOpeningByWindowKey.get(key);
-  if (existing && existing.expiresAt > now) {
-    logHotkeyDebug('tab-switcher-opening-guarded', {
-      tabId: tab && typeof tab.id === 'number' ? tab.id : null,
-      windowId: tab && typeof tab.windowId === 'number' ? tab.windowId : null,
-      source: source || '',
-      age: now - existing.startedAt
-    });
-    return null;
-  }
-  if (existing) {
-    finishTabSwitcherOpening(existing);
-  }
-  const opening = {
-    key,
-    tabId: tab && typeof tab.id === 'number' ? tab.id : null,
-    windowId: tab && typeof tab.windowId === 'number' ? tab.windowId : null,
-    source: source || '',
-    startedAt: now,
-    expiresAt: now + TAB_SWITCHER_OPENING_GUARD_MS,
-    timer: null
-  };
-  opening.timer = setTimeout(() => {
-    finishTabSwitcherOpening(opening);
-  }, TAB_SWITCHER_OPENING_GUARD_MS);
-  tabSwitcherOpeningByWindowKey.set(key, opening);
-  return opening;
-}
-
-function createTabSwitcherOpeningFinisher(opening) {
-  let didFinish = false;
-  return function finishOpeningOnce() {
-    if (didFinish) {
-      return;
-    }
-    didFinish = true;
-    finishTabSwitcherOpening(opening);
-  };
-}
 
 function getOverlayLoadingRecordStorageArea() {
   return chrome && chrome.storage && chrome.storage.session &&
@@ -3765,9 +1360,7 @@ function setOverlayNavigationState(state) {
   try {
     sessionArea.set({
       [getOverlayNavigationStateStorageKey(state.tabId)]: state
-    }, () => {
-      void chrome.runtime.lastError;
-    });
+    }, ignoreExpectedChromeError);
   } catch (error) {
     // The in-memory state still covers the current service-worker lifetime.
   }
@@ -3783,9 +1376,7 @@ function clearOverlayNavigationState(tabId) {
     return;
   }
   try {
-    sessionArea.remove(getOverlayNavigationStateStorageKey(tabId), () => {
-      void chrome.runtime.lastError;
-    });
+    sessionArea.remove(getOverlayNavigationStateStorageKey(tabId), ignoreExpectedChromeError);
   } catch (error) {
     // Ignore session-storage cleanup failures.
   }
@@ -3923,9 +1514,7 @@ function setOverlayLoadingRecord(record) {
   try {
     sessionArea.set({
       [getOverlayLoadingRecordStorageKey(record.tabId)]: nextRecord
-    }, () => {
-      void chrome.runtime.lastError;
-    });
+    }, ignoreExpectedChromeError);
   } catch (error) {
     // The in-memory record still covers ordinary loading lifetimes.
   }
@@ -3943,9 +1532,7 @@ function clearOverlayLoadingRecord(tabId) {
     return;
   }
   try {
-    sessionArea.remove(getOverlayLoadingRecordStorageKey(tabId), () => {
-      void chrome.runtime.lastError;
-    });
+    sessionArea.remove(getOverlayLoadingRecordStorageKey(tabId), ignoreExpectedChromeError);
   } catch (error) {
     // Ignore session-storage cleanup failures.
   }
@@ -4495,6 +2082,27 @@ function recoverOverlayAfterTopFrameDocumentStart(request, sender) {
   return true;
 }
 
+function openRestrictedOverlayFallback(activeTab, activeUrl, source) {
+  const action = restrictedActionCache || 'default';
+  logHotkeyDebug('restricted-url', {
+    action: action,
+    url: activeUrl,
+    source: source || ''
+  });
+  if (action === 'none') {
+    logHotkeyDebug('fallback-open-browser-newtab', { reason: 'restricted_url', source: source || '' });
+    openBrowserNewtabFallback({ sourceTab: activeTab });
+    return;
+  }
+  if (action === 'default') {
+    logHotkeyDebug('fallback-open-create-newtab', { reason: 'restricted_url', source: source || '' });
+    openNewtabFallbackForUrl(activeUrl, { sourceTab: activeTab });
+    return;
+  }
+  logHotkeyDebug('fallback-open-lumno-newtab', { reason: 'restricted_url', source: source || '' });
+  openNewtabFallbackForUrl(activeUrl, { sourceTab: activeTab });
+}
+
 function openOverlayOnTab(activeTab, tabs, source, options) {
   const openOptions = options && typeof options === 'object' ? options : {};
   const overlayOpenStartedAt = Date.now();
@@ -4571,24 +2179,9 @@ function openOverlayOnTab(activeTab, tabs, source, options) {
     if (recoverOverlayTargetFromCommandNewtab(activeTab, tabs, source)) {
       return;
     }
-    const action = restrictedActionCache || 'default';
-    logHotkeyDebug('restricted-url', {
-      action: action,
-      url: activeUrl,
-      source: source || ''
+    whenBackgroundSettingsReady(() => {
+      openRestrictedOverlayFallback(activeTab, activeUrl, source);
     });
-    if (action === 'none') {
-      logHotkeyDebug('fallback-open-browser-newtab', { reason: 'restricted_url', source: source || '' });
-      openBrowserNewtabFallback({ sourceTab: activeTab });
-      return;
-    }
-    if (action === 'default') {
-      logHotkeyDebug('fallback-open-create-newtab', { reason: 'restricted_url', source: source || '' });
-      openNewtabFallbackForUrl(activeUrl, { sourceTab: activeTab });
-      return;
-    }
-    logHotkeyDebug('fallback-open-lumno-newtab', { reason: 'restricted_url', source: source || '' });
-    openNewtabFallbackForUrl(activeUrl, { sourceTab: activeTab });
     return;
   }
   overlayOpening = beginOverlayOpening(activeTab, source);
@@ -4637,6 +2230,8 @@ function openOverlayOnTab(activeTab, tabs, source, options) {
     'src/overlay/lifecycle.js',
     'src/overlay/site-fixes.js',
     'src/overlay/page-theme.js',
+    'src/overlay/notices.js',
+    'src/overlay/keyboard.js',
     'src/react/overlay-islands.js',
     'src/overlay/search-panel.js'
   ];
@@ -4644,6 +2239,7 @@ function openOverlayOnTab(activeTab, tabs, source, options) {
       const prefillQuery = getOverlayPrefillQueryForSource(activeTab, source);
       const prioritizeCurrentPageMatch = source === 'page-hotkey-prefill';
       const siteSearchProviders = Array.isArray(siteSearchCache) ? siteSearchCache : [];
+      // Icon warmup is best effort; the overlay falls back to bundled icons.
       loadSiteSearchProviders()
         .then((providers) => {
           scheduleSiteSearchProviderIconWarmup(providers, '');
@@ -4862,412 +2458,6 @@ function triggerShowSearchForTab(tab, source) {
   });
 }
 
-function injectTabSwitcherOnTab(hostTab, items, context) {
-  const finishOpen = (ok, reason) => {
-    if (context && typeof context.onOpenComplete === 'function') {
-      context.onOpenComplete(Boolean(ok), reason || '');
-    }
-  };
-  if (!hostTab || typeof hostTab.id !== 'number') {
-    openNewtabFallback();
-    finishOpen(false, 'invalid-host-tab');
-    return;
-  }
-  const tabItems = Array.isArray(items) ? items : [];
-  if (!tabItems.length) {
-    logHotkeyDebug('tab-switcher-empty', {
-      hostTabId: hostTab.id,
-      source: context && context.source ? context.source : ''
-    });
-    finishOpen(false, 'empty');
-    return;
-  }
-  const buildSwitcherContext = (tabZoomFactor) => ({
-    tabs: tabItems,
-    currentTabId: context && typeof context.currentTabId === 'number' ? context.currentTabId : hostTab.id,
-    selectedIndex: context && typeof context.selectedIndex === 'number' ? context.selectedIndex : 0,
-    tabZoomFactor: tabZoomFactor,
-    advanceOnExisting: true,
-    suppressInitialShortcutAdvance: context && context.source === 'commands-tab-switcher',
-    shortcut: context && typeof context.shortcut === 'string' ? context.shortcut : 'Alt+Q',
-    source: context && context.source ? context.source : ''
-  });
-  if (isTabSwitcherExtensionPageMessageTarget(hostTab)) {
-    postTabSwitcherMessageToExtensionPage(hostTab, {
-      action: 'openTabSwitcherFromCommand',
-      context: buildSwitcherContext(1)
-    }, (ok, reason) => {
-      if (!ok) {
-        logHotkeyDebug('tab-switcher-extension-page-open-failed', {
-          tabId: hostTab.id,
-          reason: reason || '',
-          source: context && context.source ? context.source : ''
-        });
-        openNewtabFallbackForUrl(getResolvedTabUrl(hostTab), { sourceTab: hostTab });
-        finishOpen(false, reason || 'extension-page-open-failed');
-        return;
-      }
-      logHotkeyDebug('tab-switcher-opened', {
-        tabId: hostTab.id,
-        itemCount: tabItems.length,
-        source: context && context.source ? context.source : '',
-        path: 'extension-page-port'
-      });
-      finishOpen(true, 'extension-page-port');
-    });
-    return;
-  }
-  const runDynamicSwitcherScript = (switcherContext) => {
-    chrome.scripting.executeScript({
-      target: { tabId: hostTab.id },
-      files: [
-        'src/shared/icon-font-preload.js',
-        'src/shared/codex-debug-surface.js',
-        'src/shared/settings.js',
-        'src/react/overlay-islands.js',
-        'src/overlay/tab-switcher.js'
-      ]
-    }, () => {
-      if (chrome.runtime && chrome.runtime.lastError) {
-        const errorMessage = chrome.runtime.lastError.message || 'unknown';
-        logHotkeyDebug('tab-switcher-inject-failed', {
-          tabId: hostTab.id,
-          error: errorMessage,
-          source: context && context.source ? context.source : ''
-        });
-        openNewtabFallbackForUrl(getResolvedTabUrl(hostTab), { sourceTab: hostTab });
-        finishOpen(false, errorMessage);
-        return;
-      }
-      chrome.scripting.executeScript({
-        target: { tabId: hostTab.id },
-        func: (switcherContext) => {
-          const toggle = window._x_extension_toggleTabSwitcher_2026_unique_;
-          if (typeof toggle !== 'function') {
-            console.warn('Lumno: tab switcher helper not available.');
-            return { ok: false, reason: 'tab_switcher_missing' };
-          }
-          const result = toggle(switcherContext);
-          return result && typeof result === 'object'
-            ? result
-            : { ok: true };
-        },
-        args: [switcherContext]
-      }, (results) => {
-        if (chrome.runtime && chrome.runtime.lastError) {
-          const errorMessage = chrome.runtime.lastError.message || 'unknown';
-          logHotkeyDebug('tab-switcher-run-failed', {
-            tabId: hostTab.id,
-            error: errorMessage,
-            source: context && context.source ? context.source : ''
-          });
-          finishOpen(false, errorMessage);
-          return;
-        }
-        const result = Array.isArray(results) && results[0] ? results[0].result : null;
-        if (result && result.ok === false) {
-          logHotkeyDebug('tab-switcher-run-failed', {
-            tabId: hostTab.id,
-            error: result.reason || 'unknown',
-            source: context && context.source ? context.source : ''
-          });
-          finishOpen(false, result.reason || 'run-failed');
-          return;
-        }
-        logHotkeyDebug('tab-switcher-opened', {
-          tabId: hostTab.id,
-          itemCount: tabItems.length,
-          source: context && context.source ? context.source : '',
-          path: 'executeScript'
-        });
-        finishOpen(true, 'executeScript');
-      });
-    });
-  };
-  const runSwitcherScript = (tabZoomFactor) => {
-    const switcherContext = buildSwitcherContext(tabZoomFactor);
-    if (!chrome || !chrome.tabs || typeof chrome.tabs.sendMessage !== 'function') {
-      runDynamicSwitcherScript(switcherContext);
-      return;
-    }
-    try {
-      chrome.tabs.sendMessage(hostTab.id, {
-        action: 'openTabSwitcherFromCommand',
-        context: switcherContext
-      }, (response) => {
-        const didOpen = !(chrome.runtime && chrome.runtime.lastError) &&
-          response &&
-          response.ok === true;
-        if (!didOpen) {
-          runDynamicSwitcherScript(switcherContext);
-          return;
-        }
-        logHotkeyDebug('tab-switcher-opened', {
-          tabId: hostTab.id,
-          itemCount: tabItems.length,
-          source: context && context.source ? context.source : '',
-          path: 'runtime-message'
-        });
-        finishOpen(true, 'runtime-message');
-      });
-    } catch (error) {
-      runDynamicSwitcherScript(switcherContext);
-    }
-  };
-  if (chrome.tabs && typeof chrome.tabs.getZoom === 'function') {
-    chrome.tabs.getZoom(hostTab.id, (zoomFactor) => {
-      const zoom = Number.isFinite(Number(zoomFactor)) && Number(zoomFactor) > 0
-        ? Number(zoomFactor)
-        : 1;
-      runSwitcherScript(zoom);
-    });
-    return;
-  }
-  runSwitcherScript(1);
-}
-
-function advanceExistingTabSwitcherOnTab(tab, source, callback) {
-  if (!tab || typeof tab.id !== 'number' || !canHostSwitcherSurface(tab)) {
-    if (typeof callback === 'function') {
-      callback(false);
-    }
-    return;
-  }
-
-  const finish = (didAdvance) => {
-    if (typeof callback === 'function') {
-      callback(Boolean(didAdvance));
-    }
-  };
-
-  if (isTabSwitcherExtensionPageMessageTarget(tab)) {
-    postTabSwitcherMessageToExtensionPage(tab, {
-      action: 'advanceOpenTabSwitcherFromCommand',
-      offset: 1
-    }, (ok, _reason, response) => {
-      const didAdvance = Boolean(ok && response && response.advanced === true);
-      if (didAdvance) {
-        logHotkeyDebug('tab-switcher-advanced-fast', {
-          tabId: tab.id,
-          source: source || '',
-          path: 'extension-page-port'
-        });
-      }
-      finish(didAdvance);
-    });
-    return;
-  }
-
-  const runRuntimeMessageFastPath = () => {
-    if (!chrome || !chrome.tabs || typeof chrome.tabs.sendMessage !== 'function') {
-      finish(false);
-      return;
-    }
-    try {
-      chrome.tabs.sendMessage(tab.id, {
-        action: 'advanceOpenTabSwitcherFromCommand',
-        offset: 1
-      }, (response) => {
-        const didAdvance = !(chrome.runtime && chrome.runtime.lastError) &&
-          response &&
-          response.ok === true &&
-          response.advanced === true;
-        if (didAdvance) {
-          logHotkeyDebug('tab-switcher-advanced-fast', {
-            tabId: tab.id,
-            source: source || '',
-            path: 'runtime-message'
-          });
-        }
-        finish(didAdvance);
-      });
-    } catch (error) {
-      finish(false);
-    }
-  };
-
-  runRuntimeMessageFastPath();
-}
-
-function triggerTabSwitcherForTab(tab, source, commandObservedAt) {
-  const observedAt = Number(commandObservedAt);
-  const commandStartedAt = Number.isFinite(observedAt) && observedAt > 0
-    ? observedAt
-    : Date.now();
-  if (!tabSwitcherEnabledCache) {
-    if (tab && typeof tab.windowId === 'number') {
-      tabSwitcherHostTabIdByWindowId.delete(tab.windowId);
-    }
-    logHotkeyDebug('tab-switcher-disabled', { source: source || '' });
-    return;
-  }
-  if (!tab || typeof tab.id !== 'number') {
-    logHotkeyDebug('tab-switcher-no-active-tab', { source: source || '' });
-    openNewtabFallback();
-    return;
-  }
-  const windowId = typeof tab.windowId === 'number' ? tab.windowId : null;
-  recordTabSwitcherShortcutDebug('command-received', {
-    source: String(source || ''),
-    tabId: tab.id,
-    windowId
-  });
-  // A manifest content script is not retroactively installed into tabs that
-  // were already open when a development extension was reloaded. Start the
-  // trusted keyup observer before any async switcher work so a quick physical
-  // modifier release can be buffered and replayed after the panel opens.
-  const shortcutObserverReady = prepareShortcutKeyObserver(tab);
-  clearScheduledSwitcherThumbnailCapture(tab.id);
-  advanceExistingTabSwitcherOnTab(tab, source, (didAdvance) => {
-    if (didAdvance) {
-      if (typeof tab.windowId === 'number') {
-        tabSwitcherHostTabIdByWindowId.set(tab.windowId, tab.id);
-      }
-      recordTabSwitcherShortcutDebug('command-advanced', {
-        tabId: tab.id,
-        windowId
-      });
-      return;
-    }
-    const opening = beginTabSwitcherOpening(tab, source);
-    if (!opening) {
-      return;
-    }
-    let openingHostTabId = tab.id;
-    const finishOpeningGuard = createTabSwitcherOpeningFinisher(opening);
-    const finishOpening = (ok) => {
-      finishOpeningGuard();
-      if (ok === true) {
-        if (typeof windowId === 'number' && typeof openingHostTabId === 'number') {
-          tabSwitcherHostTabIdByWindowId.set(windowId, openingHostTabId);
-        }
-        recordTabSwitcherShortcutDebug('switcher-opened', {
-          windowId,
-          hostTabId: openingHostTabId
-        });
-        return;
-      }
-      if (tabSwitcherHostTabIdByWindowId.get(windowId) === openingHostTabId) {
-        tabSwitcherHostTabIdByWindowId.delete(windowId);
-      }
-      recordTabSwitcherShortcutDebug('switcher-open-failed', {
-        windowId
-      });
-    };
-    const startupStateReady = Promise.all([
-      ensureTabSwitcherStateLoaded(),
-      loadFaviconRequestBlacklistItems(),
-      loadFaviconEnhancedFetchEnabled()
-    ]).catch(() => {});
-    const shortcutReady = new Promise((resolve) => {
-      getConfiguredTabSwitcherShortcut(resolve);
-    });
-    const tabQueryReady = new Promise((resolve) => {
-      chrome.tabs.query({}, (tabs) => {
-        const error = chrome.runtime && chrome.runtime.lastError
-          ? chrome.runtime.lastError.message || 'unknown'
-          : '';
-        resolve({
-          error,
-          tabs: Array.isArray(tabs) ? tabs : []
-        });
-      });
-    });
-    Promise.all([startupStateReady, tabQueryReady, shortcutReady, shortcutObserverReady]).then((results) => {
-      const tabQuery = results[1] || { error: 'unknown', tabs: [] };
-      const shortcut = typeof results[2] === 'string' && results[2]
-        ? results[2]
-        : 'Alt+Q';
-      const releaseKeys = RECENT_TAB_SWITCHER.getShortcutReleaseEventKeys(shortcut);
-      recordTabSwitcherShortcutDebug('shortcut-configured', {
-        windowId,
-        shortcut,
-        releaseKeys
-      });
-      if (tabQuery.error) {
-        logHotkeyDebug('tab-switcher-query-failed', {
-          source: source || '',
-          error: tabQuery.error
-        });
-        finishOpening();
-        return;
-      }
-      const tabList = tabQuery.tabs;
-      const activeTab = tabList.find((item) => item && item.id === tab.id) || tab;
-      const finishOpeningAndArmShortcutRelease = (ok) => {
-        finishOpening(ok);
-        if (ok === true) {
-          armTabSwitcherShortcutReleaseObservers(
-            tabList,
-            activeTab.windowId,
-            shortcut,
-            commandStartedAt
-          );
-        }
-      };
-      clearScheduledSwitcherThumbnailCapture(activeTab.id);
-      if (shouldTrackSwitcherTab(activeTab)) {
-        recordRecentSwitcherTab(activeTab);
-        if (shouldPreCaptureActiveSwitcherThumbnailBeforePayload(activeTab)) {
-          captureSwitcherThumbnailForTab(
-            activeTab,
-            TAB_SWITCHER_CAPTURE_REASON_COMMAND_IMMEDIATE
-          ).catch(() => false);
-        }
-      }
-      const items = getRecentTabsForSwitcher(tabList, activeTab.id);
-      markSwitcherThumbnailPriorityForItems(items, tabList, 'command-payload');
-      if (!items.length) {
-        finishOpening();
-        return;
-      }
-      const activeUrl = getResolvedTabUrl(activeTab);
-      const canHostOnActiveTab = canHostSwitcherSurface(activeTab);
-      const hostItem = canHostOnActiveTab
-        ? items.find((item) => item && item.id === activeTab.id)
-        : items.find((item) => {
-          const candidate = tabList.find((tabItem) => tabItem && tabItem.id === item.id) || item;
-          return item && item.id !== activeTab.id && canHostSwitcherSurface(candidate);
-        });
-      const hostTab = canHostOnActiveTab
-        ? activeTab
-        : (hostItem ? tabList.find((item) => item && item.id === hostItem.id) : null);
-      const selectedIndex = getDefaultSwitcherSelectedIndex(items, activeTab.id);
-      if (!hostTab || typeof hostTab.id !== 'number') {
-        openNewtabFallbackForUrl(activeUrl, { sourceTab: activeTab });
-        finishOpening();
-        return;
-      }
-      openingHostTabId = hostTab.id;
-      if (hostTab.id !== activeTab.id) {
-        focusWindowAndActivateTab(hostTab.id, hostTab.windowId, (result) => {
-          if (!result || result.ok === false) {
-            finishOpening();
-            return;
-          }
-          injectTabSwitcherOnTab(hostTab, items, {
-            currentTabId: activeTab.id,
-            selectedIndex,
-            shortcut,
-            source,
-            onOpenComplete: finishOpeningAndArmShortcutRelease
-          });
-        });
-        return;
-      }
-      injectTabSwitcherOnTab(hostTab, items, {
-        currentTabId: activeTab.id,
-        selectedIndex,
-        shortcut,
-        source,
-        onOpenComplete: finishOpeningAndArmShortcutRelease
-      });
-    }).catch(() => {
-      finishOpening();
-    });
-  });
-}
-
 function detectAnyActiveVideoPiP(callback) {
   chrome.tabs.query({}, (tabs) => {
     const tabList = Array.isArray(tabs) ? tabs : [];
@@ -5477,26 +2667,6 @@ function getConfiguredFallbackShortcut(callback) {
   });
 }
 
-function getConfiguredTabSwitcherShortcut(callback) {
-  const fallbackShortcut = 'Alt+Q';
-  if (!chrome || !chrome.commands || typeof chrome.commands.getAll !== 'function') {
-    callback(fallbackShortcut);
-    return;
-  }
-  chrome.commands.getAll((commands) => {
-    if (chrome.runtime && chrome.runtime.lastError) {
-      callback(fallbackShortcut);
-      return;
-    }
-    const items = Array.isArray(commands) ? commands : [];
-    const command = items.find((item) => item && item.name === SHOW_TAB_SWITCHER_COMMAND_NAME);
-    const shortcut = command && typeof command.shortcut === 'string'
-      ? String(command.shortcut).trim()
-      : '';
-    callback(shortcut || fallbackShortcut);
-  });
-}
-
 function normalizeShortcutFromCommandsValue(value) {
   const text = String(value || '').trim();
   if (!text || text.includes('%')) {
@@ -5592,7 +2762,7 @@ function publishExtensionUpdateNotice(details) {
     version,
     previousVersion: details && details.previousVersion ? details.previousVersion : '',
     reason: 'update'
-  }).catch(() => {});
+  }).catch(warnBackgroundFailure('Failed to publish the extension update notice.'));
 }
 
 chrome.commands.onCommand.addListener(function(command) {
@@ -5669,7 +2839,7 @@ chrome.runtime.onInstalled.addListener((details) => {
     }
   }
   if (reason === 'update' || reason === 'chrome_update') {
-    restorePinnedTabsFromSnapshotOnStartup().catch(() => {}).finally(() => {
+    restorePinnedTabsFromSnapshotOnStartup().catch(warnBackgroundFailure('Failed to restore pinned tabs.')).finally(() => {
       schedulePersistPinnedTabSnapshot({ skipEmptyWhenNoNormalWindows: true });
     });
     return;
@@ -5678,7 +2848,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 function restoreBackgroundStateOnStartup() {
-  return restorePinnedTabsFromSnapshotOnStartup().catch(() => {}).finally(() => {
+  return restorePinnedTabsFromSnapshotOnStartup().catch(warnBackgroundFailure('Failed to restore pinned tabs.')).finally(() => {
     schedulePersistPinnedTabSnapshot({ skipEmptyWhenNoNormalWindows: true });
   });
 }
@@ -5689,8 +2859,18 @@ if (chrome && chrome.runtime && chrome.runtime.onStartup) {
     restoreBackgroundStateOnStartup();
   });
 }
+// Both loaders settle even when storage is unreadable; the catch only keeps
+// an unforeseen rejection from surfacing as unhandled during startup.
 ensureTabSwitchStatsLoaded().catch(() => {});
 ensureTabSwitcherStateLoaded().catch(() => {});
+// Chrome keeps a worker alive for its short debounce timers, but Firefox's
+// event page can be unloaded with one pending; write it out first.
+if (chrome && chrome.runtime && chrome.runtime.onSuspend) {
+  chrome.runtime.onSuspend.addListener(() => {
+    flushPendingPinnedTabSnapshot();
+    flushPendingTabSwitcherState();
+  });
+}
 cleanupRemovedAiStorageKeys();
 cleanupLocalOnlyBookmarkTopbarSyncStorage();
 
@@ -5754,7 +2934,7 @@ if (chrome && chrome.tabs && chrome.tabs.onRemoved) {
     clearOverlayLoadingRecord(tabId);
     clearTabSwitchStat(tabId);
     removeRecentSwitcherTab(tabId);
-    clearGlobalPipOwnerForTabId(tabId);
+    pipOwnership.clearGlobalPipOwnerForTabId(tabId);
     Array.from(tabSwitcherHostTabIdByWindowId.entries()).forEach(([windowId, hostTabId]) => {
       if (hostTabId === tabId) {
         tabSwitcherHostTabIdByWindowId.delete(windowId);
@@ -5808,7 +2988,7 @@ if (chrome && chrome.tabs && chrome.tabs.onUpdated) {
     if (typeof changeInfo.url === 'string') {
       // URL changed means the tab semantic target changed; reset historical switch stats.
       clearTabSwitchStat(tabId);
-      clearGlobalPipOwnerForTabId(tabId);
+      pipOwnership.clearGlobalPipOwnerForTabId(tabId);
       clearSwitcherThumbnailPriority(tabId);
       updateRecentSwitcherTab(tab);
     }
@@ -5850,7 +3030,7 @@ if (chrome && chrome.windows && chrome.windows.onCreated) {
     if (windowInfo && windowInfo.type && windowInfo.type !== 'normal') {
       return;
     }
-    restorePinnedTabsFromSnapshotOnStartup().catch(() => {}).finally(() => {
+    restorePinnedTabsFromSnapshotOnStartup().catch(warnBackgroundFailure('Failed to restore pinned tabs.')).finally(() => {
       schedulePersistPinnedTabSnapshot({ skipEmptyWhenNoNormalWindows: true });
     });
   });
@@ -5981,7 +3161,7 @@ let selectionQuickActionFallbackProvidersPromise = null;
 const selectionQuickActionGroupTitlePromises = new Map();
 
 function loadSelectionQuickActionGroupTitle(locale) {
-  const normalizedLocale = normalizeLocaleForMessages(locale);
+  const normalizedLocale = SETTINGS.normalizeLocale(locale);
   if (selectionQuickActionGroupTitlePromises.has(normalizedLocale)) {
     return selectionQuickActionGroupTitlePromises.get(normalizedLocale);
   }
@@ -6001,6 +3181,7 @@ function loadSelectionQuickActionGroupTitle(locale) {
 }
 
 function queueSelectionTargetOpen(options) {
+  // The previous open reported its own failure to its caller; only order matters here.
   const task = selectionTargetOpenQueue
     .catch(() => {})
     .then(() => new Promise((resolve) => {
@@ -6253,123 +3434,6 @@ function runAggregateSearchQuery(aggregateId, query, sender, disposition) {
   return aggregateSearchQueryRunner(aggregateId, query, sender, disposition);
 }
 
-// Route message actions by feature area before invoking the original handlers.
-const BACKGROUND_MESSAGE_ROUTE_GROUPS = Object.freeze({
-  webdav: {
-    actions: ['webdav'],
-    handler: handleWebDavMessage
-  },
-  tabs: {
-    actions: [
-      'switchToTab',
-      'reportTabVisible',
-      'notifyTopFrameDocumentStarted',
-      'notifyOverlayClosed',
-      'updateOverlayLoadingSession',
-      'getTabsForOverlay',
-      'trackSearchTab',
-      'closeOtherTabsForOverlay',
-      'swapNewtabForFocus'
-    ],
-    handler: handleTabMessage
-  },
-  shortcuts: {
-    actions: [
-      'getShowSearchShortcut',
-      'getCopyCurrentUrlCommandShortcut',
-      'copyCurrentPageUrl',
-      'triggerShowSearchFromPageHotkey',
-      'notifyTabSwitcherShortcutModifierReleased',
-      'getShortcutRules'
-    ],
-    handler: handleShortcutMessage
-  },
-  pip: {
-    actions: [
-      'pipRequestOwnership',
-      'pipReleaseOwnership',
-      'openDocumentPipPicker',
-      'siteTryEnterPiPInMainWorld',
-      'iqiyiTryEnterPiPInMainWorld',
-      'iqiyiSetupAutoPiPInMainWorld',
-      'forceExitPiPInMainWorld',
-      'ytForceExitPiPInMainWorld'
-    ],
-    handler: handlePipMessage
-  },
-  search: {
-    actions: [
-      'searchOrNavigate',
-      'getSearchSuggestions',
-      'getSearchEngineSuggestions',
-      'recordSearchSuggestionSelection',
-      'deleteHistoryUrl'
-    ],
-    handler: handleSearchMessage
-  },
-  siteSearch: {
-    actions: [
-      'getSiteSearchProviders',
-      'getHelpCenterSearchResults',
-      'runSiteSearchProviderQuery',
-      'runAggregateSearchQuery'
-    ],
-    handler: handleSiteSearchMessage
-  },
-  selectionQuickActions: {
-    actions: [
-      'runSelectionQuickAction'
-    ],
-    handler: handleSelectionQuickActionMessage
-  },
-  localeAndPermissions: {
-    actions: [
-      'getLocaleMessages',
-      'getFileSchemeAccessStatus'
-    ],
-    handler: handleLocaleAndPermissionMessage
-  },
-  extensionPages: {
-    actions: [
-      'openOptionsPage',
-      'openOnboardingPage',
-      'openExtensionShortcutsPage',
-      'openSiteSearchOptionsPage',
-      'openReleasePage',
-      'openBookmarkManager',
-      'openBookmarkFolderInNewTabGroup',
-      'createTab',
-      'openNewTab',
-      'openExtensionDetailsPage',
-      'probeProgressSeries'
-    ],
-    handler: handleExtensionPageMessage
-  },
-  favicon: {
-    actions: [
-      'resolveFaviconCandidates',
-      'getFaviconData',
-      'getShortcutFaviconData',
-      'resolveSiteThemeColor'
-    ],
-    handler: handleFaviconMessage
-  }
-});
-
-const backgroundMessageRouter = BACKGROUND_MESSAGE_ROUTER.createRouter(BACKGROUND_MESSAGE_ROUTE_GROUPS);
-
-function sendUnknownBackgroundMessageResponse(sendResponse) {
-  sendResponse({ ok: false });
-  return;
-}
-
-function dispatchBackgroundMessage(request, sender, sendResponse) {
-  return BACKGROUND_MESSAGE_ROUTER.dispatch(backgroundMessageRouter, request, sender, sendResponse);
-}
-
-// Listen for extension runtime messages.
-chrome.runtime.onMessage.addListener(dispatchBackgroundMessage);
-
 const shortcutFolderSyncController = providerStorageRuntime &&
   chrome.bookmarks && typeof chrome.bookmarks.getTree === 'function'
   ? globalThis.LumnoBookmarkFolderReference.createSyncController({ chrome, provider: providerStorageRuntime,
@@ -6396,226 +3460,208 @@ function handleWebDavMessage(request, sender, sendResponse) {
   return true;
 }
 
-function handleTabMessage(request, sender, sendResponse) {
-  switch (request.action) {
-    case 'swapNewtabForFocus': {
-      swapNewtabForFocus(sender && sender.tab ? sender.tab : null, sender && sender.url, (result) => {
-        sendResponse(result);
-      });
-      return true;
+// Tabs, overlay lifecycle and tab visibility.
+const TAB_MESSAGE_HANDLERS = Object.freeze({
+  swapNewtabForFocus(request, sender, sendResponse) {
+    swapNewtabForFocus(sender && sender.tab ? sender.tab : null, sender && sender.url, (result) => {
+      sendResponse(result);
+    });
+    return true;
+  },
+  switchToTab(request, sender, sendResponse) {
+    if (typeof request.tabId === 'number') {
+      recordTabSwitchEvent(request.tabId);
     }
-    case 'switchToTab': {
-      if (typeof request.tabId === 'number') {
-        recordTabSwitchEvent(request.tabId);
+    focusWindowAndActivateTab(
+      request.tabId,
+      typeof request.windowId === 'number' ? request.windowId : null,
+      (result) => {
+        sendResponse(result || { ok: false });
       }
-      focusWindowAndActivateTab(
-        request.tabId,
-        typeof request.windowId === 'number' ? request.windowId : null,
-        (result) => {
-          sendResponse(result || { ok: false });
-        }
-      );
-      return true;
+    );
+    return true;
+  },
+  notifyOverlayClosed(request, sender, sendResponse) {
+    const senderTab = sender && sender.tab ? sender.tab : null;
+    if (senderTab && typeof senderTab.id === 'number') {
+      clearOverlayLoadingRecord(senderTab.id);
     }
-    case 'reportTabVisible': {
-      const senderTab = sender && sender.tab ? sender.tab : null;
-      if (senderTab && typeof senderTab.id === 'number') {
-        const at = Number(request && request.at);
-        const reportedAt = Number.isFinite(at) ? at : Date.now();
-        recordTabSwitchEvent(senderTab.id, reportedAt);
-        recordRecentSwitcherTab(senderTab, reportedAt);
-        scheduleSwitcherThumbnailCapture(senderTab, 'visible');
-      }
-      sendResponse({ ok: true });
-      return;
-    }
-    case 'notifyOverlayClosed': {
-      const senderTab = sender && sender.tab ? sender.tab : null;
-      if (senderTab && typeof senderTab.id === 'number') {
-        clearOverlayLoadingRecord(senderTab.id);
-      }
-      sendResponse({ ok: true });
-      return;
-    }
-    case 'notifyTopFrameDocumentStarted': {
-      const accepted = recoverOverlayAfterTopFrameDocumentStart(request, sender);
-      sendResponse({ ok: accepted });
-      return;
-    }
-    case 'updateOverlayLoadingSession': {
-      updateOverlayLoadingSessionFromMessage(request, sender, sendResponse);
-      return true;
-    }
-    case 'getTabsForOverlay': {
-      ensureTabSwitchStatsLoaded()
-        .catch(() => {})
-        .finally(() => {
-          const requestedCurrentTabId = Number.isFinite(Number(request && request.currentTabId))
-            ? Number(request.currentTabId)
-            : null;
-          const currentTabId = sender && sender.tab && typeof sender.tab.id === 'number'
-            ? sender.tab.id
-            : requestedCurrentTabId;
-          chrome.tabs.query({}, (tabs) => {
-            const normalizedTabs = (Array.isArray(tabs) ? tabs : [])
-              .filter((tab) => tab && tab.incognito !== true)
-              .map((tab) => {
-                const resolvedUrl = getResolvedTabUrl(tab);
-                return {
-                  id: tab.id,
-                  title: typeof tab.title === 'string' ? tab.title : '',
-                  url: resolvedUrl || '',
-                  favIconUrl: typeof tab.favIconUrl === 'string' ? tab.favIconUrl : '',
-                  lastAccessed: Number(tab.lastAccessed) || 0
-                };
-              });
-            syncTabSwitchStatsFromTabList(normalizedTabs);
-            const sortedTabs = sortTabsForOverlay(normalizedTabs);
-            tabOverlayFetchSeq += 1;
-            const withSeq = sortedTabs.map((tab) => createOverlayTabPayload(tab, tabOverlayFetchSeq));
-            sendResponse({ tabs: withSeq, currentTabId: currentTabId });
-          });
+    sendResponse({ ok: true });
+    return;
+  },
+  notifyTopFrameDocumentStarted(request, sender, sendResponse) {
+    const accepted = recoverOverlayAfterTopFrameDocumentStart(request, sender);
+    sendResponse({ ok: accepted });
+    return;
+  },
+  updateOverlayLoadingSession(request, sender, sendResponse) {
+    updateOverlayLoadingSessionFromMessage(request, sender, sendResponse);
+    return true;
+  },
+  getTabsForOverlay(request, sender, sendResponse) {
+    ensureTabSwitchStatsLoaded()
+      .catch(() => {}) // Settles even when storage fails; list tabs regardless.
+      .finally(() => {
+        const requestedCurrentTabId = Number.isFinite(Number(request && request.currentTabId))
+          ? Number(request.currentTabId)
+          : null;
+        const currentTabId = sender && sender.tab && typeof sender.tab.id === 'number'
+          ? sender.tab.id
+          : requestedCurrentTabId;
+        chrome.tabs.query({}, (tabs) => {
+          const normalizedTabs = (Array.isArray(tabs) ? tabs : [])
+            .filter((tab) => tab && tab.incognito !== true)
+            .map((tab) => {
+              const resolvedUrl = getResolvedTabUrl(tab);
+              return {
+                id: tab.id,
+                title: typeof tab.title === 'string' ? tab.title : '',
+                url: resolvedUrl || '',
+                favIconUrl: typeof tab.favIconUrl === 'string' ? tab.favIconUrl : '',
+                lastAccessed: Number(tab.lastAccessed) || 0
+              };
+            });
+          syncTabSwitchStatsFromTabList(normalizedTabs);
+          const sortedTabs = sortTabsForOverlay(normalizedTabs);
+          tabOverlayFetchSeq += 1;
+          const withSeq = sortedTabs.map((tab) => createOverlayTabPayload(tab, tabOverlayFetchSeq));
+          sendResponse({ tabs: withSeq, currentTabId: currentTabId });
         });
-      return true;
+      });
+    return true;
+  },
+  trackSearchTab(request, sender, sendResponse) {
+    if (typeof request.tabId === 'number') {
+      markPendingSearchTab(request.tabId, sender && sender.tab ? sender.tab : null);
+      sendResponse({ ok: true });
+    } else {
+      sendResponse({ ok: false });
     }
-    case 'trackSearchTab': {
-      if (typeof request.tabId === 'number') {
-        markPendingSearchTab(request.tabId, sender && sender.tab ? sender.tab : null);
-        sendResponse({ ok: true });
-      } else {
-        sendResponse({ ok: false });
-      }
-      return true;
+    return true;
+  },
+  closeOtherTabsForOverlay(request, sender, sendResponse) {
+    const senderTab = sender && sender.tab ? sender.tab : null;
+    if (!senderTab || typeof senderTab.id !== 'number' || typeof senderTab.windowId !== 'number') {
+      sendResponse({ ok: false, reason: 'invalid-sender' });
+      return;
     }
-    case 'closeOtherTabsForOverlay': {
-      const senderTab = sender && sender.tab ? sender.tab : null;
-      if (!senderTab || typeof senderTab.id !== 'number' || typeof senderTab.windowId !== 'number') {
-        sendResponse({ ok: false, reason: 'invalid-sender' });
+    chrome.tabs.query({ windowId: senderTab.windowId }, (tabs) => {
+      if (chrome.runtime && chrome.runtime.lastError) {
+        sendResponse({ ok: false, reason: chrome.runtime.lastError.message || 'query-failed' });
         return;
       }
-      chrome.tabs.query({ windowId: senderTab.windowId }, (tabs) => {
+      const ungroupedId = chrome && chrome.tabGroups && typeof chrome.tabGroups.TAB_GROUP_ID_NONE === 'number'
+        ? chrome.tabGroups.TAB_GROUP_ID_NONE
+        : -1;
+      const toCloseIds = (Array.isArray(tabs) ? tabs : [])
+        .filter((tab) => {
+          if (!tab || typeof tab.id !== 'number') {
+            return false;
+          }
+          if (tab.id === senderTab.id) {
+            return false;
+          }
+          if (tab.pinned) {
+            return false;
+          }
+          if (typeof tab.groupId === 'number' && tab.groupId !== ungroupedId) {
+            return false;
+          }
+          return true;
+        })
+        .map((tab) => tab.id);
+      if (toCloseIds.length <= 0) {
+        sendResponse({ ok: true, closedCount: 0 });
+        return;
+      }
+      chrome.tabs.remove(toCloseIds, () => {
         if (chrome.runtime && chrome.runtime.lastError) {
-          sendResponse({ ok: false, reason: chrome.runtime.lastError.message || 'query-failed' });
+          sendResponse({ ok: false, reason: chrome.runtime.lastError.message || 'remove-failed' });
           return;
         }
-        const ungroupedId = chrome && chrome.tabGroups && typeof chrome.tabGroups.TAB_GROUP_ID_NONE === 'number'
-          ? chrome.tabGroups.TAB_GROUP_ID_NONE
-          : -1;
-        const toCloseIds = (Array.isArray(tabs) ? tabs : [])
-          .filter((tab) => {
-            if (!tab || typeof tab.id !== 'number') {
-              return false;
-            }
-            if (tab.id === senderTab.id) {
-              return false;
-            }
-            if (tab.pinned) {
-              return false;
-            }
-            if (typeof tab.groupId === 'number' && tab.groupId !== ungroupedId) {
-              return false;
-            }
-            return true;
-          })
-          .map((tab) => tab.id);
-        if (toCloseIds.length <= 0) {
-          sendResponse({ ok: true, closedCount: 0 });
-          return;
-        }
-        chrome.tabs.remove(toCloseIds, () => {
-          if (chrome.runtime && chrome.runtime.lastError) {
-            sendResponse({ ok: false, reason: chrome.runtime.lastError.message || 'remove-failed' });
-            return;
-          }
-          sendResponse({ ok: true, closedCount: toCloseIds.length });
-        });
+        sendResponse({ ok: true, closedCount: toCloseIds.length });
       });
-      return true;
-    }
-    default:
-      return sendUnknownBackgroundMessageResponse(sendResponse);
+    });
+    return true;
   }
-}
+});
 
-function handleShortcutMessage(request, sender, sendResponse) {
-  switch (request.action) {
-    case 'getShowSearchShortcut': {
-      getConfiguredFallbackShortcut((shortcut) => {
-        sendResponse({ shortcut: shortcut || '' });
+// Configured shortcuts and page hotkeys.
+const SHORTCUT_MESSAGE_HANDLERS = Object.freeze({
+  getShowSearchShortcut(request, sender, sendResponse) {
+    getConfiguredFallbackShortcut((shortcut) => {
+      sendResponse({ shortcut: shortcut || '' });
+    });
+    return true;
+  },
+  getCopyCurrentUrlCommandShortcut(request, sender, sendResponse) {
+    getConfiguredCopyUrlCommandShortcut((shortcut) => {
+      sendResponse({ shortcut: shortcut || '' });
+    });
+    return true;
+  },
+  copyCurrentPageUrl(request, sender, sendResponse) {
+    const senderTab = sender && sender.tab ? sender.tab : null;
+    triggerCopyCurrentUrlForTab(senderTab, 'slash-command', (ok) => {
+      sendResponse({ ok: Boolean(ok) });
+    });
+    return true;
+  },
+  triggerShowSearchFromPageHotkey(request, sender, sendResponse) {
+    const senderTab = sender && sender.tab ? sender.tab : null;
+    if (!senderTab || typeof senderTab.id !== 'number') {
+      logHotkeyDebug('page-hotkey-invalid-sender', {
+        hasSender: Boolean(sender),
+        hasTab: Boolean(sender && sender.tab)
       });
-      return true;
-    }
-    case 'getCopyCurrentUrlCommandShortcut': {
-      getConfiguredCopyUrlCommandShortcut((shortcut) => {
-        sendResponse({ shortcut: shortcut || '' });
-      });
-      return true;
-    }
-    case 'copyCurrentPageUrl': {
-      const senderTab = sender && sender.tab ? sender.tab : null;
-      triggerCopyCurrentUrlForTab(senderTab, 'slash-command', (ok) => {
-        sendResponse({ ok: Boolean(ok) });
-      });
-      return true;
-    }
-    case 'triggerShowSearchFromPageHotkey': {
-      const senderTab = sender && sender.tab ? sender.tab : null;
-      if (!senderTab || typeof senderTab.id !== 'number') {
-        logHotkeyDebug('page-hotkey-invalid-sender', {
-          hasSender: Boolean(sender),
-          hasTab: Boolean(sender && sender.tab)
-        });
-        sendResponse({ ok: false });
-        return;
-      }
-      const triggerVerifiedPageHotkey = (shortcut) => {
-        const shouldPrefillCurrentUrl = Boolean(request && request.prefillCurrentUrl);
-        const triggerSource = shouldPrefillCurrentUrl ? 'page-hotkey-prefill' : 'page-hotkey';
-        logHotkeyDebug('received', {
-          command: SHOW_SEARCH_COMMAND_NAME,
-          source: triggerSource,
-          tabId: senderTab.id,
-          url: senderTab.url || '',
-          pendingUrl: senderTab.pendingUrl || '',
-          prefillCurrentUrl: shouldPrefillCurrentUrl,
-          verifiedAfterColdStart: Boolean(request && request.requiresShortcutVerification)
-        });
-        rememberPageHotkeyContext(senderTab);
-        triggerShowSearchForTab(senderTab, triggerSource);
-        sendResponse({ ok: true, shortcut: shortcut || '' });
-      };
-      if (request && request.requiresShortcutVerification === true) {
-        getConfiguredFallbackShortcut((shortcut) => {
-          const spec = SHORTCUT_KEY_MATCHER.parseShortcut(shortcut);
-          const matched = SHORTCUT_KEY_MATCHER.descriptorMatchesShortcut(request.observedShortcut, spec);
-          if (!matched) {
-            sendResponse({ ok: false, reason: 'shortcut-mismatch', shortcut: shortcut || '' });
-            return;
-          }
-          triggerVerifiedPageHotkey(shortcut);
-        });
-        return true;
-      }
-      triggerVerifiedPageHotkey('');
+      sendResponse({ ok: false });
       return;
     }
-    case 'notifyTabSwitcherShortcutModifierReleased': {
-      const senderTab = sender && sender.tab ? sender.tab : null;
-      handleTabSwitcherShortcutModifierReleased(senderTab, request && request.key, (didCommit) => {
-        sendResponse({ ok: true, committed: didCommit === true });
+    const triggerVerifiedPageHotkey = (shortcut) => {
+      const shouldPrefillCurrentUrl = Boolean(request && request.prefillCurrentUrl);
+      const triggerSource = shouldPrefillCurrentUrl ? 'page-hotkey-prefill' : 'page-hotkey';
+      logHotkeyDebug('received', {
+        command: SHOW_SEARCH_COMMAND_NAME,
+        source: triggerSource,
+        tabId: senderTab.id,
+        url: senderTab.url || '',
+        pendingUrl: senderTab.pendingUrl || '',
+        prefillCurrentUrl: shouldPrefillCurrentUrl,
+        verifiedAfterColdStart: Boolean(request && request.requiresShortcutVerification)
+      });
+      rememberPageHotkeyContext(senderTab);
+      triggerShowSearchForTab(senderTab, triggerSource);
+      sendResponse({ ok: true, shortcut: shortcut || '' });
+    };
+    if (request && request.requiresShortcutVerification === true) {
+      getConfiguredFallbackShortcut((shortcut) => {
+        const spec = SHORTCUT_KEY_MATCHER.parseShortcut(shortcut);
+        const matched = SHORTCUT_KEY_MATCHER.descriptorMatchesShortcut(request.observedShortcut, spec);
+        if (!matched) {
+          sendResponse({ ok: false, reason: 'shortcut-mismatch', shortcut: shortcut || '' });
+          return;
+        }
+        triggerVerifiedPageHotkey(shortcut);
       });
       return true;
     }
-    case 'getShortcutRules': {
-      loadShortcutRules().then((items) => {
-        sendResponse({ items: items });
-      });
-      return true;
-    }
-    default:
-      return sendUnknownBackgroundMessageResponse(sendResponse);
+    triggerVerifiedPageHotkey('');
+    return;
+  },
+  notifyTabSwitcherShortcutModifierReleased(request, sender, sendResponse) {
+    const senderTab = sender && sender.tab ? sender.tab : null;
+    handleTabSwitcherShortcutModifierReleased(senderTab, request && request.key, (didCommit) => {
+      sendResponse({ ok: true, committed: didCommit === true });
+    });
+    return true;
+  },
+  getShortcutRules(request, sender, sendResponse) {
+    loadShortcutRules().then((items) => {
+      sendResponse({ items: items });
+    });
+    return true;
   }
-}
+});
 
 function sendPipMainWorldResponse(methodName, sender, sendResponse) {
   if (typeof pipMainWorld[methodName] !== 'function') {
@@ -6634,270 +3680,235 @@ function sendPipMainWorldResponse(methodName, sender, sendResponse) {
     });
 }
 
-function getSearchEngineSuggestionRequestKey(request, sender) {
-  const senderTabId = sender && sender.tab && typeof sender.tab.id === 'number'
-    ? sender.tab.id
-    : 'extension';
-  const senderFrameId = sender && typeof sender.frameId === 'number' ? sender.frameId : 0;
-  const context = request && request.context ? String(request.context) : 'unknown';
-  return `${senderTabId}:${senderFrameId}:${context}`;
-}
-
-function handlePipMessage(request, sender, sendResponse) {
-  switch (request.action) {
-    case 'pipRequestOwnership': {
-      requestGlobalPipOwnership(sender, request && request.kind ? String(request.kind) : '')
-        .then((result) => {
-          sendResponse(result);
-        })
-        .catch((error) => {
-          sendResponse({
-            ok: false,
-            granted: false,
-            reason: error && error.message ? error.message : String(error || 'ownership-request-failed')
-          });
-        });
-      return true;
-    }
-    case 'pipReleaseOwnership': {
-      releaseGlobalPipOwnership(sender, request && request.token ? String(request.token) : '')
-        .then((result) => {
-          sendResponse(result);
-        })
-        .catch((error) => {
-          sendResponse({
-            ok: false,
-            released: false,
-            reason: error && error.message ? error.message : String(error || 'ownership-release-failed')
-          });
-        });
-      return true;
-    }
-    case 'openDocumentPipPicker': {
-      const senderTab = sender && sender.tab ? sender.tab : null;
-      if (!senderTab || typeof senderTab.id !== 'number') {
-        sendResponse({ ok: false, reason: 'no-sender-tab' });
-        return;
-      }
-      openDocumentPipPickerOnTab(senderTab, 'search-command').then((enabled) => {
+// Picture-in-picture ownership and main-world helpers.
+const PIP_MESSAGE_HANDLERS = Object.freeze({
+  pipRequestOwnership(request, sender, sendResponse) {
+    pipOwnership.requestGlobalPipOwnership(sender, request && request.kind ? String(request.kind) : '')
+      .then((result) => {
+        sendResponse(result);
+      })
+      .catch((error) => {
         sendResponse({
-          ok: enabled === true,
-          enabled: enabled === true
+          ok: false,
+          granted: false,
+          reason: error && error.message ? error.message : String(error || 'ownership-request-failed')
         });
       });
-      return true;
+    return true;
+  },
+  pipReleaseOwnership(request, sender, sendResponse) {
+    pipOwnership.releaseGlobalPipOwnership(sender, request && request.token ? String(request.token) : '')
+      .then((result) => {
+        sendResponse(result);
+      })
+      .catch((error) => {
+        sendResponse({
+          ok: false,
+          released: false,
+          reason: error && error.message ? error.message : String(error || 'ownership-release-failed')
+        });
+      });
+    return true;
+  },
+  openDocumentPipPicker(request, sender, sendResponse) {
+    const senderTab = sender && sender.tab ? sender.tab : null;
+    if (!senderTab || typeof senderTab.id !== 'number') {
+      sendResponse({ ok: false, reason: 'no-sender-tab' });
+      return;
     }
-    case 'siteTryEnterPiPInMainWorld': {
-      sendPipMainWorldResponse('siteTryEnterPiPInMainWorld', sender, sendResponse);
-      return true;
-    }
-    case 'iqiyiTryEnterPiPInMainWorld': {
-      sendPipMainWorldResponse('iqiyiTryEnterPiPInMainWorld', sender, sendResponse);
-      return true;
-    }
-    case 'iqiyiSetupAutoPiPInMainWorld': {
-      sendPipMainWorldResponse('iqiyiSetupAutoPiPInMainWorld', sender, sendResponse);
-      return true;
-    }
-    case 'forceExitPiPInMainWorld': {
-      sendPipMainWorldResponse('forceExitPiPInMainWorld', sender, sendResponse);
-      return true;
-    }
-    case 'ytForceExitPiPInMainWorld': {
-      sendPipMainWorldResponse('youtubeForceExitPiPInMainWorld', sender, sendResponse);
-      return true;
-    }
-    default:
-      return sendUnknownBackgroundMessageResponse(sendResponse);
+    openDocumentPipPickerOnTab(senderTab, 'search-command').then((enabled) => {
+      sendResponse({
+        ok: enabled === true,
+        enabled: enabled === true
+      });
+    });
+    return true;
+  },
+  siteTryEnterPiPInMainWorld(request, sender, sendResponse) {
+    sendPipMainWorldResponse('siteTryEnterPiPInMainWorld', sender, sendResponse);
+    return true;
+  },
+  iqiyiTryEnterPiPInMainWorld(request, sender, sendResponse) {
+    sendPipMainWorldResponse('iqiyiTryEnterPiPInMainWorld', sender, sendResponse);
+    return true;
+  },
+  iqiyiSetupAutoPiPInMainWorld(request, sender, sendResponse) {
+    sendPipMainWorldResponse('iqiyiSetupAutoPiPInMainWorld', sender, sendResponse);
+    return true;
+  },
+  forceExitPiPInMainWorld(request, sender, sendResponse) {
+    sendPipMainWorldResponse('forceExitPiPInMainWorld', sender, sendResponse);
+    return true;
+  },
+  ytForceExitPiPInMainWorld(request, sender, sendResponse) {
+    sendPipMainWorldResponse('youtubeForceExitPiPInMainWorld', sender, sendResponse);
+    return true;
   }
-}
+});
 
-function handleSearchMessage(request, sender, sendResponse) {
-  switch (request.action) {
-    case 'searchOrNavigate': {
-      const query = request.query ? String(request.query) : '';
-      const forceSearch = Boolean(request.forceSearch);
-      const openInBackgroundTab = request.disposition === 'backgroundTab';
-      const sourceTab = sender && sender.tab ? sender.tab : null;
-      Promise.all([loadShortcutRules(), resolveSearchResultTabPlacement(sourceTab)]).then(([rules, placement]) => {
-        const createResolvedTab = (url, callback) => {
-          createSearchResultTab({
-            url,
-            active: !openInBackgroundTab
-          }, sourceTab, callback, placement);
-        };
-        const shortcutUrl = getShortcutUrl(query, rules);
-        if (shortcutUrl) {
-          createResolvedTab(shortcutUrl, () => {
-            sendResponse({ ok: true, url: shortcutUrl });
-          });
-          return;
-        }
-        const directUrl = !forceSearch ? getDirectNavigationUrl(query) : '';
-        if (directUrl) {
-          createResolvedTab(directUrl, () => {
-            sendResponse({ ok: true, url: directUrl });
-          });
-        } else {
-          // It's a search query - use browser default search engine
-          const fallbackUrl = buildDefaultSearchUrl(query);
-          // Preserve the original browser search path unless an adjacent position is selected.
-          if (typeof placement.index !== 'number') {
-            if (openInBackgroundTab) {
-              createResolvedTab(fallbackUrl, () => {
-                sendResponse({ ok: true, url: fallbackUrl });
-              });
-              return;
-            }
-            if (chrome && chrome.search && typeof chrome.search.query === 'function') {
-              markPendingSearchTab(null, sourceTab);
-              try {
-                chrome.search.query({ text: query, disposition: 'NEW_TAB' }, () => {
-                  if (chrome.runtime && chrome.runtime.lastError) {
-                    pendingSearchAt = 0;
-                    pendingSearchTabId = null;
-                    pendingSearchGroupContext = null;
-                    createResolvedTab(fallbackUrl, () => {
-                      sendResponse({ ok: true, url: fallbackUrl });
-                    });
-                    return;
-                  }
-                  sendResponse({ ok: true, url: fallbackUrl });
-                });
-                return;
-              } catch (error) {
-                pendingSearchAt = 0;
-                pendingSearchTabId = null;
-                pendingSearchGroupContext = null;
-              }
-            }
+// Search, suggestions and history.
+const SEARCH_MESSAGE_HANDLERS = Object.freeze({
+  searchOrNavigate(request, sender, sendResponse) {
+    const query = request.query ? String(request.query) : '';
+    const forceSearch = Boolean(request.forceSearch);
+    const openInBackgroundTab = request.disposition === 'backgroundTab';
+    const sourceTab = sender && sender.tab ? sender.tab : null;
+    Promise.all([loadShortcutRules(), resolveSearchResultTabPlacement(sourceTab)]).then(([rules, placement]) => {
+      const createResolvedTab = (url, callback) => {
+        createSearchResultTab({
+          url,
+          active: !openInBackgroundTab
+        }, sourceTab, callback, placement);
+      };
+      const shortcutUrl = getShortcutUrl(query, rules);
+      if (shortcutUrl) {
+        createResolvedTab(shortcutUrl, () => {
+          sendResponse({ ok: true, url: shortcutUrl });
+        });
+        return;
+      }
+      const directUrl = !forceSearch ? getDirectNavigationUrl(query) : '';
+      if (directUrl) {
+        createResolvedTab(directUrl, () => {
+          sendResponse({ ok: true, url: directUrl });
+        });
+      } else {
+        // It's a search query - use browser default search engine
+        const fallbackUrl = buildDefaultSearchUrl(query);
+        // Preserve the original browser search path unless an adjacent position is selected.
+        if (typeof placement.index !== 'number') {
+          if (openInBackgroundTab) {
             createResolvedTab(fallbackUrl, () => {
               sendResponse({ ok: true, url: fallbackUrl });
             });
             return;
           }
           if (chrome && chrome.search && typeof chrome.search.query === 'function') {
-            createResolvedTab('about:blank', (tab, info) => {
-              if (!tab || typeof tab.id !== 'number' || !info || !info.ok) {
-                sendResponse({ ok: false, reason: (info && info.reason) || 'tab-create-failed' });
-                return;
-              }
-              markPendingSearchTab(tab.id, sourceTab);
-              SEARCH_RESULT_TABS.searchInTab(chrome, {
-                query,
-                tabId: tab.id,
-                fallbackUrl,
-                onFallback() {
-                  if (pendingSearchTabId === tab.id) {
-                    pendingSearchAt = 0;
-                    pendingSearchTabId = null;
-                    pendingSearchGroupContext = null;
-                  }
+            markPendingSearchTab(null, sourceTab);
+            try {
+              chrome.search.query({ text: query, disposition: 'NEW_TAB' }, () => {
+                if (chrome.runtime && chrome.runtime.lastError) {
+                  pendingSearchAt = 0;
+                  pendingSearchTabId = null;
+                  pendingSearchGroupContext = null;
+                  createResolvedTab(fallbackUrl, () => {
+                    sendResponse({ ok: true, url: fallbackUrl });
+                  });
+                  return;
                 }
-              }, (result) => {
-                sendResponse({ ...result, url: fallbackUrl });
+                sendResponse({ ok: true, url: fallbackUrl });
               });
-            });
-            return;
+              return;
+            } catch (error) {
+              pendingSearchAt = 0;
+              pendingSearchTabId = null;
+              pendingSearchGroupContext = null;
+            }
           }
           createResolvedTab(fallbackUrl, () => {
             sendResponse({ ok: true, url: fallbackUrl });
           });
+          return;
         }
-      });
-      return true;
-    }
-    case 'getSearchSuggestions': {
-      const query = request.query;
-      const requestKey = getSearchEngineSuggestionRequestKey(request, sender);
-      if (shouldPrefetchSearchEngineSuggestions(request, query)) {
-        scheduleSearchEngineSuggestionPrefetch(requestKey, query);
-      } else {
-        abortSearchEngineSuggestionRequest(requestKey);
-      }
-      getSearchSuggestions(query, {
-        sourceTypes: request.sourceTypes,
-        includeOpenTabs: request.includeOpenTabs
-      }).then(suggestions => {
-        sendResponse({ suggestions: suggestions });
-      }).catch(() => {
-        sendResponse({ suggestions: [] });
-      });
-      return true; // Keep the message channel open for async response
-    }
-    case 'getSearchEngineSuggestions': {
-      const query = request.query;
-      const requestKey = getSearchEngineSuggestionRequestKey(request, sender);
-      const requestRecord = consumeSearchEngineSuggestionRequest(requestKey, query);
-      if (!requestRecord) {
-        sendResponse({ suggestions: [], aborted: false, hasRemoteSuggestions: false });
-        return;
-      }
-      const controller = requestRecord.controller;
-      getSearchEngineSuggestions(query, request.localSuggestions, {
-        signal: controller.signal,
-        rawEngineSuggestionsPromise: startSearchEngineSuggestionRequest(requestRecord),
-        searchFirst: request.searchFirst === true
-      }).then((suggestions) => {
-        const isCurrent = searchEngineSuggestionRequests.get(requestKey) === requestRecord;
-        const hasRemoteSuggestions = isCurrent && !controller.signal.aborted && suggestions.some((suggestion) => (
-          suggestion && suggestion.type === 'googleSuggest'
-        ));
-        sendResponse({
-          suggestions: isCurrent && !controller.signal.aborted ? suggestions : [],
-          aborted: !isCurrent || controller.signal.aborted,
-          hasRemoteSuggestions
-        });
-      }).catch(() => {
-        sendResponse({ suggestions: [], aborted: controller.signal.aborted, hasRemoteSuggestions: false });
-      }).finally(() => {
-        if (searchEngineSuggestionRequests.get(requestKey) === requestRecord) {
-          releaseSearchEngineSuggestionRequest(requestKey, requestRecord);
-        }
-      });
-      return true;
-    }
-    case 'recordSearchSuggestionSelection': {
-      recordSearchSuggestionSelection(request)
-        .then((result) => {
-          sendResponse(result);
-        })
-        .catch((error) => {
-          sendResponse({
-            ok: false,
-            reason: error && error.message ? error.message : 'record-selection-failed'
+        if (chrome && chrome.search && typeof chrome.search.query === 'function') {
+          createResolvedTab('about:blank', (tab, info) => {
+            if (!tab || typeof tab.id !== 'number' || !info || !info.ok) {
+              sendResponse({ ok: false, reason: (info && info.reason) || 'tab-create-failed' });
+              return;
+            }
+            markPendingSearchTab(tab.id, sourceTab);
+            SEARCH_RESULT_TABS.searchInTab(chrome, {
+              query,
+              tabId: tab.id,
+              fallbackUrl,
+              onFallback() {
+                if (pendingSearchTabId === tab.id) {
+                  pendingSearchAt = 0;
+                  pendingSearchTabId = null;
+                  pendingSearchGroupContext = null;
+                }
+              }
+            }, (result) => {
+              sendResponse({ ...result, url: fallbackUrl });
+            });
           });
+          return;
+        }
+        createResolvedTab(fallbackUrl, () => {
+          sendResponse({ ok: true, url: fallbackUrl });
         });
-      return true;
+      }
+    });
+    return true;
+  },
+  getSearchSuggestions(request, sender, sendResponse) {
+    const query = request.query;
+    const requestKey = getSearchEngineSuggestionRequestKey(request, sender);
+    if (shouldPrefetchSearchEngineSuggestions(request, query)) {
+      scheduleSearchEngineSuggestionPrefetch(requestKey, query);
+    } else {
+      abortSearchEngineSuggestionRequest(requestKey);
     }
-    case 'deleteHistoryUrl': {
-      const targetUrl = typeof request.url === 'string' ? request.url : '';
-      return deleteHistoryUrlFromSearch(targetUrl, sendResponse);
-    }
-    default:
-      return sendUnknownBackgroundMessageResponse(sendResponse);
-  }
-}
-
-function deleteHistoryUrlFromSearch(targetUrl, sendResponse) {
-  if (!targetUrl) {
-    sendResponse({ ok: false, reason: 'invalid-url' });
-    return;
-  }
-  if (!chrome.history || typeof chrome.history.deleteUrl !== 'function') {
-    sendResponse({ ok: false, reason: 'history-api-unavailable' });
-    return;
-  }
-  chrome.history.deleteUrl({ url: targetUrl }, () => {
-    if (chrome.runtime && chrome.runtime.lastError) {
-      sendResponse({ ok: false, reason: chrome.runtime.lastError.message || 'delete-history-failed' });
+    getSearchSuggestions(query, {
+      sourceTypes: request.sourceTypes,
+      includeOpenTabs: request.includeOpenTabs
+    }).then(suggestions => {
+      sendResponse({ suggestions: suggestions });
+    }).catch(() => {
+      sendResponse({ suggestions: [] });
+    });
+    return true; // Keep the message channel open for async response
+  },
+  getSearchEngineSuggestions(request, sender, sendResponse) {
+    const query = request.query;
+    const requestKey = getSearchEngineSuggestionRequestKey(request, sender);
+    const requestRecord = consumeSearchEngineSuggestionRequest(requestKey, query);
+    if (!requestRecord) {
+      sendResponse({ suggestions: [], aborted: false, hasRemoteSuggestions: false });
       return;
     }
-    invalidateLocalSearchSourceCaches();
-    sendResponse({ ok: true, url: targetUrl });
-  });
-  return true;
-}
+    const controller = requestRecord.controller;
+    getSearchEngineSuggestions(query, request.localSuggestions, {
+      signal: controller.signal,
+      rawEngineSuggestionsPromise: startSearchEngineSuggestionRequest(requestRecord),
+      searchFirst: request.searchFirst === true
+    }).then((suggestions) => {
+      const isCurrent = searchEngineSuggestionRequests.get(requestKey) === requestRecord;
+      const hasRemoteSuggestions = isCurrent && !controller.signal.aborted && suggestions.some((suggestion) => (
+        suggestion && suggestion.type === 'googleSuggest'
+      ));
+      sendResponse({
+        suggestions: isCurrent && !controller.signal.aborted ? suggestions : [],
+        aborted: !isCurrent || controller.signal.aborted,
+        hasRemoteSuggestions
+      });
+    }).catch(() => {
+      sendResponse({ suggestions: [], aborted: controller.signal.aborted, hasRemoteSuggestions: false });
+    }).finally(() => {
+      if (searchEngineSuggestionRequests.get(requestKey) === requestRecord) {
+        releaseSearchEngineSuggestionRequest(requestKey, requestRecord);
+      }
+    });
+    return true;
+  },
+  recordSearchSuggestionSelection(request, sender, sendResponse) {
+    recordSearchSuggestionSelection(request)
+      .then((result) => {
+        sendResponse(result);
+      })
+      .catch((error) => {
+        sendResponse({
+          ok: false,
+          reason: error && error.message ? error.message : 'record-selection-failed'
+        });
+      });
+    return true;
+  },
+  deleteHistoryUrl(request, sender, sendResponse) {
+    const targetUrl = typeof request.url === 'string' ? request.url : '';
+    return deleteHistoryUrlFromSearch(targetUrl, sendResponse);
+  }
+});
 
 let helpCenterIndexLoader = null;
 let helpCenterSynonymsLoader = null;
@@ -6928,371 +3939,409 @@ function getHelpCenterSearchResults(query, locale) {
   }));
 }
 
-function handleSiteSearchMessage(request, sender, sendResponse) {
-  switch (request.action) {
-    case 'getSiteSearchProviders': {
-      loadSiteSearchProviders().then((items) => {
-        sendResponse({ items: items });
-      }).catch(() => {
-        sendResponse({
-          items: [],
-          reason: 'site-search-provider-load-failed'
-        });
-      });
-      return true;
-    }
-    case 'getHelpCenterSearchResults': {
-      getHelpCenterSearchResults(request.query, request.locale).then((items) => {
-        sendResponse({ items });
-      }).catch(() => {
-        sendResponse({ items: [], reason: 'help-center-index-unavailable' });
-      });
-      return true;
-    }
-    case 'runSiteSearchProviderQuery': {
-      runInteractiveSiteSearchProvider(
-        request.provider,
-        request.query,
-        sender,
-        request.disposition
-      ).then((result) => {
-        sendResponse(result);
-      }).catch((error) => {
-        sendResponse({
-          ok: false,
-          reason: error && error.message ? error.message : 'interactive-site-search-failed'
-        });
-      });
-      return true;
-    }
-    case 'runAggregateSearchQuery': {
-      runAggregateSearchQuery(
-        request.aggregateId,
-        request.query,
-        sender,
-        request.disposition
-      ).then(sendResponse).catch((error) => {
-        sendResponse({
-          ok: false,
-          reason: error && error.message ? error.message : 'aggregate-search-failed'
-        });
-      });
-      return true;
-    }
-    default:
-      return sendUnknownBackgroundMessageResponse(sendResponse);
-  }
-}
-
-function handleSelectionQuickActionMessage(request, sender, sendResponse) {
-  if (request.action !== 'runSelectionQuickAction') {
-    return sendUnknownBackgroundMessageResponse(sendResponse);
-  }
-  runSelectionQuickAction(request, sender)
-    .then((result) => {
-      sendResponse(result);
-    })
-    .catch((error) => {
+// Site search, help center and aggregate search.
+const SITE_SEARCH_MESSAGE_HANDLERS = Object.freeze({
+  getSiteSearchProviders(request, sender, sendResponse) {
+    loadSiteSearchProviders().then((items) => {
+      sendResponse({ items: items });
+    }).catch(() => {
       sendResponse({
-        ok: false,
-        reason: error && error.message ? error.message : 'selection-quick-action-failed'
+        items: [],
+        reason: 'site-search-provider-load-failed'
       });
     });
-  return true;
-}
-
-function handleLocaleAndPermissionMessage(request, sender, sendResponse) {
-  switch (request.action) {
-    case 'getLocaleMessages': {
-      const locale = normalizeLocaleForMessages(request.locale);
-      const localePath = chrome.runtime.getURL(`_locales/${locale}/messages.json`);
-      fetch(localePath, { cache: 'no-store' })
-        .then((response) => response.json())
-        .then((messages) => {
-          sendResponse({ messages: messages || {} });
-        })
-        .catch(() => {
-          sendResponse({ messages: {} });
-        });
-      return true;
-    }
-    case 'getFileSchemeAccessStatus': {
-      checkFileSchemeAccess((isAllowed) => {
-        sendResponse({
-          ok: true,
-          allowed: isAllowed === true,
-          supported: isAllowed !== null,
-          detailsUrl: getExtensionDetailsUrl()
-        });
+    return true;
+  },
+  getHelpCenterSearchResults(request, sender, sendResponse) {
+    getHelpCenterSearchResults(request.query, request.locale).then((items) => {
+      sendResponse({ items });
+    }).catch(() => {
+      sendResponse({ items: [], reason: 'help-center-index-unavailable' });
+    });
+    return true;
+  },
+  runSiteSearchProviderQuery(request, sender, sendResponse) {
+    runInteractiveSiteSearchProvider(
+      request.provider,
+      request.query,
+      sender,
+      request.disposition
+    ).then((result) => {
+      sendResponse(result);
+    }).catch((error) => {
+      sendResponse({
+        ok: false,
+        reason: error && error.message ? error.message : 'interactive-site-search-failed'
       });
-      return true;
-    }
-    default:
-      return sendUnknownBackgroundMessageResponse(sendResponse);
+    });
+    return true;
+  },
+  runAggregateSearchQuery(request, sender, sendResponse) {
+    runAggregateSearchQuery(
+      request.aggregateId,
+      request.query,
+      sender,
+      request.disposition
+    ).then(sendResponse).catch((error) => {
+      sendResponse({
+        ok: false,
+        reason: error && error.message ? error.message : 'aggregate-search-failed'
+      });
+    });
+    return true;
   }
-}
+});
 
-function handleExtensionPageMessage(request, sender, sendResponse) {
-  switch (request.action) {
-    case 'probeProgressSeries': {
-      // Pinning from New Tab: does the open page read as an episode or chapter?
-      if (!progressTrackingEnabled) {
-        sendResponse({ ok: true, series: false });
-        return false;
-      }
-      progressTracker.probeSeries(String(request.url || '')).then((series) => {
-        sendResponse({ ok: true, series: series === true });
-      }, () => sendResponse({ ok: false, series: false }));
-      return true;
-    }
-    case 'openOptionsPage': {
-      openExtensionOptionsPage({ disposition: request.disposition, hash: request.hash }, (ok) => {
-        sendResponse({ ok: ok !== false });
-      });
-      return true;
-    }
-    case 'openOnboardingPage': {
-      openOnboardingPage({ reason: 'manual', disposition: request.disposition }, (ok) => {
-        sendResponse({ ok: ok !== false });
-      });
-      return true;
-    }
-    case 'openReleasePage': {
-      const reason = typeof request.reason === 'string' ? request.reason : 'manual';
-      openReleasePage({ reason, disposition: request.disposition }, (ok) => {
-        sendResponse({ ok: ok !== false });
-      });
-      return true;
-    }
-    case 'openExtensionShortcutsPage': {
-      openExtensionShortcutsPage({ disposition: request.disposition }, (ok) => {
-        sendResponse({ ok: ok !== false });
-      });
-      return true;
-    }
-    case 'openSiteSearchOptionsPage': {
-      openSiteSearchOptionsPage({ disposition: request.disposition }, (ok) => {
-        sendResponse({ ok: ok !== false });
-      });
-      return true;
-    }
-    case 'openBookmarkManager': {
-      openBookmarkManagerPage().then((url) => {
-        sendResponse({ ok: true, url: url });
-      }).catch(() => {
-        sendResponse({ ok: false });
-      });
-      return true;
-    }
-    case 'openBookmarkFolderInNewTabGroup': {
-      const sourceTab = sender && sender.tab ? sender.tab : null;
-      BOOKMARK_TAB_GROUPS.openBookmarkFolderInNewTabGroup(chrome, {
-        folderId: request.folderId,
-        title: request.title,
-        windowId: sourceTab && typeof sourceTab.windowId === 'number'
-          ? sourceTab.windowId
-          : undefined,
-        insertIndex: sourceTab && typeof sourceTab.index === 'number'
-          ? sourceTab.index + 1
-          : undefined
-      }).then(sendResponse).catch((error) => {
+// Selection quick actions.
+const SELECTION_QUICK_ACTION_MESSAGE_HANDLERS = Object.freeze({
+  runSelectionQuickAction(request, sender, sendResponse) {
+    runSelectionQuickAction(request, sender)
+      .then((result) => {
+        sendResponse(result);
+      })
+      .catch((error) => {
         sendResponse({
           ok: false,
-          reason: error && error.message
-            ? error.message
-            : 'bookmark-tab-group-failed'
+          reason: error && error.message ? error.message : 'selection-quick-action-failed'
         });
       });
-      return true;
-    }
-    case 'createTab': {
-      const targetUrl = typeof request.url === 'string' ? request.url : '';
-      const sourceTab = sender && sender.tab ? sender.tab : null;
-      if (!targetUrl) {
-        sendResponse({ ok: false });
-        return;
-      }
-      if (request.disposition === 'currentTab') {
-        const senderTabId = sender && sender.tab && typeof sender.tab.id === 'number'
-          ? sender.tab.id
-          : null;
-        const updateTab = (tabId) => {
-          chrome.tabs.update(tabId, { url: targetUrl, active: true }, () => {
-            sendResponse({ ok: !(chrome.runtime && chrome.runtime.lastError) });
-          });
-        };
-        if (typeof senderTabId === 'number') {
-          updateTab(senderTabId);
-          return true;
-        }
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          const activeTab = Array.isArray(tabs) && tabs.length > 0 ? tabs[0] : null;
-          if (activeTab && typeof activeTab.id === 'number') {
-            updateTab(activeTab.id);
-            return;
-          }
-          sendResponse({ ok: false });
-        });
-        return true;
-      }
-      createSearchResultTab({ url: targetUrl, active: request.disposition !== 'backgroundTab' }, sourceTab, (_tab, info) => {
-        sendResponse({ ok: Boolean(info && info.ok) });
-      });
-      return true;
-    }
-    case 'openNewTab': {
-      createTabWithSourceGroup({
-        active: request.disposition !== 'backgroundTab'
-      }, sender && sender.tab ? sender.tab : null, (_tab, info) => {
-        sendResponse({ ok: Boolean(info && info.ok) });
-      });
-      return true;
-    }
-    case 'openExtensionDetailsPage': {
-      const detailsUrl = getExtensionDetailsUrl();
-      createTabWithSourceGroup({
-        url: detailsUrl,
-        active: request.disposition !== 'backgroundTab'
-      }, sender && sender.tab ? sender.tab : null, (_tab, info) => {
-        sendResponse({ ok: Boolean(info && info.ok), url: detailsUrl });
-      });
-      return true;
-    }
-    default:
-      return sendUnknownBackgroundMessageResponse(sendResponse);
+    return true;
   }
+});
+
+// Parsed _locales files by locale. They only change with the extension, which
+// restarts this worker, so each is read once per worker lifetime.
+const localeMessagesByLocale = new Map();
+
+function loadLocaleMessages(rawLocale) {
+  const locale = SETTINGS.normalizeLocale(rawLocale);
+  if (localeMessagesByLocale.has(locale)) {
+    return localeMessagesByLocale.get(locale);
+  }
+  const loading = fetch(chrome.runtime.getURL(`_locales/${locale}/messages.json`))
+    .then((response) => response.json())
+    .then((messages) => (messages && typeof messages === 'object' ? messages : {}))
+    .catch(() => {
+      localeMessagesByLocale.delete(locale);
+      return {};
+    });
+  localeMessagesByLocale.set(locale, loading);
+  return loading;
 }
 
-function handleFaviconMessage(request, sender, sendResponse) {
-  switch (request.action) {
-    case 'resolveFaviconCandidates': {
-      const targetUrl = request.url || '';
-      const hostOverride = request.host || '';
-      const fallbackUrl = request.fallbackUrl || '';
-      const preferredTheme = request.preferredTheme || '';
-      const options = {
-        includeChromeFallback: request.excludeChromeFallback ? false : true,
-        forceFresh: request.forceFresh === true
+// A page script that names the few strings it shows gets only those.
+function pickLocaleMessages(messages, keys) {
+  if (!Array.isArray(keys)) {
+    return messages;
+  }
+  const picked = {};
+  keys.forEach((key) => {
+    if (typeof key === 'string' && Object.prototype.hasOwnProperty.call(messages, key)) {
+      picked[key] = messages[key];
+    }
+  });
+  return picked;
+}
+
+// Locale messages and permission probes.
+const LOCALE_AND_PERMISSION_MESSAGE_HANDLERS = Object.freeze({
+  getLocaleMessages(request, sender, sendResponse) {
+    loadLocaleMessages(request && request.locale).then((messages) => {
+      sendResponse({ messages: pickLocaleMessages(messages, request && request.keys) });
+    });
+    return true;
+  },
+  getFileSchemeAccessStatus(request, sender, sendResponse) {
+    checkFileSchemeAccess((isAllowed) => {
+      sendResponse({
+        ok: true,
+        allowed: isAllowed === true,
+        supported: isAllowed !== null,
+        detailsUrl: getExtensionDetailsUrl()
+      });
+    });
+    return true;
+  }
+});
+
+// Extension pages, tab creation and progress probes.
+const EXTENSION_PAGE_MESSAGE_HANDLERS = Object.freeze({
+  probeProgressSeries(request, sender, sendResponse) {
+    // Pinning from New Tab: does the open page read as an episode or chapter?
+    if (!progressTrackingEnabled) {
+      sendResponse({ ok: true, series: false });
+      return false;
+    }
+    progressTracker.probeSeries(String(request.url || '')).then((series) => {
+      sendResponse({ ok: true, series: series === true });
+    }, () => sendResponse({ ok: false, series: false }));
+    return true;
+  },
+  openOptionsPage(request, sender, sendResponse) {
+    openExtensionOptionsPage({ disposition: request.disposition, hash: request.hash }, (ok) => {
+      sendResponse({ ok: ok !== false });
+    });
+    return true;
+  },
+  openOnboardingPage(request, sender, sendResponse) {
+    openOnboardingPage({ reason: 'manual', disposition: request.disposition }, (ok) => {
+      sendResponse({ ok: ok !== false });
+    });
+    return true;
+  },
+  openReleasePage(request, sender, sendResponse) {
+    const reason = typeof request.reason === 'string' ? request.reason : 'manual';
+    openReleasePage({ reason, disposition: request.disposition }, (ok) => {
+      sendResponse({ ok: ok !== false });
+    });
+    return true;
+  },
+  openExtensionShortcutsPage(request, sender, sendResponse) {
+    openExtensionShortcutsPage({ disposition: request.disposition }, (ok) => {
+      sendResponse({ ok: ok !== false });
+    });
+    return true;
+  },
+  openSiteSearchOptionsPage(request, sender, sendResponse) {
+    openSiteSearchOptionsPage({ disposition: request.disposition }, (ok) => {
+      sendResponse({ ok: ok !== false });
+    });
+    return true;
+  },
+  openBookmarkManager(request, sender, sendResponse) {
+    openBookmarkManagerPage().then((url) => {
+      sendResponse({ ok: true, url: url });
+    }).catch(() => {
+      sendResponse({ ok: false });
+    });
+    return true;
+  },
+  openBookmarkFolderInNewTabGroup(request, sender, sendResponse) {
+    const sourceTab = sender && sender.tab ? sender.tab : null;
+    BOOKMARK_TAB_GROUPS.openBookmarkFolderInNewTabGroup(chrome, {
+      folderId: request.folderId,
+      title: request.title,
+      windowId: sourceTab && typeof sourceTab.windowId === 'number'
+        ? sourceTab.windowId
+        : undefined,
+      insertIndex: sourceTab && typeof sourceTab.index === 'number'
+        ? sourceTab.index + 1
+        : undefined
+    }).then(sendResponse).catch((error) => {
+      sendResponse({
+        ok: false,
+        reason: error && error.message
+          ? error.message
+          : 'bookmark-tab-group-failed'
+      });
+    });
+    return true;
+  },
+  createTab(request, sender, sendResponse) {
+    const targetUrl = typeof request.url === 'string' ? request.url : '';
+    const sourceTab = sender && sender.tab ? sender.tab : null;
+    if (!targetUrl) {
+      sendResponse({ ok: false });
+      return;
+    }
+    if (request.disposition === 'currentTab') {
+      const senderTabId = sender && sender.tab && typeof sender.tab.id === 'number'
+        ? sender.tab.id
+        : null;
+      const updateTab = (tabId) => {
+        chrome.tabs.update(tabId, { url: targetUrl, active: true }, () => {
+          sendResponse({ ok: !(chrome.runtime && chrome.runtime.lastError) });
+        });
       };
-      resolveFaviconCandidates(targetUrl, hostOverride, fallbackUrl, preferredTheme, options).then((urls) => {
-        sendResponse({ urls: Array.isArray(urls) ? urls : [] });
-      }).catch(() => {
-        sendResponse({ urls: [] });
+      if (typeof senderTabId === 'number') {
+        updateTab(senderTabId);
+        return true;
+      }
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const activeTab = Array.isArray(tabs) && tabs.length > 0 ? tabs[0] : null;
+        if (activeTab && typeof activeTab.id === 'number') {
+          updateTab(activeTab.id);
+          return;
+        }
+        sendResponse({ ok: false });
       });
       return true;
     }
-    case 'getFaviconData': {
-      const targetUrl = request.url || '';
-      const pageUrl = request.pageUrl || '';
-      if (!targetUrl || typeof targetUrl !== 'string' || targetUrl.startsWith('data:')) {
+    createSearchResultTab({ url: targetUrl, active: request.disposition !== 'backgroundTab' }, sourceTab, (_tab, info) => {
+      sendResponse({ ok: Boolean(info && info.ok) });
+    });
+    return true;
+  },
+  openNewTab(request, sender, sendResponse) {
+    createTabWithSourceGroup({
+      active: request.disposition !== 'backgroundTab'
+    }, sender && sender.tab ? sender.tab : null, (_tab, info) => {
+      sendResponse({ ok: Boolean(info && info.ok) });
+    });
+    return true;
+  },
+  openExtensionDetailsPage(request, sender, sendResponse) {
+    const detailsUrl = getExtensionDetailsUrl();
+    createTabWithSourceGroup({
+      url: detailsUrl,
+      active: request.disposition !== 'backgroundTab'
+    }, sender && sender.tab ? sender.tab : null, (_tab, info) => {
+      sendResponse({ ok: Boolean(info && info.ok), url: detailsUrl });
+    });
+    return true;
+  }
+});
+
+// Favicons and site theme colors.
+const FAVICON_MESSAGE_HANDLERS = Object.freeze({
+  resolveFaviconCandidates(request, sender, sendResponse) {
+    const targetUrl = request.url || '';
+    const hostOverride = request.host || '';
+    const fallbackUrl = request.fallbackUrl || '';
+    const preferredTheme = request.preferredTheme || '';
+    const options = {
+      includeChromeFallback: request.excludeChromeFallback ? false : true,
+      forceFresh: request.forceFresh === true
+    };
+    resolveFaviconCandidates(targetUrl, hostOverride, fallbackUrl, preferredTheme, options).then((urls) => {
+      sendResponse({ urls: Array.isArray(urls) ? urls : [] });
+    }).catch(() => {
+      sendResponse({ urls: [] });
+    });
+    return true;
+  },
+  getFaviconData(request, sender, sendResponse) {
+    const targetUrl = request.url || '';
+    const pageUrl = request.pageUrl || '';
+    if (!targetUrl || typeof targetUrl !== 'string' || targetUrl.startsWith('data:')) {
+      sendResponse({ data: '' });
+      return;
+    }
+    loadFaviconRequestBlacklistItems().then(() => {
+      if (isBlockedLocalFaviconUrl(targetUrl)) {
+        logBlockedLocalFavicon(targetUrl, 'message:getFaviconData');
         sendResponse({ data: '' });
         return;
       }
-      loadFaviconRequestBlacklistItems().then(() => {
-        if (isBlockedLocalFaviconUrl(targetUrl)) {
-          logBlockedLocalFavicon(targetUrl, 'message:getFaviconData');
+      try {
+        const targetHost = new URL(targetUrl).hostname;
+        if (shouldBlockFaviconForHost(targetHost)) {
           sendResponse({ data: '' });
           return;
         }
-        try {
-          const targetHost = new URL(targetUrl).hostname;
-          if (shouldBlockFaviconForHost(targetHost)) {
-            sendResponse({ data: '' });
-            return;
-          }
-        } catch (e) {
-          // Ignore parse failures and continue with non-local handling.
-        }
-        fetchFaviconData(targetUrl, pageUrl).then((dataUrl) => {
-          sendResponse({ data: dataUrl || '' });
-        }).catch(() => {
-          sendResponse({ data: '' });
-        });
+      } catch (e) {
+        // Ignore parse failures and continue with non-local handling.
+      }
+      fetchFaviconData(targetUrl, pageUrl).then((dataUrl) => {
+        sendResponse({ data: dataUrl || '' });
       }).catch(() => {
         sendResponse({ data: '' });
       });
-      return true;
-    }
-    case 'getShortcutFaviconData': {
-      const pageUrl = request.pageUrl || '';
-      const preferredTheme = request.preferredTheme || '';
-      fetchShortcutFaviconData(pageUrl, preferredTheme, '', request.refresh === true, request.iconSource).then((result) => {
-        sendResponse(result || {
-          data: '',
-          sourceUrl: '',
-          width: 0,
-          height: 0,
-          vector: false
-        });
-      }).catch(() => {
-        sendResponse({
-          data: '',
-          sourceUrl: '',
-          width: 0,
-          height: 0,
-          vector: false
-        });
+    }).catch(() => {
+      sendResponse({ data: '' });
+    });
+    return true;
+  },
+  getShortcutFaviconData(request, sender, sendResponse) {
+    const pageUrl = request.pageUrl || '';
+    const preferredTheme = request.preferredTheme || '';
+    fetchShortcutFaviconData(pageUrl, preferredTheme, '', request.refresh === true, request.iconSource).then((result) => {
+      sendResponse(result || {
+        data: '',
+        sourceUrl: '',
+        width: 0,
+        height: 0,
+        vector: false
       });
-      return true;
-    }
-    case 'resolveSiteThemeColor': {
-      const targetUrl = request.url || '';
-      const hostOverride = request.host || '';
-      const preferredTheme = request.preferredTheme || '';
-      resolveSiteThemeColor(targetUrl, hostOverride, preferredTheme).then((result) => {
-        sendResponse(result || { accentRgb: null, source: '' });
-      }).catch(() => {
-        sendResponse({ accentRgb: null, source: '' });
+    }).catch(() => {
+      sendResponse({
+        data: '',
+        sourceUrl: '',
+        width: 0,
+        height: 0,
+        vector: false
       });
-      return true;
-    }
-    default:
-      return sendUnknownBackgroundMessageResponse(sendResponse);
+    });
+    return true;
+  },
+  resolveSiteThemeColor(request, sender, sendResponse) {
+    const targetUrl = request.url || '';
+    const hostOverride = request.host || '';
+    const preferredTheme = request.preferredTheme || '';
+    resolveSiteThemeColor(targetUrl, hostOverride, preferredTheme).then((result) => {
+      sendResponse(result || { accentRgb: null, source: '' });
+    }).catch(() => {
+      sendResponse({ accentRgb: null, source: '' });
+    });
+    return true;
   }
+});
+
+// One action -> handler registry for runtime messages. Each feature area
+// above owns its handlers; adding an action is one entry in its area's map,
+// and the router rejects an action registered twice.
+const backgroundMessageRouter = BACKGROUND_MESSAGE_ROUTER.createRouter(
+  { webdav: handleWebDavMessage },
+  TAB_MESSAGE_HANDLERS,
+  SHORTCUT_MESSAGE_HANDLERS,
+  PIP_MESSAGE_HANDLERS,
+  SEARCH_MESSAGE_HANDLERS,
+  SITE_SEARCH_MESSAGE_HANDLERS,
+  SELECTION_QUICK_ACTION_MESSAGE_HANDLERS,
+  LOCALE_AND_PERMISSION_MESSAGE_HANDLERS,
+  EXTENSION_PAGE_MESSAGE_HANDLERS,
+  FAVICON_MESSAGE_HANDLERS
+);
+
+// Actions the in-page surfaces (content scripts, the injected overlay, tab
+// switcher, selection toolbar and picture-in-picture helpers) send. Those run
+// inside web pages; every other action is accepted from extension pages only.
+const WEB_PAGE_MESSAGE_ACTIONS = Object.freeze([
+  'switchToTab', 'notifyOverlayClosed', 'notifyTopFrameDocumentStarted',
+  'updateOverlayLoadingSession', 'getTabsForOverlay', 'closeOtherTabsForOverlay',
+  'getShowSearchShortcut', 'copyCurrentPageUrl', 'triggerShowSearchFromPageHotkey',
+  'notifyTabSwitcherShortcutModifierReleased', 'getShortcutRules',
+  'pipRequestOwnership', 'pipReleaseOwnership', 'openDocumentPipPicker', 'siteTryEnterPiPInMainWorld',
+  'iqiyiTryEnterPiPInMainWorld', 'iqiyiSetupAutoPiPInMainWorld', 'forceExitPiPInMainWorld',
+  'ytForceExitPiPInMainWorld',
+  'searchOrNavigate', 'getSearchSuggestions', 'getSearchEngineSuggestions',
+  'recordSearchSuggestionSelection', 'deleteHistoryUrl',
+  'getSiteSearchProviders', 'getHelpCenterSearchResults', 'runSiteSearchProviderQuery',
+  'runAggregateSearchQuery', 'runSelectionQuickAction',
+  'getLocaleMessages', 'openOptionsPage', 'openReleasePage', 'createTab', 'openNewTab',
+  'getFaviconData'
+]);
+
+const backgroundMessageSenderPolicy = BACKGROUND_MESSAGE_ROUTER.createSenderPolicy({
+  extensionBaseUrl: chrome.runtime.getURL(''),
+  pageActions: WEB_PAGE_MESSAGE_ACTIONS,
+  pageArgumentGuards: {
+    // Typed, bookmarked and history targets stay openable; script, inline data
+    // documents and other extensions' pages do not.
+    createTab: (request) => globalThis.LumnoUrlGuards.canOpenUrlFromWebPageContext(
+      request.url,
+      chrome.runtime.getURL('')
+    ),
+    runSiteSearchProviderQuery: (request) => {
+      const entryUrl = getSiteSearchProviderEntryUrl(request.provider, request.query);
+      return /^https?:\/\//i.test(entryUrl);
+    }
+  }
+});
+
+function dispatchBackgroundMessage(request, sender, sendResponse) {
+  return BACKGROUND_MESSAGE_ROUTER.dispatch(
+    backgroundMessageRouter,
+    request,
+    sender,
+    sendResponse,
+    backgroundMessageSenderPolicy
+  );
 }
 
-let siteSearchCache = null;
-let siteSearchPromise = null;
-let siteSearchLoadGeneration = 0;
-let searchBlacklistCache = null;
-let searchBlacklistPromise = null;
-let faviconRequestBlacklistCache = null;
-let faviconRequestBlacklistPromise = null;
-let faviconEnhancedFetchEnabledCache = null;
-let faviconEnhancedFetchEnabledPromise = null;
-let searchResultSourceTypesCache = null;
-let searchResultSourceTypesPromise = null;
-let searchSelectionStatsCache = null;
-let searchSelectionStatsPromise = null;
-const SEARCH_ENGINE_SUGGEST_TIMEOUT_MS = 900;
-const SEARCH_ENGINE_SUGGEST_PREFETCH_DELAY_MS = 120;
-const SEARCH_ENGINE_SUGGEST_PREFETCH_RETENTION_MS = 1500;
-const LOCAL_SUGGEST_SOURCE_TIMEOUT_MS = 800;
-const LOCAL_SEARCH_INDEX_WARMUP_TIMEOUT_MS = 80;
-const HISTORY_FALLBACK_CACHE_TTL_MS = 45 * 1000;
-const TOP_SITES_CACHE_TTL_MS = 30 * 1000;
-const BOOKMARK_TREE_CACHE_TTL_MS = 2 * 60 * 1000;
-let historyFallbackCache = {
-  expiresAt: 0,
-  items: []
-};
-let topSitesCache = {
-  expiresAt: 0,
-  items: []
-};
-let localSearchSourceCacheListenersBound = false;
-let bookmarkTreeIndexCache = {
-  expiresAt: 0,
-  map: null
-};
-let bookmarkItemsCache = {
-  expiresAt: 0,
-  items: []
-};
-let bookmarkTreeIndexPromise = null;
-let bookmarkItemsPromise = null;
-let bookmarkTreeCacheListenersBound = false;
-const searchEngineSuggestionRequests = new Map();
+// Listen for extension runtime messages.
+chrome.runtime.onMessage.addListener(dispatchBackgroundMessage);
+
 const SITE_SEARCH_STORAGE_KEY = '_x_extension_site_search_custom_2024_unique_';
 const SITE_SEARCH_DISABLED_STORAGE_KEY = '_x_extension_site_search_disabled_2024_unique_';
 const AGGREGATE_SEARCH_STORE = globalThis.LumnoAggregateSearchStore;
@@ -7327,238 +4376,22 @@ if (providerStorageRuntime) {
 }
 if (chrome && chrome.storage && chrome.storage.sync &&
     typeof chrome.storage.sync.remove === 'function') {
-  chrome.storage.sync.remove(LANGUAGE_MESSAGES_STORAGE_KEY, () => {
-    void (chrome.runtime && chrome.runtime.lastError);
-  });
+  chrome.storage.sync.remove(LANGUAGE_MESSAGES_STORAGE_KEY, ignoreExpectedChromeError);
 }
-const FAVICON_PROXY_SIZE = 128;
-let backgroundFaviconUrlResolver = null;
-const faviconDataCache = new Map();
-const faviconPending = new Map();
-const shortcutFaviconDataCache = new Map();
-const shortcutFaviconPending = new Map();
-let shortcutFaviconPolicyRevision = 0;
-const titlePinyinCache = new Map();
-const siteThemeColorCache = new Map();
-const siteThemeColorPending = new Map();
-const switcherThemeColorWarmups = new Set();
-const BACKGROUND_FAVICON_DATA_CACHE_MAX_ENTRIES = 256;
-const BACKGROUND_SHORTCUT_FAVICON_CACHE_MAX_ENTRIES = 64;
-const SHORTCUT_FAVICON_FETCH_TIMEOUT_MS = 6500;
-const SHORTCUT_FAVICON_PAGE_MAX_LENGTH = 768 * 1024;
-const SHORTCUT_FAVICON_MANIFEST_MAX_BYTES = 512 * 1024;
-const SHORTCUT_FAVICON_RESOURCE_MAX_BYTES = 256 * 1024;
 const SITE_SEARCH_ICON_STORAGE_KEY = SHORTCUT_FAVICON.SITE_SEARCH_STORAGE_KEY ||
   '_x_extension_site_search_icon_cache_canonical_2026_unique_';
 
-function invalidateShortcutFaviconPolicyCache() {
-  shortcutFaviconPolicyRevision += 1;
-  shortcutFaviconDataCache.clear();
-  shortcutFaviconPending.clear();
-}
 const SITE_SEARCH_ICON_CACHE_OPTIONS = SHORTCUT_FAVICON.SITE_SEARCH_CACHE_OPTIONS || Object.freeze({
   cacheTtlMs: 1000 * 60 * 60 * 24 * 180,
   cacheMaxEntries: 40,
   maxDataUrlLength: 192 * 1024
 });
-const SITE_SEARCH_ICON_WARM_CONCURRENCY = 2;
 const SITE_SEARCH_PINNED_ICON_KEYS = new Set(Object.keys(
   SHORTCUT_FAVICON.SITE_SEARCH_PINNED_ICON_ASSETS || {}
 ));
-const BACKGROUND_SITE_THEME_CACHE_MAX_ENTRIES = 512;
-const BACKGROUND_TITLE_PINYIN_CACHE_MAX_ENTRIES = 2048;
-let backgroundFaviconCacheRuntime = null;
-let siteSearchIconStore = null;
-let siteSearchIconCache = null;
-let siteSearchIconCacheLoadPromise = null;
-let siteSearchIconCacheWriteTimer = null;
-let siteSearchIconCacheRevision = 0;
-let siteSearchIconWarmActiveCount = 0;
-const siteSearchIconWarmQueue = [];
-const siteSearchIconWarmPending = new Set();
 const logBackgroundFaviconDecision = FAVICON_UTILS.createFaviconDecisionLogger({ surface: 'background' });
 
-function logBlockedLocalFavicon(url, candidateKind, reason, pageUrl) {
-  return logBackgroundFaviconDecision(url, reason || 'local-rule', {
-    pageUrl: pageUrl || url,
-    candidateKind: candidateKind || 'unknown'
-  });
-}
-
-function getBackgroundFaviconCacheRuntime() {
-  if (!backgroundFaviconCacheRuntime) {
-    backgroundFaviconCacheRuntime = FAVICON_CACHE.createFaviconCache({
-      storageArea: (chrome && chrome.storage && chrome.storage.local) ? chrome.storage.local : null,
-      windowObj: globalThis,
-      normalizeFaviconHost,
-      isBlockedLocalFaviconUrl,
-      isChromeMonogramFaviconUrl
-    });
-    if (backgroundFaviconCacheRuntime &&
-        typeof backgroundFaviconCacheRuntime.ensureCachesReady === 'function') {
-      backgroundFaviconCacheRuntime.ensureCachesReady().catch(() => {});
-    }
-  }
-  return backgroundFaviconCacheRuntime;
-}
-
 getBackgroundFaviconCacheRuntime();
-
-function getBackgroundFaviconUrlResolver() {
-  if (!backgroundFaviconUrlResolver) {
-    backgroundFaviconUrlResolver = FAVICON_UTILS.createFaviconUrlResolver({
-      chromeApi: chrome,
-      size: FAVICON_PROXY_SIZE,
-      shouldBlockFaviconForHost,
-      shouldAvoidDirectFaviconForHost,
-      isEnhancedFaviconFetchEnabled: (pageUrl) => (
-        faviconEnhancedFetchEnabledCache === true &&
-        !isUrlBlockedByFaviconRequestBlacklist(pageUrl)
-      ),
-      getStrictFaviconReason: (pageUrl) => {
-        if (isUrlBlockedByFaviconRequestBlacklist(pageUrl)) {
-          return 'exclusion';
-        }
-        if (faviconEnhancedFetchEnabledCache !== true) {
-          return 'global-off';
-        }
-        return '';
-      },
-      logFaviconDecision: logBackgroundFaviconDecision
-    });
-  }
-  return backgroundFaviconUrlResolver;
-}
-
-const SEARCH_ENGINE_DEFS = [
-  {
-    id: 'google',
-    name: 'Google',
-    hostMatches: ['google.'],
-    searchTemplate: 'https://www.google.com/search?q={query}',
-    searchUrl: (query) => `https://www.google.com/search?q=${encodeURIComponent(query)}`
-  },
-  {
-    id: 'kagi',
-    name: 'Kagi',
-    hostMatches: ['kagi.com'],
-    searchTemplate: 'https://kagi.com/search?q={query}',
-    searchUrl: (query) => `https://kagi.com/search?q=${encodeURIComponent(query)}`
-  },
-  {
-    id: 'bing',
-    name: 'Bing',
-    hostMatches: ['bing.com'],
-    searchTemplate: 'https://www.bing.com/search?q={query}',
-    searchUrl: (query) => `https://www.bing.com/search?q=${encodeURIComponent(query)}`
-  },
-  {
-    id: 'baidu',
-    name: 'Baidu',
-    hostMatches: ['baidu.com'],
-    searchTemplate: 'https://www.baidu.com/s?wd={query}',
-    searchUrl: (query) => `https://www.baidu.com/s?wd=${encodeURIComponent(query)}`
-  },
-  {
-    id: 'duckduckgo',
-    name: 'DuckDuckGo',
-    hostMatches: ['duckduckgo.com'],
-    searchTemplate: 'https://duckduckgo.com/?q={query}',
-    searchUrl: (query) => `https://duckduckgo.com/?q=${encodeURIComponent(query)}`
-  },
-  {
-    id: 'yahoo',
-    name: 'Yahoo',
-    hostMatches: ['search.yahoo.com'],
-    searchTemplate: 'https://search.yahoo.com/search?p={query}',
-    searchUrl: (query) => `https://search.yahoo.com/search?p=${encodeURIComponent(query)}`
-  },
-  {
-    id: 'yandex',
-    name: 'Yandex',
-    hostMatches: ['yandex.com'],
-    searchTemplate: 'https://yandex.com/search/?text={query}',
-    searchUrl: (query) => `https://yandex.com/search/?text=${encodeURIComponent(query)}`
-  },
-  {
-    id: 'sogou',
-    name: '搜狗',
-    hostMatches: ['sogou.com'],
-    searchTemplate: 'https://www.sogou.com/web?query={query}',
-    searchUrl: (query) => `https://www.sogou.com/web?query=${encodeURIComponent(query)}`
-  },
-  {
-    id: 'shenma',
-    name: '神马',
-    hostMatches: ['sm.cn'],
-    searchTemplate: 'https://m.sm.cn/s?q={query}',
-    searchUrl: (query) => `https://m.sm.cn/s?q=${encodeURIComponent(query)}`
-  }
-];
-
-let defaultSearchEngineState = {
-  id: 'google',
-  name: 'Google',
-  host: 'www.google.com',
-  searchTemplate: 'https://www.google.com/search?q={query}',
-  updatedAt: 0
-};
-let defaultSearchEngineStateReady = Promise.resolve(defaultSearchEngineState);
-
-let pendingSearchAt = 0;
-let pendingSearchTabId = null;
-let pendingSearchGroupContext = null;
-
-function arrayBufferToBase64(buffer) {
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
-}
-
-function getExtensionFaviconUrl(pageUrl) {
-  const resolver = getBackgroundFaviconUrlResolver();
-  return resolver ? resolver.getExtensionFaviconUrl(pageUrl) : '';
-}
-
-function isBrowserInternalPageUrl(url) {
-  const resolver = getBackgroundFaviconUrlResolver();
-  return resolver ? resolver.isBrowserInternalPageUrl(url) : false;
-}
-
-function getGstaticFaviconUrl(pageUrl) {
-  const resolver = getBackgroundFaviconUrlResolver();
-  return resolver ? resolver.getGstaticFaviconUrl(pageUrl) : '';
-}
-
-function getPageFaviconCandidateUrl(pageUrl) {
-  const resolver = getBackgroundFaviconUrlResolver();
-  return resolver ? resolver.getPageFaviconCandidateUrl(pageUrl) : '';
-}
-
-function getHostFaviconUrl(hostname) {
-  const normalized = normalizeFaviconHost(hostname);
-  if (!normalized) {
-    return '';
-  }
-  if (normalized === 'lumno.kubai.design') {
-    return (chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function')
-      ? chrome.runtime.getURL('assets/images/lumno.png')
-      : 'https://lumno.kubai.design/favicon.png';
-  }
-  return getGstaticFaviconUrl(`https://${normalized}/`);
-}
-
-function isFaviconProxyUrl(url) {
-  return FAVICON_UTILS.isFaviconProxyUrl(url);
-}
-
-function isChromeMonogramFaviconUrl(url) {
-  return FAVICON_UTILS.isChromeMonogramFaviconUrl(url);
-}
 
 function normalizeHost(hostname) {
   if (!hostname) {
@@ -7570,346 +4403,6 @@ function normalizeHost(hostname) {
     return 'feishu.cn';
   }
   return stripped;
-}
-
-function isLocalNetworkHost(hostname) {
-  return FAVICON_UTILS.isLocalNetworkHost(hostname);
-}
-
-function getSearchEngineByHostname(hostname) {
-  const normalized = normalizeHost(hostname);
-  if (!normalized) {
-    return null;
-  }
-  return SEARCH_ENGINE_DEFS.find((engine) =>
-    engine.hostMatches.some((match) => normalized.includes(match))
-  ) || null;
-}
-
-function getSearchEngineById(id) {
-  if (!id) {
-    return null;
-  }
-  return SEARCH_ENGINE_DEFS.find((engine) => engine.id === id) || null;
-}
-
-function setDefaultSearchEngineState(nextState, shouldPersist) {
-  if (!nextState || !nextState.id) {
-    return;
-  }
-  const engine = getSearchEngineById(nextState.id);
-  const updated = {
-    id: nextState.id,
-    name: nextState.name || '',
-    host: nextState.host || '',
-    searchTemplate: nextState.searchTemplate || (engine ? engine.searchTemplate : ''),
-    updatedAt: nextState.updatedAt || Date.now()
-  };
-  defaultSearchEngineState = updated;
-  if (shouldPersist && storageArea) {
-    storageArea.set({ [DEFAULT_SEARCH_ENGINE_STORAGE_KEY]: updated });
-  }
-}
-
-function loadDefaultSearchEngineState() {
-  if (!storageArea) {
-    return Promise.resolve(defaultSearchEngineState);
-  }
-  return new Promise((resolve) => {
-    storageArea.get([DEFAULT_SEARCH_ENGINE_STORAGE_KEY], (result) => {
-      const stored = result ? result[DEFAULT_SEARCH_ENGINE_STORAGE_KEY] : null;
-      if (stored && stored.id) {
-        if (SEARCH_UTILS.isRetiredSearchEngineState(stored)) {
-          setDefaultSearchEngineState({
-            id: 'google',
-            name: 'Google',
-            host: 'www.google.com',
-            searchTemplate: 'https://www.google.com/search?q={query}',
-            updatedAt: Date.now()
-          }, true);
-        } else {
-          setDefaultSearchEngineState(stored, false);
-        }
-      }
-      resolve(defaultSearchEngineState);
-    });
-  });
-}
-
-function isSearchEngineResultUrl(url) {
-  try {
-    const parsedUrl = new URL(url);
-    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-      return false;
-    }
-    const hostname = parsedUrl.hostname.toLowerCase();
-    const engine = SEARCH_ENGINE_DEFS.find((candidate) =>
-      candidate.hostMatches.some((match) => {
-        if (match === 'google.') {
-          return /(^|\.)google\.(?:com|[a-z]{2}|(?:co|com)\.[a-z]{2})$/.test(hostname);
-        }
-        return hostname === match || hostname.endsWith(`.${match}`);
-      })
-    );
-    if (!engine) {
-      return false;
-    }
-    const queryMarker = '__lumno_search_query__';
-    const searchUrl = new URL(engine.searchTemplate.replace('{query}', queryMarker));
-    const normalizePath = (value) => value.toLowerCase().replace(/\/+$/, '') || '/';
-    // A prefix such as /web also matches ordinary pages like /webstore.
-    if (normalizePath(parsedUrl.pathname) !== normalizePath(searchUrl.pathname)) {
-      return false;
-    }
-    const queryParam = Array.from(searchUrl.searchParams.entries())
-      .find(([, value]) => value === queryMarker);
-    return Boolean(queryParam && String(parsedUrl.searchParams.get(queryParam[0]) || '').trim());
-  } catch (e) {
-    return false;
-  }
-}
-
-function updateDefaultSearchEngineFromUrl(url) {
-  if (!url || !isSearchEngineResultUrl(url)) {
-    return false;
-  }
-  try {
-    const parsedUrl = new URL(url);
-    const engine = getSearchEngineByHostname(parsedUrl.hostname);
-    if (!engine) {
-      return false;
-    }
-    setDefaultSearchEngineState({
-      id: engine.id,
-      name: engine.name,
-      host: normalizeHost(parsedUrl.hostname),
-      searchTemplate: engine.searchTemplate,
-      updatedAt: Date.now()
-    }, true);
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
-function buildDefaultSearchUrl(query) {
-  const engine = getSearchEngineById(defaultSearchEngineState.id);
-  if (engine && typeof engine.searchUrl === 'function') {
-    return engine.searchUrl(query);
-  }
-  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-}
-
-function getFaviconFallbackHost(rawInput) {
-  const withoutScheme = String(rawInput || '').replace(/^https?:\/\//i, '');
-  const authority = withoutScheme.split(/[/?#]/)[0] || '';
-  if (!authority) {
-    return '';
-  }
-  if (authority.startsWith('[')) {
-    const endBracket = authority.indexOf(']');
-    if (endBracket > 1) {
-      return authority.slice(1, endBracket).toLowerCase();
-    }
-    return '';
-  }
-  if (authority.includes('::') && !authority.includes('.')) {
-    return authority.toLowerCase();
-  }
-  return (authority.split(':')[0] || '').toLowerCase();
-}
-
-function getDirectNavigationUrl(input) {
-  return SEARCH_UTILS.getDirectNavigationUrl(input);
-}
-
-function getDefaultSearchEngineThemeUrl() {
-  const engine = getSearchEngineById(defaultSearchEngineState.id);
-  if (engine && typeof engine.searchUrl === 'function') {
-    return engine.searchUrl('test');
-  }
-  return 'https://www.google.com';
-}
-
-function getDefaultSearchEngineFaviconUrl() {
-  if (defaultSearchEngineState.id === 'google') {
-    return 'https://www.gstatic.com/images/branding/googleg/1x/googleg_standard_color_128dp.png';
-  }
-  if (defaultSearchEngineState.host) {
-    return `https://${defaultSearchEngineState.host}/favicon.ico`;
-  }
-  const engine = getSearchEngineById(defaultSearchEngineState.id);
-  if (engine) {
-    try {
-      const host = new URL(engine.searchUrl('test')).hostname;
-      return `https://${host}/favicon.ico`;
-    } catch (e) {
-      return '';
-    }
-  }
-  return 'https://www.gstatic.com/images/branding/googleg/1x/googleg_standard_color_128dp.png';
-}
-
-function parseJsonpPayload(text) {
-  if (!text) {
-    return null;
-  }
-  const start = text.indexOf('(');
-  const end = text.lastIndexOf(')');
-  if (start < 0 || end <= start) {
-    return null;
-  }
-  const payload = text.slice(start + 1, end);
-  try {
-    return JSON.parse(payload);
-  } catch (e) {
-    return null;
-  }
-}
-
-function extractJsonArray(text) {
-  if (!text) {
-    return null;
-  }
-  const start = text.indexOf('[');
-  const end = text.lastIndexOf(']');
-  if (start < 0 || end <= start) {
-    return null;
-  }
-  const payload = text.slice(start, end + 1);
-  try {
-    return JSON.parse(payload);
-  } catch (e) {
-    return null;
-  }
-}
-
-async function fetchJson(url, options) {
-  if (!url) {
-    return null;
-  }
-  const settings = options && typeof options === 'object' ? options : {};
-  const response = await fetch(url, settings.signal ? { signal: settings.signal } : undefined);
-  if (!response || !response.ok) {
-    return null;
-  }
-  return response.json();
-}
-
-async function fetchText(url, options) {
-  if (!url) {
-    return '';
-  }
-  const settings = options && typeof options === 'object' ? options : {};
-  const response = await fetch(url, settings.signal ? { signal: settings.signal } : undefined);
-  if (!response || !response.ok) {
-    return '';
-  }
-  return response.text();
-}
-
-async function fetchSearchSuggestionsForEngine(query, options) {
-  const engineId = defaultSearchEngineState.id;
-  const settings = options && typeof options === 'object' ? options : {};
-  if (!query || !engineId) {
-    return [];
-  }
-  try {
-    if (engineId === 'google') {
-      const url = `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(query)}`;
-      const data = await fetchJson(url, settings);
-      if (Array.isArray(data) && Array.isArray(data[1])) {
-        return data[1];
-      }
-      return [];
-    }
-    if (engineId === 'bing') {
-      const url = `https://api.bing.com/osjson.aspx?query=${encodeURIComponent(query)}`;
-      const data = await fetchJson(url, settings);
-      if (Array.isArray(data) && Array.isArray(data[1])) {
-        return data[1];
-      }
-      return [];
-    }
-    if (engineId === 'baidu') {
-      const url = `https://www.baidu.com/sugrec?ie=utf-8&json=1&prod=pc&wd=${encodeURIComponent(query)}`;
-      const data = await fetchJson(url, settings);
-      if (data && Array.isArray(data.g)) {
-        return data.g.map((item) => item && item.q).filter(Boolean);
-      }
-      return [];
-    }
-    if (engineId === 'sogou') {
-      const url = `https://sor.html5.qq.com/api/getsug?m=searxng&key=${encodeURIComponent(query)}`;
-      const text = await fetchText(url, settings);
-      const data = extractJsonArray(text);
-      if (Array.isArray(data) && Array.isArray(data[1])) {
-        return data[1];
-      }
-      return [];
-    }
-    if (engineId === 'duckduckgo') {
-      const url = `https://duckduckgo.com/ac/?type=list&q=${encodeURIComponent(query)}`;
-      const data = await fetchJson(url, settings);
-      if (Array.isArray(data)) {
-        if (Array.isArray(data[1])) {
-          return data[1];
-        }
-        return data.map((item) => item && item.phrase).filter(Boolean);
-      }
-      return [];
-    }
-    if (engineId === 'yandex') {
-      const url = `https://suggest.yandex.com/suggest-ff.cgi?part=${encodeURIComponent(query)}`;
-      const data = await fetchJson(url, settings);
-      if (Array.isArray(data) && Array.isArray(data[1])) {
-        return data[1];
-      }
-      return [];
-    }
-    if (engineId === 'quark') {
-      const url = `https://sugs.m.sm.cn/web?q=${encodeURIComponent(query)}`;
-      const data = await fetchJson(url, settings);
-      if (data && Array.isArray(data.r)) {
-        return data.r.map((item) => item && item.w).filter(Boolean);
-      }
-      return [];
-    }
-    if (engineId === 'shenma') {
-      const url = `https://sugs.m.sm.cn/web?q=${encodeURIComponent(query)}`;
-      const data = await fetchJson(url, settings);
-      if (data && Array.isArray(data.r)) {
-        return data.r.map((item) => item && item.w).filter(Boolean);
-      }
-      return [];
-    }
-    if (engineId === 'yahoo') {
-      const url = `https://search.yahoo.com/sugg/gossip/gossip-us-ura/?output=sd1&command=${encodeURIComponent(query)}`;
-      const text = await fetchText(url, settings);
-      const data = parseJsonpPayload(text) || extractJsonArray(text);
-      if (Array.isArray(data)) {
-        if (Array.isArray(data[1])) {
-          return data[1];
-        }
-        if (data[0] && Array.isArray(data[0])) {
-          return data[0];
-        }
-      }
-      if (data && Array.isArray(data.gossip && data.gossip.results)) {
-        return data.gossip.results.map((item) => item && item.key).filter(Boolean);
-      }
-      return [];
-    }
-    return [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function markPendingSearchTab(tabId, sourceTab) {
-  pendingSearchAt = Date.now();
-  pendingSearchTabId = typeof tabId === 'number' ? tabId : null;
-  pendingSearchGroupContext = getSourceTabGroupContext(sourceTab);
 }
 
 defaultSearchEngineStateReady = loadDefaultSearchEngineState();
@@ -7954,1326 +4447,6 @@ if (chrome && chrome.tabs) {
   });
 }
 
-function normalizeLocaleForMessages(locale) {
-  return SETTINGS.normalizeLocale(locale);
-}
-
-function shouldBlockFaviconForHost(hostname) {
-  return FAVICON_UTILS.shouldBlockFaviconForHost(hostname);
-}
-
-function shouldAvoidDirectFaviconForHost(hostname) {
-  return FAVICON_UTILS.shouldAvoidDirectFaviconForHost(hostname);
-}
-
-function isAllowedFaviconProxyRequestUrl(url) {
-  return FAVICON_UTILS.isAllowedFaviconProxyRequestUrl(url);
-}
-
-function isFaviconRequestBlockedByBlacklist(url) {
-  return !isAllowedFaviconProxyRequestUrl(url) && isUrlBlockedByFaviconRequestBlacklist(url);
-}
-
-function isBlockedLocalFaviconUrl(url) {
-  const blockedByLocalRules = FAVICON_UTILS.isBlockedLocalFaviconUrl(url);
-  return blockedByLocalRules || isFaviconRequestBlockedByBlacklist(url);
-}
-
-function getFaviconHostPolicy(hostname) {
-  return FAVICON_UTILS.getFaviconHostPolicy(hostname, {
-    shouldBlockFaviconForHost,
-    shouldAvoidDirectFaviconForHost
-  });
-}
-
-function getFaviconTargetPolicy(targetUrl, hostOverride) {
-  const inputUrl = String(targetUrl || '').trim();
-  if (!inputUrl) {
-    return { ok: false, inputUrl: '', parsed: null };
-  }
-  let parsed = null;
-  try {
-    parsed = new URL(inputUrl);
-  } catch (e) {
-    return { ok: false, inputUrl, parsed: null };
-  }
-  if (!/^https?:$/i.test(parsed.protocol)) {
-    return { ok: false, inputUrl, parsed };
-  }
-  const hosts = [parsed.hostname, hostOverride].filter(Boolean);
-  const policies = hosts.map((host) => getFaviconHostPolicy(host));
-  const hardBlocked = policies.some((policy) => policy.hardBlocked);
-  const avoidDirect = policies.some((policy) => policy.avoidDirect);
-  const requestBlacklisted = isUrlBlockedByFaviconRequestBlacklist(inputUrl);
-  return {
-    ok: true,
-    inputUrl,
-    parsed,
-    normalizedHost: normalizeFaviconHost(hostOverride || parsed.hostname),
-    hardBlocked,
-    avoidDirect,
-    requestBlacklisted,
-    directFetchBlocked: requestBlacklisted || hardBlocked || avoidDirect
-  };
-}
-
-function normalizeFaviconHost(hostname) {
-  return FAVICON_UTILS.normalizeFaviconHost(hostname);
-}
-
-function normalizeThemePreference(theme) {
-  return SETTINGS.normalizeThemePreference(theme);
-}
-
-function parseCssThemeColor(color) {
-  return FAVICON_UTILS.parseCssThemeColor(color);
-}
-
-function parseHtmlThemeColorCandidates(html, pageUrl, preferredTheme) {
-  return FAVICON_UTILS.parseHtmlThemeColorCandidates(html, pageUrl, normalizeThemePreference(preferredTheme));
-}
-
-function pickBestThemeColorCandidate(candidates) {
-  return FAVICON_UTILS.pickBestThemeColorCandidate(candidates);
-}
-
-function normalizeThemeAccentRgb(value) {
-  if (!Array.isArray(value) || value.length !== 3) {
-    return null;
-  }
-  const rgb = value.map((channel) => Math.round(Number(channel)));
-  return rgb.every((channel) => Number.isFinite(channel) && channel >= 0 && channel <= 255)
-    ? rgb
-    : null;
-}
-
-function getThemeColorConfidence(accentRgb) {
-  return FAVICON_UTILS.getThemeColorConfidence(accentRgb);
-}
-
-function buildSiteThemeColorResult(accentRgb, source, options) {
-  const rgb = normalizeThemeAccentRgb(accentRgb);
-  if (!rgb) {
-    return null;
-  }
-  const confidence = options && options.confidence
-    ? String(options.confidence)
-    : getThemeColorConfidence(rgb);
-  const neutral = options && typeof options.neutral === 'boolean'
-    ? options.neutral
-    : confidence === 'neutral';
-  return {
-    accentRgb: rgb,
-    source: source || 'meta',
-    neutral,
-    confidence
-  };
-}
-
-function fetchManifestThemeColor(manifestUrl) {
-  // Arbitrary manifest URLs are untrusted network targets. Theme extraction
-  // intentionally stays browser-cache-only instead of making a privileged GET.
-  return Promise.resolve(null);
-}
-
-function resolveThemeColorCandidates(candidates) {
-  const sorted = (Array.isArray(candidates) ? candidates : [])
-    .filter((item) => item && (item.accentRgb || item.manifestUrl))
-    .sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
-  let index = 0;
-  const next = () => {
-    const candidate = sorted[index];
-    index += 1;
-    if (!candidate) {
-      return Promise.resolve(null);
-    }
-    if (candidate.accentRgb) {
-      return Promise.resolve(buildSiteThemeColorResult(candidate.accentRgb, candidate.source || 'meta', {
-        neutral: candidate.neutral,
-        confidence: candidate.confidence
-      }));
-    }
-    if (candidate.manifestUrl) {
-      return fetchManifestThemeColor(candidate.manifestUrl).then((result) => result || next());
-    }
-    return next();
-  };
-  return next();
-}
-
-function resolveSiteThemeColor(targetUrl, hostOverride, preferredTheme) {
-  const inputUrl = String(targetUrl || '').trim();
-  if (!inputUrl) {
-    return Promise.resolve(null);
-  }
-  return Promise.all([
-    loadFaviconRequestBlacklistItems(),
-    loadFaviconEnhancedFetchEnabled()
-  ]).then(([, enhancedFetchEnabled]) => {
-    const targetPolicy = getFaviconTargetPolicy(inputUrl, hostOverride);
-    if (!targetPolicy.ok) {
-      return null;
-    }
-    logBlockedLocalFavicon(
-      inputUrl,
-      'theme-page',
-      !enhancedFetchEnabled
-        ? 'global-off'
-        : (targetPolicy.requestBlacklisted ? 'exclusion' : 'direct-network-disabled'),
-      inputUrl
-    );
-    return null;
-  });
-}
-
-function buildFaviconFallbackCandidates(pageUrl, hostOverride, fallbackUrl, options) {
-  const candidates = [];
-  const inputUrl = String(pageUrl || '').trim();
-  const fallback = String(fallbackUrl || '').trim();
-  const settings = options && typeof options === 'object' ? options : {};
-  const targetPolicy = settings.targetPolicy || getFaviconTargetPolicy(inputUrl, hostOverride);
-  if (targetPolicy.hardBlocked) {
-    return [];
-  }
-  if (inputUrl) {
-    candidates.push({ url: getExtensionFaviconUrl(inputUrl), score: 30 });
-    if (settings.allowThirdPartyFetch === true) {
-      candidates.push({ url: getGstaticFaviconUrl(inputUrl), score: 20 });
-    }
-  }
-  return candidates.filter((item) => item && item.url);
-}
-
-function dedupeAndSortFaviconCandidates(candidates) {
-  const byUrl = new Map();
-  (candidates || []).forEach((item) => {
-    if (!item || !item.url) {
-      return;
-    }
-    const key = String(item.url);
-    const current = byUrl.get(key);
-    if (!current || Number(item.score || 0) > Number(current.score || 0)) {
-      byUrl.set(key, { url: key, score: Number(item.score || 0) });
-    }
-  });
-  return Array.from(byUrl.values())
-    .sort((a, b) => b.score - a.score)
-    .map((item) => item.url);
-}
-
-function resolveFaviconCandidates(targetUrl, hostOverride, fallbackUrl) {
-  const inputUrl = String(targetUrl || '').trim();
-  if (!inputUrl) {
-    return Promise.resolve([]);
-  }
-  return Promise.all([
-    loadFaviconRequestBlacklistItems(),
-    loadFaviconEnhancedFetchEnabled()
-  ]).then(([, enhancedFetchEnabled]) => {
-    const targetPolicy = getFaviconTargetPolicy(inputUrl, hostOverride);
-    if (!targetPolicy.ok) {
-      return [];
-    }
-    if (targetPolicy.hardBlocked) {
-      logBlockedLocalFavicon(targetUrl || hostOverride || '', 'resolveFaviconCandidates');
-      return [];
-    }
-    const strictReason = targetPolicy.requestBlacklisted
-      ? 'exclusion'
-      : (!enhancedFetchEnabled ? 'global-off' : '');
-    if (strictReason) {
-      if (fallbackUrl) {
-        logBlockedLocalFavicon(fallbackUrl, 'direct', strictReason, inputUrl);
-      }
-      if (targetPolicy.requestBlacklisted) {
-        logBlockedLocalFavicon(getGstaticFaviconUrl(inputUrl), 'third-party-proxy', strictReason, inputUrl);
-      }
-    }
-    return dedupeAndSortFaviconCandidates(buildFaviconFallbackCandidates(inputUrl, hostOverride, fallbackUrl, {
-      allowThirdPartyFetch: !targetPolicy.requestBlacklisted,
-      skipDirectFallback: !enhancedFetchEnabled || targetPolicy.requestBlacklisted || targetPolicy.avoidDirect,
-      targetPolicy
-    }));
-  });
-}
-
-function getShortcutFaviconPreferredTheme(value) {
-  const theme = String(value || '').trim().toLowerCase();
-  return theme === 'dark' || theme === 'light' ? theme : '';
-}
-
-function readShortcutFaviconResponsePrefix(response, maxLength) {
-  const limit = Math.max(1, Number(maxLength) || SHORTCUT_FAVICON_PAGE_MAX_LENGTH);
-  if (!response || !response.body || typeof response.body.getReader !== 'function' ||
-      typeof TextDecoder !== 'function') {
-    return response.text().then((text) => String(text || '').slice(0, limit));
-  }
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let text = '';
-  const readNext = () => reader.read().then((result) => {
-    if (!result || result.done) {
-      text += decoder.decode();
-      return text.slice(0, limit);
-    }
-    text += decoder.decode(result.value, { stream: true });
-    if (text.length >= limit) {
-      return Promise.resolve(reader.cancel()).catch(() => {}).then(() => text.slice(0, limit));
-    }
-    return readNext();
-  });
-  return readNext().catch(() => text.slice(0, limit));
-}
-
-function canFetchShortcutFaviconUrl(url) {
-  const policy = getFaviconTargetPolicy(url, '');
-  return Boolean(
-    policy.ok &&
-    !policy.directFetchBlocked &&
-    canFetchPageForFavicon(url)
-  );
-}
-
-function fetchShortcutFaviconDocument(pageUrl, signal) {
-  return Promise.resolve(null);
-}
-
-function fetchShortcutFaviconManifest(manifestUrl, signal) {
-  return Promise.resolve([]);
-}
-
-function fetchShortcutFaviconResource(candidate, pageUrl, signal) {
-  const sourceUrl = candidate && candidate.url ? String(candidate.url) : '';
-  const resolver = getBackgroundFaviconUrlResolver();
-  if (!sourceUrl || !isAllowedFaviconProxyRequestUrl(sourceUrl) || !resolver ||
-      !resolver.getSafeFaviconCandidateUrl(sourceUrl, pageUrl, 'shortcut-snapshot', {
-        allowDomainProxy: candidate.kind === 'favicon-is'
-      })) {
-    return Promise.resolve(null);
-  }
-  const controller = typeof AbortController === 'function' ? new AbortController() : null;
-  const abort = () => controller && controller.abort();
-  if (signal && signal.aborted) {
-    return Promise.resolve(null);
-  }
-  if (signal && controller) {
-    signal.addEventListener('abort', abort, { once: true });
-  }
-  // Leave time for the local Chrome snapshot if the proxy is unreachable.
-  const timeoutId = controller ? setTimeout(abort,
-    candidate.kind === 'favicon-is' ? 5000 : candidate.kind === 'proxy' ? 2500 : 1500) : null;
-  return fetch(sourceUrl, {
-    cache: candidate.refresh === true ? 'reload' : 'force-cache',
-    credentials: 'omit',
-    referrerPolicy: 'no-referrer',
-    redirect: 'error',
-    signal: controller ? controller.signal : signal
-  }).then((response) => {
-    if (!response || !response.ok) {
-      return null;
-    }
-    const resolvedSourceUrl = typeof response.url === 'string' && response.url
-      ? response.url
-      : sourceUrl;
-    if (!isAllowedFaviconProxyRequestUrl(resolvedSourceUrl) ||
-        !resolver.getSafeFaviconCandidateUrl(resolvedSourceUrl, pageUrl, 'shortcut-response', {
-          allowDomainProxy: candidate.kind === 'favicon-is'
-        })) {
-      return null;
-    }
-    const contentLength = Number(response.headers && response.headers.get
-      ? response.headers.get('content-length') || 0
-      : 0);
-    if (Number.isFinite(contentLength) && contentLength > SHORTCUT_FAVICON_RESOURCE_MAX_BYTES) {
-      return null;
-    }
-    return response.blob().then((blob) => ({
-      blob,
-      sourceUrl: resolvedSourceUrl
-    }));
-  }).then((result) => {
-    const blob = result && result.blob;
-    if (!blob || blob.size <= 0 || blob.size > SHORTCUT_FAVICON_RESOURCE_MAX_BYTES) {
-      return null;
-    }
-    return blob.arrayBuffer().then((buffer) => {
-      const inspection = SHORTCUT_FAVICON.inspectIconResource(buffer, blob.type, result.sourceUrl, candidate, { minDimension: 16 });
-      if (inspection.usable !== true) {
-        return null;
-      }
-      return {
-        data: `data:${inspection.mimeType || blob.type || 'image/png'};base64,${arrayBufferToBase64(buffer)}`,
-        sourceUrl: result.sourceUrl,
-        width: Number(inspection.width || 0),
-        height: Number(inspection.height || 0),
-        vector: inspection.vector === true,
-        pageUrl
-      };
-    });
-  }).catch(() => null).finally(() => {
-    if (timeoutId !== null) {
-      clearTimeout(timeoutId);
-    }
-    if (signal && controller) {
-      signal.removeEventListener('abort', abort);
-    }
-  });
-}
-
-// Firefox has no _favicon endpoint. Its own icon cache is reachable through
-// open tabs and top sites; like Chrome's cache it never contacts the site.
-async function getFirefoxBrowserFaviconUrl(pageUrl) {
-  const browserIcons = FAVICON_UTILS.createBrowserIconIndex();
-  await browserIcons.load(chrome);
-  return browserIcons.get(pageUrl);
-}
-
-async function fetchFirefoxBrowserCacheFavicon(candidate, pageUrl, signal) {
-  const iconUrl = await getFirefoxBrowserFaviconUrl(pageUrl);
-  if (!iconUrl || (signal && signal.aborted)) {
-    return null;
-  }
-  try {
-    // A data: URL from Firefox's icon cache; decoding it is local.
-    const response = await fetch(iconUrl, { signal });
-    if (!response || !response.ok) {
-      return null;
-    }
-    const blob = await response.blob();
-    if (!blob || blob.size <= 0 || blob.size > SHORTCUT_FAVICON_RESOURCE_MAX_BYTES) {
-      return null;
-    }
-    const buffer = await blob.arrayBuffer();
-    const inspection = SHORTCUT_FAVICON.inspectIconResource(buffer, blob.type, iconUrl, candidate, { minDimension: 16 });
-    if (inspection.usable !== true) {
-      return null;
-    }
-    // Keep the browser-cache request URL as the source so the snapshot reads
-    // as a cache icon for this page, exactly like a Chrome snapshot.
-    return {
-      data: `data:${inspection.mimeType || blob.type || 'image/png'};base64,${arrayBufferToBase64(buffer)}`,
-      sourceUrl: candidate.url,
-      width: Number(inspection.width || 0),
-      height: Number(inspection.height || 0),
-      vector: inspection.vector === true,
-      pageUrl
-    };
-  } catch (error) {
-    return null;
-  }
-}
-
-async function resolveShortcutFaviconData(pageUrl, preferredTheme, signal, explicitIconUrl, refresh, iconSource) {
-  const resolver = getBackgroundFaviconUrlResolver();
-  const candidates = resolver ? resolver.getShortcutFaviconFetchCandidates(pageUrl, iconSource) : [];
-  const firefoxRuntime = BROWSER_PROFILE.isFirefoxExtensionRuntime();
-  for (const candidate of candidates) {
-    if (signal && signal.aborted) {
-      break;
-    }
-    if (firefoxRuntime && candidate.kind === 'browser-cache') {
-      const firefoxResult = await fetchFirefoxBrowserCacheFavicon({
-        ...candidate,
-        refresh: refresh === true
-      }, pageUrl, signal);
-      if (firefoxResult) {
-        return firefoxResult;
-      }
-      continue;
-    }
-    const result = await fetchShortcutFaviconResource({
-      ...candidate,
-      refresh: refresh === true,
-      declaredSize: 128,
-      vector: false
-    }, pageUrl, signal);
-    if (!result) {
-      continue;
-    }
-    // Save Chrome's cached artwork once rather than keeping a live cache URL.
-    // Its generic globe must not become a permanent shortcut snapshot.
-    if (candidate.placeholderUrl && (candidate.kind === 'browser-cache' || candidate.kind === 'favicon-is' ||
-        (result.width <= 16 && result.height <= 16))) {
-      let placeholderData = faviconDataCache.get(candidate.placeholderUrl);
-      if (!placeholderData) {
-        const placeholder = await fetchShortcutFaviconResource({
-          url: candidate.placeholderUrl,
-          kind: candidate.kind,
-          declaredSize: 128
-        }, FAVICON_UTILS.getPageUrlFromFaviconProxyUrl(candidate.placeholderUrl), signal);
-        placeholderData = placeholder && placeholder.data;
-        if (placeholderData) {
-          FAVICON_UTILS.setBoundedCacheEntry(faviconDataCache, candidate.placeholderUrl,
-            placeholderData, BACKGROUND_FAVICON_DATA_CACHE_MAX_ENTRIES);
-        }
-      }
-      if (placeholderData && placeholderData === result.data) {
-        continue;
-      }
-    }
-    return result;
-  }
-  return null;
-}
-
-function fetchShortcutFaviconData(pageUrl, preferredTheme, explicitIconUrl, refresh, iconSource) {
-  const normalizedPageUrl = SHORTCUT_FAVICON.normalizePageUrl(pageUrl);
-  const theme = getShortcutFaviconPreferredTheme(preferredTheme);
-  if (!normalizedPageUrl) {
-    return Promise.resolve(null);
-  }
-  const explicitIcon = String(explicitIconUrl || '').trim();
-  const selectedSource = ['service', 'favicon-is', 'cache'].includes(iconSource) ? iconSource : '';
-  const cacheKey = `${normalizedPageUrl}::${theme || 'auto'}::${explicitIcon}${selectedSource ? `::${selectedSource}` : ''}`;
-  const pendingKey = refresh === true ? `${cacheKey}::refresh` : cacheKey;
-  if (refresh !== true && shortcutFaviconDataCache.has(cacheKey)) {
-    return Promise.resolve(shortcutFaviconDataCache.get(cacheKey));
-  }
-  if (shortcutFaviconPending.has(pendingKey)) {
-    return shortcutFaviconPending.get(pendingKey);
-  }
-  const cachedResultAtStart = shortcutFaviconDataCache.get(cacheKey);
-  const policyRevision = shortcutFaviconPolicyRevision;
-  let promise = null;
-  promise = Promise.all([
-    loadFaviconRequestBlacklistItems(),
-    loadFaviconEnhancedFetchEnabled()
-  ]).then(() => {
-    const targetPolicy = getFaviconTargetPolicy(normalizedPageUrl, '');
-    if (!targetPolicy.ok || targetPolicy.hardBlocked) {
-      return null;
-    }
-    const controller = typeof AbortController === 'function' ? new AbortController() : null;
-    const timeoutId = setTimeout(() => {
-      if (controller) {
-        controller.abort();
-      }
-    }, SHORTCUT_FAVICON_FETCH_TIMEOUT_MS);
-    return resolveShortcutFaviconData(
-      normalizedPageUrl,
-      theme,
-      controller ? controller.signal : undefined,
-      explicitIcon,
-      refresh === true,
-      selectedSource
-    ).finally(() => clearTimeout(timeoutId));
-  }).then((result) => {
-    if (result && policyRevision === shortcutFaviconPolicyRevision &&
-        (refresh === true || shortcutFaviconDataCache.get(cacheKey) === cachedResultAtStart)) {
-      FAVICON_UTILS.setBoundedCacheEntry(
-        shortcutFaviconDataCache,
-        cacheKey,
-        result,
-        BACKGROUND_SHORTCUT_FAVICON_CACHE_MAX_ENTRIES
-      );
-    }
-    if (shortcutFaviconPending.get(pendingKey) === promise) {
-      shortcutFaviconPending.delete(pendingKey);
-    }
-    return result || null;
-  }).catch(() => {
-    if (shortcutFaviconPending.get(pendingKey) === promise) {
-      shortcutFaviconPending.delete(pendingKey);
-    }
-    return null;
-  });
-  shortcutFaviconPending.set(pendingKey, promise);
-  return promise;
-}
-
-function getSiteSearchIconStore() {
-  if (siteSearchIconStore) {
-    return siteSearchIconStore;
-  }
-  siteSearchIconStore = SHORTCUT_FAVICON.createShortcutFaviconStore({
-    chromeApi: chrome,
-    storageArea: (chrome && chrome.storage && chrome.storage.local) ? chrome.storage.local : null,
-    storageKey: SITE_SEARCH_ICON_STORAGE_KEY,
-    ...SITE_SEARCH_ICON_CACHE_OPTIONS
-  });
-  return siteSearchIconStore;
-}
-
-function removeLegacySiteSearchIconCaches() {
-  const legacyKeys = Array.isArray(SHORTCUT_FAVICON.SITE_SEARCH_LEGACY_STORAGE_KEYS)
-    ? SHORTCUT_FAVICON.SITE_SEARCH_LEGACY_STORAGE_KEYS
-    : [];
-  const localArea = chrome && chrome.storage ? chrome.storage.local : null;
-  if (legacyKeys.length === 0 || !localArea || typeof localArea.remove !== 'function') {
-    return;
-  }
-  localArea.remove(legacyKeys, () => {
-    void (chrome.runtime && chrome.runtime.lastError);
-  });
-}
-
-function loadSiteSearchIconCache() {
-  if (siteSearchIconCache) {
-    return Promise.resolve(siteSearchIconCache);
-  }
-  if (siteSearchIconCacheLoadPromise) {
-    return siteSearchIconCacheLoadPromise;
-  }
-  const store = getSiteSearchIconStore();
-  if (!store || typeof store.readAll !== 'function') {
-    siteSearchIconCache = {};
-    return Promise.resolve(siteSearchIconCache);
-  }
-  siteSearchIconCacheLoadPromise = store.readAll()
-    .then((cache) => {
-      siteSearchIconCache = cache && typeof cache === 'object' ? cache : {};
-      return siteSearchIconCache;
-    })
-    .catch(() => {
-      siteSearchIconCache = {};
-      return siteSearchIconCache;
-    });
-  return siteSearchIconCacheLoadPromise;
-}
-
-function getSiteSearchProviderIconPageUrl(provider) {
-  return SHORTCUT_FAVICON.getSiteSearchProviderPageUrl(provider);
-}
-
-function hasUsableCachedSiteSearchProviderIcon(provider) {
-  const icon = SHORTCUT_FAVICON.getSiteSearchProviderIcon(
-    siteSearchIconCache || {},
-    provider,
-    Date.now(),
-    SITE_SEARCH_ICON_CACHE_OPTIONS
-  );
-  return String(icon || '').startsWith('data:');
-}
-
-function scheduleSiteSearchIconCacheWrite() {
-  if (siteSearchIconCacheWriteTimer !== null) {
-    return;
-  }
-  siteSearchIconCacheWriteTimer = setTimeout(() => {
-    siteSearchIconCacheWriteTimer = null;
-    const store = getSiteSearchIconStore();
-    if (!store || typeof store.writeAll !== 'function' || !siteSearchIconCache) {
-      return;
-    }
-    const writeRevision = siteSearchIconCacheRevision;
-    const writeSnapshot = siteSearchIconCache;
-    store.writeAll(writeSnapshot).then((savedCache) => {
-      if (siteSearchIconCacheRevision === writeRevision) {
-        siteSearchIconCache = savedCache;
-        return;
-      }
-      scheduleSiteSearchIconCacheWrite();
-    }).catch(() => {});
-  }, 700);
-}
-
-function pruneSiteSearchProviderIconCache(providers) {
-  if (!siteSearchIconCache) {
-    return false;
-  }
-  const pageUrls = (Array.isArray(providers) ? providers : []).flatMap((provider) => {
-    const providerKey = String(provider && provider.key || '').trim().toLowerCase();
-    if (SITE_SEARCH_PINNED_ICON_KEYS.has(providerKey)) {
-      return [];
-    }
-    const pageUrl = getSiteSearchProviderIconPageUrl(provider);
-    return pageUrl ? [pageUrl] : [];
-  });
-  const nextCache = SHORTCUT_FAVICON.retainCachedIcons(
-    siteSearchIconCache,
-    pageUrls,
-    Date.now(),
-    SITE_SEARCH_ICON_CACHE_OPTIONS
-  );
-  if (JSON.stringify(nextCache) === JSON.stringify(siteSearchIconCache)) {
-    return false;
-  }
-  siteSearchIconCache = nextCache;
-  siteSearchIconCacheRevision += 1;
-  scheduleSiteSearchIconCacheWrite();
-  return true;
-}
-
-function cacheSiteSearchProviderIcon(pageUrl, result) {
-  if (!result || !result.data) {
-    return false;
-  }
-  const nextCache = SHORTCUT_FAVICON.setCachedIcon(
-    siteSearchIconCache || {},
-    pageUrl,
-    result.data,
-    result.sourceUrl,
-    Date.now(),
-    SITE_SEARCH_ICON_CACHE_OPTIONS
-  );
-  const cacheKey = SHORTCUT_FAVICON.getCacheKey(pageUrl);
-  const nextEntry = cacheKey && nextCache ? nextCache[cacheKey] : null;
-  if (!nextEntry || nextEntry.dataUrl !== result.data) {
-    return false;
-  }
-  siteSearchIconCache = nextCache;
-  siteSearchIconCacheRevision += 1;
-  scheduleSiteSearchIconCacheWrite();
-  return true;
-}
-
-function drainSiteSearchIconWarmQueue() {
-  while (siteSearchIconWarmActiveCount < SITE_SEARCH_ICON_WARM_CONCURRENCY &&
-      siteSearchIconWarmQueue.length > 0) {
-    const item = siteSearchIconWarmQueue.shift();
-    if (!item || !item.pageUrl) {
-      continue;
-    }
-    if (hasUsableCachedSiteSearchProviderIcon(item.provider)) {
-      siteSearchIconWarmPending.delete(item.pageUrl);
-      continue;
-    }
-    siteSearchIconWarmActiveCount += 1;
-    fetchShortcutFaviconData(item.pageUrl, item.preferredTheme, item.explicitIcon)
-      .then((result) => {
-        cacheSiteSearchProviderIcon(item.pageUrl, result);
-      })
-      .catch(() => {})
-      .finally(() => {
-        siteSearchIconWarmActiveCount = Math.max(0, siteSearchIconWarmActiveCount - 1);
-        siteSearchIconWarmPending.delete(item.pageUrl);
-        drainSiteSearchIconWarmQueue();
-      });
-  }
-}
-
-function scheduleSiteSearchProviderIconWarmup(providers, preferredTheme) {
-  const items = Array.isArray(providers) ? providers : [];
-  if (items.length === 0) {
-    return;
-  }
-  loadSiteSearchIconCache().then(() => {
-    pruneSiteSearchProviderIconCache(items);
-    items.forEach((provider) => {
-      const explicitIcon = SHORTCUT_FAVICON.getSiteSearchProviderExplicitIcon(provider);
-      const pageUrl = getSiteSearchProviderIconPageUrl(provider);
-      const providerKey = String(provider && provider.key || '').trim().toLowerCase();
-      if (SITE_SEARCH_PINNED_ICON_KEYS.has(providerKey)) {
-        return;
-      }
-      if (!pageUrl || hasUsableCachedSiteSearchProviderIcon(provider) || siteSearchIconWarmPending.has(pageUrl)) {
-        return;
-      }
-      siteSearchIconWarmPending.add(pageUrl);
-      siteSearchIconWarmQueue.push({
-        provider,
-        pageUrl,
-        explicitIcon,
-        preferredTheme: String(preferredTheme || '')
-      });
-    });
-    drainSiteSearchIconWarmQueue();
-  }).catch(() => {});
-}
-
-function escapeRegExp(text) {
-  return String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function sanitizeDisplayText(text) {
-  const raw = String(text || '');
-  const withoutSpecial = raw.replace(/[\u0000-\u001F\u007F-\u009F\uFEFF\uFFF9-\uFFFD]|\p{Co}/gu, '');
-  return withoutSpecial.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '');
-}
-
-function renderHighlightedText(target, text, query, styles) {
-  const safeText = sanitizeDisplayText(text);
-  const needle = String(query || '').trim();
-  if (!needle) {
-    target.textContent = safeText;
-    return;
-  }
-  const parts = safeText.split(new RegExp(`(${escapeRegExp(needle)})`, 'gi'));
-  if (parts.length === 1) {
-    target.textContent = safeText;
-    return;
-  }
-  parts.forEach((part) => {
-    if (!part) {
-      return;
-    }
-    if (part.toLowerCase() === needle.toLowerCase()) {
-      const mark = document.createElement('mark');
-      mark.style.background = styles && styles.background
-        ? styles.background
-        : 'var(--x-ext-mark-bg, #CFE8FF)';
-      mark.style.color = styles && styles.color
-        ? styles.color
-        : 'var(--x-ext-mark-text, #1E3A8A)';
-      mark.style.padding = '0 1px';
-      mark.style.borderRadius = '2px';
-      mark.style.lineHeight = 'inherit';
-      mark.style.fontFamily = "'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
-      mark.textContent = part;
-      target.appendChild(mark);
-    } else {
-      target.appendChild(document.createTextNode(part));
-    }
-  });
-}
-
-function fetchFaviconData(url, pageUrl) {
-  if (!url) {
-    return Promise.resolve(null);
-  }
-  return Promise.all([
-    loadFaviconRequestBlacklistItems(),
-    loadFaviconEnhancedFetchEnabled()
-  ]).then(([, enhancedFetchEnabled]) => {
-    const canonicalPageUrl = getFaviconRequestMatchUrl(pageUrl || url);
-    const requestExcluded = isUrlBlockedByFaviconRequestBlacklist(canonicalPageUrl);
-    const effectiveEnhancedFetchEnabled = enhancedFetchEnabled && !requestExcluded;
-    const sourceAllowedByMode = FAVICON_UTILS.isFaviconSourceAllowedByEnhancedFetchPolicy(url, effectiveEnhancedFetchEnabled, {
-      chromeApi: chrome,
-      allowThirdPartyFetch: !requestExcluded
-    });
-    const sourceAllowed = sourceAllowedByMode && isAllowedFaviconProxyRequestUrl(url);
-    if (!sourceAllowed) {
-      logBlockedLocalFavicon(
-        url,
-        isFaviconProxyUrl(url) ? 'third-party-proxy' : 'direct',
-        requestExcluded ? 'exclusion' : 'global-off',
-        canonicalPageUrl
-      );
-      return null;
-    }
-    const resolver = getBackgroundFaviconUrlResolver();
-    const matchedSourceUrl = resolver && resolver.getSafeFaviconCandidateUrl(url, canonicalPageUrl, 'background-data');
-    if (!matchedSourceUrl) {
-      return null;
-    }
-    url = matchedSourceUrl;
-    if (isBlockedLocalFaviconUrl(url) || isFaviconRequestBlockedByBlacklist(url)) {
-      logBlockedLocalFavicon(url, 'fetchFaviconData');
-      return null;
-    }
-    try {
-      const parsed = new URL(url);
-      if (getFaviconHostPolicy(parsed.hostname).hardBlocked) {
-        return null;
-      }
-    } catch (e) {
-      // Keep existing behavior for non-standard URL formats.
-    }
-    if (faviconDataCache.has(url)) {
-      return faviconDataCache.get(url);
-    }
-    if (faviconPending.has(url)) {
-      return faviconPending.get(url);
-    }
-    const promise = fetch(url, {
-      cache: 'force-cache',
-      credentials: 'omit',
-      referrerPolicy: 'no-referrer',
-      redirect: 'error'
-    })
-      .then((response) => {
-        if (!response || !response.ok) {
-          return null;
-        }
-        const responseUrl = String(response.url || url);
-        if (!isAllowedFaviconProxyRequestUrl(responseUrl)) {
-          return null;
-        }
-        return response.blob();
-      })
-      .then((blob) => {
-        if (!blob || blob.size > 256 * 1024) {
-          return null;
-        }
-        return blob.arrayBuffer().then((buffer) => {
-          const base64 = arrayBufferToBase64(buffer);
-          return `data:${blob.type || 'image/png'};base64,${base64}`;
-        });
-      })
-      .then((dataUrl) => {
-        if (dataUrl) {
-          FAVICON_UTILS.setBoundedCacheEntry(
-            faviconDataCache,
-            url,
-            dataUrl,
-            BACKGROUND_FAVICON_DATA_CACHE_MAX_ENTRIES
-          );
-        }
-        faviconPending.delete(url);
-        return dataUrl;
-      })
-      .catch(() => {
-        faviconPending.delete(url);
-        return null;
-      });
-    faviconPending.set(url, promise);
-    return promise;
-  });
-}
-
-function normalizeSiteSearchTemplate(template) {
-  return SEARCH_UTILS.normalizeSiteSearchTemplate(template);
-}
-
-function isInteractiveSiteSearchProvider(provider) {
-  return SEARCH_UTILS.isInteractiveSiteSearchProvider(provider);
-}
-
-function sanitizeSiteSearchProviders(items) {
-  return SEARCH_UTILS.sanitizeSiteSearchProviders(items);
-}
-
-function loadCustomSiteSearchProviders() {
-  return SETTINGS.readStorageValue(
-    storageArea,
-    chrome,
-    SITE_SEARCH_STORAGE_KEY
-  ).then(sanitizeSiteSearchProviders);
-}
-
-function loadDisabledSiteSearchKeys() {
-  return SETTINGS.readStorageValue(
-    storageArea,
-    chrome,
-    SITE_SEARCH_DISABLED_STORAGE_KEY
-  ).then((value) => {
-    const items = Array.isArray(value) ? value : [];
-    return items.map((item) => String(item).toLowerCase()).filter(Boolean);
-  });
-}
-
-function normalizeSearchBlacklistMatchModes(value) {
-  if (BLACKLIST_UTILS.normalizeMatchModes) {
-    return BLACKLIST_UTILS.normalizeMatchModes(value, 'prefix');
-  }
-  return ['prefix'];
-}
-
-function normalizeSearchBlacklistItems(items) {
-  if (BLACKLIST_UTILS.normalizeItems) {
-    return BLACKLIST_UTILS.normalizeItems(items, 'prefix');
-  }
-  return [];
-}
-
-function normalizeFaviconRequestBlacklistItems(items) {
-  if (BLACKLIST_UTILS.normalizeItems) {
-    return BLACKLIST_UTILS.normalizeItems(items, 'prefix');
-  }
-  return [];
-}
-
-function normalizeFaviconEnhancedFetchEnabled(value) {
-  return SETTINGS.normalizeFaviconEnhancedFetchEnabled(value);
-}
-
-function normalizeSearchResultSourceTypes(value) {
-  return SETTINGS.normalizeSearchResultSourceTypes(value);
-}
-
-function areStringArraysEqual(a, b) {
-  const left = Array.isArray(a) ? a : [];
-  const right = Array.isArray(b) ? b : [];
-  if (left.length !== right.length) {
-    return false;
-  }
-  for (let i = 0; i < left.length; i += 1) {
-    if (String(left[i]) !== String(right[i])) {
-      return false;
-    }
-  }
-  return true;
-}
-
-function loadSearchResultSourceTypes() {
-  if (searchResultSourceTypesCache) {
-    return Promise.resolve(searchResultSourceTypesCache);
-  }
-  if (searchResultSourceTypesPromise) {
-    return searchResultSourceTypesPromise;
-  }
-  searchResultSourceTypesPromise = new Promise((resolve) => {
-    if (!storageArea) {
-      const defaults = normalizeSearchResultSourceTypes(null);
-      searchResultSourceTypesCache = defaults;
-      resolve(defaults);
-      return;
-    }
-    storageArea.get([SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY], (result) => {
-      const raw = result && result[SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY];
-      const normalized = normalizeSearchResultSourceTypes(raw);
-      searchResultSourceTypesCache = normalized;
-      if (!areStringArraysEqual(raw, normalized)) {
-        storageArea.set({ [SEARCH_RESULT_SOURCE_TYPES_STORAGE_KEY]: normalized });
-      }
-      resolve(normalized);
-    });
-  }).finally(() => {
-    searchResultSourceTypesPromise = null;
-  });
-  return searchResultSourceTypesPromise;
-}
-
-function loadSearchBlacklistItems() {
-  if (searchBlacklistCache) {
-    return Promise.resolve(searchBlacklistCache);
-  }
-  if (searchBlacklistPromise) {
-    return searchBlacklistPromise;
-  }
-  searchBlacklistPromise = new Promise((resolve) => {
-    if (!storageArea) {
-      resolve([]);
-      return;
-    }
-    storageArea.get([SEARCH_BLACKLIST_STORAGE_KEY], (result) => {
-      const items = normalizeSearchBlacklistItems(result && result[SEARCH_BLACKLIST_STORAGE_KEY]);
-      searchBlacklistCache = items;
-      resolve(items);
-    });
-  }).finally(() => {
-    searchBlacklistPromise = null;
-  });
-  return searchBlacklistPromise;
-}
-
-function loadFaviconRequestBlacklistItems() {
-  if (faviconRequestBlacklistCache) {
-    return Promise.resolve(faviconRequestBlacklistCache);
-  }
-  if (faviconRequestBlacklistPromise) {
-    return faviconRequestBlacklistPromise;
-  }
-  faviconRequestBlacklistPromise = new Promise((resolve) => {
-    if (!storageArea) {
-      resolve([]);
-      return;
-    }
-    storageArea.get([FAVICON_REQUEST_BLACKLIST_STORAGE_KEY], (result) => {
-      const items = normalizeFaviconRequestBlacklistItems(result && result[FAVICON_REQUEST_BLACKLIST_STORAGE_KEY]);
-      faviconRequestBlacklistCache = items;
-      resolve(items);
-    });
-  }).finally(() => {
-    faviconRequestBlacklistPromise = null;
-  });
-  return faviconRequestBlacklistPromise;
-}
-
-function loadFaviconEnhancedFetchEnabled() {
-  if (typeof faviconEnhancedFetchEnabledCache === 'boolean') {
-    return Promise.resolve(faviconEnhancedFetchEnabledCache);
-  }
-  if (faviconEnhancedFetchEnabledPromise) {
-    return faviconEnhancedFetchEnabledPromise;
-  }
-  faviconEnhancedFetchEnabledPromise = new Promise((resolve) => {
-    if (!storageArea) {
-      faviconEnhancedFetchEnabledCache = true;
-      resolve(true);
-      return;
-    }
-    storageArea.get([FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY], (result) => {
-      const rawValue = result && result[FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY];
-      const enabled = normalizeFaviconEnhancedFetchEnabled(rawValue);
-      faviconEnhancedFetchEnabledCache = enabled;
-      if (rawValue !== enabled) {
-        storageArea.set({ [FAVICON_ENHANCED_FETCH_ENABLED_STORAGE_KEY]: enabled });
-      }
-      resolve(enabled);
-    });
-  }).finally(() => {
-    faviconEnhancedFetchEnabledPromise = null;
-  });
-  return faviconEnhancedFetchEnabledPromise;
-}
-
-function getFaviconRequestMatchUrl(url) {
-  const raw = String(url || '').trim();
-  if (!raw) {
-    return '';
-  }
-  return String(FAVICON_UTILS.getCanonicalPageUrlForFavicon(raw) || raw).trim();
-}
-
-function isUrlBlockedByFaviconRequestBlacklist(url) {
-  const target = getFaviconRequestMatchUrl(url);
-  return Boolean(
-    target &&
-    faviconRequestBlacklistCache &&
-    BLACKLIST_UTILS.isUrlBlocked &&
-    BLACKLIST_UTILS.isUrlBlocked(target, faviconRequestBlacklistCache)
-  );
-}
-
-function normalizeSearchSelectionStats(rawStats) {
-  return SEARCH_UTILS.normalizeSearchSelectionStats(rawStats);
-}
-
-function loadSearchSelectionStats() {
-  if (searchSelectionStatsCache) {
-    return Promise.resolve(searchSelectionStatsCache);
-  }
-  if (searchSelectionStatsPromise) {
-    return searchSelectionStatsPromise;
-  }
-  searchSelectionStatsPromise = new Promise((resolve) => {
-    if (!localStorageArea) {
-      const emptyStats = normalizeSearchSelectionStats(null);
-      searchSelectionStatsCache = emptyStats;
-      resolve(emptyStats);
-      return;
-    }
-    localStorageArea.get([SEARCH_SELECTION_STATS_STORAGE_KEY], (result) => {
-      const stats = normalizeSearchSelectionStats(result && result[SEARCH_SELECTION_STATS_STORAGE_KEY]);
-      searchSelectionStatsCache = stats;
-      resolve(stats);
-    });
-  }).finally(() => {
-    searchSelectionStatsPromise = null;
-  });
-  return searchSelectionStatsPromise;
-}
-
-function saveSearchSelectionStats(stats) {
-  const normalizedStats = normalizeSearchSelectionStats(stats);
-  searchSelectionStatsCache = normalizedStats;
-  return new Promise((resolve) => {
-    if (!localStorageArea) {
-      resolve(false);
-      return;
-    }
-    localStorageArea.set({ [SEARCH_SELECTION_STATS_STORAGE_KEY]: normalizedStats }, () => {
-      resolve(!(chrome.runtime && chrome.runtime.lastError));
-    });
-  });
-}
-
-function shouldRecordSearchSuggestionSelectionPayload(selection) {
-  if (!selection || typeof selection !== 'object') {
-    return false;
-  }
-  const query = String(selection.query || '').trim();
-  const url = String(selection.url || '').trim();
-  if (!query || !url) {
-    return false;
-  }
-  const type = String(selection.type || '').trim();
-  if (type === 'newtab' ||
-      type === 'googleSuggest' ||
-      type === 'siteSearch' ||
-      type === 'inlineSiteSearch' ||
-      type === 'siteSearchPrompt' ||
-      type === 'modeSwitch' ||
-      type === 'commandNewTab' ||
-      type === 'commandSettings') {
-    return false;
-  }
-  return true;
-}
-
-function recordSearchSuggestionSelection(selection) {
-  if (!shouldRecordSearchSuggestionSelectionPayload(selection)) {
-    return Promise.resolve({ ok: false, reason: 'invalid-selection' });
-  }
-  return loadSearchSelectionStats()
-    .then((stats) => {
-      const updatedStats = SEARCH_UTILS.recordSearchSelectionInStats(stats, selection);
-      return saveSearchSelectionStats(updatedStats);
-    })
-    .then((ok) => ({ ok: ok === true }));
-}
-
-function recordSearchSuggestionSelectionFromSuggestion(suggestion, query, source) {
-  if (!suggestion || suggestion.forceSearch || suggestion.provider || !suggestion.url) {
-    return;
-  }
-  recordSearchSuggestionSelection({
-    query,
-    url: suggestion.url,
-    title: suggestion.title || '',
-    type: suggestion.type || 'history',
-    source: source || 'overlay'
-  }).catch(() => {});
-}
-
-function getSearchSelectionBoost(item, context, stats, options) {
-  return SEARCH_UTILS.getSearchSelectionBoost(item, context, stats, options);
-}
-
-function isUrlBlockedBySearchBlacklist(url, items) {
-  if (BLACKLIST_UTILS.isUrlBlocked) {
-    return BLACKLIST_UTILS.isUrlBlocked(url, items);
-  }
-  return false;
-}
-
-function isSuggestionBlockedBySearchBlacklist(suggestion, items, queryForProvider) {
-  if (!suggestion) {
-    return false;
-  }
-  if (
-    suggestion.type === 'newtab' ||
-    suggestion.type === 'siteSearch' ||
-    suggestion.type === 'inlineSiteSearch' ||
-    suggestion.type === 'siteSearchPrompt'
-  ) {
-    return false;
-  }
-  if (suggestion.url && isUrlBlockedBySearchBlacklist(suggestion.url, items)) {
-    return true;
-  }
-  return false;
-}
-
-function filterBlacklistedSuggestions(list, items, queryForProvider) {
-  if (!Array.isArray(list) || list.length === 0) {
-    return [];
-  }
-  return list.filter((suggestion) => !isSuggestionBlockedBySearchBlacklist(suggestion, items, queryForProvider));
-}
-
-function mergeCustomProviders(baseItems, customItems) {
-  return SEARCH_UTILS.mergeCustomProviders(baseItems, customItems);
-}
-
-function getSiteSearchProviderEntryUrl(provider, query) {
-  if (!provider || !provider.template) {
-    return '';
-  }
-  return SEARCH_UTILS.buildSearchUrlFromTemplate(provider.template, query || '');
-}
-
-function getTemplateDomain(template) {
-  if (!template) {
-    return '';
-  }
-  try {
-    const url = template.replace(/\{query\}/g, 'test');
-    return normalizeHost(new URL(url).hostname);
-  } catch (e) {
-    return '';
-  }
-}
-
-function mergeSiteSearchProviders(localItems, bangList) {
-  if (!Array.isArray(localItems) || localItems.length === 0) {
-    return [];
-  }
-  if (!Array.isArray(bangList) || bangList.length === 0) {
-    return localItems;
-  }
-  return localItems.map((item) => {
-    const aliases = Array.isArray(item.aliases) ? item.aliases : [];
-    const keys = [item.key, ...aliases].filter(Boolean).map((key) => String(key).toLowerCase());
-    const domain = getTemplateDomain(item.template);
-    let match = bangList.find((bang) => bang && keys.includes(String(bang.t || '').toLowerCase()));
-    if (!match && domain) {
-      match = bangList.find((bang) => bang && String(bang.d || '').toLowerCase().includes(domain));
-    }
-    if (!match || !match.u) {
-      return item;
-    }
-    return {
-      key: item.key,
-      aliases: item.aliases || [],
-      name: item.name || match.s || item.key,
-      template: normalizeSiteSearchTemplate(match.u)
-    };
-  });
-}
-
-function parseBangList(text) {
-  if (!text) {
-    return [];
-  }
-  let jsonText = text.trim();
-  if (jsonText.startsWith('/*')) {
-    jsonText = jsonText.replace(/^\/\*.*?\*\/\s*/s, '');
-  }
-  if (!jsonText.startsWith('[')) {
-    return [];
-  }
-  try {
-    const parsed = JSON.parse(jsonText);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function invalidateSiteSearchProviderCache() {
-  siteSearchLoadGeneration += 1;
-  siteSearchCache = null;
-  siteSearchPromise = null;
-}
-
-function loadSiteSearchProviders() {
-  if (siteSearchCache) {
-    return Promise.resolve(siteSearchCache);
-  }
-  if (siteSearchPromise) {
-    return siteSearchPromise;
-  }
-  const localUrl = chrome.runtime.getURL('assets/data/site-search.json');
-  const fallbackDefaults = SEARCH_UTILS.getDefaultSiteSearchProviders();
-  const loadGeneration = siteSearchLoadGeneration;
-  const loadTask = fetch(localUrl)
-    .then((response) => response.json())
-    .then((data) => {
-      const items = data && Array.isArray(data.items) ? data.items : [];
-      const source = items.length > 0 ? items : fallbackDefaults;
-      return sanitizeSiteSearchProviders(source);
-    })
-    .catch(() => sanitizeSiteSearchProviders(fallbackDefaults))
-    .then((items) => Promise.all([loadCustomSiteSearchProviders(), loadDisabledSiteSearchKeys()])
-    .then(([customItems, disabledKeys]) => {
-      const baseMap = new Map(items.map((item) => [
-        String(item && item.key ? item.key : '').toLowerCase(),
-        item
-      ]));
-      const hydratedCustom = customItems.map((item) => {
-        const key = String(item && item.key ? item.key : '').toLowerCase();
-        const builtinKey = String(item && item.builtinKey ? item.builtinKey : '').toLowerCase();
-        const baseProvider = baseMap.get(builtinKey || key);
-        return {
-          ...item,
-          action: String(item.action || (baseProvider && baseProvider.action) || '').trim(),
-          submitStrategy: String(
-            item.submitStrategy || (baseProvider && baseProvider.submitStrategy) || ''
-          ).trim()
-        };
-      });
-      const filteredBase = items.filter((item) => {
-        const key = String(item && item.key ? item.key : '').toLowerCase();
-        return key && !disabledKeys.includes(key);
-      });
-      const merged = mergeCustomProviders(filteredBase, hydratedCustom);
-      if (loadGeneration === siteSearchLoadGeneration &&
-          siteSearchPromise === loadTask) {
-        siteSearchCache = merged;
-        return merged;
-      }
-      return siteSearchCache || [];
-    })).catch((error) => {
-      if (loadGeneration === siteSearchLoadGeneration &&
-          siteSearchPromise === loadTask) {
-        siteSearchPromise = null;
-      }
-      throw error;
-    });
-  siteSearchPromise = loadTask;
-  return loadTask;
-}
-
-function warmSiteSearchProviderIcons() {
-  return loadSiteSearchProviders().then((providers) => {
-    scheduleSiteSearchProviderIconWarmup(providers, '');
-    return providers;
-  }).catch(() => []);
-}
-
 removeLegacySiteSearchIconCaches();
 warmSiteSearchProviderIcons();
 
@@ -9303,8 +4476,8 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
   if (changes[TAB_SWITCHER_ENABLED_STORAGE_KEY]) {
     const next = changes[TAB_SWITCHER_ENABLED_STORAGE_KEY].newValue;
-    const normalized = normalizeTabSwitcherEnabled(next);
-    tabSwitcherEnabledCache = normalized;
+    const normalized = SETTINGS.normalizeTabSwitcherEnabled(next);
+    applyTabSwitcherEnabledSetting(normalized);
     if (typeof next !== 'undefined' && next !== normalized && storageArea) {
       storageArea.set({ [TAB_SWITCHER_ENABLED_STORAGE_KEY]: normalized });
     }
@@ -9349,1097 +4522,3 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   );
   searchSelectionStatsPromise = null;
 });
-
-function withTimeout(promise, timeoutMs, fallbackValue) {
-  const safePromise = promise
-    .then((value) => value)
-    .catch(() => fallbackValue);
-  if (!timeoutMs || timeoutMs <= 0) {
-    return safePromise;
-  }
-  return Promise.race([
-    safePromise,
-    new Promise((resolve) => {
-      setTimeout(() => resolve(fallbackValue), timeoutMs);
-    })
-  ]);
-}
-
-async function fetchSearchEngineSuggestionsWithTimeout(query, externalSignal) {
-  if (externalSignal && externalSignal.aborted) {
-    return [];
-  }
-  const requestController = new AbortController();
-  const forwardExternalAbort = () => requestController.abort();
-  if (externalSignal) {
-    externalSignal.addEventListener('abort', forwardExternalAbort, { once: true });
-  }
-  let timeoutId = null;
-  try {
-    const timeoutPromise = new Promise((resolve) => {
-      timeoutId = setTimeout(() => {
-        requestController.abort();
-        resolve([]);
-      }, SEARCH_ENGINE_SUGGEST_TIMEOUT_MS);
-    });
-    return await Promise.race([
-      fetchSearchSuggestionsForEngine(query, { signal: requestController.signal }).catch(() => []),
-      timeoutPromise
-    ]);
-  } finally {
-    if (timeoutId !== null) {
-      clearTimeout(timeoutId);
-    }
-    if (externalSignal) {
-      externalSignal.removeEventListener('abort', forwardExternalAbort);
-    }
-  }
-}
-
-function shouldPrefetchSearchEngineSuggestions(request, query) {
-  const context = request && request.context ? String(request.context) : '';
-  const normalizedQuery = String(query || '').trim();
-  const isScopedLocalSearch = Array.isArray(request && request.sourceTypes) &&
-    request.sourceTypes.length > 0;
-  return (context === 'newtab' || context === 'overlay') &&
-    Boolean(normalizedQuery) &&
-    !normalizedQuery.startsWith('/') &&
-    !isScopedLocalSearch;
-}
-
-function clearSearchEngineSuggestionRequestTimers(record) {
-  if (!record) {
-    return;
-  }
-  if (record.startTimer !== null) {
-    clearTimeout(record.startTimer);
-    record.startTimer = null;
-  }
-  if (record.releaseTimer !== null) {
-    clearTimeout(record.releaseTimer);
-    record.releaseTimer = null;
-  }
-}
-
-function releaseSearchEngineSuggestionRequest(requestKey, record) {
-  if (!record || searchEngineSuggestionRequests.get(requestKey) !== record) {
-    return;
-  }
-  clearSearchEngineSuggestionRequestTimers(record);
-  searchEngineSuggestionRequests.delete(requestKey);
-}
-
-function abortSearchEngineSuggestionRequest(requestKey) {
-  const record = searchEngineSuggestionRequests.get(requestKey);
-  if (!record) {
-    return;
-  }
-  clearSearchEngineSuggestionRequestTimers(record);
-  if (record.controller && !record.controller.signal.aborted) {
-    record.controller.abort();
-  }
-  if (searchEngineSuggestionRequests.get(requestKey) === record) {
-    searchEngineSuggestionRequests.delete(requestKey);
-  }
-}
-
-function startSearchEngineSuggestionRequest(record) {
-  if (!record) {
-    return Promise.resolve([]);
-  }
-  if (record.promise) {
-    return record.promise;
-  }
-  if (record.startTimer !== null) {
-    clearTimeout(record.startTimer);
-    record.startTimer = null;
-  }
-  record.promise = Promise.resolve(defaultSearchEngineStateReady)
-    .then(() => {
-      if (record.controller.signal.aborted) {
-        return [];
-      }
-      return fetchSearchEngineSuggestionsWithTimeout(record.query, record.controller.signal);
-    })
-    .catch(() => []);
-  record.promise.then(() => {
-    if (record.consumed ||
-        searchEngineSuggestionRequests.get(record.requestKey) !== record ||
-        record.releaseTimer !== null) {
-      return;
-    }
-    record.releaseTimer = setTimeout(() => {
-      releaseSearchEngineSuggestionRequest(record.requestKey, record);
-    }, SEARCH_ENGINE_SUGGEST_PREFETCH_RETENTION_MS);
-  });
-  return record.promise;
-}
-
-function getOrCreateSearchEngineSuggestionRequest(requestKey, query, options) {
-  const normalizedQuery = String(query || '').trim();
-  if (!normalizedQuery) {
-    abortSearchEngineSuggestionRequest(requestKey);
-    return null;
-  }
-  const settings = options && typeof options === 'object' ? options : {};
-  const existing = searchEngineSuggestionRequests.get(requestKey);
-  if (existing && existing.query === normalizedQuery && !existing.controller.signal.aborted) {
-    if (settings.consume === true) {
-      existing.consumed = true;
-      if (existing.releaseTimer !== null) {
-        clearTimeout(existing.releaseTimer);
-        existing.releaseTimer = null;
-      }
-    }
-    if (settings.startImmediately === true) {
-      startSearchEngineSuggestionRequest(existing);
-    }
-    return existing;
-  }
-  if (existing) {
-    abortSearchEngineSuggestionRequest(requestKey);
-  }
-  const record = {
-    requestKey,
-    query: normalizedQuery,
-    controller: new AbortController(),
-    startTimer: null,
-    releaseTimer: null,
-    promise: null,
-    consumed: settings.consume === true
-  };
-  searchEngineSuggestionRequests.set(requestKey, record);
-  const delayMs = Math.max(0, Number(settings.delayMs) || 0);
-  if (delayMs > 0 && settings.startImmediately !== true) {
-    record.startTimer = setTimeout(() => {
-      record.startTimer = null;
-      startSearchEngineSuggestionRequest(record);
-    }, delayMs);
-  } else {
-    startSearchEngineSuggestionRequest(record);
-  }
-  return record;
-}
-
-function scheduleSearchEngineSuggestionPrefetch(requestKey, query) {
-  return getOrCreateSearchEngineSuggestionRequest(requestKey, query, {
-    delayMs: SEARCH_ENGINE_SUGGEST_PREFETCH_DELAY_MS
-  });
-}
-
-function consumeSearchEngineSuggestionRequest(requestKey, query) {
-  return getOrCreateSearchEngineSuggestionRequest(requestKey, query, {
-    consume: true,
-    startImmediately: true
-  });
-}
-
-function callChromeApiWithTimeout(invoke, fallbackValue, timeoutMs) {
-  return withTimeout(new Promise((resolve) => {
-    let settled = false;
-    const finish = (value) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      resolve(value);
-    };
-    try {
-      invoke(finish);
-    } catch (e) {
-      finish(fallbackValue);
-    }
-  }), timeoutMs, fallbackValue);
-}
-
-function invalidateBookmarkTreeCache() {
-  bookmarkTreeIndexCache = {
-    expiresAt: 0,
-    map: null
-  };
-  bookmarkItemsCache = {
-    expiresAt: 0,
-    items: []
-  };
-  bookmarkTreeIndexPromise = null;
-  bookmarkItemsPromise = null;
-}
-
-function invalidateLocalSearchSourceCaches() {
-  historyFallbackCache = {
-    expiresAt: 0,
-    items: []
-  };
-  topSitesCache = {
-    expiresAt: 0,
-    items: []
-  };
-}
-
-function ensureLocalSearchSourceCacheListeners() {
-  if (localSearchSourceCacheListenersBound || !chrome || !chrome.history) {
-    return;
-  }
-  [
-    chrome.history.onVisited,
-    chrome.history.onVisitRemoved
-  ].forEach((eventTarget) => {
-    if (eventTarget && typeof eventTarget.addListener === 'function') {
-      eventTarget.addListener(invalidateLocalSearchSourceCaches);
-    }
-  });
-  localSearchSourceCacheListenersBound = true;
-}
-
-function ensureBookmarkTreeCacheListeners() {
-  if (bookmarkTreeCacheListenersBound || !chrome || !chrome.bookmarks) {
-    return;
-  }
-  const events = [
-    chrome.bookmarks.onCreated,
-    chrome.bookmarks.onRemoved,
-    chrome.bookmarks.onChanged,
-    chrome.bookmarks.onMoved,
-    chrome.bookmarks.onChildrenReordered,
-    chrome.bookmarks.onImportEnded
-  ];
-  events.forEach((eventTarget) => {
-    if (eventTarget && typeof eventTarget.addListener === 'function') {
-      eventTarget.addListener(invalidateBookmarkTreeCache);
-    }
-  });
-  bookmarkTreeCacheListenersBound = true;
-}
-
-function buildBookmarkNodeMap(tree) {
-  const bookmarkNodeMap = new Map();
-  function indexBookmarkNodes(node, parentId) {
-    if (!node || !node.id) {
-      return;
-    }
-    bookmarkNodeMap.set(node.id, {
-      title: node.title || '',
-      parentId: parentId || null,
-      hasUrl: Boolean(node.url)
-    });
-    if (Array.isArray(node.children)) {
-      node.children.forEach((child) => indexBookmarkNodes(child, node.id));
-    }
-  }
-  if (Array.isArray(tree)) {
-    tree.forEach((node) => indexBookmarkNodes(node, null));
-  }
-  return bookmarkNodeMap;
-}
-
-function buildBookmarkItems(tree) {
-  const items = [];
-  function collectBookmarkNodes(node) {
-    if (!node || !node.id) {
-      return;
-    }
-    if (node.url) {
-      items.push({
-        id: node.id,
-        parentId: node.parentId || null,
-        title: node.title || '',
-        url: node.url
-      });
-    }
-    if (Array.isArray(node.children)) {
-      node.children.forEach((child) => collectBookmarkNodes(child));
-    }
-  }
-  if (Array.isArray(tree)) {
-    tree.forEach((node) => collectBookmarkNodes(node));
-  }
-  return items;
-}
-
-function getBookmarkNodeMapCached() {
-  const now = Date.now();
-  if (bookmarkTreeIndexCache.map && bookmarkTreeIndexCache.expiresAt > now) {
-    return Promise.resolve(bookmarkTreeIndexCache.map);
-  }
-  if (bookmarkItemsPromise) {
-    return bookmarkItemsPromise.then(() => bookmarkTreeIndexCache.map || new Map());
-  }
-  if (bookmarkTreeIndexPromise) {
-    return bookmarkTreeIndexPromise;
-  }
-  if (!chrome || !chrome.bookmarks || typeof chrome.bookmarks.getTree !== 'function') {
-    return Promise.resolve(new Map());
-  }
-  ensureBookmarkTreeCacheListeners();
-  bookmarkTreeIndexPromise = callChromeApiWithTimeout((done) => {
-    chrome.bookmarks.getTree((tree) => {
-      const map = buildBookmarkNodeMap(tree);
-      bookmarkTreeIndexCache = {
-        map: map,
-        expiresAt: Date.now() + BOOKMARK_TREE_CACHE_TTL_MS
-      };
-      bookmarkTreeIndexPromise = null;
-      done(map);
-    });
-  }, new Map(), LOCAL_SUGGEST_SOURCE_TIMEOUT_MS).catch(() => {
-    bookmarkTreeIndexPromise = null;
-    return new Map();
-  });
-  return bookmarkTreeIndexPromise;
-}
-
-function getAllBookmarksCached() {
-  const now = Date.now();
-  if (Array.isArray(bookmarkItemsCache.items) && bookmarkItemsCache.expiresAt > now) {
-    return Promise.resolve(bookmarkItemsCache.items);
-  }
-  if (bookmarkItemsPromise) {
-    return bookmarkItemsPromise;
-  }
-  if (!chrome || !chrome.bookmarks || typeof chrome.bookmarks.getTree !== 'function') {
-    return Promise.resolve([]);
-  }
-  ensureBookmarkTreeCacheListeners();
-  bookmarkItemsPromise = callChromeApiWithTimeout((done) => {
-    chrome.bookmarks.getTree((tree) => {
-      const items = buildBookmarkItems(tree);
-      const nodeMap = buildBookmarkNodeMap(tree);
-      const expiresAt = Date.now() + BOOKMARK_TREE_CACHE_TTL_MS;
-      bookmarkItemsCache = {
-        items: items,
-        expiresAt
-      };
-      bookmarkTreeIndexCache = {
-        map: nodeMap,
-        expiresAt
-      };
-      bookmarkItemsPromise = null;
-      done(items);
-    });
-  }, [], LOCAL_SUGGEST_SOURCE_TIMEOUT_MS).catch(() => {
-    bookmarkItemsPromise = null;
-    return [];
-  });
-  return bookmarkItemsPromise;
-}
-
-function getTopSitesCached() {
-  const now = Date.now();
-  if (topSitesCache.expiresAt > now && Array.isArray(topSitesCache.items)) {
-    return Promise.resolve(topSitesCache.items);
-  }
-  if (!chrome || !chrome.topSites || typeof chrome.topSites.get !== 'function') {
-    return Promise.resolve([]);
-  }
-  return callChromeApiWithTimeout((done) => {
-    chrome.topSites.get((items) => {
-      const list = Array.isArray(items) ? items : [];
-      topSitesCache = {
-        items: list,
-        expiresAt: Date.now() + TOP_SITES_CACHE_TTL_MS
-      };
-      done(list);
-    });
-  }, [], LOCAL_SUGGEST_SOURCE_TIMEOUT_MS).catch(() => []);
-}
-
-function getFallbackHistoryItemsCached(policy) {
-  const now = Date.now();
-  if (historyFallbackCache.expiresAt > now && Array.isArray(historyFallbackCache.items)) {
-    return Promise.resolve(historyFallbackCache.items);
-  }
-  if (!chrome || !chrome.history || typeof chrome.history.search !== 'function') {
-    return Promise.resolve([]);
-  }
-  const settings = policy && typeof policy === 'object' ? policy : {};
-  const fallbackMaxResults = Number(settings.fallbackHistoryMaxResults) > 0
-    ? Math.floor(Number(settings.fallbackHistoryMaxResults))
-    : 600;
-  const fallbackWindowDays = Number(settings.fallbackHistoryWindowDays) > 0
-    ? Number(settings.fallbackHistoryWindowDays)
-    : 365;
-  return callChromeApiWithTimeout((done) => {
-    chrome.history.search({
-      text: '',
-      maxResults: fallbackMaxResults,
-      startTime: Date.now() - (fallbackWindowDays * 24 * 60 * 60 * 1000)
-    }, (items) => {
-      const list = Array.isArray(items) ? items : [];
-      historyFallbackCache = {
-        items: list,
-        expiresAt: Date.now() + HISTORY_FALLBACK_CACHE_TTL_MS
-      };
-      done(list);
-    });
-  }, [], LOCAL_SUGGEST_SOURCE_TIMEOUT_MS).catch(() => []);
-}
-
-function getCachedFallbackHistoryItemsOrWarm(policy) {
-  const now = Date.now();
-  if (historyFallbackCache.expiresAt > now && Array.isArray(historyFallbackCache.items)) {
-    return Promise.resolve(historyFallbackCache.items);
-  }
-  return withTimeout(
-    getFallbackHistoryItemsCached(policy),
-    LOCAL_SEARCH_INDEX_WARMUP_TIMEOUT_MS,
-    []
-  );
-}
-
-function getCachedBookmarkItemsOrWarm() {
-  const now = Date.now();
-  if (Array.isArray(bookmarkItemsCache.items) && bookmarkItemsCache.expiresAt > now) {
-    return Promise.resolve(bookmarkItemsCache.items);
-  }
-  return withTimeout(
-    getAllBookmarksCached(),
-    LOCAL_SEARCH_INDEX_WARMUP_TIMEOUT_MS,
-    []
-  );
-}
-
-function getCachedBookmarkNodeMap() {
-  const now = Date.now();
-  if (bookmarkTreeIndexCache.map && bookmarkTreeIndexCache.expiresAt > now) {
-    return bookmarkTreeIndexCache.map;
-  }
-  return new Map();
-}
-
-function getOpenTabSearchItems() {
-  if (!chrome || !chrome.tabs || typeof chrome.tabs.query !== 'function') {
-    return Promise.resolve([]);
-  }
-  return callChromeApiWithTimeout((done) => {
-    chrome.tabs.query({}, (tabs) => {
-      const items = (Array.isArray(tabs) ? tabs : [])
-        .map((tab) => {
-          const url = getResolvedTabUrl(tab);
-          if (!url || typeof tab.id !== 'number') {
-            return null;
-          }
-          return {
-            title: String(tab.title || '').replace(/\s+/g, ' ').trim() || url,
-            url,
-            _xMatchedTabId: tab.id
-          };
-        })
-        .filter(Boolean);
-      done(items);
-    });
-  }, [], LOCAL_SUGGEST_SOURCE_TIMEOUT_MS).catch(() => []);
-}
-
-function normalizeAsciiQueryForPinyin(value) {
-  return String(value || '')
-    .toLowerCase()
-    .replace(/\s+/g, '')
-    .trim();
-}
-
-function shouldUseTitlePinyinMatch(value) {
-  const normalized = normalizeAsciiQueryForPinyin(value);
-  return Boolean(normalized) && /^[a-z]+$/.test(normalized);
-}
-
-function getChineseCharacters(text) {
-  const matches = String(text || '').match(/[\u4e00-\u9fff]/g);
-  return Array.isArray(matches) ? matches : [];
-}
-
-let pinyinProImportAttempted = false;
-
-function getPinyinPro() {
-  if (!globalThis.pinyinPro && !pinyinProImportAttempted && typeof importScripts === 'function') {
-    pinyinProImportAttempted = true;
-    try {
-      importScripts(chrome.runtime.getURL(PINYIN_PRO_SCRIPT_PATH));
-    } catch (error) {
-      // Without pinyin-pro, titles still match by their own text.
-    }
-  }
-  const api = globalThis.pinyinPro;
-  return api && typeof api.pinyin === 'function' ? api : null;
-}
-
-function buildTitlePinyinIndex(title) {
-  const rawTitle = String(title || '').trim();
-  if (!rawTitle) {
-    return {
-      full: '',
-      initials: '',
-      chineseLength: 0
-    };
-  }
-  if (titlePinyinCache.has(rawTitle)) {
-    return titlePinyinCache.get(rawTitle);
-  }
-  let full = '';
-  let initials = '';
-  const chineseChars = getChineseCharacters(rawTitle);
-  try {
-    // Pure-ASCII titles have no Han characters to convert, so they never load pinyin-pro.
-    const pinyinApi = /[^\x00-\x7f]/.test(rawTitle) ? getPinyinPro() : null;
-    if (pinyinApi) {
-      const converted = pinyinApi.pinyin(rawTitle, {
-        toneType: 'none',
-        type: 'array',
-        nonZh: 'removed',
-        v: false
-      });
-      const syllables = (Array.isArray(converted) ? converted : [])
-        .map((item) => String(item || '').toLowerCase().replace(/[^a-z]+/g, ''))
-        .filter(Boolean);
-      full = syllables.join('');
-      initials = syllables.map((item) => item.charAt(0)).join('');
-    }
-  } catch (error) {
-    full = '';
-    initials = '';
-  }
-  const result = {
-    full: full,
-    initials: initials,
-    chineseLength: chineseChars.length
-  };
-  FAVICON_UTILS.setBoundedCacheEntry(
-    titlePinyinCache,
-    rawTitle,
-    result,
-    BACKGROUND_TITLE_PINYIN_CACHE_MAX_ENTRIES
-  );
-  return result;
-}
-
-function getTitlePinyinMatchScore(title, normalizedQuery) {
-  if (!normalizedQuery || normalizedQuery.length < 2) {
-    return {
-      score: 0,
-      reason: ''
-    };
-  }
-  const index = buildTitlePinyinIndex(title);
-  if (!index || (!index.full && !index.initials)) {
-    return {
-      score: 0,
-      reason: ''
-    };
-  }
-  if (index.full === normalizedQuery) {
-    return {
-      score: 42,
-      reason: 'full-exact'
-    };
-  }
-  if (index.full.startsWith(normalizedQuery)) {
-    return {
-      score: 28,
-      reason: 'full-prefix'
-    };
-  }
-  if (index.full.includes(normalizedQuery)) {
-    return {
-      score: 14,
-      reason: 'full-contains'
-    };
-  }
-  const canUseInitials = index.chineseLength >= 2 && normalizedQuery.length >= 2;
-  if (canUseInitials && index.initials === normalizedQuery) {
-    return {
-      score: 18,
-      reason: 'initials-exact'
-    };
-  }
-  if (canUseInitials && index.initials.startsWith(normalizedQuery)) {
-    return {
-      score: 12,
-      reason: 'initials-prefix'
-    };
-  }
-  return {
-    score: 0,
-    reason: ''
-  };
-}
-
-function getBackgroundSearchPolicy(searchUtils) {
-  return (searchUtils && searchUtils.SEARCH_POLICY) || {
-    lookupWindowDays: 180,
-    lookupMaxResults: 120,
-    maxEngineSuggestions: 5,
-    maxEngineSuggestionsWithLocalResults: 3,
-    candidatePoolLimit: 20,
-    finalSuggestionLimit: 12,
-    fallbackTopSiteLimit: 5
-  };
-}
-
-function buildBackgroundSearchQueryContext(query, searchUtils) {
-  const normalizedPinyinQuery = shouldUseTitlePinyinMatch(query)
-    ? normalizeAsciiQueryForPinyin(query)
-    : '';
-  if (searchUtils && typeof searchUtils.buildSearchQueryContext === 'function') {
-    return searchUtils.buildSearchQueryContext(query, { normalizedPinyinQuery });
-  }
-  const queryLower = String(query || '').trim().toLowerCase();
-  const queryTerms = queryLower.split(/\s+/).filter(Boolean);
-  return {
-    lookupQuery: String(query || ''),
-    queryLower,
-    normalizedPinyinQuery,
-    useTitlePinyinMatch: Boolean(normalizedPinyinQuery),
-    queryTerms,
-    coreQueryTerms: queryTerms.slice(),
-    intentType: 'object',
-    hasSettingsIntent: false,
-    hasInformationalIntent: false
-  };
-}
-
-// Function to get search suggestions from history and top sites
-async function getSearchSuggestions(query, options) {
-  const suggestions = [];
-  const requestOptions = options && typeof options === 'object' ? options : {};
-  ensureLocalSearchSourceCacheListeners();
-  const searchUtils = SEARCH_UTILS;
-  const searchPolicy = getBackgroundSearchPolicy(searchUtils);
-  const context = buildBackgroundSearchQueryContext(query, searchUtils);
-  if (!context.queryLower) {
-    return [];
-  }
-  const lookupStartTime = Date.now() - (searchPolicy.lookupWindowDays * 24 * 60 * 60 * 1000);
-  const lookupEndTime = Date.now();
-  const lookupMaxResults = searchPolicy.lookupMaxResults || 120;
-  const searchScoreOptions = {
-    getTitlePinyinMatchScore,
-    isLocalNetworkHost,
-    isOwnExtensionUrl
-  };
-  const configuredSourceTypes = await loadSearchResultSourceTypes();
-  const requestedSourceTypes = Array.isArray(requestOptions.sourceTypes)
-    ? requestOptions.sourceTypes
-      .map((item) => String(item || '').trim())
-      .filter((item, index, items) => (
-        (item === 'topSite' || item === 'bookmark' || item === 'history') &&
-        items.indexOf(item) === index
-      ))
-    : [];
-  const sourceTypes = requestedSourceTypes.length > 0
-    ? configuredSourceTypes.filter((sourceType) => requestedSourceTypes.includes(sourceType))
-    : configuredSourceTypes;
-  const sourceTypeSet = new Set(sourceTypes);
-  const allowTopSites = sourceTypeSet.has('topSite');
-  const allowBookmarks = sourceTypeSet.has('bookmark');
-  const allowHistory = sourceTypeSet.has('history');
-  const allowOpenTabs = requestOptions.includeOpenTabs !== false;
-
-  try {
-    const openTabsPromise = allowOpenTabs ? getOpenTabSearchItems() : Promise.resolve([]);
-    const [
-      historyItemsRaw,
-      topSites,
-      bookmarksRaw,
-      fallbackHistoryItems,
-      allBookmarks,
-      searchBlacklistItems,
-      faviconRequestBlacklistItems,
-      _faviconEnhancedFetchEnabled,
-      searchSelectionStats
-    ] = await Promise.all([
-      allowHistory
-        ? callChromeApiWithTimeout((done) => {
-          chrome.history.search({
-            text: context.lookupQuery,
-            maxResults: lookupMaxResults,
-            startTime: lookupStartTime,
-            endTime: lookupEndTime
-          }, done);
-        }, [], LOCAL_SUGGEST_SOURCE_TIMEOUT_MS)
-        : Promise.resolve([]),
-      allowTopSites ? getTopSitesCached() : Promise.resolve([]),
-      allowBookmarks
-        ? callChromeApiWithTimeout((done) => {
-          chrome.bookmarks.search({ query: context.lookupQuery }, done);
-        }, [], LOCAL_SUGGEST_SOURCE_TIMEOUT_MS)
-        : Promise.resolve([]),
-      allowHistory ? getCachedFallbackHistoryItemsOrWarm(searchPolicy) : Promise.resolve([]),
-      allowBookmarks ? getCachedBookmarkItemsOrWarm() : Promise.resolve([]),
-      loadSearchBlacklistItems(),
-      loadFaviconRequestBlacklistItems(),
-      loadFaviconEnhancedFetchEnabled(),
-      loadSearchSelectionStats()
-    ]);
-    const collectSearchMatches = (items) => {
-      return searchUtils.collectSearchMatches(items, context, searchBlacklistItems, {
-        getTitlePinyinMatchScore,
-        isUrlBlockedBySearchBlacklist
-      });
-    };
-    const mergeSearchItems = searchUtils.mergeItemsByUrl;
-    const fallbackHistoryMatches = collectSearchMatches(fallbackHistoryItems);
-    const historyItems = collectSearchMatches(mergeSearchItems([
-      Array.isArray(historyItemsRaw) ? historyItemsRaw : [],
-      fallbackHistoryMatches
-    ]));
-    const bookmarkTextMatches = collectSearchMatches(allBookmarks);
-    const bookmarks = collectSearchMatches(mergeSearchItems([
-      Array.isArray(bookmarksRaw) ? bookmarksRaw : [],
-      bookmarkTextMatches
-    ]));
-
-    const bookmarkNodeMap = (Array.isArray(bookmarks) && bookmarks.length > 0)
-      ? getCachedBookmarkNodeMap()
-      : new Map();
-
-    const rootFolderTitles = new Set([
-      'Bookmarks bar',
-      'Other bookmarks',
-      'Mobile bookmarks',
-      '书签栏',
-      '其他书签',
-      '移动设备书签'
-    ]);
-
-    function buildSuggestionReasons(item, sourceType) {
-      const reasons = [];
-      if (sourceType === 'bookmark') {
-        reasons.push('来源：书签');
-      } else if (sourceType === 'topSite') {
-        reasons.push('来源：常用站点');
-      } else if (sourceType === 'openTab') {
-        reasons.push('来源：打开的标签页');
-      } else if (sourceType === 'history') {
-        reasons.push('来源：浏览历史');
-      }
-      const pinyinMatch = getTitlePinyinMatchScore(item && item.title, context.normalizedPinyinQuery);
-      if (pinyinMatch.reason === 'initials-exact' || pinyinMatch.reason === 'initials-prefix') {
-        reasons.push('标题首字母匹配');
-      } else if (pinyinMatch.score > 0) {
-        reasons.push('标题拼音匹配');
-      }
-      if (item && item.lastVisitTime) {
-        const hoursSinceVisit = (Date.now() - item.lastVisitTime) / (1000 * 60 * 60);
-        if (hoursSinceVisit < 24) {
-          reasons.push('最近 24 小时访问');
-        } else if (hoursSinceVisit < 72) {
-          reasons.push('最近 3 天访问');
-        }
-      }
-      const visitCount = Number(item && item.visitCount) || 0;
-      if (visitCount > 1) {
-        reasons.push(`访问 ${visitCount} 次`);
-      }
-      return reasons.slice(0, 3);
-    }
-
-    function buildSearchSuggestionFavicon(url) {
-      if (isOwnExtensionUrl(url)) {
-        return getOwnExtensionFaviconUrl();
-      }
-      if (isBrowserInternalPageUrl(url)) {
-        return getPageFaviconCandidateUrl(url);
-      }
-      try {
-        const urlObj = new URL(url);
-        const host = normalizeHost(urlObj.hostname);
-        return shouldBlockFaviconForHost(host)
-          ? ''
-          : getPageFaviconCandidateUrl(urlObj.href);
-      } catch (e) {
-        const fallbackHost = getFaviconFallbackHost(url);
-        return shouldBlockFaviconForHost(fallbackHost) ? '' : getHostFaviconUrl(fallbackHost);
-      }
-    }
-
-    function createSearchSuggestion(item, sourceType, score, extras) {
-      return searchUtils.createSearchSuggestion(item, sourceType, score, extras);
-    }
-
-    function calculateSearchRelevanceScore(item, sourceType) {
-      return searchUtils.calculateSearchRelevanceScore(item, sourceType, context, searchScoreOptions);
-    }
-
-    function buildBookmarkPath(bookmark) {
-      const pathParts = [];
-      let parentId = bookmark && bookmark.parentId ? bookmark.parentId : bookmark && bookmark.id;
-      while (parentId) {
-        const node = bookmarkNodeMap.get(parentId);
-        if (!node) {
-          break;
-        }
-        const isRootFolder = !node.parentId && rootFolderTitles.has(node.title);
-        if (!node.hasUrl && node.title && !isRootFolder) {
-          pathParts.unshift(node.title);
-        }
-        parentId = node.parentId;
-      }
-      return pathParts.join('/');
-    }
-
-    const suggestionIndexByKey = new Map();
-
-    function getSuggestionKey(item) {
-      return searchUtils.buildSearchDedupEntryKey(item);
-    }
-
-    function upsertSuggestion(rawItem, sourceType, extras) {
-      if (!rawItem || !rawItem.url) {
-        return null;
-      }
-      const itemKey = getSuggestionKey(rawItem);
-      const existingIndex = suggestionIndexByKey.get(itemKey);
-      const existing = typeof existingIndex === 'number' ? suggestions[existingIndex] : null;
-      // Bookmarks and top sites carry no visit data. When the same page was
-      // already seen in history, keep its behavior signals so adding a
-      // bookmark never makes a frequently used page rank lower.
-      const item = existing
-        ? {
-          ...rawItem,
-          lastVisitTime: Math.max(Number(rawItem.lastVisitTime) || 0, Number(existing.lastVisitTime) || 0),
-          visitCount: Math.max(Number(rawItem.visitCount) || 0, Number(existing.visitCount) || 0),
-          typedCount: Math.max(Number(rawItem.typedCount) || 0, Number(existing.typedCount) || 0),
-          isTopSite: Boolean(rawItem.isTopSite || existing.isTopSite)
-        }
-        : rawItem;
-      const baseScore = calculateSearchRelevanceScore(item, sourceType);
-      if (baseScore <= 0 && sourceType !== 'openTab') {
-        return null;
-      }
-      const normalizedExtras = extras && typeof extras === 'object' ? { ...extras } : {};
-      const scoreAdjustment = Number(normalizedExtras.scoreAdjustment) || 0;
-      delete normalizedExtras.scoreAdjustment;
-      const selectionBoost = getSearchSelectionBoost(item, context, searchSelectionStats, searchScoreOptions);
-      if (selectionBoost > 0) {
-        normalizedExtras.selectionBoost = selectionBoost;
-      }
-      const rankedScore = baseScore + scoreAdjustment + selectionBoost;
-      // Open tabs have already passed query matching. Ranking penalties must
-      // not make a matching live page disappear from search.
-      const sourceScore = sourceType === 'openTab' ? Math.max(1, rankedScore) : rankedScore;
-      // The page keeps its strongest evidence: a bookmark title that matches
-      // the query less well must not demote a page history already ranked.
-      const score = existing ? Math.max(sourceScore, Number(existing.score) || 0) : sourceScore;
-      const suggestion = createSearchSuggestion(item, sourceType, score, {
-        favicon: buildSearchSuggestionFavicon(item.url),
-        reasons: buildSuggestionReasons(item, sourceType),
-        ...(item.isTopSite ? { isTopSite: true } : {}),
-        ...normalizedExtras
-      });
-      if (typeof existingIndex === 'number') {
-        suggestions[existingIndex] = suggestion;
-      } else {
-        suggestionIndexByKey.set(itemKey, suggestions.length);
-        suggestions.push(suggestion);
-      }
-      return suggestion;
-    }
-
-    function upsertOpenTabSuggestion(item) {
-      if (!item || !item.url || typeof item._xMatchedTabId !== 'number') {
-        return null;
-      }
-      const itemKey = getSuggestionKey(item);
-      const existingIndex = suggestionIndexByKey.get(itemKey);
-      if (typeof existingIndex === 'number') {
-        suggestions[existingIndex] = {
-          ...suggestions[existingIndex],
-          _xMatchedTabId: item._xMatchedTabId
-        };
-        return suggestions[existingIndex];
-      }
-      return upsertSuggestion(item, 'openTab', {
-        _xMatchedTabId: item._xMatchedTabId,
-        scoreAdjustment: 12
-      });
-    }
-
-    historyItems.forEach((item) => {
-      if (!item || !item.title || isSearchEngineResultUrl(item.url)) {
-        return;
-      }
-      upsertSuggestion(item, 'history');
-    });
-
-    const topSiteMatches = collectSearchMatches(topSites);
-    topSiteMatches.forEach((site) => {
-      if (!site || !site.url || isUrlBlockedBySearchBlacklist(site.url, searchBlacklistItems)) {
-        return;
-      }
-      const itemKey = getSuggestionKey(site);
-      const existingIndex = suggestionIndexByKey.get(itemKey);
-      if (typeof existingIndex === 'number') {
-        const existing = suggestions[existingIndex];
-        suggestions[existingIndex] = {
-          ...existing,
-          isTopSite: true,
-          score: (existing.score || 0) + 6
-        };
-        return;
-      }
-
-      const titleLower = site.title ? site.title.toLowerCase() : '';
-      let scoreAdjustment = 4;
-      try {
-        const hostname = normalizeHost(new URL(site.url).hostname);
-        if (hostname.startsWith(context.queryLower)) {
-          scoreAdjustment += 8;
-        }
-      } catch (e) {
-        // Ignore invalid URLs.
-      }
-      if (titleLower.startsWith(context.queryLower)) {
-        scoreAdjustment += 6;
-      }
-      upsertSuggestion(site, 'topSite', { isTopSite: true, scoreAdjustment });
-    });
-
-    bookmarks.forEach((bookmark) => {
-      if (!bookmark || !bookmark.url) {
-        return;
-      }
-      upsertSuggestion(bookmark, 'bookmark', {
-        path: buildBookmarkPath(bookmark),
-        scoreAdjustment: 4
-      });
-    });
-
-    const openTabMatches = collectSearchMatches(await openTabsPromise);
-    openTabMatches.forEach((item) => {
-      upsertOpenTabSuggestion(item);
-    });
-
-    const brandDirectSuggestion = searchUtils.buildSearchBrandDirectSuggestion(suggestions, context, {
-      ...searchScoreOptions,
-      buildFavicon: buildSearchSuggestionFavicon,
-      buildReasons: buildSuggestionReasons
-    });
-    if (brandDirectSuggestion) {
-      const directKey = getSuggestionKey(brandDirectSuggestion);
-      const existingIndex = suggestionIndexByKey.get(directKey);
-      if (typeof existingIndex === 'number') {
-        suggestions[existingIndex] = brandDirectSuggestion;
-      } else {
-        suggestionIndexByKey.set(directKey, suggestions.length);
-        suggestions.push(brandDirectSuggestion);
-      }
-    }
-
-    suggestions.sort((a, b) => {
-      return searchUtils.compareSearchSuggestions(a, b);
-    });
-
-    const uniqueSuggestions = [];
-    const seenSuggestionKeys = new Set();
-    for (let i = 0; i < suggestions.length && uniqueSuggestions.length < (searchPolicy.candidatePoolLimit || 20); i += 1) {
-      const suggestion = suggestions[i];
-      const suggestionKey = getSuggestionKey(suggestion);
-      if (!suggestionKey || seenSuggestionKeys.has(suggestionKey)) {
-        continue;
-      }
-      seenSuggestionKeys.add(suggestionKey);
-      uniqueSuggestions.push(suggestion);
-    }
-
-    let finalSuggestions = filterBlacklistedSuggestions(uniqueSuggestions, searchBlacklistItems, context.lookupQuery);
-    finalSuggestions = searchUtils.filterSearchSuggestionsBySourceTypes(finalSuggestions, sourceTypes);
-    finalSuggestions = searchUtils.applySearchSuggestionHostDiversity(finalSuggestions, { context });
-
-    return finalSuggestions;
-
-  } catch (error) {
-    console.error('Error getting search suggestions:', error);
-    return [];
-  }
-}
-
-async function getSearchEngineSuggestions(query, localSuggestions, options) {
-  await defaultSearchEngineStateReady;
-  const searchUtils = SEARCH_UTILS;
-  const searchPolicy = getBackgroundSearchPolicy(searchUtils);
-  const context = buildBackgroundSearchQueryContext(query, searchUtils);
-  const settings = options && typeof options === 'object' ? options : {};
-  const signal = settings.signal || null;
-  const normalizedLocalSuggestions = (Array.isArray(localSuggestions) ? localSuggestions : [])
-    .filter((suggestion) => suggestion && typeof suggestion === 'object')
-    .slice(0, searchPolicy.candidatePoolLimit || 20);
-  if (!context.queryLower || (signal && signal.aborted)) {
-    return normalizedLocalSuggestions;
-  }
-
-  const rawEngineSuggestionsPromise = settings.rawEngineSuggestionsPromise &&
-    typeof settings.rawEngineSuggestionsPromise.then === 'function'
-    ? settings.rawEngineSuggestionsPromise
-    : fetchSearchEngineSuggestionsWithTimeout(query, signal);
-  const [rawEngineSuggestions, searchBlacklistItems, sourceTypes] = await Promise.all([
-    rawEngineSuggestionsPromise,
-    loadSearchBlacklistItems(),
-    loadSearchResultSourceTypes()
-  ]);
-  if (signal && signal.aborted) {
-    return normalizedLocalSuggestions;
-  }
-
-  const engineSuggestions = searchUtils.normalizeSearchEngineSuggestions(
-    rawEngineSuggestions,
-    context.lookupQuery,
-    { limit: searchPolicy.maxEngineSuggestions }
-  );
-  const engineSuggestionPolicy = searchUtils.getSearchEngineSuggestionPolicy(context, normalizedLocalSuggestions, {
-    ...searchPolicy,
-    searchFirst: settings.searchFirst === true
-  });
-  const mergedSuggestions = normalizedLocalSuggestions.slice();
-  engineSuggestions.slice(0, engineSuggestionPolicy.limit).forEach((suggestion) => {
-    const suggestionItem = {
-      type: 'googleSuggest',
-      title: suggestion,
-      url: buildDefaultSearchUrl(suggestion),
-      favicon: getDefaultSearchEngineFaviconUrl(),
-      score: engineSuggestionPolicy.score,
-      searchQuery: suggestion,
-      forceSearch: true,
-      reasons: ['来源：搜索建议']
-    };
-    if (!isSuggestionBlockedBySearchBlacklist(suggestionItem, searchBlacklistItems, suggestion)) {
-      mergedSuggestions.push(suggestionItem);
-    }
-  });
-
-  mergedSuggestions.sort((a, b) => {
-    return searchUtils.compareSearchSuggestions(a, b);
-  });
-  const uniqueSuggestions = [];
-  const seenSuggestionKeys = new Set();
-  for (let i = 0; i < mergedSuggestions.length && uniqueSuggestions.length < (searchPolicy.candidatePoolLimit || 20); i += 1) {
-    const suggestion = mergedSuggestions[i];
-    const suggestionKey = searchUtils.buildSearchDedupEntryKey(suggestion);
-    if (!suggestionKey || seenSuggestionKeys.has(suggestionKey)) {
-      continue;
-    }
-    seenSuggestionKeys.add(suggestionKey);
-    uniqueSuggestions.push(suggestion);
-  }
-
-  let finalSuggestions = filterBlacklistedSuggestions(uniqueSuggestions, searchBlacklistItems, context.lookupQuery);
-  finalSuggestions = searchUtils.filterSearchSuggestionsBySourceTypes(finalSuggestions, sourceTypes);
-  if (settings.searchFirst === true) {
-    const engineCandidates = finalSuggestions.filter((suggestion) => (
-      suggestion && suggestion.type === 'googleSuggest'
-    ));
-    const localCandidates = searchUtils.applySearchSuggestionHostDiversity(
-      finalSuggestions.filter((suggestion) => !suggestion || suggestion.type !== 'googleSuggest'),
-      { context }
-    );
-    finalSuggestions = [...localCandidates, ...engineCandidates];
-  } else {
-    finalSuggestions = searchUtils.applySearchSuggestionHostDiversity(finalSuggestions, { context });
-  }
-  if (settings.searchFirst === true) {
-    finalSuggestions = searchUtils.composeSearchFirstSuggestionSlate(finalSuggestions, {
-      limit: searchPolicy.finalSuggestionLimit || 12
-    }).slice(0, searchPolicy.finalSuggestionLimit || 12);
-  } else {
-    finalSuggestions = searchUtils.composeSearchSuggestionSlate(finalSuggestions, context);
-  }
-  return finalSuggestions;
-}

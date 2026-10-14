@@ -43,7 +43,7 @@
       beginSearchEntryRestoreLayoutLock
     } = deps;
 
-    // Page state still owned by newtab.js; read and written through accessors.
+    // The page state object shared with newtab.js and the other modules.
     const pageState = deps.pageState;
 
     let bookmarkLoadToken = 0;
@@ -309,7 +309,7 @@
         updateBookmarkBreadcrumb();
         renderCurrentBookmarkPage();
         playPendingBookmarkLayoutAnimation();
-        if (!isShortcutDragActive() && pageState.newtabShortcuts.some((shortcut) => shortcut.type === 'folder')) {
+        if (pageState.newtabShortcuts.some((shortcut) => shortcut.type === 'folder')) {
           renderShortcuts();
         }
         bookmarkDataDirty = false;
