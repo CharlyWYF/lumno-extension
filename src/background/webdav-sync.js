@@ -98,6 +98,10 @@
     const contentionDelays = opts.contentionDelays || [3000, 10000, 30000];
     let contention = 0;
     const fail = (code) => { throw clientApi.error(code); };
+    const logger = opts.logger || root.console;
+    function report(context, cause) {
+      try { logger.warn(`[Lumno] ${context}`, cause); } catch (_error) { /* Logging never fails a sync. */ }
+    }
     const watchedKeys = [...settings.CHROME_SYNC_STORAGE_KEYS, contract.ICONS_KEY, ...contract.LOCAL_PREFERENCE_KEYS,
       contract.OVERFLOW_KEY, settings.ASSET_REVISION_STORAGE_KEY];
     function storage(area, method, value) {
@@ -404,17 +408,29 @@
         itemQuota: chromeFallbackArea.QUOTA_BYTES_PER_ITEM, maxItems: chromeFallbackArea.MAX_ITEMS });
       // Only migrate an older local-primary installation when its full
       // preferences fit. Never replace Chrome with a partial WebDAV backup.
-      if (!plan.complete) fail('chrome-capacity');
+      // The card names the condition; it persists until the settings shrink.
+      if (!plan.complete) {
+        await setStatus({ chromeBackup: 'incomplete', chromeSkipped: plan.skipped.length });
+        throw Object.assign(clientApi.error('chrome-capacity'), { recorded: true });
+      }
       try {
         if (plan.remove.length) await storage(chromeFallbackArea, 'remove', plan.remove);
         if (Object.keys(plan.payload).length) await storage(chromeFallbackArea, 'set', plan.payload);
         await storage(localPrefsArea, 'set', { [settings.LOCAL_PRIMARY_STORAGE_KEY]: false });
         await setStatus({ chromeBackup: 'complete', chromeSkipped: 0 });
-      } catch (_error) {
+      } catch (cause) {
+        report('Could not write the browser sync backup.', cause);
         await setStatus({ chromeBackup: 'failed' });
-        throw clientApi.error('chrome-capacity');
+        throw Object.assign(clientApi.error('chrome-capacity'), { recorded: true });
       }
       return plan;
+    }
+    // The browser-sync backup of an older local-primary installation is a
+    // standing condition of this device, not part of a WebDAV round: its
+    // failure is recorded for the card and never stops the round itself.
+    async function mirrorReporting() {
+      try { await mirrorChrome(); }
+      catch (cause) { if (!cause.recorded) report('Could not back up settings to browser sync.', cause); }
     }
     async function readRemote(client) {
       const remote = await client.readState();
@@ -479,8 +495,8 @@
       else await privateStore.put('session', { config, base: target });
       if (decision) await privateStore.put('recoveryBlocked', false);
       await privateStore.put('conflict', null);
+      await mirrorReporting();
       await setStatus({ state: 'ready', error: null, diagnostic: null, conflicts: [], lastSyncAt: Date.now() });
-      await mirrorChrome();
       return { ok: true };
     }
     async function guardedSync(decision) {
@@ -502,7 +518,8 @@
         const diagnostic = clientApi.diagnostic(cause.diagnostic);
         await setStatus({ state: cause.code === 'local-changed' ? 'pending' : cause.code === 'remote-missing' ? 'choice' : 'error',
           error: cause.code || 'sync-failed', diagnostic });
-        throw Object.assign(clientApi.error(cause.code || 'sync-failed'), { diagnostic });
+        // Callers without a page to report to know the card already shows it.
+        throw Object.assign(clientApi.error(cause.code || 'sync-failed'), { diagnostic, recorded: true });
       }
     }
     async function connection(input) {
@@ -564,8 +581,8 @@
         await privateStore.put('recoveryBlocked', false);
       } else await apply(target, captured, client, true, { config: { ...config, enabled: true }, base: target });
       await privateStore.put('conflict', null);
+      await mirrorReporting();
       await setStatus({ state: 'ready', enabled: true, error: null, diagnostic: null, conflicts: [], lastSyncAt: Date.now() });
-      await mirrorChrome();
       schedule();
       return { ok: true };
     }
@@ -640,7 +657,7 @@
       if (timerKeepsAlive) holdKeepAlive();
       timer = setTimeout(() => {
         timer = null;
-        exclusive(async () => { if (!stopped) { await mirrorChrome(); await guardedSync(); } }).catch(() => {});
+        backgroundRound(false);
         // exclusive() took its own hold above, so the page stays alive throughout.
         if (timerKeepsAlive) {
           timerKeepsAlive = false;
@@ -649,8 +666,24 @@
       }, delay);
       if (timer && typeof timer.unref === 'function') timer.unref();
     }
+    // Timer, alarm and start-up rounds have no page waiting for them. The
+    // round records its own outcome on the card; anything it could not record
+    // is logged instead of disappearing.
+    function backgroundRound(recover) {
+      return exclusive(async () => {
+        if (stopped) return;
+        let recovered = true;
+        if (recover) {
+          try { await recoverPendingApply(); }
+          catch (cause) { recovered = false; report('Could not recover an interrupted WebDAV apply.', cause); }
+        }
+        // A partially applied state must not reach browser sync either.
+        if (recovered) await mirrorReporting();
+        await guardedSync();
+      }).catch((cause) => { if (!cause || !cause.recorded) report('WebDAV sync failed.', cause); });
+    }
     function onAlarm(alarm) {
-      if (!stopped && alarm.name === alarmName) exclusive(async () => { if (!stopped) { await mirrorChrome(); await guardedSync(); } }).catch(() => {});
+      if (!stopped && alarm.name === alarmName) backgroundRound(false);
     }
     function start() {
       if (started || stopped) return;
@@ -662,9 +695,9 @@
         const { config } = await session();
         if ((config && config.enabled) || runtime.isActiveAreaName('local') || await privateStore.get('pendingApply')) {
           if (config && config.enabled) schedule();
-          await exclusive(async () => { await recoverPendingApply(); await mirrorChrome(); await guardedSync(); });
+          await backgroundRound(true);
         }
-      }).catch(() => {});
+      }).catch((cause) => report('Could not start WebDAV sync.', cause));
     }
     function stop() {
       return exclusive(async () => {
@@ -724,8 +757,8 @@
           const { config, base } = await session();
           await apply(backup.captured.state, captured, config ? clientApi.createClient(config, opts.clientOptions) : null, true,
             { config: config ? { ...config, enabled: false } : null, base });
+          await mirrorReporting();
           await setStatus({ state: 'paused', enabled: false, error: null });
-          await mirrorChrome();
           return { ok: true };
         }
         default: fail('unknown-operation');
@@ -913,7 +946,10 @@
           await worker(id).handle({ operation: 'schedule' });
           await worker(id).handle({ operation: 'sync' });
         }
-      }))).catch(() => {});
+      }))).catch((cause) => {
+        // A failed round is already on its card; only the rest is logged.
+        if (!cause || !cause.recorded) (opts.logger || root.console).warn('[Lumno] Could not start WebDAV sync.', cause);
+      });
     }
     async function handle(request) {
       await ready;

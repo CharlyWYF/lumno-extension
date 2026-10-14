@@ -2696,6 +2696,12 @@
   "webdav_error_chrome_capacity__firefox": {
     "message": "設定が Firefox Sync の容量を超えるため適用できません。既存の Firefox Sync と端末のデータは保持されます。設定を減らして再試行してください。"
   },
+  "webdav_warning_chrome_backup": {
+    "message": "この端末の設定が Chrome 同期の容量を超えているため、まだ Chrome 同期にバックアップされていません。WebDAV 同期は続行され、端末のデータは保持されます。設定を減らすとバックアップが完了します。"
+  },
+  "webdav_warning_chrome_backup__firefox": {
+    "message": "この端末の設定が Firefox Sync の容量を超えているため、まだ Firefox Sync にバックアップされていません。WebDAV 同期は続行され、端末のデータは保持されます。設定を減らすとバックアップが完了します。"
+  },
   "webdav_error_network": {
     "message": "接続に失敗またはタイムアウトしました。ネットワーク、サーバー URL、証明書を確認してください。端末のデータは保持しています。"
   },

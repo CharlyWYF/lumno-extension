@@ -1042,6 +1042,7 @@ async function run() {
   assert.strictEqual(deviceA.chrome.storage.sync.values[theme], 'light');
 
   await testShortcutGroups();
+  await testBackgroundRounds();
 
   const bigLinks = Array.from({ length: 40 }, (_, index) => ({ id: `link-big${index}xx`, url: `https://big.example/${'x'.repeat(200)}/${index}.jpg`, addedAt: index }));
   assert.throws(() => contract.mergeInitialWallpapers(empty({ [links]: bigLinks.slice(20) }), empty({ [links]: bigLinks.slice(0, 20) })),
@@ -1110,6 +1111,69 @@ async function testShortcutGroups() {
   const mergedItems = contract.mergeStates(base, base, remoteItems);
   assert.deepStrictEqual(mergedItems.conflicts, []);
   assert.deepStrictEqual(mergedItems.state.shortcuts.map((item) => item.groupId), ['g0', 'work']);
+}
+// Waits until the controller's queue is idle and the status leaves 'syncing'.
+async function settle(device) {
+  for (let wait = 0; wait < 100; wait += 1) {
+    const current = await device.controller.handle({ operation: 'status' });
+    if (current.state !== 'syncing') return current;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error('sync did not settle');
+}
+async function testBackgroundRounds() {
+  const quiet = (options) => syncApi.createConnectionController({ ...options, logger: { warn() {} } });
+  // An older local-only installation whose settings no longer fit browser sync.
+  const oversized = createServer();
+  const stalled = createDevice(oversized, { sync: { [theme]: 'light' } }, [], quiet);
+  await stalled.controller.handle({ operation: 'connect', config });
+  await set(stalled.chrome.storage.local, { [settings.LOCAL_PRIMARY_STORAGE_KEY]: true, [theme]: 'dark',
+    [customSearch]: 'x'.repeat(120 * 1024) });
+  const before = oversized.requests.length;
+  stalled.chrome.alarms.fire(syncApi.ALARM_NAME);
+  const stalledStatus = await settle(stalled);
+  assert(oversized.requests.length > before, 'a failed browser-sync backup does not stop the WebDAV round');
+  assert.strictEqual(stalledStatus.chromeBackup, 'incomplete', 'the card learns that the backup is incomplete');
+  assert.deepStrictEqual([stalledStatus.state, stalledStatus.error], ['error', 'chrome-capacity'],
+    'the round that could not apply the settings reports it instead of leaving a stale synced status');
+  assert.strictEqual(stalled.chrome.storage.sync.values[theme], 'light', 'browser sync is still never partially replaced');
+
+  // Shortcuts beyond the browser sync budget: WebDAV syncs them through the
+  // overflow record, but the old full-copy backup cannot hold them.
+  const longList = Array.from({ length: 60 }, (_, index) => shortcuts.createShortcutRecord({
+    id: `long-${index}`, title: 'Long shortcut', url: `https://example.com/${'x'.repeat(1000)}?id=${index}`
+  }, { now: 100 }));
+  const overflowServer = createServer();
+  const partial = createDevice(overflowServer, { sync: { [theme]: 'light' } }, [], quiet);
+  await partial.controller.handle({ operation: 'connect', config });
+  await set(partial.chrome.storage.local, { [settings.LOCAL_PRIMARY_STORAGE_KEY]: true,
+    ...shortcuts.createShortcutStoragePlan({ items: longList }, { maxItemBytes: Number.MAX_SAFE_INTEGER, maxTotalBytes: Number.MAX_SAFE_INTEGER }).payload });
+  assert.deepStrictEqual(await partial.controller.handle({ operation: 'sync' }), { ok: true },
+    'a sync whose backup is incomplete still succeeds');
+  const partialStatus = await partial.controller.handle({ operation: 'status' });
+  assert.deepStrictEqual([partialStatus.state, partialStatus.chromeBackup, partialStatus.localPrimary], ['ready', 'incomplete', true]);
+  assert.strictEqual(overflowServer.state().shortcuts.length, 60);
+
+  // A background round that fails without recording a status is logged, not swallowed.
+  const logged = [];
+  const brokenServer = createServer();
+  const broken = createDevice(brokenServer, { sync: { [theme]: 'light' } }, [], (options) =>
+    syncApi.createConnectionController({ ...options, logger: { warn: (...args) => logged.push(args) } }));
+  await broken.controller.handle({ operation: 'connect', config });
+  const originalSet = broken.chrome.storage.local.set;
+  broken.chrome.storage.local.set = (payload, callback) => {
+    if (Object.keys(payload).some((key) => key.startsWith(settings.WEBDAV_STATUS_STORAGE_KEY))) {
+      broken.chrome.runtime.lastError = { message: 'QUOTA_BYTES quota exceeded' };
+      callback();
+      broken.chrome.runtime.lastError = null;
+      return;
+    }
+    originalSet.call(broken.chrome.storage.local, payload, callback);
+  };
+  broken.chrome.alarms.fire(syncApi.ALARM_NAME);
+  for (let wait = 0; wait < 50 && !logged.length; wait += 1) await new Promise((resolve) => setTimeout(resolve, 10));
+  assert(logged.some(([message]) => /WebDAV sync failed/.test(message)), 'an unrecorded background failure reaches the log');
+  broken.chrome.storage.local.set = originalSet;
 }
 if (require.main === module) run().catch((error) => { console.error(error); process.exitCode = 1; });
 module.exports = { createServer, createDevice, config, empty, set };

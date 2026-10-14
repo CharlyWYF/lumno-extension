@@ -2696,6 +2696,12 @@
   "webdav_error_chrome_capacity__firefox": {
     "message": "These settings exceed Firefox Sync capacity and were not applied. Existing Firefox Sync and local data are preserved. Reduce the settings and try again."
   },
+  "webdav_warning_chrome_backup": {
+    "message": "Settings on this device exceed Chrome sync capacity, so they are not backed up to Chrome sync yet. WebDAV sync continues and local data is kept. Reduce the settings to finish the backup."
+  },
+  "webdav_warning_chrome_backup__firefox": {
+    "message": "Settings on this device exceed Firefox Sync capacity, so they are not backed up to Firefox Sync yet. WebDAV sync continues and local data is kept. Reduce the settings to finish the backup."
+  },
   "webdav_error_network": {
     "message": "Connection failed or timed out. Check the network, server address and certificate. Local data is retained."
   },
