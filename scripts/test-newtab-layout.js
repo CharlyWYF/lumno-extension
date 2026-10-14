@@ -1029,7 +1029,7 @@ function testInitialEntryMotionIsStaggeredAndTransient() {
   );
   assert.match(
     newtabHtml,
-    /body\[data-nt-enter="run"\]\[data-nt-ready="1"\] \.x-nt-bookmarks-topbar\[data-visible="true"\]\s*\{\s*animation:\s*_x_nt_topbar_entry_2026_unique_ 280ms cubic-bezier\(0\.16, 1, 0\.3, 1\) both;[\s\S]*?@keyframes _x_nt_topbar_entry_2026_unique_\s*\{\s*0%\s*\{\s*opacity:\s*0;\s*clip-path:\s*inset\(0 0 100% 0\);[\s\S]*?100%\s*\{\s*opacity:\s*1;[\s\S]*?clip-path:\s*inset\(0 0 -32px 0\);/,
+    /body\[data-nt-enter="run"\]\[data-nt-ready="1"\] \.x-nt-bookmarks-topbar\[data-visible="true"\]\s*\{\s*animation:\s*_x_nt_topbar_entry_2026_unique_ 280ms cubic-bezier\(0\.16, 1, 0\.3, 1\) both;[\s\S]*?@keyframes _x_nt_topbar_entry_2026_unique_\s*\{\s*0%\s*\{\s*clip-path:\s*inset\(0 0 100% 0\);\s*animation-timing-function:\s*cubic-bezier\(0\.33, 1, 0\.68, 1\);\s*\}\s*85%\s*\{\s*clip-path:\s*inset\(0 0 0 0\);[\s\S]*?100%\s*\{\s*clip-path:\s*inset\(0 0 -32px 0\);/,
     'the docked bookmarks top bar should unroll from the top edge without moving off its final position'
   );
   assert.match(

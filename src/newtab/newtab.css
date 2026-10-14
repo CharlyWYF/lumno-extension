@@ -2734,19 +2734,21 @@ body[data-nt-enter="run"][data-nt-ready="1"]
   .x-nt-bookmarks-topbar[data-visible="true"] > .x-nt-bookmarks-topbar-viewport,
 body[data-nt-enter="run"][data-nt-ready="1"]
   .x-nt-bookmarks-topbar[data-visible="true"] > .x-nt-bookmarks-topbar-actions {
-  animation: _x_nt_topbar_content_entry_2026_unique_ var(--lumno-duration-2xl) cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+  animation: _x_nt_topbar_content_entry_2026_unique_ var(--lumno-duration-2xl) cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
 }
+/* The bar's own 36px gets most of the time on a gentle ease-out so the edge is seen travelling;
+   only then does the clip open past the bottom for the drop shadow. Sweeping straight to -32px
+   uncovered the whole bar in about two frames, under a fade, and read as a plain fade. */
 @keyframes _x_nt_topbar_entry_2026_unique_ {
   0% {
-    opacity: 0;
     clip-path: inset(0 0 100% 0);
+    animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
   }
-  40% {
-    opacity: 1;
+  85% {
+    clip-path: inset(0 0 0 0);
+    animation-timing-function: linear;
   }
   100% {
-    opacity: 1;
-    /* Open past the bottom edge so the drop shadow is not cut off. */
     clip-path: inset(0 0 -32px 0);
   }
 }
