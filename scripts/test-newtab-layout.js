@@ -1340,9 +1340,15 @@ function testBottomDockCssDefinesAdaptiveDensityVariables() {
     /@media \(max-width:\s*640px\)[\s\S]*?#_x_extension_newtab_recent_sites_grid_2024_unique_\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/,
     'mobile recent sites should render two columns'
   );
+  // The corner buttons take their size from their control's --x-nt-corner-size.
   assert.match(
     newtabHtml,
-    /@media \(max-width:\s*640px\)[\s\S]*?\.x-nt-wallpaper-button,\s*\.x-nt-feedback-button\s*\{[\s\S]*?width:\s*44px;[\s\S]*?height:\s*44px;/,
+    /\.x-nt-wallpaper-button,\s*\.x-nt-feedback-button,[^{]*\{[^}]*width:\s*var\(--x-nt-corner-size[^}]*height:\s*var\(--x-nt-corner-size/,
+    'corner buttons should take the corner size'
+  );
+  assert.match(
+    newtabHtml,
+    /@media \(max-width:\s*640px\)\s*\{[^@]*?--x-nt-corner-size:\s*44px;/,
     'mobile utility controls should meet the 44px touch target'
   );
   assert.match(
@@ -1362,13 +1368,18 @@ function testBottomDockCssDefinesAdaptiveDensityVariables() {
   );
   assert.match(
     newtabHtml,
-    /@media \(hover:\s*none\)[\s\S]*?\.x-nt-wallpaper-button,\s*\.x-nt-feedback-button\s*\{[\s\S]*?width:\s*44px;[\s\S]*?height:\s*44px;/,
+    /@media \(hover:\s*none\)\s*\{[^@]*?--x-nt-corner-size:\s*44px;/,
     'touch input should keep fixed utility controls at least 44px square'
   );
   assert.match(
     newtabHtml,
-    /@media \(min-width:\s*641px\) and \(max-width:\s*900px\) and \(max-height:\s*560px\)[\s\S]*?body\[data-nt-bottom-dock-density="tiny"\]\s*\{[\s\S]*?--x-nt-shortcuts-reserved-height:\s*50px;[\s\S]*?#_x_extension_newtab_bottom_dock_2024_unique_\[data-density="tiny"\]\s*\{[\s\S]*?--x-nt-dock-bookmark-card-height:\s*44px;[\s\S]*?\.x-nt-wallpaper-button,\s*\.x-nt-feedback-button\s*\{[\s\S]*?width:\s*44px;[\s\S]*?height:\s*44px;/,
+    /@media \(min-width:\s*641px\) and \(max-width:\s*900px\) and \(max-height:\s*560px\)[\s\S]*?body\[data-nt-bottom-dock-density="tiny"\]\s*\{[\s\S]*?--x-nt-shortcuts-reserved-height:\s*50px;[\s\S]*?#_x_extension_newtab_bottom_dock_2024_unique_\[data-density="tiny"\]\s*\{[\s\S]*?--x-nt-dock-bookmark-card-height:\s*44px;/,
     'narrow landscape should not let tiny density shrink interactive rows below 44px'
+  );
+  assert.match(
+    newtabHtml,
+    /@media \(min-width:\s*641px\) and \(max-width:\s*900px\) and \(max-height:\s*560px\)\s*\{[^@]*?--x-nt-corner-size:\s*44px;/,
+    'narrow landscape should keep the corner buttons at the 44px touch target'
   );
   assert.match(
     newtabHtml,
@@ -1397,7 +1408,7 @@ function testBottomDockCssDefinesAdaptiveDensityVariables() {
   );
   assert.match(
     newtabHtml,
-    /@media \(max-width:\s*640px\)[\s\S]*?\.x-nt-wallpaper-control,\s*\.x-nt-feedback-control\s*\{[\s\S]*?bottom:\s*max\(10px,\s*env\(safe-area-inset-bottom\)\);/,
+    /@media \(max-width:\s*640px\)\s*\{[^@]*?--x-nt-corner-inset-y:\s*max\(10px,\s*env\(safe-area-inset-bottom\)\);/,
     'mobile utility controls should clear the bottom safe area'
   );
   assert.match(

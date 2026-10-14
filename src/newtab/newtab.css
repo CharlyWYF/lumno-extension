@@ -191,8 +191,38 @@ body.x-nt-bottom-layout:not(.x-nt-mobile-flow) {
   --x-nt-bookmark-icon-bg: rgba(241, 245, 249, 0.92);
   --x-nt-bookmark-folder-hover-bg: rgba(83, 147, 255, 0.05);
   --x-nt-bookmark-shadow-rgb: 199, 199, 199;
+  /* Hovered card lift: alphas of its four visible shadow layers (folders use half). */
+  --x-nt-bookmark-hover-shadow-alpha-1: 0.008;
+  --x-nt-bookmark-hover-shadow-alpha-2: 0.04;
+  --x-nt-bookmark-hover-shadow-alpha-3: 0.075;
+  --x-nt-bookmark-hover-shadow-alpha-4: 0.085;
+  --x-nt-bookmark-folder-hover-border: rgba(59, 130, 246, 0.22);
+  --x-nt-bookmark-folder-drop-border: rgba(37, 99, 235, 0.78);
   --x-nt-bookmark-pager-hover-bg: rgba(17, 24, 39, 0.08);
   --x-nt-insert-indicator: #7a8491;
+  /* Wallpaper and feedback buttons without a wallpaper behind them. */
+  --x-nt-corner-hover-bg: rgba(15, 23, 42, 0.06);
+  --x-nt-corner-hover-border: rgba(15, 23, 42, 0.1);
+  --x-nt-corner-hover-ring: rgba(15, 23, 42, 0.02);
+  --x-nt-corner-hover-ink: #374151;
+  --x-nt-corner-open-bg: rgba(15, 23, 42, 0.07);
+  --x-nt-corner-open-border: rgba(15, 23, 42, 0.08);
+  --x-nt-corner-open-ring: rgba(15, 23, 42, 0.02);
+  --x-nt-corner-open-ink: #374151;
+  --x-nt-corner-open-hover-bg: rgba(15, 23, 42, 0.1);
+  --x-nt-corner-open-hover-border: rgba(15, 23, 42, 0.12);
+  --x-nt-corner-open-hover-ring: rgba(15, 23, 42, 0.03);
+  --x-nt-corner-press-bg: rgba(15, 23, 42, 0.13);
+  --x-nt-corner-press-border: rgba(15, 23, 42, 0.16);
+  --x-nt-corner-press-shadow:
+    inset 0 1px 2px rgba(15, 23, 42, 0.12),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.04);
+  --x-nt-corner-open-press-bg: rgba(15, 23, 42, 0.14);
+  --x-nt-corner-open-press-border: rgba(15, 23, 42, 0.18);
+  --x-nt-corner-open-press-shadow:
+    inset 0 1px 2px rgba(15, 23, 42, 0.13),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.05);
+  --x-nt-corner-active-ink: color-mix(in srgb, var(--x-nt-text, #111827) 62%, transparent);
   --input-focus-color: var(--lumno-color-focus-ring);
   --input-focus-shadow: rgba(59, 130, 246, 0.2);
   --input-placeholder: rgba(100, 116, 139, 0.7);
@@ -377,8 +407,36 @@ body[data-theme="dark"] {
   --x-nt-bookmark-icon-bg: rgba(255, 255, 255, 0.08);
   --x-nt-bookmark-folder-hover-bg: rgba(83, 147, 255, 0.08);
   --x-nt-bookmark-shadow-rgb: 60, 74, 97;
+  --x-nt-bookmark-hover-shadow-alpha-1: 0.065;
+  --x-nt-bookmark-hover-shadow-alpha-2: 0.16;
+  --x-nt-bookmark-hover-shadow-alpha-3: 0.24;
+  --x-nt-bookmark-hover-shadow-alpha-4: 0.3;
+  --x-nt-bookmark-folder-hover-border: rgba(96, 165, 250, 0.34);
+  --x-nt-bookmark-folder-drop-border: rgba(96, 165, 250, 0.86);
   --x-nt-bookmark-pager-hover-bg: rgba(226, 232, 240, 0.18);
   --x-nt-insert-indicator: #a8b0bc;
+  --x-nt-corner-hover-bg: rgba(255, 255, 255, 0.1);
+  --x-nt-corner-hover-border: rgba(255, 255, 255, 0.14);
+  --x-nt-corner-hover-ring: rgba(255, 255, 255, 0.03);
+  --x-nt-corner-hover-ink: color-mix(in srgb, var(--x-nt-text, #e5e7eb) 68%, transparent);
+  --x-nt-corner-open-bg: rgba(255, 255, 255, 0.11);
+  --x-nt-corner-open-border: rgba(255, 255, 255, 0.13);
+  --x-nt-corner-open-ring: rgba(255, 255, 255, 0.03);
+  --x-nt-corner-open-ink: color-mix(in srgb, var(--x-nt-text, #e5e7eb) 68%, transparent);
+  --x-nt-corner-open-hover-bg: rgba(255, 255, 255, 0.15);
+  --x-nt-corner-open-hover-border: rgba(255, 255, 255, 0.18);
+  --x-nt-corner-open-hover-ring: rgba(255, 255, 255, 0.04);
+  --x-nt-corner-press-bg: rgba(255, 255, 255, 0.18);
+  --x-nt-corner-press-border: rgba(255, 255, 255, 0.22);
+  --x-nt-corner-press-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --x-nt-corner-open-press-bg: rgba(255, 255, 255, 0.21);
+  --x-nt-corner-open-press-border: rgba(255, 255, 255, 0.24);
+  --x-nt-corner-open-press-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.09),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --x-nt-corner-active-ink: color-mix(in srgb, var(--x-nt-text, #e5e7eb) 68%, transparent);
   --input-focus-color: var(--lumno-color-focus-ring);
   --input-focus-shadow: rgba(59, 130, 246, 0.3);
   --input-placeholder: rgba(148, 163, 184, 0.7);
@@ -535,12 +593,14 @@ body:not([data-nt-enter="done"])::after {
 body:not([data-nt-enter="done"])::before {
   transition: none;
 }
-html body ._x_extension_tooltip_2026_unique_,
-html body ._x_extension_tooltip_2026_unique_[data-visible="true"],
-html body ._x_extension_tooltip_2026_unique_[data-tooltip-kind],
-html body ._x_extension_tooltip_2026_unique_[data-tooltip-kind][data-visible="true"],
-html body ._x_extension_tooltip_2026_unique_._x_extension_cursor_tooltip_tag_2026_unique_[data-tooltip-kind],
-html body ._x_extension_tooltip_2026_unique_._x_extension_cursor_tooltip_tag_2026_unique_[data-tooltip-kind][data-visible="true"] {
+/* New Tab tooltips appear in place, without the shared tooltip's entry offset; the
+   body prefix outranks each of tooltip.css's state rules by one element. */
+body ._x_extension_tooltip_2026_unique_,
+body ._x_extension_tooltip_2026_unique_[data-visible="true"],
+body ._x_extension_tooltip_2026_unique_[data-tooltip-kind],
+body ._x_extension_tooltip_2026_unique_[data-tooltip-kind][data-visible="true"],
+body ._x_extension_tooltip_2026_unique_._x_extension_cursor_tooltip_tag_2026_unique_[data-tooltip-kind],
+body ._x_extension_tooltip_2026_unique_._x_extension_cursor_tooltip_tag_2026_unique_[data-tooltip-kind][data-visible="true"] {
   transform: none;
 }
 #_x_extension_newtab_root_2024_unique_ {
@@ -2095,16 +2155,12 @@ body[data-drag-blocked="true"] {
   z-index: 8;
 }
 .x-nt-bookmark-card--folder[data-bookmark-drop-target="true"] {
-  border-color: rgba(37, 99, 235, 0.78);
+  border-color: var(--x-nt-bookmark-folder-drop-border);
   box-shadow: none;
 }
 .x-nt-bookmark-card--folder[data-bookmark-drop-target="true"]::before {
   background: rgba(37, 99, 235, 0.08);
   opacity: 1;
-}
-body[data-theme="dark"] .x-nt-bookmark-card--folder[data-bookmark-drop-target="true"] {
-  border-color: rgba(96, 165, 250, 0.86);
-  box-shadow: none;
 }
 [data-insert-line-position]::after {
   content: "";
@@ -2176,16 +2232,19 @@ body[data-theme="dark"] .x-nt-bookmark-card--folder[data-bookmark-drop-target="t
 .x-nt-bookmark-card--folder {
   --x-nt-bookmark-card-hover-color: var(--x-nt-bookmark-folder-hover-bg, rgba(83, 147, 255, 0.05));
 }
+/* The shadow color follows each card's theme (set on the card); the layer
+   strengths follow the page theme, and folders lift half as much. */
 .x-nt-bookmark-card.x-nt-bookmark-card--hover {
+  --x-nt-bookmark-hover-shadow-scale: 1;
   transform: none;
   border-color: var(--x-nt-bookmark-card-border-color, var(--x-nt-bookmark-card-border, rgba(0, 0, 0, 0.08)));
   backdrop-filter: blur(var(--x-nt-bookmark-card-blur-hover, 9px));
   -webkit-backdrop-filter: blur(var(--x-nt-bookmark-card-blur-hover, 9px));
-  box-shadow: 0 55px 15px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0),
-    0 35px 14px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0.008),
-    0 20px 12px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0.04),
-    0 9px 9px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0.075),
-    0 2px 5px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0.085);
+  box-shadow: 0 55px 15px 0 rgba(var(--x-nt-bookmark-shadow-rgb), 0),
+    0 35px 14px 0 rgba(var(--x-nt-bookmark-shadow-rgb), calc(var(--x-nt-bookmark-hover-shadow-alpha-1) * var(--x-nt-bookmark-hover-shadow-scale))),
+    0 20px 12px 0 rgba(var(--x-nt-bookmark-shadow-rgb), calc(var(--x-nt-bookmark-hover-shadow-alpha-2) * var(--x-nt-bookmark-hover-shadow-scale))),
+    0 9px 9px 0 rgba(var(--x-nt-bookmark-shadow-rgb), calc(var(--x-nt-bookmark-hover-shadow-alpha-3) * var(--x-nt-bookmark-hover-shadow-scale))),
+    0 2px 5px 0 rgba(var(--x-nt-bookmark-shadow-rgb), calc(var(--x-nt-bookmark-hover-shadow-alpha-4) * var(--x-nt-bookmark-hover-shadow-scale)));
 }
 .x-nt-bookmark-card.x-nt-bookmark-card--hover::before {
   opacity: 1;
@@ -2196,28 +2255,9 @@ body[data-theme="dark"] .x-nt-bookmark-card--folder[data-bookmark-drop-target="t
 .x-nt-bookmark-card[data-bookmark-context-menu-open="true"]::before {
   opacity: 1;
 }
-body[data-theme="dark"] .x-nt-bookmark-card.x-nt-bookmark-card--hover {
-  box-shadow: 0 55px 15px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0),
-    0 35px 14px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.065),
-    0 20px 12px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.16),
-    0 9px 9px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.24),
-    0 2px 5px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.3);
-}
 .x-nt-bookmark-card--folder.x-nt-bookmark-card--hover {
-  border-color: rgba(59, 130, 246, 0.22);
-  box-shadow: 0 55px 15px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0),
-    0 35px 14px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0.004),
-    0 20px 12px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0.02),
-    0 9px 9px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0.0375),
-    0 2px 5px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 199, 199, 199), 0.0425);
-}
-body[data-theme="dark"] .x-nt-bookmark-card--folder.x-nt-bookmark-card--hover {
-  border-color: rgba(96, 165, 250, 0.34);
-  box-shadow: 0 55px 15px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0),
-    0 35px 14px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.0325),
-    0 20px 12px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.08),
-    0 9px 9px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.12),
-    0 2px 5px 0 rgba(var(--x-nt-bookmark-shadow-rgb, 60, 74, 97), 0.15);
+  --x-nt-bookmark-hover-shadow-scale: 0.5;
+  border-color: var(--x-nt-bookmark-folder-hover-border);
 }
 .x-nt-bookmark-card:focus-visible {
   outline: 2px solid var(--lumno-color-focus-ring);
@@ -2394,10 +2434,15 @@ body[data-theme="dark"] .x-nt-folder-preview-favicon--fallback {
   overflow: hidden;
 }
 .x-nt-bookmarks-topbar {
-  --x-nt-bookmarks-topbar-surface:
+  /* The theme sets the default surface and line; surface modes and wallpapers
+     replace the surface, terminal and border variables below. */
+  --x-nt-bookmarks-topbar-default-surface:
     linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(248, 250, 252, 0.62));
-  --x-nt-bookmarks-topbar-terminal-surface: rgba(248, 250, 252, 0.78);
-  --x-nt-bookmarks-topbar-border: rgba(15, 23, 42, 0.065);
+  --x-nt-bookmarks-topbar-default-terminal-surface: rgba(248, 250, 252, 0.78);
+  --x-nt-bookmarks-topbar-default-border: rgba(15, 23, 42, 0.065);
+  --x-nt-bookmarks-topbar-surface: var(--x-nt-bookmarks-topbar-default-surface);
+  --x-nt-bookmarks-topbar-terminal-surface: var(--x-nt-bookmarks-topbar-default-terminal-surface);
+  --x-nt-bookmarks-topbar-border: var(--x-nt-bookmarks-topbar-default-border);
   --x-nt-bookmarks-topbar-blur: 22px;
   --x-nt-bookmarks-topbar-saturate: 160%;
   /* Only the floating bar shows this hairline along its top; the docked bar meets the browser there. */
@@ -2420,6 +2465,7 @@ body[data-theme="dark"] .x-nt-folder-preview-favicon--fallback {
   --x-nt-bookmarks-topbar-action-hover: rgba(15, 23, 42, 0.065);
   --x-nt-bookmarks-topbar-item-hover: rgba(15, 23, 42, 0.065);
   --x-nt-bookmarks-topbar-folder-hover: rgba(37, 99, 235, 0.075);
+  --x-nt-bookmarks-topbar-drop-border: rgba(37, 99, 235, 0.58);
   all: unset;
   /* Keep the bar in page coordinates so zooming and panning move it
      together with the rest of the new-tab content. */
@@ -2472,9 +2518,7 @@ body[data-theme="dark"] .x-nt-folder-preview-favicon--fallback {
   margin-right: -6px;
   padding: 6px;
 }
-/* The surface choices outrank the dark theme's default surface below, which would otherwise tint
-   the clear and transparent bars without a wallpaper. */
-html body .x-nt-bookmarks-topbar[data-surface-mode="clear"] {
+.x-nt-bookmarks-topbar[data-surface-mode="clear"] {
   --x-nt-bookmarks-topbar-surface: var(--x-nt-bookmarks-topbar-clear-fallback);
   --x-nt-bookmarks-topbar-terminal-surface:
     var(--x-nt-bookmarks-topbar-clear-terminal-fallback);
@@ -2487,7 +2531,7 @@ html body .x-nt-bookmarks-topbar[data-surface-mode="clear"] {
   --x-nt-bookmarks-topbar-rim-bottom: rgba(15, 23, 42, 0.1);
   --x-nt-bookmarks-topbar-liquid-tone: brightness(1.01);
 }
-html body[data-theme="dark"] .x-nt-bookmarks-topbar[data-surface-mode="clear"] {
+body[data-theme="dark"] .x-nt-bookmarks-topbar[data-surface-mode="clear"] {
   --x-nt-bookmarks-topbar-sheen: rgba(255, 255, 255, 0.035);
   --x-nt-bookmarks-topbar-rim-top: rgba(255, 255, 255, 0.14);
   --x-nt-bookmarks-topbar-rim-bottom: rgba(255, 255, 255, 0.06);
@@ -2504,7 +2548,7 @@ html body[data-theme="dark"] .x-nt-bookmarks-topbar[data-surface-mode="clear"] {
 /* One line per edge, never stacked: floating glass drops the outline ring and top highlight for a
    single rim that is bright along the top and fades toward the bottom, like light caught in a glass
    edge. */
-html body .x-nt-bookmarks-topbar[data-surface-mode="clear"][data-layout="floating"] {
+.x-nt-bookmarks-topbar[data-surface-mode="clear"][data-layout="floating"] {
   box-shadow: var(--x-nt-bookmarks-topbar-floating-shadow);
 }
 .x-nt-bookmarks-topbar[data-surface-mode="clear"][data-layout="floating"]::after {
@@ -2533,7 +2577,7 @@ html body .x-nt-bookmarks-topbar[data-surface-mode="clear"][data-layout="floatin
     saturate(var(--x-nt-bookmarks-topbar-saturate))
     var(--x-nt-bookmarks-topbar-liquid-tone);
 }
-html body .x-nt-bookmarks-topbar[data-surface-mode="transparent"] {
+.x-nt-bookmarks-topbar[data-surface-mode="transparent"] {
   --x-nt-bookmarks-topbar-surface: transparent;
   --x-nt-bookmarks-topbar-terminal-surface: transparent;
   --x-nt-bookmarks-topbar-border: transparent;
@@ -2727,7 +2771,7 @@ body:not([data-nt-ready="1"]) .x-nt-bookmarks-topbar {
 }
 .x-nt-bookmarks-topbar
   .x-nt-bookmark-card--folder[data-bookmark-drop-target="true"] {
-  border-color: rgba(37, 99, 235, 0.58);
+  border-color: var(--x-nt-bookmarks-topbar-drop-border);
   background: var(--x-nt-bookmarks-topbar-folder-hover);
   box-shadow: none;
 }
@@ -2769,7 +2813,7 @@ body:not([data-nt-ready="1"]) .x-nt-bookmarks-topbar {
   box-sizing: border-box;
   border-radius: 7px;
 }
-body .x-nt-bookmarks-topbar
+.x-nt-bookmarks-topbar
   .x-nt-section-mode-select
   ._x_extension_select_trigger_2024_unique_
   ._x_extension_select_icon_2024_unique_ {
@@ -2813,10 +2857,10 @@ body[data-bookmark-view-mode="top"] .x-nt-bookmarks-topbar
   height: var(--x-nt-insert-line-height, 24px);
 }
 body[data-theme="dark"] .x-nt-bookmarks-topbar {
-  --x-nt-bookmarks-topbar-surface:
+  --x-nt-bookmarks-topbar-default-surface:
     linear-gradient(180deg, rgba(28, 30, 34, 0.78), rgba(18, 20, 24, 0.68));
-  --x-nt-bookmarks-topbar-terminal-surface: rgba(18, 20, 24, 0.8);
-  --x-nt-bookmarks-topbar-border: rgba(248, 250, 252, 0.1);
+  --x-nt-bookmarks-topbar-default-terminal-surface: rgba(18, 20, 24, 0.8);
+  --x-nt-bookmarks-topbar-default-border: rgba(248, 250, 252, 0.1);
   --x-nt-bookmarks-topbar-highlight: rgba(255, 255, 255, 0.08);
   --x-nt-bookmarks-topbar-shadow: 0 10px 24px -18px rgba(0, 0, 0, 0.7);
   --x-nt-bookmarks-topbar-floating-shadow:
@@ -2833,47 +2877,7 @@ body[data-theme="dark"] .x-nt-bookmarks-topbar {
   --x-nt-bookmarks-topbar-action-hover: rgba(255, 255, 255, 0.09);
   --x-nt-bookmarks-topbar-item-hover: rgba(255, 255, 255, 0.09);
   --x-nt-bookmarks-topbar-folder-hover: rgba(96, 165, 250, 0.11);
-}
-body[data-theme="dark"] .x-nt-bookmarks-topbar .x-nt-bookmark-card.x-nt-bookmark-card--hover,
-body[data-theme="dark"] .x-nt-bookmarks-topbar .x-nt-bookmark-card[data-bookmark-context-menu-open="true"],
-body[data-theme="dark"] .x-nt-bookmarks-topbar .x-nt-bookmark-card:focus-visible {
-  border-color: transparent;
-  background: var(--x-nt-bookmarks-topbar-item-hover);
-  box-shadow: none;
-}
-body[data-theme="dark"] .x-nt-bookmarks-topbar .x-nt-bookmark-card--folder.x-nt-bookmark-card--hover {
-  border-color: transparent;
-  background: var(--x-nt-bookmarks-topbar-folder-hover);
-  box-shadow: none;
-}
-body[data-theme="dark"] .x-nt-bookmarks-topbar
-  .x-nt-bookmark-card--folder[data-bookmark-drop-target="true"] {
-  border-color: rgba(96, 165, 250, 0.68);
-  background: var(--x-nt-bookmarks-topbar-folder-hover);
-  box-shadow: none;
-}
-body[data-theme="dark"][data-bookmark-view-mode="top"] .x-nt-bookmarks-topbar
-  .x-nt-bookmarks-topbar-actions
-  .x-nt-section-mode-select ._x_extension_select_trigger_2024_unique_,
-body[data-theme="dark"][data-bookmark-view-mode="top"] .x-nt-bookmarks-topbar
-  .x-nt-bookmarks-topbar-actions
-  .x-nt-bookmarks-pager-btn {
-  color: var(--x-nt-bookmarks-topbar-ink);
-}
-body[data-theme="dark"][data-bookmark-view-mode="top"] .x-nt-bookmarks-topbar
-  .x-nt-bookmarks-topbar-actions
-  .x-nt-section-mode-select:hover ._x_extension_select_trigger_2024_unique_,
-body[data-theme="dark"][data-bookmark-view-mode="top"] .x-nt-bookmarks-topbar
-  .x-nt-bookmarks-topbar-actions
-  .x-nt-section-mode-select ._x_extension_select_trigger_2024_unique_:hover,
-body[data-theme="dark"][data-bookmark-view-mode="top"] .x-nt-bookmarks-topbar
-  .x-nt-bookmarks-topbar-actions
-  .x-nt-section-mode-select[data-open="true"] ._x_extension_select_trigger_2024_unique_,
-body[data-theme="dark"][data-bookmark-view-mode="top"] .x-nt-bookmarks-topbar
-  .x-nt-bookmarks-topbar-actions
-  .x-nt-bookmarks-pager-btn:hover:not([aria-disabled="true"]) {
-  color: var(--x-nt-bookmarks-topbar-ink);
-  background: var(--x-nt-bookmarks-topbar-action-hover) !important;
+  --x-nt-bookmarks-topbar-drop-border: rgba(96, 165, 250, 0.68);
 }
 body[data-wallpaper-active="true"] .x-nt-bookmarks-topbar[data-surface-mode="adaptive"] {
   --x-nt-bookmarks-topbar-surface:
@@ -3456,7 +3460,6 @@ body[data-theme="dark"] .x-nt-bookmark-cascade-item[data-bookmark-context-menu-o
   color: #f8fafc;
 }
 body[data-theme="dark"] .x-nt-bookmark-cascade-item[data-hover-suppressed="true"]:hover:not([data-active="true"]) {
-  background: transparent;
   color: #d6dbe3;
 }
 body[data-theme="dark"] .x-nt-bookmark-cascade-item--folder[data-bookmark-drop-target="true"] {
@@ -4027,38 +4030,91 @@ body[data-theme="dark"] .x-nt-recent-track.x-nt-recent-track--active {
   white-space: nowrap;
   pointer-events: none;
 }
-.x-nt-wallpaper-control {
+/* The page buttons share the bottom-right corner: the wallpaper button at the
+   corner, then feedback, then the bookmark menu debug button. Each control takes a
+   slot, so a breakpoint only changes the inset, the button size or the direction. */
+.x-nt-wallpaper-control,
+.x-nt-feedback-control,
+.x-nt-bookmark-cascade-debug-control {
+  --x-nt-corner-inset-x: 14px;
+  --x-nt-corner-inset-y: 14px;
+  --x-nt-corner-size: 38px;
+  --x-nt-corner-step: 46px;
+  /* 1 lines the buttons up in a row, 0 stacks them in a column. */
+  --x-nt-corner-row: 1;
   position: fixed;
-  right: 14px;
-  bottom: 14px;
-  z-index: 18;
-  width: 38px;
+  right: calc(var(--x-nt-corner-inset-x) + var(--x-nt-corner-slot, 0) * var(--x-nt-corner-step) * var(--x-nt-corner-row));
+  bottom: calc(var(--x-nt-corner-inset-y) + var(--x-nt-corner-slot, 0) * var(--x-nt-corner-step) * (1 - var(--x-nt-corner-row)));
+  z-index: 19;
+  width: var(--x-nt-corner-size);
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
   pointer-events: none;
+}
+.x-nt-wallpaper-control {
+  z-index: 18;
 }
 .x-nt-feedback-control {
-  position: fixed;
-  right: 60px;
-  bottom: 14px;
-  z-index: 19;
-  width: 38px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  pointer-events: none;
+  --x-nt-corner-slot: 1;
 }
 .x-nt-bookmark-cascade-debug-control {
-  position: fixed;
-  right: 106px;
-  bottom: 14px;
-  z-index: 19;
-  width: 38px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  pointer-events: none;
+  --x-nt-corner-slot: 2;
+}
+/* Corner layout by viewport; the ranges do not overlap:
+   wider than 860px and taller than 680px   row, 14px from the edges
+   641-860px wide, taller than 680px        row, 12px
+   wider than 640px, 561-680px tall         column, 10px
+   wider than 640px, up to 560px tall       column, 8px
+   up to 640px wide                         row of 44px buttons at the safe-area inset */
+@media (min-width: 641px) and (max-width: 860px) and (min-height: 681px) {
+  .x-nt-wallpaper-control,
+  .x-nt-feedback-control,
+  .x-nt-bookmark-cascade-debug-control {
+    --x-nt-corner-inset-x: 12px;
+    --x-nt-corner-inset-y: 12px;
+  }
+}
+@media (min-width: 641px) and (min-height: 561px) and (max-height: 680px) {
+  .x-nt-wallpaper-control,
+  .x-nt-feedback-control,
+  .x-nt-bookmark-cascade-debug-control {
+    --x-nt-corner-inset-x: 10px;
+    --x-nt-corner-inset-y: 10px;
+    --x-nt-corner-row: 0;
+  }
+}
+@media (min-width: 641px) and (max-height: 560px) {
+  .x-nt-wallpaper-control,
+  .x-nt-feedback-control,
+  .x-nt-bookmark-cascade-debug-control {
+    --x-nt-corner-inset-x: 8px;
+    --x-nt-corner-inset-y: 8px;
+    --x-nt-corner-row: 0;
+  }
+}
+@media (max-width: 640px) {
+  .x-nt-wallpaper-control,
+  .x-nt-feedback-control,
+  .x-nt-bookmark-cascade-debug-control {
+    --x-nt-corner-inset-x: max(10px, env(safe-area-inset-right));
+    --x-nt-corner-inset-y: max(10px, env(safe-area-inset-bottom));
+    --x-nt-corner-size: 44px;
+    --x-nt-corner-step: 52px;
+  }
+}
+/* Touch screens get a larger target, in place. */
+@media (hover: none) {
+  .x-nt-wallpaper-control,
+  .x-nt-feedback-control {
+    --x-nt-corner-size: 44px;
+  }
+}
+@media (min-width: 641px) and (max-width: 900px) and (max-height: 560px) {
+  .x-nt-wallpaper-control,
+  .x-nt-feedback-control {
+    --x-nt-corner-size: 44px;
+  }
 }
 /* A visible feature hint stretches left over the feedback button, so lift the control above it. */
 .x-nt-wallpaper-control:has(> .x-lumno-feature-hint[data-visible="true"]) {
@@ -4067,41 +4123,15 @@ body[data-theme="dark"] .x-nt-recent-track.x-nt-recent-track--active {
 .x-nt-wallpaper-control[data-panel-open="true"] {
   z-index: 30;
 }
-.x-nt-wallpaper-button {
+/* State colors come from --x-nt-corner-* (page theme, see the theme blocks); the
+   debug button swaps in its own blue set below. */
+.x-nt-wallpaper-button,
+.x-nt-feedback-button,
+.x-nt-bookmark-cascade-debug-button {
   all: unset;
-  width: 38px;
-  min-width: 38px;
-  height: 38px;
-  border-radius: var(--lumno-radius-pill);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: color-mix(
-    in srgb,
-    var(--x-ext-input-icon, #4b545f) 78%,
-    transparent
-  );
-  background: transparent;
-  border: 1px solid transparent;
-  box-shadow: none;
-  box-sizing: border-box;
-  cursor: pointer;
-  font-size: var(--lumno-font-size-xl);
-  gap: 0;
-  padding: 0;
-  pointer-events: auto;
-  -webkit-text-fill-color: currentColor;
-  transition:
-    border-color var(--lumno-duration-md) ease,
-    background var(--lumno-duration-md) ease,
-    box-shadow var(--lumno-duration-md) ease,
-    color var(--lumno-duration-md) ease;
-}
-.x-nt-feedback-button {
-  all: unset;
-  width: 38px;
-  min-width: 38px;
-  height: 38px;
+  width: var(--x-nt-corner-size, 38px);
+  min-width: var(--x-nt-corner-size, 38px);
+  height: var(--x-nt-corner-size, 38px);
   border-radius: var(--lumno-radius-pill);
   display: inline-flex;
   align-items: center;
@@ -4128,225 +4158,86 @@ body[data-theme="dark"] .x-nt-recent-track.x-nt-recent-track--active {
     color var(--lumno-duration-md) ease;
 }
 .x-nt-bookmark-cascade-debug-button {
-  all: unset;
-  width: 38px;
-  min-width: 38px;
-  height: 38px;
-  border-radius: var(--lumno-radius-pill);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: color-mix(
-    in srgb,
-    var(--x-ext-input-icon, #4b545f) 78%,
-    transparent
-  );
-  background: transparent;
-  border: 1px solid transparent;
-  box-shadow: none;
-  box-sizing: border-box;
-  cursor: pointer;
-  font-size: var(--lumno-font-size-xl);
-  gap: 0;
-  padding: 0;
-  pointer-events: auto;
-  -webkit-text-fill-color: currentColor;
-  transition:
-    border-color var(--lumno-duration-md) ease,
-    background var(--lumno-duration-md) ease,
-    box-shadow var(--lumno-duration-md) ease,
-    color var(--lumno-duration-md) ease;
+  --x-nt-corner-hover-bg: rgba(37, 99, 235, 0.08);
+  --x-nt-corner-hover-border: rgba(37, 99, 235, 0.16);
+  --x-nt-corner-hover-ring: rgba(37, 99, 235, 0.04);
+  --x-nt-corner-hover-ink: #1d4ed8;
+  --x-nt-corner-open-bg: rgba(37, 99, 235, 0.12);
+  --x-nt-corner-open-border: rgba(37, 99, 235, 0.24);
+  --x-nt-corner-open-ring: rgba(37, 99, 235, 0.06);
+  --x-nt-corner-open-ink: #1d4ed8;
+  --x-nt-corner-press-bg: rgba(37, 99, 235, 0.16);
+  --x-nt-corner-press-border: rgba(37, 99, 235, 0.28);
+  --x-nt-corner-press-shadow:
+    inset 0 1px 2px rgba(30, 64, 175, 0.12),
+    inset 0 0 0 1px rgba(37, 99, 235, 0.06);
 }
-.x-nt-wallpaper-button .ri-icon {
-  color: inherit;
-  -webkit-text-fill-color: currentColor;
-  --ri-size: 16px;
-  line-height: 1;
+body[data-theme="dark"] .x-nt-bookmark-cascade-debug-button {
+  --x-nt-corner-hover-bg: rgba(96, 165, 250, 0.16);
+  --x-nt-corner-hover-border: rgba(96, 165, 250, 0.24);
+  --x-nt-corner-hover-ring: rgba(96, 165, 250, 0.05);
+  --x-nt-corner-hover-ink: #bfdbfe;
+  --x-nt-corner-open-bg: rgba(96, 165, 250, 0.2);
+  --x-nt-corner-open-border: rgba(96, 165, 250, 0.32);
+  --x-nt-corner-open-ring: rgba(96, 165, 250, 0.08);
+  --x-nt-corner-open-ink: #bfdbfe;
+  --x-nt-corner-press-bg: rgba(96, 165, 250, 0.24);
+  --x-nt-corner-press-border: rgba(96, 165, 250, 0.36);
+  --x-nt-corner-press-shadow:
+    inset 0 1px 2px rgba(2, 6, 23, 0.2),
+    inset 0 0 0 1px rgba(96, 165, 250, 0.1);
 }
-.x-nt-feedback-button .ri-icon {
-  color: inherit;
-  -webkit-text-fill-color: currentColor;
-  --ri-size: 16px;
-  line-height: 1;
-}
+.x-nt-wallpaper-button .ri-icon,
+.x-nt-feedback-button .ri-icon,
 .x-nt-bookmark-cascade-debug-button .ri-icon {
   color: inherit;
   -webkit-text-fill-color: currentColor;
   --ri-size: 16px;
   line-height: 1;
 }
-.x-nt-wallpaper-button:hover {
-  background: rgba(15, 23, 42, 0.06);
-  border-color: rgba(15, 23, 42, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.02);
-  color: #374151;
-}
-.x-nt-feedback-button:hover {
-  background: rgba(15, 23, 42, 0.06);
-  border-color: rgba(15, 23, 42, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.02);
-  color: #374151;
-}
+.x-nt-wallpaper-button:hover,
+.x-nt-feedback-button:hover,
 .x-nt-bookmark-cascade-debug-button:hover {
-  background: rgba(37, 99, 235, 0.08);
-  border-color: rgba(37, 99, 235, 0.16);
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.04);
-  color: #1d4ed8;
+  background: var(--x-nt-corner-hover-bg);
+  border-color: var(--x-nt-corner-hover-border);
+  box-shadow: inset 0 0 0 1px var(--x-nt-corner-hover-ring);
+  color: var(--x-nt-corner-hover-ink);
 }
-.x-nt-wallpaper-button[data-open="true"] {
-  background: rgba(15, 23, 42, 0.07);
-  border-color: rgba(15, 23, 42, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.02);
-  color: #374151;
-}
-.x-nt-feedback-button[data-open="true"] {
-  background: rgba(15, 23, 42, 0.07);
-  border-color: rgba(15, 23, 42, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.02);
-  color: #374151;
-}
+.x-nt-wallpaper-button[data-open="true"],
+.x-nt-feedback-button[data-open="true"],
 .x-nt-bookmark-cascade-debug-button[data-active="true"] {
-  background: rgba(37, 99, 235, 0.12);
-  border-color: rgba(37, 99, 235, 0.24);
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.06);
-  color: #1d4ed8;
+  background: var(--x-nt-corner-open-bg);
+  border-color: var(--x-nt-corner-open-border);
+  box-shadow: inset 0 0 0 1px var(--x-nt-corner-open-ring);
+  color: var(--x-nt-corner-open-ink);
 }
-.x-nt-wallpaper-button[data-open="true"]:hover {
-  background: rgba(15, 23, 42, 0.1);
-  border-color: rgba(15, 23, 42, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.03);
-}
+.x-nt-wallpaper-button[data-open="true"]:hover,
 .x-nt-feedback-button[data-open="true"]:hover {
-  background: rgba(15, 23, 42, 0.1);
-  border-color: rgba(15, 23, 42, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.03);
+  background: var(--x-nt-corner-open-hover-bg);
+  border-color: var(--x-nt-corner-open-hover-border);
+  box-shadow: inset 0 0 0 1px var(--x-nt-corner-open-hover-ring);
 }
-.x-nt-wallpaper-button:active {
-  background: rgba(15, 23, 42, 0.13);
-  border-color: rgba(15, 23, 42, 0.16);
-  box-shadow:
-    inset 0 1px 2px rgba(15, 23, 42, 0.12),
-    inset 0 0 0 1px rgba(15, 23, 42, 0.04);
-}
-.x-nt-feedback-button:active {
-  background: rgba(15, 23, 42, 0.13);
-  border-color: rgba(15, 23, 42, 0.16);
-  box-shadow:
-    inset 0 1px 2px rgba(15, 23, 42, 0.12),
-    inset 0 0 0 1px rgba(15, 23, 42, 0.04);
-}
+.x-nt-wallpaper-button:active,
+.x-nt-feedback-button:active,
 .x-nt-bookmark-cascade-debug-button:active {
-  background: rgba(37, 99, 235, 0.16);
-  border-color: rgba(37, 99, 235, 0.28);
-  box-shadow:
-    inset 0 1px 2px rgba(30, 64, 175, 0.12),
-    inset 0 0 0 1px rgba(37, 99, 235, 0.06);
+  background: var(--x-nt-corner-press-bg);
+  border-color: var(--x-nt-corner-press-border);
+  box-shadow: var(--x-nt-corner-press-shadow);
 }
 .x-nt-wallpaper-button[data-open="true"]:active,
 .x-nt-feedback-button[data-open="true"]:active {
-  background: rgba(15, 23, 42, 0.14);
-  border-color: rgba(15, 23, 42, 0.18);
-  box-shadow:
-    inset 0 1px 2px rgba(15, 23, 42, 0.13),
-    inset 0 0 0 1px rgba(15, 23, 42, 0.05);
+  background: var(--x-nt-corner-open-press-bg);
+  border-color: var(--x-nt-corner-open-press-border);
+  box-shadow: var(--x-nt-corner-open-press-shadow);
 }
-.x-nt-wallpaper-button:focus-visible {
-  outline: 2px solid var(--lumno-color-focus-ring);
-  outline-offset: 2px;
-}
-.x-nt-feedback-button:focus-visible {
-  outline: 2px solid var(--lumno-color-focus-ring);
-  outline-offset: 2px;
-}
+.x-nt-wallpaper-button:focus-visible,
+.x-nt-feedback-button:focus-visible,
 .x-nt-bookmark-cascade-debug-button:focus-visible {
   outline: 2px solid var(--lumno-color-focus-ring);
   outline-offset: 2px;
 }
 .x-nt-wallpaper-button[data-active="true"] {
-  color: color-mix(in srgb, var(--x-nt-text, #111827) 62%, transparent);
-}
-body[data-theme="dark"] .x-nt-wallpaper-button:hover,
-body[data-theme="dark"] .x-nt-wallpaper-button[data-active="true"] {
-  color: color-mix(in srgb, var(--x-nt-text, #e5e7eb) 68%, transparent);
-}
-body[data-theme="dark"] .x-nt-feedback-button:hover,
-body[data-theme="dark"] .x-nt-feedback-button[data-open="true"] {
-  color: color-mix(in srgb, var(--x-nt-text, #e5e7eb) 68%, transparent);
-}
-body[data-theme="dark"] .x-nt-bookmark-cascade-debug-button:hover,
-body[data-theme="dark"] .x-nt-bookmark-cascade-debug-button[data-active="true"] {
-  color: #bfdbfe;
-}
-body[data-theme="dark"] .x-nt-wallpaper-button:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
-}
-body[data-theme="dark"] .x-nt-feedback-button:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
-}
-body[data-theme="dark"] .x-nt-bookmark-cascade-debug-button:hover {
-  background: rgba(96, 165, 250, 0.16);
-  border-color: rgba(96, 165, 250, 0.24);
-  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.05);
-}
-body[data-theme="dark"] .x-nt-wallpaper-button[data-open="true"] {
-  background: rgba(255, 255, 255, 0.11);
-  border-color: rgba(255, 255, 255, 0.13);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
-  color: color-mix(in srgb, var(--x-nt-text, #e5e7eb) 68%, transparent);
-}
-body[data-theme="dark"] .x-nt-feedback-button[data-open="true"] {
-  background: rgba(255, 255, 255, 0.11);
-  border-color: rgba(255, 255, 255, 0.13);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
-  color: color-mix(in srgb, var(--x-nt-text, #e5e7eb) 68%, transparent);
-}
-body[data-theme="dark"] .x-nt-bookmark-cascade-debug-button[data-active="true"] {
-  background: rgba(96, 165, 250, 0.2);
-  border-color: rgba(96, 165, 250, 0.32);
-  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.08);
-}
-body[data-theme="dark"] .x-nt-wallpaper-button[data-open="true"]:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-}
-body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-}
-body[data-theme="dark"] .x-nt-wallpaper-button:active {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.22);
-  box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.08),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-body[data-theme="dark"] .x-nt-feedback-button:active {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.22);
-  box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.08),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-body[data-theme="dark"] .x-nt-bookmark-cascade-debug-button:active {
-  background: rgba(96, 165, 250, 0.24);
-  border-color: rgba(96, 165, 250, 0.36);
-  box-shadow:
-    inset 0 1px 2px rgba(2, 6, 23, 0.2),
-    inset 0 0 0 1px rgba(96, 165, 250, 0.1);
-}
-body[data-theme="dark"] .x-nt-wallpaper-button[data-open="true"]:active,
-body[data-theme="dark"] .x-nt-feedback-button[data-open="true"]:active {
-  background: rgba(255, 255, 255, 0.21);
-  border-color: rgba(255, 255, 255, 0.24);
-  box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.09),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  color: var(--x-nt-corner-active-ink);
 }
 .x-nt-feedback-control[data-menu-open="true"] {
   z-index: 31;
@@ -4866,22 +4757,8 @@ body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button[data-wall
 body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-wallpaper-icon-bg="true"]:not([data-wallpaper-overlay-cover="true"]):hover {
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
 }
-body[data-wallpaper-active="true"] .x-nt-feedback-button:not([data-wallpaper-overlay-cover="true"]):hover {
-  background: var(--x-nt-wallpaper-icon-solid-bg-hover, var(--x-nt-wallpaper-icon-solid-bg, rgb(15 23 42)));
-  border-color: transparent;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
-  color: var(--x-nt-wallpaper-icon-solid-ink-hover, var(--x-nt-wallpaper-adaptive-ink));
-  filter: none;
-  text-shadow: none;
-}
-body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button:not([data-wallpaper-overlay-cover="true"]):hover {
-  background: var(--x-nt-wallpaper-icon-solid-bg-hover, var(--x-nt-wallpaper-icon-solid-bg, rgb(15 23 42)));
-  border-color: transparent;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
-  color: var(--x-nt-wallpaper-icon-solid-ink-hover, var(--x-nt-wallpaper-adaptive-ink));
-  filter: none;
-  text-shadow: none;
-}
+body[data-wallpaper-active="true"] .x-nt-feedback-button:not([data-wallpaper-overlay-cover="true"]):hover,
+body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button:not([data-wallpaper-overlay-cover="true"]):hover,
 body[data-wallpaper-active="true"] .x-nt-wallpaper-button:not([data-wallpaper-overlay-cover="true"]):hover {
   background: var(--x-nt-wallpaper-icon-solid-bg-hover, var(--x-nt-wallpaper-icon-solid-bg, rgb(15 23 42)));
   border-color: transparent;
@@ -4890,24 +4767,8 @@ body[data-wallpaper-active="true"] .x-nt-wallpaper-button:not([data-wallpaper-ov
   filter: none;
   text-shadow: none;
 }
-body[data-wallpaper-active="true"] .x-nt-feedback-button[data-open="true"]:not([data-wallpaper-overlay-cover="true"]) {
-  color: var(--x-nt-wallpaper-icon-solid-ink, var(--x-nt-wallpaper-adaptive-ink));
-  background: var(--x-nt-wallpaper-icon-solid-bg, rgb(20 28 45));
-  border-color: transparent;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.03);
-  mix-blend-mode: normal;
-  filter: none;
-  text-shadow: none;
-}
-body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button[data-active="true"]:not([data-wallpaper-overlay-cover="true"]) {
-  color: var(--x-nt-wallpaper-icon-solid-ink, var(--x-nt-wallpaper-adaptive-ink));
-  background: var(--x-nt-wallpaper-icon-solid-bg, rgb(20 28 45));
-  border-color: transparent;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.03);
-  mix-blend-mode: normal;
-  filter: none;
-  text-shadow: none;
-}
+body[data-wallpaper-active="true"] .x-nt-feedback-button[data-open="true"]:not([data-wallpaper-overlay-cover="true"]),
+body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button[data-active="true"]:not([data-wallpaper-overlay-cover="true"]),
 body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-open="true"]:not([data-wallpaper-overlay-cover="true"]) {
   color: var(--x-nt-wallpaper-icon-solid-ink, var(--x-nt-wallpaper-adaptive-ink));
   background: var(--x-nt-wallpaper-icon-solid-bg, rgb(20 28 45));
@@ -4917,42 +4778,16 @@ body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-open="true"]:not(
   filter: none;
   text-shadow: none;
 }
-body[data-wallpaper-active="true"] .x-nt-feedback-button[data-open="true"]:not([data-wallpaper-overlay-cover="true"]):hover {
-  background: var(--x-nt-wallpaper-icon-solid-bg-hover, var(--x-nt-wallpaper-icon-solid-bg, rgb(15 23 42)));
-  border-color: transparent;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
-  color: var(--x-nt-wallpaper-icon-solid-ink-hover, var(--x-nt-wallpaper-adaptive-ink));
-}
-body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button[data-active="true"]:not([data-wallpaper-overlay-cover="true"]):hover {
-  background: var(--x-nt-wallpaper-icon-solid-bg-hover, var(--x-nt-wallpaper-icon-solid-bg, rgb(15 23 42)));
-  border-color: transparent;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
-  color: var(--x-nt-wallpaper-icon-solid-ink-hover, var(--x-nt-wallpaper-adaptive-ink));
-}
+body[data-wallpaper-active="true"] .x-nt-feedback-button[data-open="true"]:not([data-wallpaper-overlay-cover="true"]):hover,
+body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button[data-active="true"]:not([data-wallpaper-overlay-cover="true"]):hover,
 body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-open="true"]:not([data-wallpaper-overlay-cover="true"]):hover {
   background: var(--x-nt-wallpaper-icon-solid-bg-hover, var(--x-nt-wallpaper-icon-solid-bg, rgb(15 23 42)));
   border-color: transparent;
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
   color: var(--x-nt-wallpaper-icon-solid-ink-hover, var(--x-nt-wallpaper-adaptive-ink));
 }
-body[data-wallpaper-active="true"] .x-nt-feedback-button:not([data-wallpaper-overlay-cover="true"]):active {
-  background: var(--x-nt-wallpaper-icon-solid-bg-press, var(--x-nt-wallpaper-icon-solid-bg, rgb(20 28 45)));
-  box-shadow:
-    inset 0 1px 2px rgba(0, 0, 0, 0.18),
-    inset 0 0 0 1px rgba(15, 23, 42, 0.06);
-  color: var(--x-nt-wallpaper-icon-solid-ink, var(--x-nt-wallpaper-adaptive-ink));
-  filter: none;
-  text-shadow: none;
-}
-body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button:not([data-wallpaper-overlay-cover="true"]):active {
-  background: var(--x-nt-wallpaper-icon-solid-bg-press, var(--x-nt-wallpaper-icon-solid-bg, rgb(20 28 45)));
-  box-shadow:
-    inset 0 1px 2px rgba(0, 0, 0, 0.18),
-    inset 0 0 0 1px rgba(15, 23, 42, 0.06);
-  color: var(--x-nt-wallpaper-icon-solid-ink, var(--x-nt-wallpaper-adaptive-ink));
-  filter: none;
-  text-shadow: none;
-}
+body[data-wallpaper-active="true"] .x-nt-feedback-button:not([data-wallpaper-overlay-cover="true"]):active,
+body[data-wallpaper-active="true"] .x-nt-bookmark-cascade-debug-button:not([data-wallpaper-overlay-cover="true"]):active,
 body[data-wallpaper-active="true"] .x-nt-wallpaper-button:not([data-wallpaper-overlay-cover="true"]):active {
   background: var(--x-nt-wallpaper-icon-solid-bg-press, var(--x-nt-wallpaper-icon-solid-bg, rgb(20 28 45)));
   box-shadow:
@@ -6184,7 +6019,6 @@ body[data-theme="dark"] .x-nt-effect-option[data-active="true"] {
   pointer-events: auto;
 }
 body[data-theme="dark"] .x-nt-wallpaper-tile {
-  background: transparent;
   color: #a3a3a3;
 }
 body[data-theme="dark"] .x-nt-appearance-option {
@@ -6233,12 +6067,10 @@ body[data-theme="dark"] .x-nt-wallpaper-upload-tile:focus-visible .x-nt-wallpape
 }
 body[data-theme="dark"] .x-nt-wallpaper-upload-placeholder {
   color: rgba(229, 231, 235, 0.62);
-  background: transparent;
 }
 body[data-theme="dark"] .x-nt-wallpaper-upload-tile:hover .x-nt-wallpaper-upload-placeholder,
 body[data-theme="dark"] .x-nt-wallpaper-upload-tile:focus-visible .x-nt-wallpaper-upload-placeholder {
   color: rgba(229, 231, 235, 0.82);
-  background: transparent;
 }
 body[data-theme="dark"] .x-nt-appearance-option:hover:not([data-selected="true"]) .x-nt-appearance-preview::after {
   border-color: rgba(156, 163, 175, 0.42);
@@ -7061,18 +6893,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
   :root {
     --x-nt-shortcuts-reserved-height: 82px;
   }
-  .x-nt-wallpaper-control {
-    right: 12px;
-    bottom: 12px;
-  }
-  .x-nt-feedback-control {
-    right: 58px;
-    bottom: 12px;
-  }
-  .x-nt-bookmark-cascade-debug-control {
-    right: 104px;
-    bottom: 12px;
-  }
   #_x_extension_newtab_bookmarks_grid_2024_unique_ {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -7091,18 +6911,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
 @media (max-width: 520px) {
   :root {
     --x-nt-content-viewport-width: 96vw;
-  }
-  .x-nt-wallpaper-control {
-    right: 8px;
-    bottom: 8px;
-  }
-  .x-nt-feedback-control {
-    right: 54px;
-    bottom: 8px;
-  }
-  .x-nt-bookmark-cascade-debug-control {
-    right: 100px;
-    bottom: 8px;
   }
   .x-nt-wallpaper-panel {
     --x-nt-panel-divider-gap: 18px;
@@ -7147,18 +6955,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
     --x-nt-shortcuts-reserved-height: 72px;
     --x-nt-shortcuts-section-margin-top: 12px;
   }
-  .x-nt-wallpaper-control {
-    right: 10px;
-    bottom: 10px;
-  }
-  .x-nt-feedback-control {
-    right: 10px;
-    bottom: 56px;
-  }
-  .x-nt-bookmark-cascade-debug-control {
-    right: 10px;
-    bottom: 102px;
-  }
 }
 @media (max-height: 560px) {
   :root {
@@ -7170,18 +6966,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
     --x-nt-bottom-dock-top-padding: 14px;
     --x-nt-bottom-dock-bottom-padding: 32px;
     --x-nt-shortcuts-section-margin-top: 8px;
-  }
-  .x-nt-wallpaper-control {
-    right: 8px;
-    bottom: 8px;
-  }
-  .x-nt-feedback-control {
-    right: 8px;
-    bottom: 54px;
-  }
-  .x-nt-bookmark-cascade-debug-control {
-    right: 8px;
-    bottom: 100px;
   }
   .x-nt-wallpaper-panel {
     --x-nt-panel-divider-gap: 16px;
@@ -7262,17 +7046,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
   #_x_extension_newtab_recent_sites_grid_2024_unique_ {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .x-nt-wallpaper-control,
-  .x-nt-feedback-control {
-    bottom: max(10px, env(safe-area-inset-bottom));
-    width: 44px;
-  }
-  .x-nt-wallpaper-control {
-    right: max(10px, env(safe-area-inset-right));
-  }
-  .x-nt-feedback-control {
-    right: calc(max(10px, env(safe-area-inset-right)) + 52px);
-  }
   /* Suggestions reach the bottom edge on phones; the page buttons would cover the last rows. */
   .x-nt-wallpaper-control,
   .x-nt-feedback-control {
@@ -7282,11 +7055,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
   body[data-nt-suggestions-open="true"] .x-nt-feedback-control {
     opacity: 0;
     visibility: hidden;
-  }
-  .x-nt-wallpaper-button,
-  .x-nt-feedback-button {
-    width: 44px;
-    height: 44px;
   }
   .x-nt-wallpaper-button {
     background: var(--control-bg);
@@ -7333,15 +7101,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
     transform: none;
     margin-bottom: 0;
   }
-  .x-nt-wallpaper-control,
-  .x-nt-feedback-control {
-    width: 44px;
-  }
-  .x-nt-wallpaper-button,
-  .x-nt-feedback-button {
-    width: 44px;
-    height: 44px;
-  }
 }
 @media (min-width: 641px) and (max-width: 900px) and (max-height: 560px) {
   body[data-nt-bottom-dock-density="tiny"] {
@@ -7349,15 +7108,6 @@ body[data-lumno-page="newtab"] [role="button"] .ri-icon {
   }
   #_x_extension_newtab_bottom_dock_2024_unique_[data-density="tiny"] {
     --x-nt-dock-bookmark-card-height: 44px;
-  }
-  .x-nt-wallpaper-control,
-  .x-nt-feedback-control {
-    width: 44px;
-  }
-  .x-nt-wallpaper-button,
-  .x-nt-feedback-button {
-    width: 44px;
-    height: 44px;
   }
 }
 /* Keep this after component resets: `all: unset` also resets corner-shape. */
