@@ -220,6 +220,11 @@
       if (pageState.searchScopeIcon && activeElement === pageState.searchScopeIcon) {
         return;
       }
+      if (activeElement && typeof activeElement.closest === 'function' &&
+          activeElement.closest('.x-nt-bookmark-pin-action') &&
+          (event.key === 'Enter' || event.key === ' ')) {
+        return;
+      }
       if (activeElement === pageState.inputParts.input || isEditableElement(activeElement)) {
         return;
       }

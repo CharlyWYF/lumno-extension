@@ -4336,6 +4336,7 @@
     openShortcutDialog,
     openShortcutAddContextMenu,
     handleShortcutDragPointerDown: (...args) => handleShortcutDragPointerDown(...args),
+    refreshBookmarkShortcutStates: () => bookmarksView?.refreshShortcutStates?.(),
     handleShortcutDockPointerOver,
     handleShortcutDockPointerMove,
     syncShortcutDockFolderMenu,
@@ -5411,6 +5412,7 @@
   bookmarkGrid.setAttribute('data-view-mode', currentBookmarkViewMode);
   bookmarkGrid.addEventListener('pointerdown', handleBookmarkDragPointerDown, true);
   applyBookmarkGridColumns();
+  let bookmarkShortcutAddTask = Promise.resolve();
   bookmarksView = NEWTAB_BOOKMARKS_VIEW.createBookmarksView({
     documentObj: document,
     windowObj: window,
@@ -5445,6 +5447,12 @@
     openFolder: openBookmarkFolder,
     openFolderMenu: openBookmarkCascadeMenu,
     copyUrl: copyBookmarkUrl,
+    hasShortcut: hasShortcutForSite,
+    addShortcut: (item) => {
+      const task = bookmarkShortcutAddTask.then(() => addSiteToShortcuts(item));
+      bookmarkShortcutAddTask = task.catch(() => {});
+      return task;
+    },
     onItemContextMenu: handleBookmarkItemContextMenu,
     isActivationSuppressed: isCardActivationSuppressed,
     navigateToUrl,

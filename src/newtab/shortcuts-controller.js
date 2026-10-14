@@ -638,6 +638,7 @@
       closeShortcutContextMenu();
       pageState.newtabShortcuts = NEWTAB_SHORTCUTS_STORE.normalizeShortcuts(pageState.newtabShortcuts, getShortcutStoreOptions());
       const items = getVisibleShortcuts();
+      deps.refreshBookmarkShortcutStates?.();
       const grouped = isShortcutGroupLayoutActive();
       shortcutsView.render(items, {
         grouped,

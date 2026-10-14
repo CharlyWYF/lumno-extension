@@ -1664,6 +1664,12 @@
   "bookmarks_open_group_failed": {
     "message": "無法開啟此書籤資料夾"
   },
+  "bookmarks_add_shortcut": {
+    "message": "新增為捷徑"
+  },
+  "bookmarks_add_shortcut_failed": {
+    "message": "新增捷徑失敗，請重試。"
+  },
   "bookmarks_copy_url": {
     "message": "複製連結"
   },

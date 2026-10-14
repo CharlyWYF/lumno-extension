@@ -1667,6 +1667,12 @@
   "bookmarks_copy_url": {
     "message": "Copy link"
   },
+  "bookmarks_add_shortcut": {
+    "message": "Add to shortcuts"
+  },
+  "bookmarks_add_shortcut_failed": {
+    "message": "Could not add shortcut. Try again."
+  },
   "bookmarks_copy_url_success": {
     "message": "Bookmark link copied"
   },

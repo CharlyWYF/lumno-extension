@@ -1664,6 +1664,12 @@
   "bookmarks_open_group_failed": {
     "message": "无法打开此书签文件夹"
   },
+  "bookmarks_add_shortcut": {
+    "message": "添加为快捷方式"
+  },
+  "bookmarks_add_shortcut_failed": {
+    "message": "添加快捷方式失败，请重试。"
+  },
   "bookmarks_copy_url": {
     "message": "复制链接"
   },

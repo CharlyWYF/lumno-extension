@@ -1664,6 +1664,12 @@
   "bookmarks_open_group_failed": {
     "message": "このブックマークフォルダーを開けませんでした"
   },
+  "bookmarks_add_shortcut": {
+    "message": "ショートカットに追加"
+  },
+  "bookmarks_add_shortcut_failed": {
+    "message": "追加できませんでした。もう一度お試しください。"
+  },
   "bookmarks_copy_url": {
     "message": "リンクをコピー"
   },

@@ -41,11 +41,13 @@
   </a>
 </p>
 
-<p align="center">当前版本：<code>1.0.3</code>（自定义分支）</p>
+<p align="center">当前版本：<code>1.0.4</code>（自定义分支）</p>
 
 本分支在“最近访问 / 最常访问”的显示模式中增加“自定义”。选择后点击“管理网站”，即可添加、编辑、移除和调整网站顺序，最多保存 24 个网站，超出当前行数时可翻页。列表保存在本设备。详见[自定义网站说明](docs/custom-recent-sites.md)。
 
 原有“添加快捷方式 → 添加网站”窗口支持“从收藏夹选择”，可按名称、网址或文件夹搜索，选中后自动填入名称和网址，并沿用原有快捷方式分组和图标设置。此操作不会修改原生收藏夹；“自定义”显示模式仍然保留。详见[收藏夹选择说明](docs/shortcut-bookmark-picker.md)。
+
+书签卡片的复制按钮左侧增加图钉入口，点击直接添加为快捷方式；实心图钉表示已添加，不会重复添加或取消。详见[书签图钉说明](docs/bookmark-shortcut-pin.md)。
 
 <img width="1200" height="480" alt="Lumno Chrome 命令栏插件：在任意网页搜索标签页、书签和历史记录" src="./assets/images/readme/banner.webp" decoding="async" />
 
