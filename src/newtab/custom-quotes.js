@@ -12,32 +12,33 @@
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]*>/g, '')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/[*_`~]/g, '').replace(/\s+/g, ' ').trim();
-  function parseMarkdown(markdown) {
-    const text = String(markdown || '').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+  function parseQuotes(content, format = 'md') {
+    const text = String(content || '').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
     if (new TextEncoder().encode(text).length > MAX_BYTES) throw new Error('too-large');
-    const quotes = []; let block = []; let fenced = false;
-    const flush = () => {
-      if (!block.length) return;
-      const lines = block.splice(0); let author = '';
-      if (lines.length > 1 && /^\s*[—–-]{1,2}\s*\S/.test(lines[lines.length - 1])) author = clean(lines.pop().replace(/^\s*[—–-]{1,2}\s*/, '')).slice(0, 120);
-      const text = clean(lines.join(' '));
-      if (text && !quotes.some(item => item.text === text && item.author === author)) {
-        if (text.length > 500 || quotes.length >= MAX_QUOTES) throw new Error('limit');
-        quotes.push({ text, author });
-      }
-    };
+    const quotes = []; let fence = null;
+    const markdown = format !== 'txt';
     text.split('\n').forEach(line => {
-      if (/^\s*(```|~~~)/.test(line)) { flush(); fenced = !fenced; return; }
-      if (fenced) return;
-      if (!line.trim() || /^\s*(#{1,6}\s|[-*_]{3,}\s*$|<!--)/.test(line)) { flush(); return; }
-      const list = /^\s*(?:[-+*]|\d+[.)])\s+/.test(line);
-      if (list) flush();
-      block.push(line.replace(/^\s*>\s?/, '').replace(/^\s*(?:[-+*]|\d+[.)])\s+/, ''));
+      if (markdown) {
+        const marker = /^\s*(`{3,}|~{3,})(.*)$/.exec(line);
+        if (fence) {
+          if (marker && marker[1][0] === fence.char && marker[1].length >= fence.length && !marker[2].trim()) fence = null;
+          return;
+        }
+        if (marker) { fence = { char: marker[1][0], length: marker[1].length }; return; }
+        if (/^\s*(#{1,6}\s|[-*_]{3,}\s*$|<!--)/.test(line)) return;
+      }
+      const quote = markdown
+        ? clean(line.replace(/^\s*(?:>\s*)+/, '').replace(/^\s*(?:[-+*]|\d+[.)])\s+/, ''))
+        : line.trim();
+      if (!quote) return;
+      if (quote.length > 500 || quotes.length >= MAX_QUOTES) throw new Error('limit');
+      quotes.push({ text: quote, author: '' });
     });
-    flush();
     if (!quotes.length) throw new Error('empty');
     return quotes;
   }
+  // Retain the previous helper for callers; all new imports use line-based parsing.
+  const parseMarkdown = content => parseQuotes(content, 'md');
   function normalizeLibrary(value) {
     if (!value || value.version !== 1 || !Array.isArray(value.quotes) || !value.quotes.length || value.quotes.length > MAX_QUOTES) return null;
     const quotes = value.quotes.filter(item => item && typeof item.text === 'string' && item.text.trim() && item.text.length <= 500)
@@ -52,5 +53,5 @@
     if (reroll) index = (index + 1) % library.quotes.length;
     return { quote: { ...library.quotes[index], source: library.filename, url: '' }, pick: { day, revision: library.revision, index } };
   }
-  return Object.freeze({ KEY, PICK_KEY, MAX_BYTES, MAX_QUOTES, parseMarkdown, normalizeLibrary, select });
+  return Object.freeze({ KEY, PICK_KEY, MAX_BYTES, MAX_QUOTES, parseQuotes, parseMarkdown, normalizeLibrary, select });
 });

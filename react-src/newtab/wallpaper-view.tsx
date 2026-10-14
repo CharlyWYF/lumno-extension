@@ -938,7 +938,7 @@ function WallpaperPanel({ model }: { model: Record<string, any> }) {
               </SettingRow>
               <div {...ref('quoteCustomBody')} className="x-nt-quote-custom-body" hidden>
                 <button {...ref('quoteImportButton')} type="button" className="x-lumno-action-button x-lumno-action-button--secondary" />
-                <input {...ref('quoteFileInput')} type="file" accept=".md,.markdown,text/markdown,text/plain" hidden />
+                <input {...ref('quoteFileInput')} type="file" accept=".txt,.md,.markdown,text/markdown,text/plain" hidden />
                 <p {...ref('quoteImportHint')} className="x-nt-quote-import-hint" />
                 <p {...ref('quoteImportStatus')} className="x-nt-quote-import-status" role="status" />
               </div>

@@ -634,12 +634,12 @@
   "newtab_quote_collection_save_error": { "message": "无法在本机保存句库，原句库已保留。请重试。" },
   "newtab_quote_hitokoto": { "message": "一言" },
   "newtab_quote_provider_custom": { "message": "自定义句库 · 仅保存在本机" },
-  "newtab_quote_import_md": { "message": "上传 Markdown 文件" },
+  "newtab_quote_import_md": { "message": "上传 TXT / MD 文件" },
   "newtab_quote_importing": { "message": "正在导入…" },
-  "newtab_quote_import_hint": { "message": "每段或每个列表项为一句；文件最大 1 MB，最多 1,000 句，每句不超过 500 字。仅保存在本机。" },
-  "newtab_quote_import_empty": { "message": "上传 Markdown 文件，开始使用自定义句库。" },
+  "newtab_quote_import_hint": { "message": "支持 TXT / MD，每个非空正文行作为一句；文件最大 1 MB，最多 1,000 句，每句不超过 500 字。仅保存在本机。" },
+  "newtab_quote_import_empty": { "message": "上传 TXT 或 MD 文件，开始使用自定义句库。" },
   "newtab_quote_entries": { "message": "句" },
-  "newtab_quote_import_error": { "message": "导入失败。请选择有效的 Markdown 文件：最大 1 MB，1–1,000 句，每句不超过 500 字。原句库已保留。" },
+  "newtab_quote_import_error": { "message": "导入失败。请选择有效的 TXT 或 MD 文件：最大 1 MB，1–1,000 个非空正文行，每行不超过 500 字。原句库已保留。" },
   "settings_shortcuts_status": {
     "message": "当前：{shortcut}"
   },

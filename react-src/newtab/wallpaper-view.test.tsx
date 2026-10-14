@@ -75,6 +75,8 @@ describe('New Tab React wallpaper view', () => {
     expect(controller.getRefs().builtInGrid).toBeTruthy();
     expect(controller.getRefs().quoteEnabledToggle.getAttribute('role')).toBe('switch');
     expect(controller.getRefs().quoteBody.hidden).toBe(true);
+    expect(controller.getRefs().quoteFileInput.getAttribute('accept')).toContain('.txt');
+    expect(controller.getRefs().quoteFileInput.getAttribute('accept')).toContain('.md');
     const quoteTabGroups = controller.getRefs().quoteBody.querySelectorAll('.x-nt-segmented-tabs');
     expect(Array.from(quoteTabGroups, (group) => group.getAttribute('data-wallpaper-ref')))
       .toEqual(['quoteCategory']);

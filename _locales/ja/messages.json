@@ -634,12 +634,12 @@
   "newtab_quote_collection_save_error": { "message": "この端末に保存できませんでした。以前の名言集は保持されています。もう一度お試しください。" },
   "newtab_quote_hitokoto": { "message": "Hitokoto" },
   "newtab_quote_provider_custom": { "message": "カスタム文章集 · この端末のみ" },
-  "newtab_quote_import_md": { "message": "Markdown ファイルを読み込む" },
+  "newtab_quote_import_md": { "message": "TXT / MD ファイルを読み込む" },
   "newtab_quote_importing": { "message": "読み込み中…" },
-  "newtab_quote_import_hint": { "message": "段落またはリスト項目ごとに一文。最大 1 MB、1,000 件、各 500 文字。この端末のみに保存します。" },
-  "newtab_quote_import_empty": { "message": "Markdown ファイルを読み込んでください。" },
+  "newtab_quote_import_hint": { "message": "TXT / MD の空白でない本文1行を一文として読み込みます。最大 1 MB、1,000 件、各 500 文字。この端末のみに保存します。" },
+  "newtab_quote_import_empty": { "message": "TXT または MD ファイルを読み込んでください。" },
   "newtab_quote_entries": { "message": "件" },
-  "newtab_quote_import_error": { "message": "読み込みに失敗しました。最大 1 MB、1–1,000 件、各 500 文字の Markdown を選んでください。前の文章集は保持されます。" },
+  "newtab_quote_import_error": { "message": "読み込みに失敗しました。最大 1 MB、1–1,000 行、各 500 文字の TXT または MD を選んでください。前の文章集は保持されます。" },
   "settings_shortcuts_status": {
     "message": "現在：{shortcut}"
   },

@@ -178,12 +178,12 @@
       refs.quoteCategory.hidden = customMode;
       if (refs.quoteCategory.parentElement?.classList.contains('x-nt-appearance-setting-row')) refs.quoteCategory.parentElement.hidden = customMode;
       if (refs.quoteImportButton) {
-        refs.quoteImportButton.textContent = importing ? t('newtab_quote_importing', 'Importing…') : t('newtab_quote_import_md', 'Import Markdown file');
+        refs.quoteImportButton.textContent = importing ? t('newtab_quote_importing', 'Importing…') : t('newtab_quote_import_md', 'Import TXT / MD file');
         refs.quoteImportButton.disabled = importing;
       }
-      if (refs.quoteImportHint) refs.quoteImportHint.textContent = t('newtab_quote_import_hint', 'One paragraph or list item per quote. Up to 1 MB, 1,000 quotes; stored on this device only.');
+      if (refs.quoteImportHint) refs.quoteImportHint.textContent = t('newtab_quote_import_hint', 'TXT / MD: one non-empty content line per quote. Up to 1 MB, 1,000 quotes, 500 characters each; stored on this device only.');
       if (refs.quoteImportStatus) {
-        refs.quoteImportStatus.textContent = importMessage || (library ? `${library.filename} · ${library.quotes.length} ${t('newtab_quote_entries', 'quotes')}` : t('newtab_quote_import_empty', 'Import a Markdown file to start.'));
+        refs.quoteImportStatus.textContent = importMessage || (library ? `${library.filename} · ${library.quotes.length} ${t('newtab_quote_entries', 'quotes')}` : t('newtab_quote_import_empty', 'Import a TXT or MD file to start.'));
         refs.quoteImportStatus.setAttribute('role', importError ? 'alert' : 'status');
       }
       syncFontSizeControls(false);
@@ -427,17 +427,17 @@
         });
       });
     }
-    async function importMarkdown(file) {
+    async function importQuoteFile(file) {
       if (importing || disposed) return false;
       importing = true; importError = false; importMessage = ''; updateSettings();
       let saving = false;
       try {
-        if (!/\.(md|markdown)$/i.test(file.name || '')) throw new Error('type');
+        if (!/\.(txt|md|markdown)$/i.test(file.name || '')) throw new Error('type');
         if (!file.size || file.size > custom.MAX_BYTES) throw new Error('too-large');
         const text = typeof file.text === 'function' ? await file.text() : await new Promise((resolve, reject) => {
           const reader = new window.FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(new Error('read')); reader.readAsText(file);
         });
-        const quotes = custom.parseMarkdown(text);
+        const quotes = custom.parseQuotes(text, /\.txt$/i.test(file.name) ? 'txt' : 'md');
         const next = { version: 1, filename: String(file.name).slice(0, 128), revision: Date.now(), quotes };
         saving = true;
         await saveCustomValues({ [custom.KEY]: next, [custom.PICK_KEY]: null });
@@ -452,7 +452,7 @@
           importError = true;
           importMessage = saving
             ? t('newtab_quote_collection_save_error', 'Could not save on this device. Your previous collection is retained. Try again.')
-            : t('newtab_quote_import_error', 'Import failed. Choose a valid Markdown file up to 1 MB with 1–1,000 quotes, each no longer than 500 characters.');
+            : t('newtab_quote_import_error', 'Import failed. Choose a valid TXT or MD file up to 1 MB with 1–1,000 non-empty content lines, each no longer than 500 characters.');
         }
         return false;
       } finally { importing = false; if (!disposed) updateSettings(); }
@@ -479,7 +479,7 @@
       refs.quoteFileInput?.addEventListener('change', () => {
         const file = refs.quoteFileInput.files && refs.quoteFileInput.files[0];
         refs.quoteFileInput.value = '';
-        if (file) importMarkdown(file);
+        if (file) importQuoteFile(file);
       });
       if (refs.quoteAccordionTrigger) {
         refs.quoteAccordionTrigger.addEventListener('click', () => {
@@ -540,7 +540,8 @@
       });
     }
     return Object.freeze({ element, textElement: line, mount, bindSettings, updateLanguage, getProviderLabel,
-      importMarkdown,
+      importQuoteFile,
+      importMarkdown: importQuoteFile,
       destroy() {
         disposed = true;
         revision += 1;
