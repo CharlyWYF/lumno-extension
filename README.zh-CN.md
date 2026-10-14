@@ -244,7 +244,7 @@ npm run test:onboarding-content
 
 ## 参与贡献
 
-欢迎在 [Issues](https://github.com/kubai087/lumno-extension/issues) 反馈问题、提出建议或提交 Pull Request。项目维护方式见 [GOVERNANCE.md](GOVERNANCE.md)。如果 Lumno 帮你节省了时间，欢迎在 GitHub 点个 ⭐，或在 Chrome 应用商店留下评价，让更多人发现它。
+欢迎在 [Issues](https://github.com/kubai087/lumno-extension/issues) 反馈问题、提出建议或提交 Pull Request。项目维护方式见 [GOVERNANCE.md](GOVERNANCE.md)。如果 Lumno 帮你节省了时间，欢迎在 GitHub 点个 ⭐，或在 Chrome 应用商店、Firefox 附加组件留下评价，让更多人发现它。
 
 ## 鸣谢
 

@@ -244,7 +244,7 @@ npm run test:onboarding-content
 
 ## コントリビュート
 
-不具合の報告、機能の提案、プルリクエストは [Issues](https://github.com/kubai087/lumno-extension/issues) で受け付けています。プロジェクトの運営方針は [GOVERNANCE.md](GOVERNANCE.md) をご覧ください。Lumno が役に立ったら、GitHub の ⭐ や Chrome ウェブストアでのレビューで応援していただけると、より多くの人に届きます。
+不具合の報告、機能の提案、プルリクエストは [Issues](https://github.com/kubai087/lumno-extension/issues) で受け付けています。プロジェクトの運営方針は [GOVERNANCE.md](GOVERNANCE.md) をご覧ください。Lumno が役に立ったら、GitHub の ⭐ や Chrome ウェブストアや Firefox アドオンでのレビューで応援していただけると、より多くの人に届きます。
 
 ## クレジット
 

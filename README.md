@@ -244,7 +244,7 @@ npm run test:onboarding-content
 
 ## Contributing
 
-Bug reports, feature ideas and pull requests are welcome in [Issues](https://github.com/kubai087/lumno-extension/issues). See [GOVERNANCE.md](GOVERNANCE.md) for how the project is maintained. If Lumno saves you time, a ⭐ on GitHub or a review on the Chrome Web Store helps other people find it.
+Bug reports, feature ideas and pull requests are welcome in [Issues](https://github.com/kubai087/lumno-extension/issues). See [GOVERNANCE.md](GOVERNANCE.md) for how the project is maintained. If Lumno saves you time, a ⭐ on GitHub or a review on the Chrome Web Store or Firefox Add-ons helps other people find it.
 
 ## Credits
 
