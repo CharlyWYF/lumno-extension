@@ -957,9 +957,15 @@
         const controller = createConnectionController({ ...opts, chrome: chromeApi, settings, privateStore: scopedStore,
           wallpaperStore, probeCache, statusKey: statusKeyFor(id), alarmName: id === 'default' ? ALARM_NAME : `${ALARM_NAME}:${id}`,
           managed: true, withLocalWrite,
+          // An unrecovered local write of any connection may have left a
+          // partial state, so no connection uploads until its journal is
+          // recovered (at start-up, before any sync). A connection that then
+          // waits for its backup to be restored pauses only itself: the others
+          // keep syncing the device's current settings instead of stopping
+          // until someone restores.
           hasPendingApply: async () => {
-            for (const connectionId of workers.keys()) if (await store.get(keyFor(connectionId, 'pendingApply')) ||
-              await store.get(keyFor(connectionId, 'recoveryBlocked'))) return true;
+            if (await store.get(keyFor(id, 'recoveryBlocked'))) return true;
+            for (const connectionId of workers.keys()) if (await store.get(keyFor(connectionId, 'pendingApply'))) return true;
             return false;
           } });
         workers.set(id, controller);
