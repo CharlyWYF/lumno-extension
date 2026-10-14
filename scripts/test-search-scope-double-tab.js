@@ -90,7 +90,7 @@ for (const [surface, source] of [
 ]) {
   assert.match(
     source,
-    /function handleTabKey|handleTabKey = function/,
+    /function handleTabKey|function handleSearchTabKey/,
     `${surface} should expose its Tab handler`
   );
   assert.match(
