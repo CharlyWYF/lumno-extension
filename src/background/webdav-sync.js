@@ -447,6 +447,32 @@
       const remote = await client.readState();
       return remote && { state: contract.validateState(remote.state), etag: remote.etag };
     }
+    // A write lock this device took but could not release would hold every
+    // device at remote-locked. It is retried once at once and otherwise
+    // remembered, so the next round releases it before anything else.
+    async function releaseOwnStaleLock(client) {
+      const marker = await privateStore.get('staleLock');
+      if (!marker || typeof client.releaseStaleLock !== 'function') return;
+      try { if (await client.releaseStaleLock(marker)) await privateStore.put('staleLock', null); }
+      catch (cause) { report('Could not release a WebDAV write lock left by this device.', cause); }
+    }
+    async function rememberStaleLock(client, marker) {
+      if (!marker.uncertain) {
+        try { if (await client.releaseStaleLock(marker)) return; }
+        catch (_cause) { /* Kept for the next round below. */ }
+      }
+      await privateStore.put('staleLock', marker);
+    }
+    async function writeState(client, state, remote) {
+      let written;
+      try { written = await client.writeState(state, remote && remote.etag); }
+      catch (cause) {
+        if (cause && cause.staleLock) await rememberStaleLock(client, cause.staleLock);
+        throw cause;
+      }
+      if (written && written.staleLock) await rememberStaleLock(client, written.staleLock);
+      return written;
+    }
     async function publish(state, remote, client, capturedGeneration) {
       if (capturedGeneration !== generation) fail('local-changed');
       await uploadAssets(state, client, remote && remote.state.assets);
@@ -456,7 +482,7 @@
         if (![200, 201, 204].includes(archived.status)) fail('write-failed');
       }
       if (capturedGeneration !== generation) fail('local-changed');
-      await client.writeState(state, remote && remote.etag);
+      await writeState(client, state, remote);
       const verified = await readRemote(client);
       if (!verified || !contract.equal(state, verified.state)) fail('remote-changed');
       return verified;
@@ -469,6 +495,7 @@
       await setStatus({ state: 'syncing', error: null });
       const client = await verifiedClient(config);
       await saveConfig(config);
+      await releaseOwnStaleLock(client);
       const captured = await capture(INITIAL_DECISIONS.includes(decision));
       const remote = await readRemote(client);
       if (INITIAL_DECISIONS.includes(decision)) {
@@ -533,6 +560,7 @@
         throw Object.assign(clientApi.error(cause.code || 'sync-failed'), { diagnostic, recorded: true });
       }
     }
+    const sameAccount = (left, right) => ['endpoint', 'directory', 'username'].every((key) => left[key] === right[key]);
     async function connection(input) {
       const { config: previous } = await session();
       const candidate = clientApi.normalizeConfig({ ...input, password: input.password || (previous && previous.password) || 'placeholder' });
@@ -564,6 +592,7 @@
         // Repeated toggles and worker restarts don't rerun destructive probes.
         await saveConfig({ ...config, enabled: previous.enabled });
       }
+      if (previous && sameAccount(config, previous)) await releaseOwnStaleLock(client);
       const remote = await readRemote(client);
       if (!decision && previous && config.endpoint === previous.endpoint && config.directory === previous.directory &&
           config.username === previous.username && base) {
@@ -735,6 +764,8 @@
           const wasEnabled = Boolean(previous.config && previous.config.enabled);
           const sameServer = previous.config && ['endpoint', 'directory', 'username'].every((key) => previous.config[key] === config[key]);
           await privateStore.put('session', { config: { ...config, enabled: false }, base: sameServer ? previous.base : null });
+          // A lock left on the old server is not this connection's any more.
+          if (!sameServer) await privateStore.put('staleLock', null);
           await pause();
           await setStatus({ conflicts: [], ...(!sameServer ? { lastSyncAt: null } : {}) });
           if (wasEnabled && request.resume === true) return { ...await connectReporting((await session()).config), resumed: true };
@@ -787,7 +818,8 @@
     const wallpaperStore = opts.wallpaperStore || root.LumnoNewtabWallpaperLocalStore.createWallpaperLocalStore({ windowObj: root, onChange() {} });
     const workers = new Map();
     const probeCache = opts.probeCache || createProbeCache();
-    const recordKeys = ['session', 'pendingApply', 'recoveryBlocked', 'conflict', 'replacementBackup', 'replacementBackupMeta', 'migrationBackup', 'migrationBackupMeta'];
+    const recordKeys = ['session', 'pendingApply', 'recoveryBlocked', 'conflict', 'replacementBackup', 'replacementBackupMeta', 'migrationBackup', 'migrationBackupMeta',
+      'staleLock'];
     let ids = [];
     let registryChain = Promise.resolve();
     let hintChain = Promise.resolve();

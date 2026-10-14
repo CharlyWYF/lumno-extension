@@ -21,7 +21,9 @@ function createServer() {
   const server = { files, directories, requests: [], offline: false, ignoreConditions: false,
     unsafeCollections: false, brokenDelete: false, etagMode: 'strong', beforeRequest: null, afterPut: null,
     rejectStatePut: 0, ignoreMoveOverwrite: false, moveConflictStatus: 412, moveUnsupported: false,
-    loseMoveSource: false, refuseMoves: 0, refusalStillMoves: false, refuseCollections: false, compressAbove: 0 };
+    loseMoveSource: false, refuseMoves: 0, refusalStillMoves: false, refuseCollections: false, compressAbove: 0,
+    // The server clock behind Date and Last-Modified.
+    now: () => Date.now() };
   server.fetch = async (url, options) => {
     if (server.offline) throw new Error('network is offline');
     const path = new URL(url).pathname;
@@ -32,10 +34,11 @@ function createServer() {
     server.requests.push({ path, method: options.method });
     if (server.beforeRequest) await server.beforeRequest(path, options);
     const entry = files.get(path);
-    const response = (status, bytes, etag) => new Response([204, 304].includes(status) || options.method === 'HEAD' ? null : bytes || '', {
+    const response = (status, bytes, etag, modified) => new Response([204, 304].includes(status) || options.method === 'HEAD' ? null : bytes || '', {
       // compressAbove mimics Cloudflare weakening strong ETags on bodies it compresses.
       status, headers: { ...(etag && server.etagMode !== 'none' ? { ETag: server.etagMode === 'weak' ||
-        (server.compressAbove && bytes && bytes.byteLength > server.compressAbove) ? `W/${etag}` : etag } : {}), 'Content-Length': String(bytes && bytes.byteLength || 0) }
+        (server.compressAbove && bytes && bytes.byteLength > server.compressAbove) ? `W/${etag}` : etag } : {}), 'Content-Length': String(bytes && bytes.byteLength || 0),
+      Date: new Date(server.now()).toUTCString(), ...(modified ? { 'Last-Modified': new Date(modified).toUTCString() } : {}) }
     });
     if (options.method === 'MKCOL') {
       if (server.refuseCollections) return response(405);
@@ -47,7 +50,7 @@ function createServer() {
       if (server.stateStatus && path.endsWith('/state.json')) return response(server.stateStatus);
       if (!entry) return response(404);
       if (headers.get('If-None-Match') === entry.etag) return response(304, null, entry.etag);
-      return response(200, entry.bytes, entry.etag);
+      return response(200, entry.bytes, entry.etag, entry.modified);
     }
     if (options.method === 'DELETE') {
       if (!server.brokenDelete) {
@@ -85,7 +88,7 @@ function createServer() {
         (headers.get('If-None-Match') === '*' && entry))) return response(412);
     const bytes = typeof options.body === 'string' ? new TextEncoder().encode(options.body) : new Uint8Array(options.body);
     // 'size' mimics ETags built from size and a one-second mtime (sabre/dav FSExt).
-    const next = { bytes, etag: server.etagMode === 'size' ? `"size-${bytes.byteLength}"` : `"revision-${++revision}"` };
+    const next = { bytes, etag: server.etagMode === 'size' ? `"size-${bytes.byteLength}"` : `"revision-${++revision}"`, modified: server.now() };
     files.set(path, next);
     if (server.afterPut) await server.afterPut(path, options);
     return response(entry ? 204 : 201, null, next.etag);
@@ -390,7 +393,8 @@ async function run() {
 
   const uncertainMove = createServer();
   uncertainMove.beforeRequest = (_path, options) => { if (options.method === 'MOVE') throw new Error('claim may still finish later'); };
-  await assert.rejects(client.createClient(lockConfig, { fetch: uncertainMove.fetch }).writeState(empty(), null), /lock-write-uncertain/);
+  await assert.rejects(client.createClient(lockConfig, { fetch: uncertainMove.fetch }).writeState(empty(), null), (cause) =>
+    cause.code === 'lock-write-uncertain' && cause.staleLock.uncertain === true, 'an uncertain claim is remembered for later release');
   assert(uncertainMove.directories.size > 0, 'a timed-out MOVE preserves its candidate for explicit recovery');
   assert.strictEqual(uncertainMove.files.has('/dav/lumno/v1/state.json'), false);
 
@@ -399,8 +403,13 @@ async function run() {
   replacedOwner.afterPut = (path) => {
     if (path.endsWith('/state.json')) replacedOwner.files.set(lockPath + 'owner.txt', { bytes: new TextEncoder().encode('other-owner') });
   };
-  await assert.rejects(client.createClient(lockConfig, { fetch: replacedOwner.fetch }).writeState(empty(), null), /lock-release-failed/);
+  const replacedClient = client.createClient(lockConfig, { fetch: replacedOwner.fetch });
+  const replacedWrite = await replacedClient.writeState(empty(), null);
+  assert.deepStrictEqual(replacedWrite.state, empty(), 'a committed write is not reported as failed because its release failed');
+  assert.strictEqual(replacedWrite.staleLock.uncertain, false);
   assert(replacedOwner.directories.has(lockPath), 'a changed owner is never deleted on release');
+  assert.strictEqual(await replacedClient.releaseStaleLock(replacedWrite.staleLock), true, 'a lock now named for someone else is not this client\'s to release');
+  assert(replacedOwner.directories.has(lockPath));
 
   const uncertain = createServer();
   uncertain.ignoreConditions = true;
@@ -420,8 +429,81 @@ async function run() {
   await assert.rejects(upgradedWriter.writeState(empty(), (await upgradedWriter.readState()).etag), /remote-locked/, 'a client detecting restored conditional support still honors an uncertain compatibility lock');
   uncertain.directories.delete(lockPath); // Explicit recovery after all server operations have completed.
   uncertain.beforeRequest = (path, options) => { if (path === lockPath && options.method === 'DELETE') throw new Error('release response lost'); };
-  await assert.rejects(restartWriter.writeState(empty({ [theme]: 'light' }), (await restartWriter.readState()).etag), /lock-release-failed/);
+  const unreleased = await restartWriter.writeState(empty({ [theme]: 'light' }), (await restartWriter.readState()).etag);
+  assert.strictEqual(uncertain.state().data[theme], 'light');
   assert(uncertain.directories.has(lockPath));
+  uncertain.beforeRequest = null;
+  assert.strictEqual(await restartWriter.releaseStaleLock(unreleased.staleLock), true);
+  assert.strictEqual(uncertain.directories.has(lockPath), false, 'the remembered lock is released on the next attempt');
+
+  // A failed release never replaces the reason the write itself failed.
+  const masked = createServer();
+  masked.etagMode = 'none';
+  const maskedClient = client.createClient(lockConfig, { fetch: masked.fetch });
+  await maskedClient.ensureDirectories();
+  masked.beforeRequest = (path, options) => {
+    if (options.method === 'MOVE' && new URL(new Headers(options.headers).get('Destination')).pathname === lockPath) masked.replaceState(empty({ [language]: 'ja' }));
+    if (path === lockPath && options.method === 'DELETE') throw new Error('release response lost');
+  };
+  await assert.rejects(maskedClient.writeState(empty({ [theme]: 'dark' }), null), (cause) => cause.code === 'remote-changed' && cause.staleLock.uncertain === false);
+  masked.beforeRequest = null;
+
+  // A MOVE that reported success without moving the candidate cannot prove
+  // exclusive ownership; the lock it created is released, not left behind.
+  const copied = createServer();
+  copied.etagMode = 'none';
+  const copiedClient = client.createClient(lockConfig, { fetch: copied.fetch });
+  await copiedClient.ensureDirectories();
+  copied.beforeRequest = (path, options) => {
+    if (options.method === 'GET' && /\/lock-candidate-[-\w]+\/owner\.txt$/.test(path) && copied.files.has(lockPath + 'owner.txt')) {
+      copied.files.set(path, copied.files.get(lockPath + 'owner.txt'));
+    }
+  };
+  await assert.rejects(copiedClient.writeState(empty(), null), (cause) => cause.diagnostic.phase === 'move-owner');
+  copied.beforeRequest = null;
+  assert.strictEqual(copied.files.has(lockPath + 'owner.txt'), false, 'the unverifiable lock is released');
+  assert(![...copied.files.keys()].some((path) => path.includes('lock-candidate-')), 'and its candidate is cleaned up');
+  assert.strictEqual(copied.files.has('/dav/lumno/v1/state.json'), false);
+
+  // Locks from terminated clients are broken once the server says their owner
+  // file is older than the stale-lock limit; younger ones are honored.
+  const stale = createServer();
+  stale.etagMode = 'none';
+  const staleClient = client.createClient(lockConfig, { fetch: stale.fetch });
+  await staleClient.ensureDirectories();
+  const plantLock = (owner, age) => {
+    stale.directories.add(lockPath);
+    stale.files.set(lockPath + 'owner.txt', { bytes: new TextEncoder().encode(owner), modified: Date.now() - age });
+  };
+  plantLock('young-owner', client.STALE_LOCK_MS - 60 * 1000);
+  await assert.rejects(staleClient.writeState(empty({ [theme]: 'dark' }), null), /remote-locked/, 'a recent lock is never broken');
+  assert.strictEqual(new TextDecoder().decode(stale.files.get(lockPath + 'owner.txt').bytes), 'young-owner');
+  plantLock('old-owner', client.STALE_LOCK_MS + 60 * 1000);
+  await staleClient.writeState(empty({ [theme]: 'dark' }), null);
+  assert.strictEqual(stale.state().data[theme], 'dark', 'a stale lock is taken over');
+  assert.strictEqual(stale.directories.has(lockPath), false);
+  assert(![...stale.files.keys()].some((path) => path.includes('lock-stale-')), 'the broken lock is removed');
+  stale.directories.add(lockPath);
+  stale.files.delete(lockPath + 'owner.txt');
+  await assert.rejects(staleClient.writeState(empty(), (await staleClient.readState()).etag), /remote-locked/,
+    'a lock without an owner file has no age and is never broken');
+  stale.directories.delete(lockPath);
+  // Another device took the lock between the age check and the move: it goes back.
+  plantLock('old-owner', client.STALE_LOCK_MS + 60 * 1000);
+  stale.beforeRequest = (path, options) => {
+    if (options.method === 'MOVE' && path === lockPath) stale.files.set(lockPath + 'owner.txt', { bytes: new TextEncoder().encode('fresh-owner'), modified: Date.now() });
+  };
+  await assert.rejects(staleClient.writeState(empty(), (await staleClient.readState()).etag), /remote-locked/);
+  stale.beforeRequest = null;
+  assert.strictEqual(new TextDecoder().decode(stale.files.get(lockPath + 'owner.txt').bytes), 'fresh-owner', 'a fresh lock moved aside by mistake is put back');
+  stale.directories.delete(lockPath);
+  // An uncertain write keeps its own lock until it must have settled.
+  const uncertainMarker = { owner: 'aaaa-bbbb', at: Date.now(), uncertain: true };
+  plantLock(uncertainMarker.owner, 0);
+  assert.strictEqual(await staleClient.releaseStaleLock(uncertainMarker), false);
+  assert(stale.directories.has(lockPath));
+  assert.strictEqual(await staleClient.releaseStaleLock(uncertainMarker, Date.now() + client.STALE_LOCK_MS), true);
+  assert.strictEqual(stale.files.has(lockPath + 'owner.txt'), false);
 
   const changedDuringClaim = createServer();
   changedDuringClaim.ignoreConditions = true;
@@ -1213,6 +1295,26 @@ async function testBackgroundRounds() {
   for (let wait = 0; wait < 50 && !logged.length; wait += 1) await new Promise((resolve) => setTimeout(resolve, 10));
   assert(logged.some(([message]) => /WebDAV sync failed/.test(message)), 'an unrecorded background failure reaches the log');
   broken.chrome.storage.local.set = originalSet;
+
+  // A lock this device could not release is remembered and released first on
+  // the next round, so other devices are not left at remote-locked.
+  const lockServer = createServer();
+  const lockPath = '/dav/lumno/v1/write-lock/';
+  const holder = createDevice(lockServer, { sync: { [theme]: 'light' } }, [], quiet);
+  await holder.controller.handle({ operation: 'connect', config });
+  let lostReleases = 2;
+  lockServer.beforeRequest = (path, options) => {
+    if (path === lockPath && options.method === 'DELETE' && lostReleases > 0) { lostReleases -= 1; throw new Error('release response lost'); }
+  };
+  await set(holder.chrome.storage.sync, { [theme]: 'dark' });
+  assert.deepStrictEqual(await holder.controller.handle({ operation: 'sync' }), { ok: true }, 'the committed write still counts as synced');
+  assert.strictEqual(lockServer.state().data[theme], 'dark');
+  assert(lockServer.directories.has(lockPath));
+  assert.strictEqual(typeof holder.privateValues.get('staleLock').owner, 'string', 'the unreleased lock is remembered');
+  lockServer.beforeRequest = null;
+  await holder.controller.handle({ operation: 'sync' });
+  assert.strictEqual(lockServer.directories.has(lockPath), false, 'the next round releases it first');
+  assert.strictEqual(holder.privateValues.get('staleLock'), null);
 
   // When the storage mode cannot be read, the settings might come from the
   // wrong area; they are never uploaded as this device's copy.
