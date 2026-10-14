@@ -17,6 +17,12 @@
     down: 'ArrowDown',
     left: 'ArrowLeft',
     right: 'ArrowRight',
+    // The recorder stores arrows as KeyboardEvent names; accept them back,
+    // as the shared shortcut matcher does.
+    arrowup: 'ArrowUp',
+    arrowdown: 'ArrowDown',
+    arrowleft: 'ArrowLeft',
+    arrowright: 'ArrowRight',
     comma: 'Comma',
     period: 'Period',
     slash: 'Slash',
