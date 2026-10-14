@@ -485,5 +485,57 @@ function createRuntime() {
   assert.strictEqual(sortConflict.bookmarkMoveHistory.peekUndo(), conflictSortRecord,
     'sorting history must not recreate externally removed shortcuts');
 
+  // A recent-site card dropped on the bookmarks only creates a bookmark;
+  // undo removes it and redo creates it again, without saving shortcuts.
+  const recentBookmark = createRuntime();
+  const recentShortcuts = json(recentBookmark.newtabShortcuts);
+  const recentRecord = historyApi.createTransferRecord({
+    snapshot: { title: 'Recent', url: 'https://recent.example/' },
+    from: null,
+    to: { parentId: '2', index: 0 }
+  });
+  assert.ok(recentRecord, 'a bookmark-only transfer needs no shortcut');
+  assert.strictEqual(historyApi.createTransferRecord({
+    snapshot: { title: 'Folder', url: '' }, from: null, to: { parentId: '2', index: 0 }
+  }), null, 'only website bookmarks transfer without a shortcut');
+  assert.strictEqual(await recentBookmark.applyBookmarkShortcutTransfer(recentRecord, false), true);
+  recentBookmark.bookmarkMoveHistory.push({
+    ...recentRecord,
+    bookmarkId: recentRecord.runtime.currentBookmarkId,
+    to: recentRecord.runtime.location || recentRecord.to
+  });
+  const otherUrls = () => recentBookmark.nodes.get('2').children.map((node) => node.url);
+  assert.deepStrictEqual(otherUrls(), ['https://recent.example/']);
+  for (let cycle = 0; cycle < 2; cycle += 1) {
+    await recentBookmark.action('undo');
+    assert.deepStrictEqual(otherUrls(), []);
+    await recentBookmark.action('redo');
+    assert.deepStrictEqual(otherUrls(), ['https://recent.example/']);
+  }
+  assert.deepStrictEqual(json(recentBookmark.newtabShortcuts), recentShortcuts);
+  assert.ok(!recentBookmark.calls.some((call) => call.kind === 'save'),
+    'a bookmark-only transfer must not rewrite the shortcuts');
+
+  // A recent-site card dropped on the shortcuts adds one; undo takes it out.
+  const recentShortcut = createRuntime();
+  const added = store.createShortcutRecord({ title: 'Recent', url: 'https://recent.example/' }, { now: 789 });
+  const addPlan = dragApi.planBookmarkToShortcut({
+    shortcuts: recentShortcut.newtabShortcuts, record: added, index: 1, maxShortcuts: 10
+  });
+  await recentShortcut.persistShortcuts(addPlan.shortcuts, '');
+  assert.strictEqual(recentShortcut.bookmarkMoveHistory.push(historyApi.createShortcutAddRecord({
+    snapshot: addPlan.shortcuts[1], index: 1
+  })), true);
+  assert.strictEqual(recentShortcut.bookmarkMoveHistory.peekUndo().kind, 'shortcut-add');
+  await recentShortcut.action('undo');
+  assert.deepStrictEqual(recentShortcut.newtabShortcuts.map((item) => item.id), ['one', 'two']);
+  await recentShortcut.action('redo');
+  assert.deepStrictEqual(recentShortcut.newtabShortcuts.map((item) => item.url),
+    ['https://one.example/', 'https://recent.example/', 'https://two.example/']);
+  assert.deepStrictEqual(recentShortcut.toasts, [
+    'Shortcut add undone · Ctrl+Shift+Z to redo',
+    'Shortcut added again · Ctrl+Z to undo'
+  ]);
+
   console.log('Shortcut reorder and bookmark transfer history passed: repeated undo/redo, mixed deletion and moves, icons, folders, hidden entries, recreated ids, rollback and conflicts.');
 })().catch((error) => { console.error(error); process.exitCode = 1; });

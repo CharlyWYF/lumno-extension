@@ -2647,6 +2647,15 @@
   "newtab_shortcuts_remove_redone": {
     "message": "已重新移除捷徑 · 按 {shortcut} 復原"
   },
+  "newtab_shortcuts_add_undone": {
+    "message": "已復原新增的捷徑 · 按 {shortcut} 重做"
+  },
+  "newtab_shortcuts_add_redone": {
+    "message": "已重新新增捷徑 · 按 {shortcut} 復原"
+  },
+  "newtab_recent_added_to_folder": {
+    "message": "已新增到「{folder}」"
+  },
   "newtab_shortcuts_open_folder": {
     "message": "開啟資料夾"
   },

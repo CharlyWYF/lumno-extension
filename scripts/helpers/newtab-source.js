@@ -20,6 +20,7 @@ const NEWTAB_RUNTIME_MODULES = [
   'src/newtab/shortcuts-controller.js',
   'src/newtab/shortcut-drag.js',
   'src/newtab/bookmark-drag-controller.js',
+  'src/newtab/recent-card-drag.js',
   'src/newtab/section-loaders.js',
   'src/newtab/card-themes.js',
   'src/newtab/search-modes.js',
@@ -30,6 +31,7 @@ const NEWTAB_RUNTIME_MODULES = [
   'src/newtab/page-preferences.js',
   'src/newtab/appearance-modes.js',
   'src/newtab/section-headers.js',
+  'src/newtab/recent-mode-switch.js',
   'src/newtab/input-focus.js',
   'src/newtab/entry-motion.js'
 ];
