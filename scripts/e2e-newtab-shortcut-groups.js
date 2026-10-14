@@ -152,6 +152,13 @@ async function openPage(cdp, viewport) {
       }
       // Entry motion, favicons and the first adaptive tone pass.
       await delay(1600);
+      // Loading the unpacked extension opens onboarding as a new tab on every
+      // launch; when it lands after this page, this page goes to the background
+      // and its CSS transitions freeze at their first frame.
+      if (await page.evaluate('document.visibilityState') !== 'visible') {
+        await send('Page.bringToFront');
+        await delay(800);
+      }
     },
     async seed(groups, items, extra = {}) {
       if (!(await page.evaluate('location.href')).startsWith(NEWTAB_URL)) {
