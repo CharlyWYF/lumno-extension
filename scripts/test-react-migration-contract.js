@@ -258,10 +258,12 @@ assert(
     packageJson.scripts.test.includes('test:react'),
   'the default test command should cover both runtimes'
 );
-assert.strictEqual(
-  packageJson.scripts.verify,
-  'npm test && npm run check',
-  'the local verification command should match the CI test and check sequence'
+assert(
+  packageJson.scripts.check.includes('build:react') &&
+    packageJson.scripts.check.includes('check:static') &&
+    packageJson.scripts.verify.includes('npm test') &&
+    packageJson.scripts.verify.includes('check:static'),
+  'the local verification command should run the tests and the same static checks as npm run check, building React once'
 );
 assert(
   packageJson.dependencies.react && packageJson.dependencies['react-dom'],

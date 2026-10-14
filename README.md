@@ -187,7 +187,7 @@ Existing server data requires an explicit initial-version choice. Later conflict
 
 ## Development
 
-Development and CI use Node.js 20. If you use `nvm`, run `nvm use` to select the version declared in `.nvmrc`.
+Development and CI use Node.js 22. If you use `nvm`, run `nvm use` to select the version declared in `.nvmrc`.
 
 The React pages must be built before Chrome can load their generated assets. Before loading the development extension for the first time, and after editing `react-src/`, run:
 
