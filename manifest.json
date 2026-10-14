@@ -78,12 +78,12 @@
             "*://*.bilibili.com/*",
             "*://*.bilibili.tv/*"
          ],
-         "js": [ "src/shared/settings.js", "src/content/auto-pip-blacklist.js", "src/content/site-auto-pip.js" ],
+         "js": [ "src/shared/settings.js", "src/content/auto-pip-core.js", "src/content/auto-pip-blacklist.js", "src/content/site-auto-pip.js" ],
          "run_at": "document_idle"
       },
       {
          "matches": [ "*://*.youtube.com/*", "*://youtube.com/*" ],
-         "js": [ "src/shared/settings.js", "src/content/youtube-auto-pip.js" ],
+         "js": [ "src/shared/settings.js", "src/content/auto-pip-core.js", "src/content/youtube-auto-pip.js" ],
          "run_at": "document_idle"
       }
    ],

@@ -139,8 +139,8 @@ function loadAutoPip({ url, scripts, syncValues = {}, mainWorld = {} }) {
   return env;
 }
 
-const SITE_SCRIPTS = ['src/shared/settings.js', 'src/content/auto-pip-blacklist.js', 'src/content/site-auto-pip.js'];
-const YOUTUBE_SCRIPTS = ['src/shared/settings.js', 'src/content/youtube-auto-pip.js'];
+const SITE_SCRIPTS = ['src/shared/settings.js', 'src/content/auto-pip-core.js', 'src/content/auto-pip-blacklist.js', 'src/content/site-auto-pip.js'];
+const YOUTUBE_SCRIPTS = ['src/shared/settings.js', 'src/content/auto-pip-core.js', 'src/content/youtube-auto-pip.js'];
 const clearPiP = (env) => {
   env.pipElement = null;
   return { ok: true };

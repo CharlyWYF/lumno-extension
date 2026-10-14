@@ -1,7 +1,8 @@
-// Unit tests for the shared auto PiP core (LumnoAutoPipCore, appended to
-// src/shared/settings.js), run against plain fakes with no DOM.
+// Unit tests for the shared auto PiP core (src/content/auto-pip-core.js),
+// run against plain fakes with no DOM.
 const assert = require('assert');
 const settings = require('../src/shared/settings');
+require('../src/content/auto-pip-core');
 
 const CORE = globalThis.LumnoAutoPipCore;
 const KEY = '_x_extension_auto_pip_enabled_2026_unique_';
