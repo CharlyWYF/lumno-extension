@@ -156,11 +156,12 @@
       throw cause;
     }
   }
-  // Whole lists are deliberate merge domains in v1. Sorting and deletes cannot
-  // safely be resolved by joining arrays or choosing a device timestamp, so a
-  // list both sides changed apart is a conflict. Any other value is a single
-  // setting: this device's edit reached WebDAV within seconds, so it is the
-  // latest one and wins without asking.
+  // A three-way merge against the last state both sides agreed on. Whatever
+  // only one side changed is taken from that side. A value both sides changed
+  // apart is a conflict for the person to resolve, whether it is a list or a
+  // single setting: a device that was offline or paused may hold the older
+  // edit, so neither side wins on its own. Sorting and deletes cannot safely be
+  // resolved by joining arrays, so whole lists stay single merge domains.
   // Every part merges on its own. Chrome sync delivers shared keys before
   // WebDAV delivers local-only ones (wallpaper selection, icons), and a
   // half-arrived edit must not look like a second device's change.
@@ -169,17 +170,18 @@
     // drops; compare it in the same form as both sides.
     const base = validateState(savedBase);
     const conflicts = [];
-    function choose(key, previous, left, right, list) {
+    function choose(key, previous, left, right) {
       if (equal(left, right) || equal(right, previous)) return left;
       if (equal(left, previous)) return right;
       if (resolution === 'remote') return right;
-      if (resolution === 'local' || (!list && ![previous, left, right].some(Array.isArray))) return left;
+      if (resolution === 'local') return left;
       conflicts.push(key);
       return left;
     }
-    function chooseFields(key, previous, left, right) {
+    // Fields outside `only` are dropped before they could conflict.
+    function chooseFields(key, previous, left, right, only) {
       const record = {};
-      fieldNames(previous, left, right).forEach((field) => {
+      fieldNames(previous, left, right).filter((field) => !only || only.has(field)).forEach((field) => {
         const value = choose(key, (previous || {})[field], (left || {})[field], (right || {})[field]);
         if (typeof value !== 'undefined') record[field] = value;
       });
@@ -194,11 +196,11 @@
     });
     // Groups and the shortcuts inside them change together as one list.
     const shortcutDomain = (state) => ({ groups: state.groups, shortcuts: state.shortcuts });
-    const shortcutState = choose('shortcuts', shortcutDomain(base), shortcutDomain(local), shortcutDomain(remote), true);
+    const shortcutState = choose('shortcuts', shortcutDomain(base), shortcutDomain(local), shortcutDomain(remote));
     const shortcutList = shortcutState.shortcuts;
-    const ids = new Set(shortcutList.map((item) => item.id));
-    const icons = Object.fromEntries(Object.entries(chooseFields('shortcuts', base.icons, local.icons, remote.icons))
-      .filter(([id]) => ids.has(id)));
+    // An icon belongs to the shortcut domain: two different icons for one
+    // shortcut conflict there, while the icon of a removed shortcut goes too.
+    const icons = chooseFields('shortcuts', base.icons, local.icons, remote.icons, new Set(shortcutList.map((item) => item.id)));
     const wallpapers = choose('wallpapers', base.wallpapers, local.wallpapers, remote.wallpapers);
     const state = validateState({ version: Math.max(base.version, local.version, remote.version), data,
       groups: shortcutState.groups, shortcuts: shortcutList, icons, wallpapers,

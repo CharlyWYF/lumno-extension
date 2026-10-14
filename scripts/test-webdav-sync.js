@@ -452,9 +452,21 @@ async function run() {
   const merged = contract.mergeStates(base, empty({ ...base.data, [theme]: 'dark' }), empty({ ...base.data, [language]: 'ja' }));
   assert.deepStrictEqual(merged.conflicts, []);
   assert.deepStrictEqual(merged.state.data, { [theme]: 'dark', [language]: 'ja' });
-  const settingBoth = contract.mergeStates(base, empty({ [theme]: 'dark' }), empty({ [theme]: 'system' }));
-  assert.deepStrictEqual(settingBoth.conflicts, [], 'a single setting both sides changed is not a conflict');
-  assert.strictEqual(settingBoth.state.data[theme], 'dark', 'this device holds the latest edit of a single setting');
+  // A device that was offline or paused holds a stale value. Merging against
+  // the last agreed state decides which side actually changed a setting.
+  const offline = contract.mergeStates(base, base, empty({ ...base.data, [theme]: 'dark' }));
+  assert.deepStrictEqual([offline.conflicts, offline.state.data[theme]], [[], 'dark'],
+    'a device that did not touch a setting never overwrites the newer server value');
+  const localOnly = contract.mergeStates(base, empty({ ...base.data, [theme]: 'dark' }), base);
+  assert.deepStrictEqual([localOnly.conflicts, localOnly.state.data[theme]], [[], 'dark'], 'a change made only on this device wins');
+  const settingBoth = contract.mergeStates(base, empty({ ...base.data, [theme]: 'dark' }), empty({ ...base.data, [theme]: 'system' }));
+  assert.deepStrictEqual(settingBoth.conflicts, [theme], 'a single setting both sides changed apart is a conflict, not a silent pick');
+  assert.strictEqual(contract.mergeStates(base, empty({ ...base.data, [theme]: 'dark' }), empty({ ...base.data, [theme]: 'system' }), 'remote')
+    .state.data[theme], 'system', 'choosing the server version resolves a single setting');
+  assert.deepStrictEqual(contract.mergeStates(base, empty({ ...base.data, [theme]: 'dark' }), empty({ ...base.data, [theme]: 'dark' })).conflicts, [],
+    'the same change on both sides agrees');
+  assert.deepStrictEqual(contract.describeConflict(base, empty({ ...base.data, [theme]: 'dark' }), empty({ ...base.data, [theme]: 'system' }), [theme]),
+    [{ key: theme, domain: 'preference', local: { kind: 'text', value: 'dark' }, remote: { kind: 'text', value: 'system' } }]);
   assert.deepStrictEqual(contract.mergeStates(empty({ [customSearch]: engine('base') }), empty({ [customSearch]: engine('a') }),
     empty({ [customSearch]: engine('b') })).conflicts, [customSearch], 'a list both sides changed apart is a conflict');
   const deletion = contract.mergeStates(base, empty({ [language]: 'en' }), base);
@@ -469,9 +481,9 @@ async function run() {
   assert.deepStrictEqual(quoteMerged.state.data[quote], { enabled: true, position: 'bottom', category: 'literature', fontSize: 20 });
   const quoteBoth = empty({ [quote]: { ...quoteRemote.data[quote], fontSize: 18, category: 'poetry' } });
   const quoteBothMerged = contract.mergeStates(quoteBase, quoteLocal, quoteBoth);
-  assert.deepStrictEqual(quoteBothMerged.conflicts, [], 'a field both sides changed is a single setting');
-  assert.deepStrictEqual(quoteBothMerged.state.data[quote],
-    { enabled: true, position: 'bottom', category: 'poetry', fontSize: 20 }, 'this device wins only the fields both sides changed');
+  assert.deepStrictEqual(quoteBothMerged.conflicts, [quote], 'a field both sides changed apart is a conflict');
+  assert.deepStrictEqual(contract.mergeStates(quoteBase, quoteLocal, quoteBoth, 'local').state.data[quote],
+    { enabled: true, position: 'bottom', category: 'poetry', fontSize: 20 }, 'choosing this device decides only the fields both sides changed');
   assert.deepStrictEqual(contract.mergeStates(quoteBase, quoteLocal, quoteBoth, 'remote').state.data[quote],
     { enabled: true, position: 'bottom', category: 'poetry', fontSize: 18 }, 'choosing the server version applies to settings too');
   assert.deepStrictEqual(contract.describeConflict(quoteBase, quoteLocal, quoteBoth, [quote]), [
@@ -479,8 +491,9 @@ async function run() {
   ], 'field conflicts list only the fields both sides changed apart');
   const quoteDeleted = contract.mergeStates(quoteBase, empty(), quoteRemote);
   assert.strictEqual(Object.hasOwn(quoteDeleted.state.data, quote), false, 'deleting a record is a whole-value change');
-  assert.deepStrictEqual(contract.mergeStates(empty(), quoteLocal, quoteBoth).state.data[quote],
-    quoteLocal.data[quote], 'a missing base record counts as empty, so every differing field is this device\'s');
+  assert.deepStrictEqual(contract.mergeStates(empty(), quoteLocal, quoteBoth).conflicts, [quote],
+    'a missing base record counts as empty, so every field the sides set differently conflicts');
+  assert.deepStrictEqual(contract.mergeStates(empty(), quoteLocal, quoteBoth, 'local').state.data[quote], quoteLocal.data[quote]);
   const folderColors = settings.BOOKMARK_FOLDER_COLOR_REFS_STORAGE_KEY;
   const workRef = 'a'.repeat(16);
   const homeRef = 'b'.repeat(16);
@@ -514,6 +527,19 @@ async function run() {
     { ...empty(), shortcuts: [shortcutA, shortcutB], icons: { b: hashOf('b') }, assets: media });
   assert.deepStrictEqual(halfIcon.conflicts, [], 'a shortcut that arrived before its icon does not conflict');
   assert.deepStrictEqual(halfIcon.state.icons, { b: hashOf('b') });
+  // Icons merge per shortcut inside the shortcut domain.
+  const iconMedia = { ...media, [hashOf('c')]: { mime: 'image/png', size: 10 }, [hashOf('d')]: { mime: 'image/png', size: 10 } };
+  const withIcon = (icons, list = [shortcutA, shortcutB]) => contract.validateState({ ...empty(), shortcuts: list, icons, assets: iconMedia });
+  const iconBase = withIcon({ a: hashOf('b') });
+  assert.deepStrictEqual(contract.mergeStates(iconBase, iconBase, withIcon({ a: hashOf('c') })).state.icons, { a: hashOf('c') },
+    'an icon changed only on the server reaches a device that did not touch it');
+  const iconBoth = contract.mergeStates(iconBase, withIcon({ a: hashOf('c') }), withIcon({ a: hashOf('d') }));
+  assert.deepStrictEqual(iconBoth.conflicts, ['shortcuts'], 'two different new icons for one shortcut conflict');
+  assert.deepStrictEqual(contract.mergeStates(iconBase, withIcon({ a: hashOf('c') }), withIcon({ a: hashOf('d') }), 'remote').state.icons,
+    { a: hashOf('d') });
+  const removedIcon = contract.mergeStates(iconBase, withIcon({}, [shortcutB]), withIcon({ a: hashOf('d') }));
+  assert.deepStrictEqual([removedIcon.conflicts, removedIcon.state.icons], [[], {}],
+    'the icon of a shortcut this device removed goes with it instead of conflicting');
   const library = (...items) => ({ ...empty(), wallpapers: items, assets: media });
   assert.deepStrictEqual(contract.mergeStates(library(libraryItem('custom-wallpaper-1', 'One')),
     library(libraryItem('custom-wallpaper-1', 'One'), libraryItem('custom-wallpaper-2', 'Two')), library()).conflicts, ['wallpapers'],
@@ -604,10 +630,22 @@ async function run() {
   await set(first.chrome.storage.sync, { [theme]: 'light' });
   await set(second.chrome.storage.sync, { [theme]: 'system' });
   await first.controller.handle({ operation: 'sync' });
-  assert.deepStrictEqual(await second.controller.handle({ operation: 'sync' }), { ok: true }, 'a setting both devices changed does not ask');
-  assert.strictEqual(server.state().data[theme], 'system', 'the device that synced last publishes its setting');
+  assert.deepStrictEqual(await second.controller.handle({ operation: 'sync' }), { conflict: true },
+    'a setting both devices changed apart asks instead of letting the last device to sync win');
+  assert.strictEqual(server.state().data[theme], 'light', 'the server keeps the first device\'s value until the choice');
+  assert.strictEqual(second.chrome.storage.sync.values[theme], 'system');
+  await second.controller.handle({ operation: 'sync', decision: 'local' });
+  assert.strictEqual(server.state().data[theme], 'system');
   await first.controller.handle({ operation: 'sync' });
   assert.strictEqual(first.chrome.storage.sync.values[theme], 'system');
+  // A paused device that kept its old value takes the newer server value.
+  await first.controller.handle({ operation: 'pause' });
+  const simple = settings.SIMPLE_MODE_ENABLED_STORAGE_KEY;
+  await set(second.chrome.storage.sync, { [simple]: true });
+  await second.controller.handle({ operation: 'sync' });
+  await first.controller.handle({ operation: 'connect', config: { ...config, password: '' } });
+  assert.strictEqual(first.chrome.storage.sync.values[simple], true, 'a resumed device does not clobber the newer server value');
+  assert.strictEqual(server.state().data[simple], true);
 
   await set(first.chrome.storage.sync, { [customSearch]: engine('first') });
   await set(second.chrome.storage.sync, { [customSearch]: engine('second') });
@@ -943,8 +981,9 @@ async function run() {
   conflictServer.replaceState(conflictRemote);
   assert.strictEqual((await conflictDevice.controller.handle({ operation: 'sync' })).conflict, true);
   assert.deepStrictEqual((await conflictDevice.controller.handle({ operation: 'conflictDetails' })).items, [
+    { key: theme, domain: 'preference', local: { kind: 'text', value: 'dark' }, remote: { kind: 'text', value: 'system' } },
     { key: customSearch, domain: 'preference', local: { kind: 'list', count: 1 }, remote: { kind: 'list', count: 1 } }
-  ], 'conflict details name only the conflicting list, not settings that resolved on their own');
+  ], 'conflict details name what both sides changed apart, not settings that resolved on their own');
   const link = (id, title) => ({ id, type: 'link', title, url: `https://${id}.example/` });
   const summaryBase = { ...empty(), shortcuts: [link('a', 'A'), link('b', 'B'), link('c', 'C')] };
   const summaryLocal = { ...empty(), shortcuts: [link('b', 'B'), link('a', 'A'), link('c', 'C2'), link('d', 'D')] };
