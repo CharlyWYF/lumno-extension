@@ -331,7 +331,7 @@
   function normalizeNewtabSearchWidth(value, options) {
     const config = options || {};
     const allowNull = Boolean(config.allowNull);
-    const min = Number.isFinite(Number(config.min)) ? Number(config.min) : 720;
+    const min = Number.isFinite(Number(config.min)) ? Number(config.min) : 640;
     const max = Number.isFinite(Number(config.max)) ? Number(config.max) : 1040;
     const fallback = Number.isFinite(Number(config.fallback)) ? Number(config.fallback) : 920;
     const number = Number(value);
