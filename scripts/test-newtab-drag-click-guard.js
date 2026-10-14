@@ -29,7 +29,8 @@ function createFixture() {
     guard,
     opened,
     fire,
-    click: (label) => fire('click', { label }),
+    click: (label) => fire('click', { label, detail: 1 }),
+    keyClick: (label) => fire('click', { label, detail: 0 }),
     advance: (ms) => { time += ms; }
   };
 }
@@ -57,6 +58,16 @@ assert.strictEqual(DRAG_CLICK_GUARD_MS, 420);
   const late = click('late');
   assert.strictEqual(late.defaultPrevented, false);
   assert.deepStrictEqual(opened, ['late']);
+}
+
+// A release that fired no click leaves Enter or Space on a control working.
+{
+  const { guard, opened, click, keyClick } = createFixture();
+  guard.armAfterRelease();
+  keyClick('enter');
+  assert.deepStrictEqual(opened, ['enter'], 'a keyboard activation is never swallowed');
+  click('release');
+  assert.deepStrictEqual(opened, ['enter'], 'the pointer click is still caught');
 }
 
 // A new press ends the guard, so a quick deliberate click still works.
