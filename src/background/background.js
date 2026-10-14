@@ -772,6 +772,9 @@ let tabSwitchEventDebugTotal = 0;
 let tabOverlayFetchSeq = 0;
 let tabSwitchStatsLoaded = false;
 let tabSwitchStatsLoadPromise = null;
+// Tabs whose stats were cleared before the stored stats were merged back; the
+// merge skips their stored entries so a cleared stat is not resurrected.
+const tabSwitchStatsClearedBeforeLoad = new Set();
 function cleanupRemovedAiStorageKeys() {
   if (!chrome || !chrome.storage) {
     return;
@@ -854,7 +857,7 @@ function applyPersistedTabSwitchStats(payload) {
   }
   Object.keys(payload).forEach((tabIdKey) => {
     const tabId = Number.parseInt(tabIdKey, 10);
-    if (!Number.isFinite(tabId)) {
+    if (!Number.isFinite(tabId) || tabSwitchStatsClearedBeforeLoad.has(tabId)) {
       return;
     }
     const incoming = normalizeTabSwitchStatEntry(payload[tabIdKey], now);
@@ -919,6 +922,7 @@ function ensureTabSwitchStatsLoaded() {
     area.get([TAB_SWITCH_STATS_STORAGE_KEY], (result) => {
       const payload = result ? result[TAB_SWITCH_STATS_STORAGE_KEY] : null;
       applyPersistedTabSwitchStats(payload);
+      tabSwitchStatsClearedBeforeLoad.clear();
       tabSwitchStatsLoaded = true;
       tabSwitchStatsLoadPromise = null;
       resolve();
@@ -976,7 +980,12 @@ function clearTabSwitchStat(tabId) {
     return;
   }
   tabLastAccessedByTabId.delete(tabId);
-  if (tabSwitchEventsByTabId.delete(tabId)) {
+  const hadStat = tabSwitchEventsByTabId.delete(tabId);
+  if (!tabSwitchStatsLoaded) {
+    // The stored copy of this stat has not been merged in yet; drop it too.
+    tabSwitchStatsClearedBeforeLoad.add(tabId);
+  }
+  if (hadStat || !tabSwitchStatsLoaded) {
     persistTabSwitchStatsNow().catch(warnBackgroundFailure('Failed to save tab switch stats.'));
   }
 }

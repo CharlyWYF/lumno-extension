@@ -118,6 +118,31 @@ async function testTabActivationOnWakeKeepsEarlierSwitchStats() {
   );
 }
 
+async function testStatClearedOnWakeIsNotMergedBack() {
+  const earlier = Date.now() - 60 * 1000;
+  const harness = loadBackground({
+    tabs,
+    session: {
+      [TAB_SWITCH_STATS_KEY]: {
+        7: { events: [earlier], lastSwitchAt: earlier },
+        12: { events: [earlier], lastSwitchAt: earlier }
+      }
+    },
+    storageOptions: { session: { hold: true } }
+  });
+  harness.chrome.tabs.onActivated.dispatch({ tabId: 11, windowId: 1 });
+  harness.chrome.tabs.onRemoved.dispatch(12, { windowId: 1, isWindowClosing: false });
+  await wait(20);
+  harness.storage.session.release();
+  await wait(50);
+  const stored = harness.storage.session.data[TAB_SWITCH_STATS_KEY] || {};
+  assert.deepStrictEqual(
+    Object.keys(stored).sort(),
+    ['11', '7'],
+    'a tab closed before the stored stats were merged back must not have its stats resurrected'
+  );
+}
+
 async function testRestrictedPageShortcutUsesStoredActionOnColdWake() {
   const restrictedTabs = [
     { id: 21, windowId: 1, index: 0, active: true, url: 'chrome://settings/', title: 'Settings' }
@@ -153,6 +178,7 @@ async function testRestrictedPageShortcutUsesStoredActionOnColdWake() {
   await testPinnedSnapshotStaysOffWhenRecoveryIsOff();
   await testPendingPinnedSnapshotIsFlushedOnSuspend();
   await testTabActivationOnWakeKeepsEarlierSwitchStats();
+  await testStatClearedOnWakeIsNotMergedBack();
   await testRestrictedPageShortcutUsesStoredActionOnColdWake();
   console.log('background suspend-safety tests passed');
   process.exit(0);
