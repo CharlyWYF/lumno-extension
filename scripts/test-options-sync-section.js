@@ -83,6 +83,13 @@ function createSection(sync, local, options) {
   const partial = createSection({}, { [V2_CHUNK_2]: ['b'] });
   partial.section.migrateStorageIfNeeded(settings.NEWTAB_SHORTCUTS_V2_STORAGE_KEYS);
   assert.deepStrictEqual(partial.writes, []);
+  const whole = createSection({ [V2_CHUNK_2]: ['stray'] }, { [V2_HEAD]: { v: 2 }, [V2_CHUNK_2]: ['b'] });
+  whole.section.migrateStorageIfNeeded(settings.NEWTAB_SHORTCUTS_V2_STORAGE_KEYS);
+  assert.deepStrictEqual(whole.writes, [{ [V2_HEAD]: { v: 2 }, [V2_CHUNK_2]: ['b'] }],
+    'the whole local save moves with its head, replacing a stray chunk in sync');
+  const headed = createSection({}, { [V2_HEAD]: { v: 2 }, [V2_CHUNK_2]: ['b'] }, { syncAfterFirstRead: { [V2_HEAD]: { v: 3 } } });
+  headed.section.migrateStorageIfNeeded(settings.NEWTAB_SHORTCUTS_V2_STORAGE_KEYS);
+  assert.deepStrictEqual(headed.writes, [], 'once sync has its own grouped save, no local chunk moves');
 }
 
 // The status line and buttons follow whether settings can sync.

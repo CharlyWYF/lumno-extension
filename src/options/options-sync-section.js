@@ -200,9 +200,16 @@
             return;
           }
           storageArea.get(missingKeys, (latestSyncResult) => {
+            const groupedKeys = SETTINGS.NEWTAB_SHORTCUTS_V2_STORAGE_KEYS;
+            // The grouped save still moves whole while sync lacks its head,
+            // replacing any stray chunk there; once sync has a head, none of it moves.
+            const groupStillMissing = typeof latestSyncResult[shortcutsHeadKey] === 'undefined';
             const stillMissingSyncValues = {};
             missingKeys.forEach((key) => {
-              if (typeof latestSyncResult[key] === 'undefined') {
+              const missing = groupedKeys.includes(key)
+                ? groupStillMissing
+                : typeof latestSyncResult[key] === 'undefined';
+              if (missing) {
                 stillMissingSyncValues[key] = missingSyncValues[key];
               }
             });
