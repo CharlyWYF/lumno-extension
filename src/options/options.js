@@ -1388,8 +1388,8 @@
           }
         });
         // Grouped shortcuts move only as a whole save, never chunk by chunk.
-        const [shortcutsHeadKey] = NEWTAB_SHORTCUTS_V2_STORAGE_KEYS;
-        NEWTAB_SHORTCUTS_V2_STORAGE_KEYS.forEach((key) => {
+        const [shortcutsHeadKey] = SETTINGS.NEWTAB_SHORTCUTS_V2_STORAGE_KEYS;
+        SETTINGS.NEWTAB_SHORTCUTS_V2_STORAGE_KEYS.forEach((key) => {
           if (!Object.prototype.hasOwnProperty.call(missingSyncValues, shortcutsHeadKey)) {
             delete missingSyncValues[key];
           } else if (typeof localResult[key] !== 'undefined') {
