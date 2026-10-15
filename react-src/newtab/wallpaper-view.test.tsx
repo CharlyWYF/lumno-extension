@@ -210,7 +210,13 @@ describe('New Tab React wallpaper view', () => {
       draft.open = true;
       draft.button = { active: true, label: 'Appearance' };
       draft.search.topContent.tabs.active = 'time';
-      draft.search.timeWeight = { ...draft.search.timeWeight, value: 600, visible: true };
+      draft.search.timeWeight = {
+        ...draft.search.timeWeight,
+        resetLabel: 'Reset time font weight',
+        resetVisible: true,
+        value: 600,
+        visible: true
+      };
       draft.search.seconds = { ...draft.search.seconds, visible: true, toggle: { checked: true, label: 'Show seconds' } };
       draft.wallpaper.overlay = { ...draft.wallpaper.overlay, value: 72 };
       draft.wallpaper.effect.sliders.spacing = {
@@ -239,6 +245,11 @@ describe('New Tab React wallpaper view', () => {
     expect(refs().topContentBrandTab.dataset.active).toBe('false');
     expect(refs().topContentWeightControl.hidden).toBe(false);
     expect((refs().topContentWeightSlider as HTMLInputElement).value).toBe('600');
+    const weightReset = refs().topContentWeightResetButton as HTMLButtonElement;
+    expect(weightReset.disabled).toBe(false);
+    expect(weightReset.getAttribute('aria-label')).toBe('Reset time font weight');
+    act(() => weightReset.click());
+    expect(next.actions.resetTimeFontWeight).toHaveBeenCalled();
     expect((refs().topContentSecondsToggle as HTMLInputElement).checked).toBe(true);
     expect((refs().overlaySlider as HTMLInputElement).value).toBe('72');
     expect((refs().overlaySliderValueInput as HTMLInputElement).value).toBe('72');
@@ -490,6 +501,27 @@ describe('New Tab React wallpaper view', () => {
     act(() => valueInput.blur());
     expect(actions.setShortcutColumns.mock.calls.length).toBe(callsBeforeEmpty);
     expect(valueInput.value).toBe('7');
+  });
+
+  it('lets a value box take digits below a minimum above 9 until the commit', () => {
+    const { actions, state } = createState((draft) => {
+      draft.search.timeWeight = { ...draft.search.timeWeight, visible: true };
+    });
+    mount(state);
+    const valueInput = refs().topContentWeightSliderValueInput as HTMLInputElement;
+    act(() => valueInput.focus());
+    typeInto(valueInput, '5');
+    expect(valueInput.value).toBe('5');
+    typeInto(valueInput, '50');
+    typeInto(valueInput, '500');
+    expect(valueInput.value).toBe('500');
+    key(valueInput, 'Enter');
+    expect(actions.setTimeFontWeight).toHaveBeenLastCalledWith(500, { dragging: false, final: true });
+    // A draft left below the minimum is clamped when it is committed.
+    act(() => valueInput.focus());
+    typeInto(valueInput, '2');
+    act(() => valueInput.blur());
+    expect(actions.setTimeFontWeight).toHaveBeenLastCalledWith(300, { dragging: false, final: true });
   });
 
   it('shows the slider value in a bubble while the thumb is dragged', async () => {

@@ -704,6 +704,9 @@
   "newtab_time_font_weight_title": {
     "message": "時間字重"
   },
+  "newtab_time_font_weight_reset": {
+    "message": "還原預設字重"
+  },
   "newtab_time_show_seconds_title": {
     "message": "顯示秒數"
   },

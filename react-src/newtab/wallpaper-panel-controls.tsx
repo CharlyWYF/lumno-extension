@@ -371,10 +371,11 @@ export function PanelSlider({
         onChange: (event) => {
           let text = event.currentTarget.value;
           const number = Number(text);
-          // Out-of-range digits snap to the nearest end while typing, as the slider would.
-          if (text.trim() && Number.isFinite(number)) {
-            if (number < min) text = String(min);
-            else if (number > max) text = String(max);
+          // Digits past the top snap to it while typing, as the slider would. A draft
+          // below the bottom is left alone, since more digits may still lift it into
+          // range (with min 300, "5" leads to "500"); the commit clamps it.
+          if (text.trim() && Number.isFinite(number) && number > max) {
+            text = String(max);
           }
           setDraft(text);
         },

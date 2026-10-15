@@ -2825,6 +2825,7 @@ async function testTimeSettingsFollowTheContentAboveTheSearchBar() {
     [300, 800, 320, undefined],
     'the font weight slider moves in whole steps across the supported range'
   );
+  assert.strictEqual(search().timeWeight.resetVisible, false, 'the default weight has nothing to reset');
 
   panelActions(testRuntime).selectTopContent('time');
   assert.strictEqual(page.mode, 'time');
@@ -2836,6 +2837,12 @@ async function testTimeSettingsFollowTheContentAboveTheSearchBar() {
   assert.strictEqual(page.weight, 612);
   assert.strictEqual(storageArea.data[settings.NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY], 612);
   assert.strictEqual(search().timeWeight.value, 612);
+  assert.strictEqual(search().timeWeight.resetVisible, true, 'a changed weight offers a reset');
+  panelActions(testRuntime).resetTimeFontWeight();
+  assert.strictEqual(page.weight, 320);
+  assert.strictEqual(storageArea.data[settings.NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY], 320);
+  assert.strictEqual(search().timeWeight.resetVisible, false);
+  panelActions(testRuntime).setTimeFontWeight(612, NOT_DRAGGING);
   panelActions(testRuntime).setTimeSecondsVisible(true);
   assert.strictEqual(page.seconds, true);
   assert.strictEqual(storageArea.data[settings.NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY], true);

@@ -881,9 +881,15 @@
     currentNewtabTimeFontWeight = normalizeNewtabTimeFontWeight(value);
     newtabTimeFontWeightController.render({
       ariaLabel: getMessage('newtab_time_font_weight_title', 'Time font weight'),
+      defaultValue: NEWTAB_TIME_FONT_WEIGHT_DEFAULT,
       id: '_x_extension_newtab_time_font_weight_slider_2026_unique_',
       min: NEWTAB_TIME_FONT_WEIGHT_MIN,
       max: NEWTAB_TIME_FONT_WEIGHT_MAX,
+      resetAriaLabel: getMessage(
+        'newtab_time_font_weight_reset',
+        'Reset time font weight'
+      ),
+      resetButtonId: '_x_extension_newtab_time_font_weight_reset_2026_unique_',
       step: 1,
       ticks: [
         { align: 'start', label: String(NEWTAB_TIME_FONT_WEIGHT_MIN) },

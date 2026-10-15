@@ -126,6 +126,7 @@ export interface WallpaperPanelActions extends TooltipActions {
   refreshBing(): void;
   resetShortcutGap(): void;
   resetShortcutSize(): void;
+  resetTimeFontWeight(): void;
   restoreDailyWallpaper(): void;
   selectBingWallpaper(id: string): void;
   selectCuratedCategory(category: string): void;
@@ -183,7 +184,7 @@ export interface WallpaperPanelState {
   search: {
     autoFocus: { infoLabel: string; infoTooltip: string; title: string; toggle: ToggleState };
     seconds: { title: string; toggle: ToggleState; visible: boolean };
-    timeWeight: SliderState & { visible: boolean };
+    timeWeight: SliderState & { resetLabel: string; resetVisible: boolean; visible: boolean };
     title: string;
     topContent: { title: string; tabs: SegmentState<TopContentMode> };
     width: SliderState;
@@ -1089,6 +1090,12 @@ function WallpaperPanel({
                   marks={marks.timeWeight}
                   name="topContentWeightSlider"
                   onChange={actions.setTimeFontWeight}
+                  reset={{
+                    label: state.search.timeWeight.resetLabel,
+                    name: 'topContentWeightResetButton',
+                    onReset: actions.resetTimeFontWeight,
+                    visible: state.search.timeWeight.resetVisible
+                  }}
                   slider={state.search.timeWeight}
                 />
               </div>

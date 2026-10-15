@@ -704,6 +704,9 @@
   "newtab_time_font_weight_title": {
     "message": "Time font weight"
   },
+  "newtab_time_font_weight_reset": {
+    "message": "Reset time font weight"
+  },
   "newtab_time_show_seconds_title": {
     "message": "Show seconds"
   },

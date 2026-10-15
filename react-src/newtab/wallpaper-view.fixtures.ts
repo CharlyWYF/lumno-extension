@@ -57,7 +57,12 @@ export function createDefaultPanelState(): WallpaperPanelState {
     search: {
       autoFocus: { infoLabel: '', infoTooltip: '', title: '', toggle: toggle('Automatically focus input') },
       seconds: { title: 'Show seconds', toggle: toggle('Show seconds'), visible: false },
-      timeWeight: { ...slider('Time font weight', 320, 300, 800), visible: false },
+      timeWeight: {
+        ...slider('Time font weight', 320, 300, 800),
+        resetLabel: '',
+        resetVisible: false,
+        visible: false
+      },
       title: 'Search box',
       topContent: {
         tabs: {

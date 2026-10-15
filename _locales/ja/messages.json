@@ -704,6 +704,9 @@
   "newtab_time_font_weight_title": {
     "message": "時刻の文字の太さ"
   },
+  "newtab_time_font_weight_reset": {
+    "message": "時刻の文字の太さを初期値に戻す"
+  },
   "newtab_time_show_seconds_title": {
     "message": "秒を表示"
   },

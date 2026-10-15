@@ -3853,7 +3853,9 @@
           label: t('newtab_time_font_weight_title', 'Time font weight'),
           value: currentTimeFontWeight,
           min: NEWTAB_TIME_FONT_WEIGHT_MIN,
-          max: NEWTAB_TIME_FONT_WEIGHT_MAX
+          max: NEWTAB_TIME_FONT_WEIGHT_MAX,
+          resetLabel: t('newtab_time_font_weight_reset', 'Reset time font weight'),
+          resetVisible: currentTimeFontWeight !== NEWTAB_TIME_FONT_WEIGHT_DEFAULT
         },
         seconds: {
           visible: timeVisible,
@@ -4361,6 +4363,7 @@
         },
         selectTopContent: (mode) => persistTopContentMode(mode),
         setTimeFontWeight: (value) => persistTimeFontWeight(value),
+        resetTimeFontWeight: () => persistTimeFontWeight(NEWTAB_TIME_FONT_WEIGHT_DEFAULT),
         setTimeSecondsVisible: (visible) => persistTimeSecondsVisible(visible),
         setShortcutsVisible(visible) {
           setShortcutsVisible(visible, { persist: true });
