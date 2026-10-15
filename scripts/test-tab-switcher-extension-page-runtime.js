@@ -52,6 +52,7 @@ window.chrome = {
     }
   },
   runtime: {
+    getURL: (relativePath) => `chrome-extension://lumno/${relativePath}`,
     onMessage: {
       addListener(listener) {
         runtimeMessageListener = listener;
@@ -82,6 +83,8 @@ window.chrome = {
 
 // Extension pages load settings.js before the tab switcher runtime.
 window.eval(fs.readFileSync(path.join(__dirname, '..', 'src/shared/settings.js'), 'utf8'));
+window.eval(fs.readFileSync(path.join(__dirname, '..', 'src/shared/toast.js'), 'utf8'));
+window.eval(fs.readFileSync(path.join(__dirname, '..', 'src/shared/page-color-scheme.js'), 'utf8'));
 window.eval(source);
 
 const unavailableResult =

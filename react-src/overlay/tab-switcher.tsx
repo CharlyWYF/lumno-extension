@@ -46,18 +46,12 @@ export interface TabSwitcherViewOptions {
   onClose?: (index: number, event: MouseEvent) => void;
 }
 
-export interface TabSwitcherToastOptions {
-  error?: boolean;
-  duration?: number;
-}
-
 export interface TabSwitcherViewController {
   panel: HTMLElement | null;
   buttons: HTMLButtonElement[];
   updateSelection(index: number): void;
   setTabClosing(tabId: number, closing: boolean): void;
   removeTab(tabId: number): boolean;
-  showToast(message: string, options?: TabSwitcherToastOptions): void;
   updateThumbnail(
     update: TabSwitcherThumbnailUpdate
   ): { ok: boolean; reason?: string };
@@ -68,12 +62,6 @@ interface InternalTab extends TabSwitcherTab {
   _previousThumbnail?: string;
   _thumbnailEntering?: boolean;
   _closing?: boolean;
-}
-
-interface ToastState {
-  text: string;
-  tone: '' | 'error';
-  visible: boolean;
 }
 
 interface NormalizedOptions {
@@ -328,31 +316,15 @@ function TabCard({
   );
 }
 
-function TabSwitcherToast({ toast }: { toast: ToastState }) {
-  return (
-    <div
-      className="x-tab-switcher-toast"
-      role="status"
-      aria-live="polite"
-      data-show={toast.visible ? 'true' : 'false'}
-      data-tone={toast.tone || undefined}
-    >
-      {toast.text}
-    </div>
-  );
-}
-
 function TabSwitcherView({
   options,
   tabs,
   selectedIndex,
-  toast,
   panelRef
 }: {
   options: NormalizedOptions;
   tabs: InternalTab[];
   selectedIndex: number;
-  toast: ToastState;
   panelRef: (node: HTMLElement | null) => void;
 }) {
   return (
@@ -381,7 +353,6 @@ function TabSwitcherView({
           />
         ))}
       </div>
-      <TabSwitcherToast toast={toast} />
     </div>
   );
 }
@@ -395,7 +366,6 @@ function createNoopController(): TabSwitcherViewController {
     removeTab() {
       return false;
     },
-    showToast() {},
     updateThumbnail() {
       return { ok: false, reason: 'react-view-unavailable' };
     },
@@ -427,8 +397,6 @@ export function createTabSwitcherView(
   let selectedIndex = Number(rawOptions.selectedIndex) || 0;
   let panel: HTMLElement | null = null;
   let destroyed = false;
-  let toast: ToastState = { text: '', tone: '', visible: false };
-  let toastTimer = 0;
   const timers = new Set<number>();
 
   const controller: TabSwitcherViewController = {
@@ -464,33 +432,6 @@ export function createTabSwitcherView(
       tabs = tabs.filter((tab) => tab.id !== tabId);
       render();
       return true;
-    },
-    showToast(message, toastOptions = {}) {
-      const text = String(message || '');
-      if (!text) {
-        return;
-      }
-      if (toastTimer) {
-        window.clearTimeout(toastTimer);
-        timers.delete(toastTimer);
-      }
-      toast = {
-        text,
-        tone: toastOptions.error ? 'error' : '',
-        visible: true
-      };
-      render();
-      const duration = Number.isFinite(Number(toastOptions.duration))
-        ? Math.max(0, Number(toastOptions.duration))
-        : 1800;
-      const timer = window.setTimeout(() => {
-        timers.delete(timer);
-        toastTimer = 0;
-        toast = { ...toast, visible: false };
-        render();
-      }, duration);
-      toastTimer = timer;
-      timers.add(timer);
     },
     updateThumbnail(update) {
       const tabId = Number(update && update.tabId);
@@ -577,7 +518,6 @@ export function createTabSwitcherView(
           options={options}
           tabs={tabs}
           selectedIndex={selectedIndex}
-          toast={toast}
           panelRef={(node) => {
             panel = node;
           }}

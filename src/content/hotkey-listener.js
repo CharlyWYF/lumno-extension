@@ -13,6 +13,8 @@
     'copy_page_url_failed_permission'
   ]);
   const LANGUAGE_STORAGE_KEY = '_x_extension_language_2024_unique_';
+  const THEME_STORAGE_KEY = '_x_extension_theme_mode_2024_unique_';
+  const PAGE_COLOR_SCHEME = globalThis.LumnoPageColorScheme;
   const SETTINGS = globalThis.LumnoSettings;
   const providerStorageRuntime = SETTINGS.createProviderStorageRuntime(chrome);
   const storageArea = providerStorageRuntime
@@ -57,24 +59,50 @@
     return fallback;
   }
 
-  function readLanguageMode() {
+  // Resolves 'system' when the setting is unset or storage is unavailable.
+  function readStoredMode(storageKey) {
     if (!storageArea || typeof storageArea.get !== 'function') {
       return Promise.resolve('system');
     }
     return new Promise((resolve) => {
       try {
-        storageArea.get([LANGUAGE_STORAGE_KEY], (result) => {
+        storageArea.get([storageKey], (result) => {
           if (chrome.runtime && chrome.runtime.lastError) {
             resolve('system');
             return;
           }
-          resolve(result && result[LANGUAGE_STORAGE_KEY]
-            ? String(result[LANGUAGE_STORAGE_KEY])
+          resolve(result && result[storageKey]
+            ? String(result[storageKey])
             : 'system');
         });
       } catch (e) {
         resolve('system');
       }
+    });
+  }
+
+  function readLanguageMode() {
+    return readStoredMode(LANGUAGE_STORAGE_KEY);
+  }
+
+  // Like the tab switcher: the page's own light or dark look first, then the
+  // Lumno theme setting, then the system.
+  function resolvePageToastTheme() {
+    const pageTheme = PAGE_COLOR_SCHEME
+      ? PAGE_COLOR_SCHEME.detectPageTheme(document, window)
+      : null;
+    if (pageTheme) {
+      return Promise.resolve(pageTheme);
+    }
+    return readStoredMode(THEME_STORAGE_KEY).then((mode) => {
+      const normalized = String(mode || '').trim().toLowerCase();
+      if (normalized === 'dark' || normalized === 'light') {
+        return normalized;
+      }
+      return typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
     });
   }
 
@@ -122,14 +150,17 @@
       top: max(24px, calc(env(safe-area-inset-top) + 12px));
       left: 50%;
       transform: translateX(-50%) translateY(-18px) scale(0.96);
-      background: rgba(17, 24, 39, 0.92);
-      color: #f9fafb;
-      padding: 10px 14px;
+      box-sizing: border-box;
+      background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+      color: #1f2937;
+      border: 1px solid rgba(214, 219, 227, 0.95);
+      padding: 10px 16px;
       border-radius: 999px;
       font-size: 12px;
+      font-weight: 500;
       line-height: 1.35;
       max-width: min(560px, calc(100vw - 32px));
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 16px 36px rgba(17, 24, 39, 0.08), 0 3px 10px rgba(17, 24, 39, 0.05);
       opacity: 0;
       filter: blur(8px);
       pointer-events: none;
@@ -144,6 +175,18 @@
       overflow: hidden;
       text-overflow: ellipsis;
       font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    /* The shared Toast's surfaces (src/shared/toast.css): solid, light or dark with the page. */
+    .toast[data-theme="dark"] {
+      background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+      color: #f8fafc;
+      border-color: rgba(255, 255, 255, 0.2);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+    }
+    .toast[data-tone="error"] {
+      background: #991b1b;
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.16);
     }
     .toast::after {
       content: "";
@@ -305,7 +348,7 @@
     return pageToastParts;
   }
 
-  function showPageToast(message, isError) {
+  function showPageToast(message, isError, theme) {
     const parts = ensurePageToast();
     if (!parts) {
       return;
@@ -316,10 +359,15 @@
       pageToastTimer = null;
     }
     text.textContent = String(message || '');
-    if (isError) {
-      toast.style.setProperty('background', 'rgba(153, 27, 27, 0.92)');
+    if (theme === 'dark') {
+      toast.setAttribute('data-theme', 'dark');
     } else {
-      toast.style.removeProperty('background');
+      toast.removeAttribute('data-theme');
+    }
+    if (isError) {
+      toast.setAttribute('data-tone', 'error');
+    } else {
+      toast.removeAttribute('data-tone');
     }
     toast.setAttribute('data-show', 'false');
     void toast.offsetWidth;
@@ -331,8 +379,11 @@
   }
 
   function showLocalizedPageToast(pickMessage, isError) {
-    return loadToastMessages().catch(() => null).then((messages) => {
-      showPageToast(pickMessage(messages), isError);
+    return Promise.all([
+      loadToastMessages().catch(() => null),
+      resolvePageToastTheme().catch(() => 'light')
+    ]).then(([messages, theme]) => {
+      showPageToast(pickMessage(messages), isError, theme);
     });
   }
 

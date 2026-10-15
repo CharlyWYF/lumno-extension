@@ -73,6 +73,7 @@ function loadPage(options) {
     value: { writeText: () => Promise.resolve() }
   });
   window.eval(read('src/shared/settings.js'));
+  window.eval(read('src/shared/page-color-scheme.js'));
   window.eval(read('src/content/hotkey-listener.js'));
   window.eval(read('src/shared/shortcut-key-matcher.js'));
   window.eval(read('src/content/shortcut-key-observer.js'));

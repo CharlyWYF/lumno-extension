@@ -6,6 +6,8 @@
   const TAB_SWITCHER_ADVANCE_EVENT = '_x_extension_tab_switcher_advance_command_2026_unique_';
   const THEME_STORAGE_KEY = '_x_extension_theme_mode_2024_unique_';
   const chromeApi = typeof chrome !== 'undefined' ? chrome : null;
+  const PAGE_COLOR_SCHEME = globalThis.LumnoPageColorScheme;
+  const TOAST = globalThis.LumnoToast;
   const switcherThemeMediaQuery = typeof window.matchMedia === 'function'
     ? window.matchMedia('(prefers-color-scheme: dark)')
     : null;
@@ -293,188 +295,13 @@
     return value === 'dark' || value === 'light' ? value : 'system';
   }
 
-  function parseSwitcherCssColor(color) {
-    if (!color || typeof color !== 'string') {
-      return null;
-    }
-    const trimmed = color.trim().toLowerCase();
-    if (!trimmed || trimmed === 'transparent') {
-      return null;
-    }
-    if (trimmed.startsWith('#')) {
-      const hex = trimmed.slice(1);
-      if (hex.length === 3) {
-        const channels = hex.split('').map((value) => parseInt(value + value, 16));
-        return channels.every((value) => Number.isFinite(value)) ? channels : null;
-      }
-      if (hex.length === 6) {
-        const channels = [hex.slice(0, 2), hex.slice(2, 4), hex.slice(4, 6)]
-          .map((value) => parseInt(value, 16));
-        return channels.every((value) => Number.isFinite(value)) ? channels : null;
-      }
-      return null;
-    }
-    const functionMatch = trimmed.match(/^rgba?\(([\s\S]+)\)$/);
-    if (!functionMatch) {
-      return null;
-    }
-    const parts = functionMatch[1]
-      .replace(/\//g, ' ')
-      .replace(/,/g, ' ')
-      .split(/\s+/)
-      .filter(Boolean);
-    if (parts.length < 3) {
-      return null;
-    }
-    const channels = parts.slice(0, 3).map((part) => {
-      if (part.endsWith('%')) {
-        return Math.round(Number(part.slice(0, -1)) * 2.55);
-      }
-      return Math.round(Number(part));
-    });
-    const alpha = parts.length >= 4 ? Number(parts[3]) : 1;
-    if (!channels.every((value) => Number.isFinite(value)) ||
-        !Number.isFinite(alpha) ||
-        alpha <= 0) {
-      return null;
-    }
-    return channels.map((value) => Math.max(0, Math.min(255, value)));
-  }
-
-  function getSwitcherLuminance(rgb) {
-    const [red, green, blue] = rgb.map((value) => {
-      const channel = value / 255;
-      return channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
-    });
-    return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-  }
-
   function getSystemSwitcherTheme() {
     return switcherThemeMediaQuery && switcherThemeMediaQuery.matches ? 'dark' : 'light';
   }
 
-  function themeFromSwitcherColor(color) {
-    const rgb = parseSwitcherCssColor(color);
-    if (!rgb || rgb.length !== 3) {
-      return null;
-    }
-    return getSwitcherLuminance(rgb) < 0.42 ? 'dark' : 'light';
-  }
-
-  function detectSwitcherPageTheme() {
-    const docEl = document.documentElement;
-    const body = document.body;
-    if (!docEl) {
-      return null;
-    }
-    if (docEl.hasAttribute('dark') || (body && body.hasAttribute('dark'))) {
-      return 'dark';
-    }
-    if (docEl.hasAttribute('light') || (body && body.hasAttribute('light'))) {
-      return 'light';
-    }
-    const attrCandidates = [
-      docEl.getAttribute('data-theme'),
-      docEl.getAttribute('data-color-scheme'),
-      docEl.getAttribute('data-color-mode'),
-      docEl.getAttribute('data-mode'),
-      docEl.getAttribute('data-appearance'),
-      docEl.getAttribute('color-scheme'),
-      docEl.getAttribute('theme'),
-      docEl.getAttribute('data-bs-theme'),
-      body ? body.getAttribute('data-theme') : null,
-      body ? body.getAttribute('data-color-scheme') : null,
-      body ? body.getAttribute('data-color-mode') : null,
-      body ? body.getAttribute('data-mode') : null,
-      body ? body.getAttribute('data-appearance') : null,
-      body ? body.getAttribute('color-scheme') : null,
-      body ? body.getAttribute('theme') : null,
-      body ? body.getAttribute('data-bs-theme') : null
-    ];
-    for (let i = 0; i < attrCandidates.length; i += 1) {
-      const value = String(attrCandidates[i] || '').toLowerCase();
-      if (!value) {
-        continue;
-      }
-      if (value.includes('dark') ||
-          value.includes('night') ||
-          value === '1' ||
-          value === 'true' ||
-          value === 'on') {
-        return 'dark';
-      }
-      if (value.includes('light') ||
-          value.includes('day') ||
-          value === '0' ||
-          value === 'false' ||
-          value === 'off') {
-        return 'light';
-      }
-    }
-    const youtubeDarkRoot = document.querySelector('ytd-app[dark], ytm-app[dark]');
-    if (youtubeDarkRoot) {
-      return 'dark';
-    }
-    const classTokens = [
-      docEl.className || '',
-      body ? body.className || '' : ''
-    ];
-    for (let i = 0; i < classTokens.length; i += 1) {
-      const classText = String(classTokens[i] || '').toLowerCase();
-      const tokenList = classText.split(/\s+/);
-      if (tokenList.includes('dark')) {
-        return 'dark';
-      }
-      if (tokenList.includes('light')) {
-        return 'light';
-      }
-      if (/(^|[\s_-])(dark|darkmode|dark-theme|theme-dark|night)([\s_-]|$)/.test(classText)) {
-        return 'dark';
-      }
-      if (/(^|[\s_-])(light|lightmode|light-theme|theme-light|day)([\s_-]|$)/.test(classText)) {
-        return 'light';
-      }
-    }
-    const bodyStyle = body ? window.getComputedStyle(body) : null;
-    const docStyle = window.getComputedStyle(docEl);
-    const bgColor = bodyStyle && themeFromSwitcherColor(bodyStyle.backgroundColor)
-      ? bodyStyle.backgroundColor
-      : docStyle.backgroundColor;
-    const backgroundTheme = themeFromSwitcherColor(bgColor);
-    if (backgroundTheme) {
-      return backgroundTheme;
-    }
-    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeColorMeta) {
-      const themeColor = String(themeColorMeta.getAttribute('content') || '').trim();
-      const theme = themeFromSwitcherColor(themeColor);
-      if (theme) {
-        return theme;
-      }
-    }
-    const colorSchemeMeta = document.querySelector('meta[name="color-scheme"]');
-    if (colorSchemeMeta) {
-      const metaContent = String(colorSchemeMeta.getAttribute('content') || '').toLowerCase();
-      if (metaContent.includes('dark') && !metaContent.includes('light')) {
-        return 'dark';
-      }
-      if (metaContent.includes('light') && !metaContent.includes('dark')) {
-        return 'light';
-      }
-    }
-    const schemeValue = (window.getComputedStyle(docEl).colorScheme || '').toLowerCase();
-    if (schemeValue.includes('dark') && !schemeValue.includes('light')) {
-      return 'dark';
-    }
-    if (schemeValue.includes('light') && !schemeValue.includes('dark')) {
-      return 'light';
-    }
-    return null;
-  }
-
   function resolveSwitcherTheme(mode) {
     const normalized = normalizeSwitcherThemeMode(mode);
-    const pageTheme = detectSwitcherPageTheme();
+    const pageTheme = PAGE_COLOR_SCHEME.detectPageTheme(document, window);
     if (pageTheme) {
       return pageTheme;
     }
@@ -484,16 +311,23 @@
     return getSystemSwitcherTheme();
   }
 
-  function applySwitcherTheme(panel, mode) {
+  function applySwitcherTheme(panel, mode, toastElement) {
     if (!panel) {
       return;
     }
     const resolved = resolveSwitcherTheme(mode);
     panel.setAttribute('data-theme', resolved);
     panel.style.setProperty('color-scheme', resolved);
+    if (toastElement) {
+      if (resolved === 'dark') {
+        toastElement.setAttribute('data-theme', 'dark');
+      } else {
+        toastElement.removeAttribute('data-theme');
+      }
+    }
   }
 
-  function createSwitcherThemeController(panel) {
+  function createSwitcherThemeController(panel, toastElement) {
     const themeAttrFilter = [
       'class',
       'style',
@@ -518,7 +352,7 @@
 
     function refreshSwitcherTheme() {
       if (!destroyed) {
-        applySwitcherTheme(panel, switcherThemeMode);
+        applySwitcherTheme(panel, switcherThemeMode, toastElement);
       }
     }
 
@@ -993,38 +827,6 @@
         stroke-width: 1.6;
         stroke-linecap: round;
       }
-      .x-tab-switcher-toast {
-        position: absolute;
-        left: 50%;
-        bottom: calc(100% + 12px);
-        max-width: min(360px, calc(100vw - 32px));
-        padding: 8px 14px;
-        border-radius: 999px;
-        color: #172033;
-        background: rgba(255, 255, 255, 0.94);
-        box-shadow:
-          0 12px 32px rgba(15, 23, 42, 0.16),
-          0 2px 8px rgba(15, 23, 42, 0.06),
-          inset 0 0 0 0.5px rgba(15, 23, 42, 0.1);
-        font-size: 12px;
-        font-weight: 500;
-        line-height: 18px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        opacity: 0;
-        pointer-events: none;
-        transform: translate3d(-50%, 6px, 0);
-        transition: opacity 160ms ease, transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
-      }
-      .x-tab-switcher-toast[data-show="true"] {
-        opacity: 1;
-        transform: translate3d(-50%, 0, 0);
-      }
-      .x-tab-switcher-toast[data-tone="error"] {
-        color: #ffffff;
-        background: rgba(153, 27, 27, 0.92);
-      }
       .x-tab-switcher-meta {
         min-width: 0;
         display: grid;
@@ -1170,24 +972,52 @@
         color: #ffffff;
         background: rgba(51, 65, 85, 0.96);
       }
-      #${PANEL_ID}[data-theme="dark"] .x-tab-switcher-toast:not([data-tone="error"]) {
-        color: #f8fafc;
-        background: rgba(15, 23, 42, 0.94);
-        box-shadow:
-          0 12px 32px rgba(0, 0, 0, 0.4),
-          inset 0 0 0 0.5px rgba(255, 255, 255, 0.16);
-      }
       #${PANEL_ID}[data-theme="dark"] .x-tab-switcher-thumb {
         background: color-mix(in srgb, var(--x-tab-switcher-card-accent, var(--x-tab-switcher-accent)) 18%, rgba(15, 23, 42, 0.92));
       }
       @media (prefers-reduced-motion: reduce) {
         .x-tab-switcher-thumb img[data-kind="thumbnail"],
-        .x-tab-switcher-close,
-        .x-tab-switcher-toast {
+        .x-tab-switcher-close {
           transition: none;
         }
       }
     `;
+  }
+
+  // The shared Toast at the top of the screen, inside the switcher's shadow
+  // root so it lives and goes with the switcher.
+  function createSwitcherToast(shadow) {
+    if (!TOAST || typeof TOAST.createToastController !== 'function') {
+      return null;
+    }
+    const stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = chrome.runtime.getURL('src/shared/toast.css');
+    const element = document.createElement('div');
+    element.className = 'x-lumno-toast';
+    element.setAttribute('data-show', 'false');
+    element.setAttribute('role', 'status');
+    element.setAttribute('aria-live', 'polite');
+    element.style.setProperty('--x-lumno-toast-top', 'max(24px, calc(env(safe-area-inset-top) + 12px))');
+    element.style.setProperty('--x-lumno-toast-z-index', '2147483647');
+    shadow.append(stylesheet, element);
+    const styleGate = TOAST.createToastStyleGate(element, {
+      stylesheetElement: stylesheet,
+      windowObj: window
+    });
+    const controller = TOAST.createToastController(element, { windowObj: window });
+    return {
+      element,
+      show(message, isError) {
+        element.setAttribute('role', isError ? 'alert' : 'status');
+        element.setAttribute('aria-live', isError ? 'assertive' : 'polite');
+        controller.show(message, { error: Boolean(isError) });
+      },
+      destroy() {
+        styleGate.destroy();
+        controller.destroy();
+      }
+    };
   }
 
   window._x_extension_toggleTabSwitcher_2026_unique_ = function(rawContext) {
@@ -1270,7 +1100,11 @@
       applySwitcherZoomCompensation(panel, context.tabZoomFactor, getSwitcherVisualViewportScale(window));
     }
 
-    const switcherThemeController = createSwitcherThemeController(panel);
+    const switcherToast = createSwitcherToast(shadow);
+    const switcherThemeController = createSwitcherThemeController(
+      panel,
+      switcherToast ? switcherToast.element : null
+    );
     switcherThemeController.start();
 
     let didRequestSwitch = false;
@@ -1310,6 +1144,12 @@
 
     const closingTabIds = new Set();
 
+    function showSwitcherToast(message, isError) {
+      if (switcherToast) {
+        switcherToast.show(message, isError);
+      }
+    }
+
     function closeTabAt(index) {
       const tab = tabs[index];
       if (didRequestSwitch || !tab || typeof tab.id !== 'number' || closingTabIds.has(tab.id)) {
@@ -1326,10 +1166,7 @@
         }
         if (lastError || !response || response.ok !== true) {
           tabSwitcherReactView.setTabClosing(tabId, false);
-          tabSwitcherReactView.showToast(
-            getMessage('tab_switcher_close_failed', "Couldn't close this tab"),
-            { error: true }
-          );
+          showSwitcherToast(getMessage('tab_switcher_close_failed', "Couldn't close this tab"), true);
           return;
         }
         const closedIndex = tabs.findIndex((item) => item.id === tabId);
@@ -1346,7 +1183,7 @@
         selectedIndex = Math.min(selectedIndex, tabs.length - 1);
         tabSwitcherReactView.removeTab(tabId);
         renderSelection();
-        tabSwitcherReactView.showToast(getMessage('tab_switcher_tab_closed', 'Tab closed'));
+        showSwitcherToast(getMessage('tab_switcher_tab_closed', 'Tab closed'), false);
       });
     }
 
@@ -1490,6 +1327,9 @@
       document.removeEventListener('pointerdown', handlePointerDown, true);
       document.removeEventListener(TAB_SWITCHER_ADVANCE_EVENT, handleExternalAdvance, true);
       switcherThemeController.destroy();
+      if (switcherToast) {
+        switcherToast.destroy();
+      }
       if (tabSwitcherReactView) {
         tabSwitcherReactView.destroy();
         tabSwitcherReactView = null;

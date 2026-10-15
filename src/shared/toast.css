@@ -43,7 +43,7 @@
 
 /* Failures share one red surface in both themes, so the text has to switch to light. */
 .x-lumno-toast[data-tone="error"] {
-  background: var(--lumno-color-toast-error-bg, rgba(153, 27, 27, 0.92));
+  background: var(--lumno-color-toast-error-bg, #991b1b);
   color: var(--lumno-color-toast-error-text, #ffffff);
   border-color: var(--lumno-color-toast-error-border, rgba(255, 255, 255, 0.16));
 }

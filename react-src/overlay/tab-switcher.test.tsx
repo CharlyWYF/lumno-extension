@@ -177,29 +177,4 @@ describe('Overlay tab switcher React island', () => {
     expect(controller.buttons[0]).toBe(first);
     expect(controller.removeTab(2)).toBe(false);
   });
-
-  it('shows a toast that hides itself', () => {
-    vi.useFakeTimers();
-    const { controller, shadow } = createView();
-    const toast = () =>
-      shadow.querySelector<HTMLElement>('.x-tab-switcher-toast');
-
-    expect(toast()?.dataset.show).toBe('false');
-    act(() => {
-      controller.showToast('Tab closed');
-    });
-    expect(toast()?.dataset.show).toBe('true');
-    expect(toast()?.textContent).toBe('Tab closed');
-    expect(toast()?.dataset.tone).toBeUndefined();
-
-    act(() => {
-      vi.runAllTimers();
-    });
-    expect(toast()?.dataset.show).toBe('false');
-
-    act(() => {
-      controller.showToast('Failed', { error: true });
-    });
-    expect(toast()?.dataset.tone).toBe('error');
-  });
 });

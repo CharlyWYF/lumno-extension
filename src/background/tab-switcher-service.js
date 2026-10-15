@@ -2056,6 +2056,8 @@ function injectTabSwitcherOnTab(hostTab, items, context) {
         'src/shared/codex-debug-surface.js',
         'src/shared/settings.js',
         'src/react/overlay-islands.js',
+        'src/shared/toast.js',
+        'src/shared/page-color-scheme.js',
         'src/overlay/tab-switcher.js'
       ]
     }, () => {

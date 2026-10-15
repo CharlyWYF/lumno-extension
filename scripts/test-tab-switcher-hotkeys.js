@@ -10,6 +10,7 @@ const shortcutReleaseRelaySource = fs.readFileSync(
 );
 const backgroundSource = readBackgroundSource();
 const switcherSource = fs.readFileSync('src/overlay/tab-switcher.js', 'utf8');
+const pageColorSchemeSource = fs.readFileSync('src/shared/page-color-scheme.js', 'utf8');
 const switcherViewReactSource = fs.readFileSync(
   'react-src/overlay/tab-switcher.tsx',
   'utf8'
@@ -496,13 +497,13 @@ assert.match(
 );
 assert.match(
   switcherSource,
-  /function applySwitcherTheme\(panel,\s*mode\)[\s\S]*setAttribute\('data-theme',\s*resolved\)/,
+  /function applySwitcherTheme\(panel,\s*mode,\s*toastElement\)[\s\S]*setAttribute\('data-theme',\s*resolved\)/,
   'tab switcher should resolve and apply a data-theme value'
 );
 const detectSwitcherPageThemeBlock = getFunctionBlock(
-  switcherSource,
-  'function detectSwitcherPageTheme()',
-  'function resolveSwitcherTheme(mode)'
+  pageColorSchemeSource,
+  'function detectPageTheme(documentRef, windowRef)',
+  'return Object.freeze({'
 );
 assert.match(
   detectSwitcherPageThemeBlock,
@@ -516,32 +517,32 @@ assert.match(
 );
 assert.match(
   detectSwitcherPageThemeBlock,
-  /meta\[name="theme-color"\][\s\S]*themeFromSwitcherColor/,
+  /meta\[name="theme-color"\][\s\S]*themeFromColor/,
   'tab switcher system theme should infer page brightness from theme-color meta'
 );
 assert.match(
-  switcherSource,
-  /function themeFromSwitcherColor\(color\)[\s\S]*getSwitcherLuminance\(rgb\)\s*<\s*0\.42/,
+  pageColorSchemeSource,
+  /function themeFromColor\(color\)[\s\S]*getLuminance\(rgb\)\s*<\s*0\.42/,
   'tab switcher color-based page theme detection should use luminance instead of raw brightness'
 );
 const resolveSwitcherThemeBlock = getFunctionBlock(
   switcherSource,
   'function resolveSwitcherTheme(mode)',
-  'function applySwitcherTheme(panel, mode)'
+  'function applySwitcherTheme(panel, mode, toastElement)'
 );
 assert.match(
   resolveSwitcherThemeBlock,
-  /const pageTheme = detectSwitcherPageTheme\(\);[\s\S]*if \(pageTheme\)[\s\S]*return pageTheme;[\s\S]*return getSystemSwitcherTheme\(\);/,
+  /const pageTheme = PAGE_COLOR_SCHEME\.detectPageTheme\(document, window\);[\s\S]*if \(pageTheme\)[\s\S]*return pageTheme;[\s\S]*return getSystemSwitcherTheme\(\);/,
   'tab switcher system theme should prefer page theme detection before system media fallback'
 );
 assert.ok(
-  resolveSwitcherThemeBlock.indexOf('const pageTheme = detectSwitcherPageTheme();') <
+  resolveSwitcherThemeBlock.indexOf('const pageTheme = PAGE_COLOR_SCHEME.detectPageTheme(document, window);') <
     resolveSwitcherThemeBlock.indexOf("if (normalized !== 'system')"),
   'tab switcher should prefer explicit page/plugin-page theme over stored extension theme mode'
 );
 assert.match(
   switcherSource,
-  /function createSwitcherThemeController\(panel\)[\s\S]*MutationObserver[\s\S]*observe\(docEl[\s\S]*observe\(body[\s\S]*observe\(head[\s\S]*return \{[\s\S]*start[\s\S]*destroy/,
+  /function createSwitcherThemeController\(panel,\s*toastElement\)[\s\S]*MutationObserver[\s\S]*observe\(docEl[\s\S]*observe\(body[\s\S]*observe\(head[\s\S]*return \{[\s\S]*start[\s\S]*destroy/,
   'tab switcher theme listener and page observer cleanup should live in a controller instead of inline patches'
 );
 assert.match(
@@ -1272,7 +1273,7 @@ assert.match(
 );
 assert.match(
   switcherSource,
-  /const switcherThemeController = createSwitcherThemeController\(panel\);[\s\S]*switcherThemeController\.start\(\)[\s\S]*switcherThemeController\.destroy\(\)/,
+  /const switcherThemeController = createSwitcherThemeController\(\s*panel,[^;]*\);[\s\S]*switcherThemeController\.start\(\)[\s\S]*switcherThemeController\.destroy\(\)/,
   'tab switcher should clean up theme listeners through the theme controller when the panel closes'
 );
 assert.match(
