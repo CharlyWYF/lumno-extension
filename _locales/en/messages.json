@@ -2165,6 +2165,15 @@
   "tab_switcher_favicon_alt": {
     "message": "Site icon"
   },
+  "tab_switcher_close_tab": {
+    "message": "Close tab"
+  },
+  "tab_switcher_tab_closed": {
+    "message": "Tab closed"
+  },
+  "tab_switcher_close_failed": {
+    "message": "Couldn't close this tab"
+  },
   "command_show_tab_switcher": {
     "message": "Open recent tab switcher"
   },

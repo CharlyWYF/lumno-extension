@@ -148,11 +148,13 @@ const assertWithinBudget = (actualBytes, budgetKiB, label) => {
 // New Tab moved to 402 KiB / 120 KiB gzip (the total to 794 KiB / 231 KiB gzip) at 1.0.1 for the bookmark and site card sections in the appearance panel.
 // New Tab moved to 409 KiB / 123 KiB gzip (the total to 801 KiB / 234 KiB gzip) at 1.0.1: the appearance panel's controls moved
 // from the classic wallpaper.js (about 84 KiB smaller) into its React view.
+// The Overlay moved to 275 KiB (the total to 803 KiB) at 1.0.1 for the tab switcher's close button and toast,
+// which ships twice: in the injected Overlay bundle and in the shared tab switcher bundle.
 const bundleBudgets = {
   newtab: { uncompressed: 409, gzip: 123 },
   options: { uncompressed: 290, gzip: 85 },
-  overlay: { uncompressed: 274, gzip: 83 },
-  total: { uncompressed: 801, gzip: 234 }
+  overlay: { uncompressed: 275, gzip: 83 },
+  total: { uncompressed: 803, gzip: 234 }
 };
 
 const retiredNewtabRendererScripts = [

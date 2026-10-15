@@ -120,7 +120,7 @@ function testSenderPolicyModule() {
 // keep reaching a background handler.
 const EXPECTED_BACKGROUND_ACTIONS = [
   'webdav',
-  'switchToTab', 'notifyTopFrameDocumentStarted', 'notifyOverlayClosed',
+  'switchToTab', 'closeTabFromTabSwitcher', 'notifyTopFrameDocumentStarted', 'notifyOverlayClosed',
   'updateOverlayLoadingSession', 'getTabsForOverlay', 'trackSearchTab', 'closeOtherTabsForOverlay',
   'swapNewtabForFocus',
   'getShowSearchShortcut', 'getCopyCurrentUrlCommandShortcut', 'copyCurrentPageUrl',

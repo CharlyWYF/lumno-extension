@@ -2165,6 +2165,15 @@
   "tab_switcher_favicon_alt": {
     "message": "网站图标"
   },
+  "tab_switcher_close_tab": {
+    "message": "关闭标签页"
+  },
+  "tab_switcher_tab_closed": {
+    "message": "已关闭标签页"
+  },
+  "tab_switcher_close_failed": {
+    "message": "无法关闭该标签页"
+  },
   "command_show_tab_switcher": {
     "message": "打开最近标签页切换器"
   },

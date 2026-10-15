@@ -2165,6 +2165,15 @@
   "tab_switcher_favicon_alt": {
     "message": "網站圖示"
   },
+  "tab_switcher_close_tab": {
+    "message": "關閉分頁"
+  },
+  "tab_switcher_tab_closed": {
+    "message": "已關閉分頁"
+  },
+  "tab_switcher_close_failed": {
+    "message": "無法關閉此分頁"
+  },
   "command_show_tab_switcher": {
     "message": "開啟最近分頁切換器"
   },

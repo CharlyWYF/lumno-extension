@@ -14,6 +14,7 @@ function createView() {
   document.body.appendChild(host);
   const onSelect = vi.fn();
   const onActivate = vi.fn();
+  const onClose = vi.fn();
   let controller!: TabSwitcherViewController;
   act(() => {
     controller = createTabSwitcherView({
@@ -37,11 +38,12 @@ function createView() {
       ],
       normalizeAccentCss: () => 'rgb(1, 2, 3)',
       onSelect,
-      onActivate
+      onActivate,
+      onClose
     });
   });
   controllers.push(controller);
-  return { controller, host, shadow, onSelect, onActivate };
+  return { controller, host, shadow, onSelect, onActivate, onClose };
 }
 
 afterEach(() => {
@@ -138,5 +140,66 @@ describe('Overlay tab switcher React island', () => {
         'img[data-kind="thumbnail"]'
       )?.src
     ).toContain('bmV3');
+  });
+
+  it('closes a card from its own close button without activating it', () => {
+    const { controller, shadow, onActivate, onClose } = createView();
+    const closeButtons = shadow.querySelectorAll<HTMLButtonElement>(
+      '.x-tab-switcher-close'
+    );
+
+    expect(controller.panel?.dataset.closePlacement).toBe('left');
+    expect(closeButtons).toHaveLength(2);
+    expect(closeButtons[1].getAttribute('aria-label')).toBe('Close tab');
+
+    act(() => {
+      closeButtons[1].click();
+    });
+    expect(onClose).toHaveBeenCalledWith(1, expect.any(MouseEvent));
+    expect(onActivate).not.toHaveBeenCalled();
+
+    act(() => {
+      controller.setTabClosing(2, true);
+    });
+    expect(closeButtons[1].disabled).toBe(true);
+    expect(
+      closeButtons[1].closest<HTMLElement>('.x-tab-switcher-item')
+        ?.dataset.closing
+    ).toBe('true');
+
+    const first = controller.buttons[0];
+    let removed = false;
+    act(() => {
+      removed = controller.removeTab(2);
+    });
+    expect(removed).toBe(true);
+    expect(controller.buttons).toHaveLength(1);
+    expect(controller.buttons[0]).toBe(first);
+    expect(controller.removeTab(2)).toBe(false);
+  });
+
+  it('shows a toast that hides itself', () => {
+    vi.useFakeTimers();
+    const { controller, shadow } = createView();
+    const toast = () =>
+      shadow.querySelector<HTMLElement>('.x-tab-switcher-toast');
+
+    expect(toast()?.dataset.show).toBe('false');
+    act(() => {
+      controller.showToast('Tab closed');
+    });
+    expect(toast()?.dataset.show).toBe('true');
+    expect(toast()?.textContent).toBe('Tab closed');
+    expect(toast()?.dataset.tone).toBeUndefined();
+
+    act(() => {
+      vi.runAllTimers();
+    });
+    expect(toast()?.dataset.show).toBe('false');
+
+    act(() => {
+      controller.showToast('Failed', { error: true });
+    });
+    expect(toast()?.dataset.tone).toBe('error');
   });
 });

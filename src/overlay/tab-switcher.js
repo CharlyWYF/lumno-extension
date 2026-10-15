@@ -63,6 +63,27 @@
     }
   }
 
+  // Closing sits where the platform puts window controls: top-left on macOS,
+  // top-right on Windows.
+  function getCloseButtonPlacement() {
+    const nav = window.navigator || {};
+    const candidates = [
+      nav.userAgentData && nav.userAgentData.platform,
+      nav.platform,
+      nav.userAgent
+    ];
+    for (let i = 0; i < candidates.length; i += 1) {
+      const value = String(candidates[i] || '').toLowerCase();
+      if (/(mac|iphone|ipad|ipod)/.test(value)) {
+        return 'left';
+      }
+      if (/win/.test(value)) {
+        return 'right';
+      }
+    }
+    return 'left';
+  }
+
   function updateOpenSwitcherThumbnailFromMessage(request) {
     const host = document.getElementById(HOST_ID);
     if (!host || typeof host._lumnoTabSwitcherUpdateThumbnail !== 'function') {
@@ -817,6 +838,15 @@
         width: max-content;
         max-width: 100%;
       }
+      .x-tab-switcher-item {
+        position: relative;
+        min-width: 0;
+        transition: opacity 140ms ease;
+      }
+      .x-tab-switcher-item[data-closing="true"] {
+        opacity: 0.45;
+        pointer-events: none;
+      }
       .x-tab-switcher-card {
         all: unset;
         width: var(--x-tab-switcher-card-width);
@@ -911,6 +941,90 @@
       .x-tab-switcher-favicon[data-broken="true"] {
         visibility: hidden;
       }
+      .x-tab-switcher-close {
+        all: unset;
+        --x-tab-switcher-close-inset: calc(var(--x-tab-switcher-padding-card) + var(--x-tab-switcher-border-card) + 5px);
+        position: absolute;
+        top: var(--x-tab-switcher-close-inset);
+        left: var(--x-tab-switcher-close-inset);
+        z-index: 3;
+        width: 20px;
+        height: 20px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        color: rgba(23, 32, 51, 0.72);
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow:
+          0 1px 3px rgba(15, 23, 42, 0.16),
+          0 0 0 0.5px rgba(15, 23, 42, 0.16);
+        cursor: pointer;
+        opacity: 0;
+        transform: scale(0.7);
+        pointer-events: none;
+        transition:
+          opacity 120ms ease,
+          transform var(--x-tab-switcher-motion-card),
+          color 120ms ease,
+          background 120ms ease;
+      }
+      #${PANEL_ID}[data-close-placement="right"] .x-tab-switcher-close {
+        left: auto;
+        right: var(--x-tab-switcher-close-inset);
+      }
+      .x-tab-switcher-item:hover .x-tab-switcher-close {
+        opacity: 1;
+        transform: scale(1);
+        pointer-events: auto;
+      }
+      .x-tab-switcher-close:hover {
+        color: #0f172a;
+        background: #ffffff;
+      }
+      .x-tab-switcher-close:active {
+        transform: scale(0.9);
+      }
+      .x-tab-switcher-close svg {
+        width: 10px;
+        height: 10px;
+        display: block;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.6;
+        stroke-linecap: round;
+      }
+      .x-tab-switcher-toast {
+        position: absolute;
+        left: 50%;
+        bottom: calc(100% + 12px);
+        max-width: min(360px, calc(100vw - 32px));
+        padding: 8px 14px;
+        border-radius: 999px;
+        color: #172033;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow:
+          0 12px 32px rgba(15, 23, 42, 0.16),
+          0 2px 8px rgba(15, 23, 42, 0.06),
+          inset 0 0 0 0.5px rgba(15, 23, 42, 0.1);
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 18px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        opacity: 0;
+        pointer-events: none;
+        transform: translate3d(-50%, 6px, 0);
+        transition: opacity 160ms ease, transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .x-tab-switcher-toast[data-show="true"] {
+        opacity: 1;
+        transform: translate3d(-50%, 0, 0);
+      }
+      .x-tab-switcher-toast[data-tone="error"] {
+        color: #ffffff;
+        background: rgba(153, 27, 27, 0.92);
+      }
       .x-tab-switcher-meta {
         min-width: 0;
         display: grid;
@@ -987,6 +1101,11 @@
         .x-tab-switcher-meta {
           gap: 0;
         }
+        .x-tab-switcher-close {
+          --x-tab-switcher-close-inset: calc(var(--x-tab-switcher-padding-card) + var(--x-tab-switcher-border-card) + 3px);
+          width: 18px;
+          height: 18px;
+        }
         .x-tab-switcher-name {
           font-size: 10.5px;
           line-height: 1.14;
@@ -1040,11 +1159,31 @@
       #${PANEL_ID}[data-theme="dark"] .x-tab-switcher-host {
         color: rgba(248, 250, 252, 0.58);
       }
+      #${PANEL_ID}[data-theme="dark"] .x-tab-switcher-close {
+        color: rgba(248, 250, 252, 0.8);
+        background: rgba(30, 41, 59, 0.92);
+        box-shadow:
+          0 1px 3px rgba(0, 0, 0, 0.32),
+          0 0 0 0.5px rgba(255, 255, 255, 0.18);
+      }
+      #${PANEL_ID}[data-theme="dark"] .x-tab-switcher-close:hover {
+        color: #ffffff;
+        background: rgba(51, 65, 85, 0.96);
+      }
+      #${PANEL_ID}[data-theme="dark"] .x-tab-switcher-toast:not([data-tone="error"]) {
+        color: #f8fafc;
+        background: rgba(15, 23, 42, 0.94);
+        box-shadow:
+          0 12px 32px rgba(0, 0, 0, 0.4),
+          inset 0 0 0 0.5px rgba(255, 255, 255, 0.16);
+      }
       #${PANEL_ID}[data-theme="dark"] .x-tab-switcher-thumb {
         background: color-mix(in srgb, var(--x-tab-switcher-card-accent, var(--x-tab-switcher-accent)) 18%, rgba(15, 23, 42, 0.92));
       }
       @media (prefers-reduced-motion: reduce) {
-        .x-tab-switcher-thumb img[data-kind="thumbnail"] {
+        .x-tab-switcher-thumb img[data-kind="thumbnail"],
+        .x-tab-switcher-close,
+        .x-tab-switcher-toast {
           transition: none;
         }
       }
@@ -1093,6 +1232,7 @@
       tabs,
       selectedIndex,
       ariaLabel: getMessage('tab_switcher_title', 'Recent tabs'),
+      closeButtonPlacement: getCloseButtonPlacement(),
       sanitizeText,
       getHostLabel,
       getMessage,
@@ -1109,6 +1249,12 @@
         stopHandledKeyEvent(event);
         selectedIndex = index;
         switchToSelected();
+      },
+      onClose(index, event) {
+        if (!event || event.isTrusted !== true) {
+          return;
+        }
+        closeTabAt(index);
       }
     });
     const panel = tabSwitcherReactView.panel;
@@ -1160,6 +1306,48 @@
         close();
       });
       return true;
+    }
+
+    const closingTabIds = new Set();
+
+    function closeTabAt(index) {
+      const tab = tabs[index];
+      if (didRequestSwitch || !tab || typeof tab.id !== 'number' || closingTabIds.has(tab.id)) {
+        return;
+      }
+      const tabId = tab.id;
+      closingTabIds.add(tabId);
+      tabSwitcherReactView.setTabClosing(tabId, true);
+      chrome.runtime.sendMessage({ action: 'closeTabFromTabSwitcher', tabId }, (response) => {
+        const lastError = chrome.runtime && chrome.runtime.lastError;
+        closingTabIds.delete(tabId);
+        if (!tabSwitcherReactView) {
+          return;
+        }
+        if (lastError || !response || response.ok !== true) {
+          tabSwitcherReactView.setTabClosing(tabId, false);
+          tabSwitcherReactView.showToast(
+            getMessage('tab_switcher_close_failed', "Couldn't close this tab"),
+            { error: true }
+          );
+          return;
+        }
+        const closedIndex = tabs.findIndex((item) => item.id === tabId);
+        if (closedIndex >= 0) {
+          tabs.splice(closedIndex, 1);
+        }
+        if (!tabs.length) {
+          close();
+          return;
+        }
+        if (closedIndex >= 0 && closedIndex < selectedIndex) {
+          selectedIndex -= 1;
+        }
+        selectedIndex = Math.min(selectedIndex, tabs.length - 1);
+        tabSwitcherReactView.removeTab(tabId);
+        renderSelection();
+        tabSwitcherReactView.showToast(getMessage('tab_switcher_tab_closed', 'Tab closed'));
+      });
     }
 
     function clickSelectedCardFromShortcutRelease() {

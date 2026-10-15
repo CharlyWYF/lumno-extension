@@ -3481,6 +3481,32 @@ const TAB_MESSAGE_HANDLERS = Object.freeze({
     );
     return true;
   },
+  closeTabFromTabSwitcher(request, sender, sendResponse) {
+    const tabId = request ? request.tabId : null;
+    if (typeof tabId !== 'number') {
+      sendResponse({ ok: false, reason: 'invalid-tab' });
+      return;
+    }
+    chrome.tabs.get(tabId, (tab) => {
+      if (chrome.runtime.lastError || !tab) {
+        sendResponse({ ok: false, reason: 'tab-missing' });
+        return;
+      }
+      // The switcher never lists incognito tabs, so it never closes one.
+      if (tab.incognito === true) {
+        sendResponse({ ok: false, reason: 'tab-not-allowed' });
+        return;
+      }
+      chrome.tabs.remove(tabId, () => {
+        if (chrome.runtime.lastError) {
+          sendResponse({ ok: false, reason: chrome.runtime.lastError.message || 'remove-failed' });
+          return;
+        }
+        sendResponse({ ok: true });
+      });
+    });
+    return true;
+  },
   notifyOverlayClosed(request, sender, sendResponse) {
     const senderTab = sender && sender.tab ? sender.tab : null;
     if (senderTab && typeof senderTab.id === 'number') {
@@ -4297,7 +4323,7 @@ const backgroundMessageRouter = BACKGROUND_MESSAGE_ROUTER.createRouter(
 // switcher, selection toolbar and picture-in-picture helpers) send. Those run
 // inside web pages; every other action is accepted from extension pages only.
 const WEB_PAGE_MESSAGE_ACTIONS = Object.freeze([
-  'switchToTab', 'notifyOverlayClosed', 'notifyTopFrameDocumentStarted',
+  'switchToTab', 'closeTabFromTabSwitcher', 'notifyOverlayClosed', 'notifyTopFrameDocumentStarted',
   'updateOverlayLoadingSession', 'getTabsForOverlay', 'closeOtherTabsForOverlay',
   'getShowSearchShortcut', 'copyCurrentPageUrl', 'triggerShowSearchFromPageHotkey',
   'notifyTabSwitcherShortcutModifierReleased', 'getShortcutRules',
