@@ -333,6 +333,43 @@ assert.ok(
   'overlay keyups should end the IME commit-Enter window'
 );
 
+// ChatGPT focuses its composer on a window keypress (Cmd+V included) whenever
+// document.activeElement is not a native input - which the shadow host never
+// is - so the paste would land in the page. Modifier keypresses stay inside.
+searchInput.focus();
+const hostPageKeypresses = [];
+const recordHostKeypress = (event) => {
+  hostPageKeypresses.push(event.key);
+};
+window.addEventListener('keypress', recordHostKeypress);
+const pasteKeydown = new window.KeyboardEvent('keydown', {
+  bubbles: true,
+  cancelable: true,
+  composed: true,
+  key: 'v',
+  code: 'KeyV',
+  metaKey: true
+});
+searchInput.dispatchEvent(pasteKeydown);
+['meta', 'ctrl', 'alt'].forEach((modifier) => {
+  searchInput.dispatchEvent(new window.KeyboardEvent('keypress', {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    key: 'v',
+    code: 'KeyV',
+    [`${modifier}Key`]: true
+  }));
+});
+window.removeEventListener('keypress', recordHostKeypress);
+assert.deepStrictEqual(hostPageKeypresses, [],
+  'modifier keypresses from the overlay input should not reach the host page');
+assert.strictEqual(pasteKeydown.defaultPrevented, false,
+  'Cmd+V keydown should still paste into the overlay input');
+assert.deepStrictEqual(hostPageKeys.slice(-1), [{ key: 'v', targetTag: 'DIV' }],
+  'modifier keydowns should still pass for browser and system shortcuts');
+hostPageKeys.length = 0;
+
 keyRouter.stop();
 const afterStopKeydown = new window.KeyboardEvent('keydown', {
   bubbles: true,

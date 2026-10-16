@@ -45,7 +45,9 @@
   // Routes page-level keyboard events while the overlay is open:
   // - window capture keydown/keypress/keyup: keys typed into the overlay input
   //   or its scope panel run Lumno's handling and are then kept away from the
-  //   host page and other extensions (browser/system modifier shortcuts pass);
+  //   host page and other extensions (modifier keydown/keyup pass so browser,
+  //   system and Lumno's own input shortcuts work; modifier keypress does not,
+  //   since pages use it to pull focus into their own editor);
   // - document capture keydown: Tab in the input (the double-Tab scope
   //   shortcut) runs before page handlers;
   // - document keydown/keyup: keys that reach the page while the overlay owns
@@ -101,6 +103,13 @@
         return;
       }
       if (event.metaKey || event.ctrlKey || event.altKey) {
+        // A keypress carries no browser shortcut, so the page never needs it.
+        // Some pages refocus their own editor on any keypress while the
+        // focused element is not a native input - the closed shadow host
+        // never is - and would take the paste of Cmd+V (ChatGPT).
+        if (event.type === 'keypress') {
+          event.stopImmediatePropagation();
+        }
         return;
       }
       if (event.type === 'keydown') {
