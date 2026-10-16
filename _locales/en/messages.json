@@ -3310,5 +3310,14 @@
   },
   "newtab_shortcuts_group_name_placeholder": {
     "message": "Optional; an untitled group only starts a new row"
+  },
+  "newtab_style_section_title": {
+    "message": "Style"
+  },
+  "settings_newtab_frosted_glass_title": {
+    "message": "Frosted glass style"
+  },
+  "settings_newtab_frosted_glass_desc": {
+    "message": "Apply a light frosted finish to the New Tab search bar, cards, and buttons. Works best with a dark theme and a wallpaper."
   }
 }

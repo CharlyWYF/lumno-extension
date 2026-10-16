@@ -2364,11 +2364,11 @@ body[data-drag-blocked="true"] {
   border-color: var(--x-nt-bookmark-card-border-color, var(--x-nt-bookmark-card-border, rgba(0, 0, 0, 0.08)));
   backdrop-filter: blur(var(--x-nt-bookmark-card-blur-hover, 9px));
   -webkit-backdrop-filter: blur(var(--x-nt-bookmark-card-blur-hover, 9px));
-  box-shadow: 0 55px 15px 0 rgba(var(--x-nt-bookmark-shadow-rgb), 0),
-    0 35px 14px 0 rgba(var(--x-nt-bookmark-shadow-rgb), calc(var(--x-nt-bookmark-hover-shadow-alpha-1) * var(--x-nt-bookmark-hover-shadow-scale))),
-    0 20px 12px 0 rgba(var(--x-nt-bookmark-shadow-rgb), calc(var(--x-nt-bookmark-hover-shadow-alpha-2) * var(--x-nt-bookmark-hover-shadow-scale))),
-    0 9px 9px 0 rgba(var(--x-nt-bookmark-shadow-rgb), calc(var(--x-nt-bookmark-hover-shadow-alpha-3) * var(--x-nt-bookmark-hover-shadow-scale))),
-    0 2px 5px 0 rgba(var(--x-nt-bookmark-shadow-rgb), calc(var(--x-nt-bookmark-hover-shadow-alpha-4) * var(--x-nt-bookmark-hover-shadow-scale)));
+  box-shadow: 0 55px 15px 0 rgba(var(--x-nt-frosted-shadow-rgb, var(--x-nt-bookmark-shadow-rgb)), 0),
+    0 35px 14px 0 rgba(var(--x-nt-frosted-shadow-rgb, var(--x-nt-bookmark-shadow-rgb)), calc(var(--x-nt-bookmark-hover-shadow-alpha-1) * var(--x-nt-bookmark-hover-shadow-scale))),
+    0 20px 12px 0 rgba(var(--x-nt-frosted-shadow-rgb, var(--x-nt-bookmark-shadow-rgb)), calc(var(--x-nt-bookmark-hover-shadow-alpha-2) * var(--x-nt-bookmark-hover-shadow-scale))),
+    0 9px 9px 0 rgba(var(--x-nt-frosted-shadow-rgb, var(--x-nt-bookmark-shadow-rgb)), calc(var(--x-nt-bookmark-hover-shadow-alpha-3) * var(--x-nt-bookmark-hover-shadow-scale))),
+    0 2px 5px 0 rgba(var(--x-nt-frosted-shadow-rgb, var(--x-nt-bookmark-shadow-rgb)), calc(var(--x-nt-bookmark-hover-shadow-alpha-4) * var(--x-nt-bookmark-hover-shadow-scale)));
 }
 .x-nt-bookmark-card.x-nt-bookmark-card--hover::before {
   opacity: 1;

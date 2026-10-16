@@ -190,6 +190,7 @@
     '_x_extension_newtab_feedback_button_visible_2026_unique_';
   const NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY = SETTINGS.NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY ||
     '_x_extension_newtab_appearance_button_visible_2026_unique_';
+  const NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY = SETTINGS.NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY;
   const NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY = SETTINGS.NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY ||
     '_x_extension_newtab_open_in_new_tab_2026_unique_';
   const NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY = SETTINGS.NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY ||
@@ -2205,6 +2206,14 @@
     inputAutoFocusReady: initialNewtabInputAutoFocusReadyTask,
     getInputAutoFocusEnabled: () => pageState.newtabInputAutoFocusEnabled,
     setInputAutoFocusEnabled: setNewtabInputAutoFocusEnabled,
+    getFrostedGlassEnabled: () => document.body.getAttribute('data-frosted-glass') === 'true',
+    setFrostedGlassEnabled(value) {
+      const enabled = SETTINGS.normalizeNewtabFrostedGlassEnabled(value);
+      applyNewtabFrostedGlass(enabled);
+      if (storageArea) {
+        storageArea.set({ [NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY]: enabled });
+      }
+    },
     getAdaptiveToneTargets: createWallpaperAdaptiveToneTargets,
     view: NEWTAB_WALLPAPER_VIEW
   });
@@ -2580,6 +2589,9 @@
       storageArea.set({ [NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY]: nextValue });
     }
     setNewtabTimeSecondsVisible(nextValue);
+  });
+  storageChanges.on(NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY, (changes) => {
+    applyNewtabFrostedGlass(changes[NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY].newValue);
   });
   storageChanges.on(NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY, (changes) => {
     const raw = changes[NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY].newValue;
@@ -3105,6 +3117,7 @@
     NEWTAB_QUOTE_PREFS_STORAGE_KEY,
     NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY,
     NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY,
+    NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY,
     NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
     NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
     NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY,
@@ -6511,6 +6524,25 @@
     setNewtabActionControlVisibility(wallpaperControl, newtabAppearanceButtonVisible);
   }
 
+  function applyNewtabFrostedGlass(value) {
+    const enabled = SETTINGS.normalizeNewtabFrostedGlassEnabled(value);
+    document.body.setAttribute('data-frosted-glass', enabled ? 'true' : 'false');
+    updateWallpaperAppearanceSelectionUi();
+  }
+
+  function loadNewtabFrostedGlass() {
+    if (!storageArea) {
+      applyNewtabFrostedGlass(false);
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      storageArea.get([NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY], (result) => {
+        applyNewtabFrostedGlass(result && result[NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY]);
+        resolve();
+      });
+    });
+  }
+
   function loadNewtabActionButtonVisibility() {
     if (!storageArea) {
       newtabFeedbackButtonVisible = true;
@@ -7113,6 +7145,7 @@
   }, { passive: true });
   bottomDockRuntime.onScroll(scheduleWallpaperAdaptiveToneUpdate, { passive: true });
   const actionButtonVisibilityReadyPromise = loadNewtabActionButtonVisibility();
+  const frostedGlassReadyPromise = loadNewtabFrostedGlass();
   observeNewtabStartupTask('action-button-visibility', actionButtonVisibilityReadyPromise);
   const shortcutPreferencesReadyPromise = loadNewtabShortcutPreferences();
   observeNewtabStartupTask('shortcut-preferences', shortcutPreferencesReadyPromise);
@@ -7145,6 +7178,7 @@
     initialBookmarkViewModeReadyPromise,
     loadZenMode(),
     actionButtonVisibilityReadyPromise,
+    frostedGlassReadyPromise,
     initialMotionPreferenceReadyTask,
     initialLanguageReadyTask,
     sectionPolicyReadyPromise,

@@ -229,6 +229,12 @@
       typeof options.inputAutoFocusReady.then === 'function'
       ? options.inputAutoFocusReady
       : Promise.resolve();
+    const getFrostedGlassEnabled = typeof options.getFrostedGlassEnabled === 'function'
+      ? options.getFrostedGlassEnabled
+      : function() { return false; };
+    const setFrostedGlassEnabled = typeof options.setFrostedGlassEnabled === 'function'
+      ? options.setFrostedGlassEnabled
+      : function() {};
     const featureHintVisibilityGate = options.featureHintVisibilityGate &&
       typeof options.featureHintVisibilityGate.then === 'function'
       ? options.featureHintVisibilityGate
@@ -4257,6 +4263,12 @@
         button: { active: Boolean(currentWallpaperId), label: getWallpaperButtonLabel() },
         header: buildWallpaperPanelHeaderState(),
         theme: buildWallpaperThemeState(),
+        frostedGlass: {
+          sectionTitle: t('newtab_style_section_title', 'Style'),
+          title: t('settings_newtab_frosted_glass_title', 'Frosted glass style'),
+          infoTooltip: t('settings_newtab_frosted_glass_desc', 'Apply a light frosted finish to the New Tab search bar, cards, and buttons. Works best with a dark theme and a wallpaper.'),
+          toggle: buildPanelToggle(getFrostedGlassEnabled(), t('settings_newtab_frosted_glass_title', 'Frosted glass style'))
+        },
         search: buildWallpaperSearchState(),
         shortcuts: buildWallpaperShortcutsState(),
         quote: { infoTooltip: t('newtab_quote_provider', 'Powered by Hitokoto') },
@@ -4359,6 +4371,10 @@
         setSearchWidth: (value, change) => persistSearchWidthFromSlider(value, change),
         setInputAutoFocus(enabled) {
           setInputAutoFocusEnabled(enabled);
+          renderWallpaperPanelState();
+        },
+        setFrostedGlass(enabled) {
+          setFrostedGlassEnabled(enabled);
           renderWallpaperPanelState();
         },
         selectTopContent: (mode) => persistTopContentMode(mode),

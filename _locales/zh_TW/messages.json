@@ -3310,5 +3310,14 @@
   },
   "newtab_shortcuts_group_name_placeholder": {
     "message": "可以留空，留空時只用來分隔"
+  },
+  "newtab_style_section_title": {
+    "message": "風格"
+  },
+  "settings_newtab_frosted_glass_title": {
+    "message": "磨砂玻璃風格"
+  },
+  "settings_newtab_frosted_glass_desc": {
+    "message": "為新分頁的搜尋框、卡片和按鈕統一套用輕透的磨砂效果，搭配深色主題和桌布效果更佳"
   }
 }

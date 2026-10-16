@@ -109,6 +109,29 @@ function key(target: HTMLElement, name: string) {
 }
 
 describe('New Tab React wallpaper view', () => {
+  it('toggles frosted glass and follows updated preferences without remounting', () => {
+    const { state, actions } = createState();
+    mount(state);
+    const toggle = refs().frostedGlassToggle as HTMLInputElement;
+    expect(toggle.checked).toBe(false);
+    act(() => toggle.click());
+    expect(actions.setFrostedGlass).toHaveBeenCalledWith(true);
+    state.frostedGlass.toggle.checked = true;
+    rerender(state);
+    expect(refs().frostedGlassToggle).toBe(toggle);
+    expect(toggle.checked).toBe(true);
+    act(() => refs().styleSectionTrigger.click());
+    expect(refs().styleSectionBody.hidden).toBe(true);
+    state.frostedGlass.toggle.checked = false;
+    rerender(state);
+    expect(refs().styleSectionBody.hidden).toBe(true);
+    act(() => refs().styleSectionTrigger.click());
+    expect(refs().styleSectionBody.hidden).toBe(false);
+    expect(toggle.checked).toBe(false);
+    expect(toggle.closest('.x-nt-appearance-setting-row')?.querySelector('[title]')?.getAttribute('title'))
+      .toBe(state.frostedGlass.infoTooltip);
+  });
+
   it('renders the complete appearance panel contract', () => {
     const { state } = createState();
     mount(state);
@@ -150,6 +173,7 @@ describe('New Tab React wallpaper view', () => {
     );
     expect(sectionTriggers.map((trigger) => trigger.dataset.wallpaperRef)).toEqual([
       'themeSectionTrigger',
+      'styleSectionTrigger',
       'searchSectionTrigger',
       'shortcutsAccordionTrigger',
       'bookmarkSettingsTrigger',
