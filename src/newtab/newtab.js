@@ -77,11 +77,13 @@
       );
     });
   }
-  // The first recent-sites pass waits for every layout preference, so the browser reads start now
-  // and that pass takes them; later passes, or one long after load, read afresh.
+  // The first recent-sites pass waits for every layout preference, so the browser reads start now.
+  // Preferences that arrive before it start passes of their own, which it then discards, so every
+  // pass shares these reads until the first pass lands or the history changes; later passes, or
+  // one long after load, read afresh.
   const STARTUP_RECENT_SOURCE_MAX_AGE_MS = 3000;
   const startupRecentSourceReadsAt = Date.now();
-  const startupRecentSourceReads = {
+  let startupRecentSourceReads = {
     historyItems: readRecentHistoryItems(),
     topSites: readRecentTopSites(),
     tabs: readRecentOpenTabs()
@@ -5395,9 +5397,12 @@
     });
   }
 
+  function releaseStartupRecentSourceReads() {
+    startupRecentSourceReads = null;
+  }
+
   function takeStartupRecentSourceRead(name, read) {
-    const pending = startupRecentSourceReads[name];
-    startupRecentSourceReads[name] = null;
+    const pending = startupRecentSourceReads ? startupRecentSourceReads[name] : null;
     return pending && Date.now() - startupRecentSourceReadsAt <= STARTUP_RECENT_SOURCE_MAX_AGE_MS
       ? pending
       : read();
@@ -6653,6 +6658,9 @@
       documentObj: document,
       windowObj: window,
       selector: NEWTAB_LIQUID_SURFACE_SELECTOR,
+      // The search bar and the results it grows into fringe into colors at the rim; plates that
+      // carry content (cards, menus, the panel) only bend.
+      dispersionSelector: '#_x_extension_newtab_root_2024_unique_, #_x_extension_newtab_suggestions_surface_2026_unique_',
       property: '--x-nt-glass-refraction'
     });
   }
@@ -7277,6 +7285,7 @@
   function bindRecentAndBookmarkChangeListeners() {
     if (chrome.history && chrome.history.onVisited && chrome.history.onVisited.addListener) {
       chrome.history.onVisited.addListener(() => {
+        releaseStartupRecentSourceReads();
         markRecentDataDirty();
         scheduleRecentReloadIfVisible();
       });
@@ -7398,6 +7407,7 @@
     });
     observeNewtabStartupTask('recent-sites', recentSitesReadyTask);
     observeNewtabStartupTask('bookmarks', bookmarksReadyTask);
+    recentSitesReadyTask.then(releaseStartupRecentSourceReads, releaseStartupRecentSourceReads);
     return Promise.all([recentSitesReadyTask, bookmarksReadyTask]);
   }).catch((error) => {
     console.warn('[Lumno] Initial new tab content setup failed.', error);
