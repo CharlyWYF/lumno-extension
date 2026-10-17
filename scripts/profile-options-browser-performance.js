@@ -1,20 +1,9 @@
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
-const { spawn } = require('child_process');
 const WebSocket = require('ws');
+const { findChrome, launchChrome } = require('./helpers/chrome-launcher.js');
 
 const repoRoot = path.resolve(__dirname, '..');
-const chromeCandidates = [
-  process.env.LUMNO_PERF_CHROME,
-  path.join(
-    os.homedir(),
-    'Library/Caches/ms-playwright/chromium-1200/chrome-mac-arm64',
-    'Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'
-  ),
-  '/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
-  '/Applications/Chromium.app/Contents/MacOS/Chromium'
-].filter(Boolean);
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -175,20 +164,17 @@ function summarize(values) {
 }
 
 async function run() {
-  const chromePath = chromeCandidates.find((candidate) => fs.existsSync(candidate));
+  const chromePath = findChrome(process.env.LUMNO_PERF_CHROME);
   if (!chromePath) {
     throw new Error('Chrome for Testing or Chromium was not found');
   }
 
-  const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lumno-options-perf-'));
-  const activePortPath = path.join(profileDir, 'DevToolsActivePort');
   const stderr = [];
   let browser = null;
   let session = null;
 
   try {
     const chromeArgs = [
-      `--user-data-dir=${profileDir}`,
       `--disable-extensions-except=${repoRoot}`,
       `--load-extension=${repoRoot}`,
       '--remote-debugging-port=0',
@@ -205,10 +191,14 @@ async function run() {
     if (process.env.LUMNO_PERF_HEADLESS === '1') {
       chromeArgs.unshift('--headless=new');
     }
-    browser = spawn(chromePath, chromeArgs, {
+    browser = launchChrome({
+      executable: chromePath,
+      profileName: 'options-perf',
+      args: chromeArgs,
       stdio: ['ignore', 'ignore', 'pipe']
     });
-    browser.stderr.on('data', (chunk) => {
+    const activePortPath = path.join(browser.profileDir, 'DevToolsActivePort');
+    browser.child.stderr.on('data', (chunk) => {
       stderr.push(String(chunk));
       if (stderr.length > 40) stderr.shift();
     });
@@ -455,15 +445,7 @@ async function run() {
     throw error;
   } finally {
     if (session) session.close();
-    if (browser && !browser.killed) {
-      browser.kill('SIGTERM');
-      await delay(300);
-      if (!browser.killed) browser.kill('SIGKILL');
-    }
-    const safePrefix = path.join(os.tmpdir(), 'lumno-options-perf-');
-    if (profileDir.startsWith(safePrefix)) {
-      fs.rmSync(profileDir, { force: true, recursive: true });
-    }
+    if (browser) await browser.close();
   }
 }
 

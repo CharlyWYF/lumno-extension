@@ -11,28 +11,16 @@
 //
 // Not part of `npm test`: it needs a Chromium build that loads extensions
 // (Chrome for Testing or Chromium; branded Chrome refuses --load-extension).
-const fs = require('fs');
-const os = require('os');
 const path = require('path');
-const { spawn } = require('child_process');
 const WebSocket = require('ws');
 const shortcutsStore = require('../src/newtab/shortcuts-store.js');
+const { findChrome, launchChrome } = require('./helpers/chrome-launcher.js');
 
 const repoRoot = path.resolve(__dirname, '..');
 const EXTENSION_ID = 'kkcjcneagmlhpeaafngjdlpcfjakejgb';
 const NEWTAB_URL = `chrome-extension://${EXTENSION_ID}/newtab.html`;
 const TOLERANCE_PX = 0.75;
 const SETTLE_MS = 450;
-const chromeCandidates = [
-  process.env.LUMNO_E2E_CHROME,
-  ...['chromium-1228', 'chromium-1200'].map((build) => path.join(
-    os.homedir(),
-    `Library/Caches/ms-playwright/${build}/chrome-mac-arm64`,
-    'Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'
-  )),
-  '/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
-  '/Applications/Chromium.app/Contents/MacOS/Chromium'
-].filter(Boolean);
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -74,24 +62,26 @@ class CdpConnection {
 }
 
 async function launchBrowser() {
-  const executable = chromeCandidates.find((candidate) => fs.existsSync(candidate));
+  const executable = findChrome(process.env.LUMNO_E2E_CHROME);
   if (!executable) {
     throw new Error('No Chromium build that loads extensions was found; set LUMNO_E2E_CHROME.');
   }
-  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'lumno-e2e-'));
   const port = 9400 + Math.floor(Math.random() * 400);
-  const child = spawn(executable, [
-    '--headless=new',
-    `--user-data-dir=${profile}`,
-    `--load-extension=${repoRoot}`,
-    `--disable-extensions-except=${repoRoot}`,
-    `--remote-debugging-port=${port}`,
-    '--no-first-run',
-    '--no-default-browser-check',
-    '--disable-background-timer-throttling',
-    '--disable-renderer-backgrounding',
-    'about:blank'
-  ], { stdio: 'ignore' });
+  const browser = launchChrome({
+    executable,
+    profileName: 'e2e',
+    args: [
+      '--headless=new',
+      `--load-extension=${repoRoot}`,
+      `--disable-extensions-except=${repoRoot}`,
+      `--remote-debugging-port=${port}`,
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--disable-background-timer-throttling',
+      '--disable-renderer-backgrounding',
+      'about:blank'
+    ]
+  });
   let version = null;
   for (let attempt = 0; attempt < 100 && !version; attempt += 1) {
     try {
@@ -101,14 +91,13 @@ async function launchBrowser() {
     }
   }
   if (!version) {
-    child.kill('SIGKILL');
+    await browser.close();
     throw new Error('Chromium did not open its DevTools port.');
   }
   const cdp = new CdpConnection(version.webSocketDebuggerUrl);
   const close = () => {
     cdp.close();
-    child.kill('SIGKILL');
-    fs.rmSync(profile, { recursive: true, force: true });
+    return browser.close();
   };
   return { cdp, close };
 }
