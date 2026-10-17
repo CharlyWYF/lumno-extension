@@ -205,13 +205,18 @@ assert.match(
 );
 assert.match(
   inputModeCss,
-  /\.x-lumno-search-input-mode__menu\[data-surface="newtab"\][\s\S]*?\.x-lumno-search-input-mode__menu-content,\s*\.x-lumno-search-input-mode__menu\[data-surface="overlay"\][\s\S]*?\.x-lumno-search-input-mode__menu-content\s*\{[\s\S]*?--x-lumno-search-mode-scrollbar-width:\s*10px;[\s\S]*?overflow-y:\s*scroll !important;[\s\S]*?scrollbar-gutter:\s*stable;[\s\S]*?padding-inline-end:\s*16px !important;/,
+  /\.x-lumno-search-input-mode__menu\[data-surface="newtab"\][\s\S]*?\.x-lumno-search-input-mode__menu-content,\s*\.x-lumno-search-input-mode__menu\[data-surface="overlay"\][\s\S]*?\.x-lumno-search-input-mode__menu-content\s*\{[\s\S]*?overflow-y:\s*scroll !important;[\s\S]*?scrollbar-gutter:\s*stable;[\s\S]*?padding-inline-end:\s*16px !important;/,
   'newtab and overlay scope content grids should keep equal 16px inline padding around the scrollbar'
 );
 assert.match(
   inputModeCss,
-  /\.x-lumno-search-input-mode__menu\[data-surface="newtab"\][\s\S]*?\.x-lumno-search-input-mode__menu-content::\-webkit-scrollbar,[\s\S]*?\.x-lumno-search-input-mode__menu\[data-surface="overlay"\][\s\S]*?\.x-lumno-search-input-mode__menu-content::\-webkit-scrollbar\s*\{[\s\S]*?width:\s*var\(--x-lumno-search-mode-scrollbar-width\);[\s\S]*?\}[\s\S]*?::\-webkit-scrollbar-track\s*\{[\s\S]*?margin-block:\s*20px;[\s\S]*?background:\s*transparent;[\s\S]*?\}[\s\S]*?::\-webkit-scrollbar-thumb\s*\{[\s\S]*?min-height:\s*40px;[\s\S]*?border:\s*3px solid transparent;[\s\S]*?background-clip:\s*padding-box;/,
-  'shared scope content scrollbars should stay clear of the rounded panel corners'
+  /:root:not\(\[data-lumno-scrollbars="overlay"\]\) \.x-lumno-search-input-mode__menu\[data-surface="newtab"\]\s*\.x-lumno-search-input-mode__menu-content,\s*:root:not\(\[data-lumno-scrollbars="overlay"\]\) \.x-lumno-search-input-mode__menu\[data-surface="overlay"\]\s*\.x-lumno-search-input-mode__menu-content\s*\{\s*scrollbar-width:\s*thin;\s*scrollbar-color:[^;]+ transparent;/,
+  'scope content scrollbars should use compositor-drawn scrollbar-color thumbs that keep pace with scrolling'
+);
+assert.doesNotMatch(
+  inputModeCss,
+  /\.x-lumno-search-input-mode__menu-content::-webkit-scrollbar/,
+  'a ::-webkit-scrollbar thumb is painted on the main thread and stutters behind the scrolling tiles'
 );
 assert.match(
   inputModeCss,

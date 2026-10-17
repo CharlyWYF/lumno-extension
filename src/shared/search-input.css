@@ -445,68 +445,30 @@
   .x-lumno-search-input-mode__menu-content,
 .x-lumno-search-input-mode__menu[data-surface="overlay"]
   .x-lumno-search-input-mode__menu-content {
-  --x-lumno-search-mode-scrollbar-width: 10px;
   overflow-y: scroll !important;
   scrollbar-gutter: stable;
   padding-inline-end: 16px !important;
 }
 
+/* The thin bar uses the standard properties rather than ::-webkit-scrollbar. Chrome paints a
+   ::-webkit-scrollbar thumb on the main thread, so while the compositor scrolls the tiles the thumb
+   only moves when the page next repaints and visibly stutters behind them; a scrollbar-color thumb
+   is moved by the compositor with the content. */
 :root:not([data-lumno-scrollbars="overlay"]) .x-lumno-search-input-mode__menu[data-surface="newtab"]
-  .x-lumno-search-input-mode__menu-content::-webkit-scrollbar,
+  .x-lumno-search-input-mode__menu-content,
 :root:not([data-lumno-scrollbars="overlay"]) .x-lumno-search-input-mode__menu[data-surface="overlay"]
-  .x-lumno-search-input-mode__menu-content::-webkit-scrollbar {
-  width: var(--x-lumno-search-mode-scrollbar-width);
-}
-
-:root:not([data-lumno-scrollbars="overlay"]) .x-lumno-search-input-mode__menu[data-surface="newtab"]
-  .x-lumno-search-input-mode__menu-content::-webkit-scrollbar-track,
-:root:not([data-lumno-scrollbars="overlay"]) .x-lumno-search-input-mode__menu[data-surface="overlay"]
-  .x-lumno-search-input-mode__menu-content::-webkit-scrollbar-track {
-  margin-block: 20px;
-  background: transparent;
-}
-
-:root:not([data-lumno-scrollbars="overlay"]) .x-lumno-search-input-mode__menu[data-surface="newtab"]
-  .x-lumno-search-input-mode__menu-content::-webkit-scrollbar-thumb,
-:root:not([data-lumno-scrollbars="overlay"]) .x-lumno-search-input-mode__menu[data-surface="overlay"]
-  .x-lumno-search-input-mode__menu-content::-webkit-scrollbar-thumb {
-  min-height: 40px;
-  border: 3px solid transparent;
-  border-radius: var(--lumno-radius-pill, 999px);
-  background-color: rgba(148, 163, 184, 0.68);
-  background-clip: padding-box;
-}
-
-:root:not([data-lumno-scrollbars="overlay"]) .x-lumno-search-input-mode__menu[data-surface="newtab"]
-  .x-lumno-search-input-mode__menu-content::-webkit-scrollbar-thumb:hover,
-:root:not([data-lumno-scrollbars="overlay"]) .x-lumno-search-input-mode__menu[data-surface="overlay"]
-  .x-lumno-search-input-mode__menu-content::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(100, 116, 139, 0.82);
-}
-
-:root:not([data-lumno-scrollbars="overlay"]) .x-lumno-search-input-mode__menu[data-surface="newtab"]
-  .x-lumno-search-input-mode__menu-content::-webkit-scrollbar-corner,
-:root:not([data-lumno-scrollbars="overlay"]) .x-lumno-search-input-mode__menu[data-surface="overlay"]
-  .x-lumno-search-input-mode__menu-content::-webkit-scrollbar-corner {
-  background: transparent;
+  .x-lumno-search-input-mode__menu-content {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.68) transparent;
 }
 
 :root:not([data-lumno-scrollbars="overlay"]) [data-theme="dark"]
   .x-lumno-search-input-mode__menu[data-surface="newtab"]
-  .x-lumno-search-input-mode__menu-content::-webkit-scrollbar-thumb,
+  .x-lumno-search-input-mode__menu-content,
 :root:not([data-lumno-scrollbars="overlay"]) [data-theme="dark"]
   .x-lumno-search-input-mode__menu[data-surface="overlay"]
-  .x-lumno-search-input-mode__menu-content::-webkit-scrollbar-thumb {
-  background-color: rgba(148, 163, 184, 0.58);
-}
-
-:root:not([data-lumno-scrollbars="overlay"]) [data-theme="dark"]
-  .x-lumno-search-input-mode__menu[data-surface="newtab"]
-  .x-lumno-search-input-mode__menu-content::-webkit-scrollbar-thumb:hover,
-:root:not([data-lumno-scrollbars="overlay"]) [data-theme="dark"]
-  .x-lumno-search-input-mode__menu[data-surface="overlay"]
-  .x-lumno-search-input-mode__menu-content::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(203, 213, 225, 0.7);
+  .x-lumno-search-input-mode__menu-content {
+  scrollbar-color: rgba(148, 163, 184, 0.58) transparent;
 }
 
 .x-lumno-search-input-mode__menu-footer {
