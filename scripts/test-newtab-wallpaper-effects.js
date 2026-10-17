@@ -1083,7 +1083,7 @@ async function testGlassBackgroundAndTextureEnterTogether() {
   controller.apply({ type: 'grain', strength: 50, size: 50, spacing: 50 });
   await controller.refresh({ immediate: true });
   const effectCanvas = createdCanvases[0];
-  controller.apply({ type: 'blur', strength: 50, texture: 50 });
+  const blurRender = controller.apply({ type: 'blur', strength: 50, texture: 50 });
 
   assert.strictEqual(
     effectCanvas.getAttribute('data-resize-enter'),
@@ -1095,7 +1095,10 @@ async function testGlassBackgroundAndTextureEnterTogether() {
       String(canvas.className).includes('x-nt-wallpaper-effect-resize-snapshot')),
     'effect switching should snapshot the outgoing canvas instead of delaying the glass texture'
   );
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  // Wait for the render itself, then one frame for the crossfade it queued,
+  // instead of a fixed delay that a loaded CI runner can outlast.
+  await blurRender;
+  await new Promise((resolve) => setTimeout(resolve, 0));
   assert.strictEqual(effectCanvas.getAttribute('data-effect'), 'blur-standard');
   assert.strictEqual(
     effectCanvas.getAttribute('data-resize-enter'),
