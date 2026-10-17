@@ -248,6 +248,21 @@ body[data-glass-style] ._x_extension_select_wrap_2024_unique_[data-open="true"][
   white-space: nowrap;
 }
 
+/* Tinted from the row's own text color so it reads on plain, hovered and selected rows. */
+._x_extension_select_option_badge_2026_unique_ {
+  flex: 0 0 auto;
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+  border-radius: var(--lumno-radius-xs);
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  color: color-mix(in srgb, currentColor 64%, transparent);
+  font-size: var(--lumno-font-size-2xs);
+  font-weight: 600;
+  line-height: 15px;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
 ._x_extension_select_option_2024_unique_[data-selected="true"]
   ._x_extension_select_option_icon_2026_unique_,
 ._x_extension_select_option_2024_unique_[data-active="true"]

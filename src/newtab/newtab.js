@@ -1973,6 +1973,17 @@
         forcedIconBackground: 'shortcut-add'
       });
     }
+    const topContentSample = pageState.topContentController && typeof pageState.topContentController.getContent === 'function'
+      ? (pageState.topContentController.getContent() || pageState.topContentContainer)
+      : (pageState.wordmarkImageEl || pageState.topContentContainer);
+    const quoteElement = pageState.quoteRuntime && pageState.quoteRuntime.element;
+    const quoteSample = pageState.quoteRuntime && (pageState.quoteRuntime.textElement || quoteElement);
+    // A quote at the top is the wordmark's caption: both read the wallpaper under
+    // the pair and share one ink, so the line never flips against the mark above it.
+    const quoteIsCaption = Boolean(quoteElement && !quoteElement.hidden &&
+      quoteElement.getAttribute('data-position') === 'top' &&
+      pageState.topContentContainer && pageState.topContentContainer.getAttribute('data-visible') !== 'false');
+    const captionSample = quoteIsCaption ? [topContentSample, quoteSample] : null;
     return [
       {
         element: pageState.bookmarkTopbarRuntime && pageState.bookmarkTopbarRuntime.element,
@@ -1986,15 +1997,15 @@
       },
       {
         element: pageState.topContentContainer,
-        sampleElement: pageState.topContentController && typeof pageState.topContentController.getContent === 'function'
-          ? (pageState.topContentController.getContent() || pageState.topContentContainer)
-          : (pageState.wordmarkImageEl || pageState.topContentContainer),
+        sampleElement: captionSample || topContentSample,
+        toneGroup: captionSample ? 'top-caption' : '',
         minWidth: 220,
         minHeight: 72
       },
       {
-        element: pageState.quoteRuntime && pageState.quoteRuntime.element,
-        sampleElement: pageState.quoteRuntime && (pageState.quoteRuntime.textElement || pageState.quoteRuntime.element),
+        element: quoteElement,
+        sampleElement: captionSample || quoteSample,
+        toneGroup: captionSample ? 'top-caption' : '',
         minWidth: 160,
         minHeight: 32
       },

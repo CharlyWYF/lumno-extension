@@ -870,6 +870,7 @@
     const items = Array.from(select.options).map((option) => {
       const iconPath = option.getAttribute('data-icon-path') || '';
       return {
+        badge: option.getAttribute('data-badge') || '',
         fallback: option.textContent || option.value,
         iconUrl: iconPath && chrome && chrome.runtime && typeof chrome.runtime.getURL === 'function'
           ? chrome.runtime.getURL(iconPath)
@@ -910,6 +911,7 @@
       id: select.id,
       labelledBy: record.labelledBy || undefined,
       items: record.items.map((item) => ({
+        badge: item.badge,
         iconUrl: item.iconUrl,
         label: item.labelKey ? getMessage(item.labelKey, item.fallback) : item.fallback,
         labelKey: item.labelKey,

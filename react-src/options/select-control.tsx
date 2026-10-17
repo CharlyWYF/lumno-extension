@@ -6,6 +6,7 @@ import {
 } from './root-controller';
 
 export interface SelectControlItemModel {
+  badge?: string;
   iconUrl?: string;
   label: string;
   labelKey: string;
@@ -64,6 +65,7 @@ function SelectControl({
           }
         },
         options: model.items.map((item) => ({
+          badge: item.badge || undefined,
           iconUrl: item.iconUrl || undefined,
           label: item.label,
           value: item.value

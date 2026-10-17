@@ -95,16 +95,20 @@ html[data-lumno-motion-effects="off"] .x-nt-quote-line[data-swap="true"] { anima
   text-wrap: balance;
 }
 .x-nt-quote-text:hover { opacity: 1; }
-/* On a wallpaper the quote shares the time/wordmark ink: a solid sampled tint
-   with a contrast floor and a halo that follows that ink's polarity. Fading it
-   on top would undo the contrast floor, so hover lifts a plate instead. The
-   shared hover tint is sized for small controls; across a full-width line it
-   reads as a heavy band, so the plate hugs the text at half strength. */
+/* On a wallpaper the quote is small text, so it takes the adaptive ink the
+   section headings use: a translucent tint held to 4.5:1 that lets the photo
+   through, shadowed only when the ink is light. The wordmark's solid ink is
+   built for a large mark shown at 60%; at full strength under it the line read
+   heavier than the mark, and a pale halo round dark glyphs smeared into a haze.
+   Fading it on top would undo the contrast floor, so hover lifts a plate
+   instead. The shared hover tint is sized for small controls; across a
+   full-width line it reads as a heavy band, so the plate hugs the text at half
+   strength. */
 body[data-wallpaper-active="true"] .x-nt-quote-text {
-  color: var(--x-nt-wallpaper-wordmark-ink, var(--x-nt-wallpaper-adaptive-ink));
+  color: var(--x-nt-wallpaper-adaptive-ink);
   opacity: 1;
-  text-shadow: 0 1px 2px var(--x-nt-wallpaper-wordmark-shadow, transparent),
-    0 0 10px var(--x-nt-wallpaper-wordmark-halo, transparent);
+  text-shadow: 0 1px 1px var(--x-nt-wallpaper-adaptive-shadow, transparent),
+    0 0 10px var(--x-nt-wallpaper-adaptive-halo, transparent);
   transition: background-color var(--lumno-duration-xs) ease, backdrop-filter var(--lumno-duration-xs) ease,
     -webkit-backdrop-filter var(--lumno-duration-xs) ease;
 }
@@ -162,7 +166,7 @@ body[data-wallpaper-active="true"] .x-nt-quote-text:hover {
   background: var(--x-nt-hover-bg);
 }
 body[data-wallpaper-active="true"] .x-nt-quote-shuffle {
-  color: var(--x-nt-wallpaper-wordmark-ink, var(--x-nt-wallpaper-adaptive-ink));
+  color: var(--x-nt-wallpaper-adaptive-ink);
   transition: opacity var(--lumno-duration-xs) ease, background-color var(--lumno-duration-xs) ease,
     backdrop-filter var(--lumno-duration-xs) ease, -webkit-backdrop-filter var(--lumno-duration-xs) ease;
 }

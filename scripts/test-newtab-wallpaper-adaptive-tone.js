@@ -17,7 +17,7 @@ function createStyle() {
   };
 }
 
-function createElement() {
+function createElement(rect) {
   const attributes = new Map();
   return {
     style: createStyle(),
@@ -31,7 +31,7 @@ function createElement() {
       attributes.delete(String(name));
     },
     getBoundingClientRect() {
-      return {
+      return rect || {
         left: 100,
         top: 100,
         right: 148,
@@ -60,9 +60,13 @@ function createCanvas() {
           const length = Math.max(1, canvas.width * canvas.height) * 4;
           const data = new Uint8ClampedArray(length);
           for (let index = 0; index < length; index += 4) {
-            data[index] = pixel.red;
-            data[index + 1] = pixel.green;
-            data[index + 2] = pixel.blue;
+            // A two-tone image is dark on its left half and bright on its right.
+            const tone = drawnImage && drawnImage.leftPixel && ((index / 4) % canvas.width) < canvas.width / 2
+              ? drawnImage.leftPixel
+              : pixel;
+            data[index] = tone.red;
+            data[index + 1] = tone.green;
+            data[index + 2] = tone.blue;
             data[index + 3] = 255;
           }
           return { data };
@@ -97,6 +101,7 @@ function getCssRgbChannels(value) {
   let overlayAlpha = 0;
   let overlayLuminance = 1;
   let preferOverlayPolarity = true;
+  let extraTargets = [];
 
   class FakeImage {
     constructor() {
@@ -123,10 +128,11 @@ function getCssRgbChannels(value) {
       return Promise.resolve();
     }
 
-    resolve(pixel) {
+    resolve(pixel, leftPixel) {
       assert.strictEqual(this.settled, false, `image ${this.src} should settle once`);
       this.settled = true;
       this.pixel = pixel;
+      this.leftPixel = leftPixel || null;
       this.onload();
     }
 
@@ -191,7 +197,7 @@ function getCssRgbChannels(value) {
         iconButton: true,
         surface: 'topbar',
         preferOverlayPolarity
-      }];
+      }].concat(extraTargets);
     },
     getCurrentWallpaper() {
       return currentWallpaper;
@@ -485,6 +491,53 @@ function getCssRgbChannels(value) {
       calmHaloAlpha <= 12,
     'dark wordmark ink on a calm background should only get a faint light halo'
   );
+
+  // A caption and its heading read one sample over the box around both, so a
+  // heading over the dark half and a caption over the bright half share one ink.
+  const heading = createElement({ left: 380, top: 100, right: 480, bottom: 160, width: 100, height: 60 });
+  const caption = createElement({ left: 520, top: 170, right: 620, bottom: 200, width: 100, height: 30 });
+  const runFrames = () => {
+    while (scheduledFrames.size > 0) {
+      const [id, callback] = scheduledFrames.entries().next().value;
+      scheduledFrames.delete(id);
+      callback();
+    }
+  };
+  const captionTargets = (grouped) => [heading, caption].map((element) => ({
+    element,
+    sampleElement: grouped ? [heading, caption] : element,
+    toneGroup: grouped ? 'caption' : '',
+    minWidth: 42,
+    minHeight: 32
+  }));
+  scheduledFrames.clear();
+  extraTargets = captionTargets(false);
+  currentWallpaper = {
+    id: 'two-tone-wallpaper',
+    url: 'test://two-tone-wallpaper'
+  };
+  runtime.refresh();
+  getPendingImage('test://two-tone-wallpaper').resolve({ red: 236, green: 238, blue: 240 }, { red: 20, green: 24, blue: 30 });
+  await flushAsyncWork();
+  runFrames();
+  assert.notStrictEqual(heading.getAttribute('data-wallpaper-ink'), caption.getAttribute('data-wallpaper-ink'),
+    'ungrouped, a heading and caption over opposite halves should take opposite inks');
+  extraTargets = captionTargets(true);
+  runtime.schedule();
+  runFrames();
+  assert.strictEqual(caption.getAttribute('data-wallpaper-ink'), heading.getAttribute('data-wallpaper-ink'),
+    'a grouped caption should share its heading ink');
+  assert.strictEqual(
+    caption.style.getPropertyValue('--x-nt-wallpaper-local-luma'),
+    heading.style.getPropertyValue('--x-nt-wallpaper-local-luma'),
+    'a grouped caption should read the same sample as its heading'
+  );
+  assert.strictEqual(
+    caption.style.getPropertyValue('--x-nt-wallpaper-adaptive-ink'),
+    heading.style.getPropertyValue('--x-nt-wallpaper-adaptive-ink'),
+    'a grouped caption should share its heading adaptive ink'
+  );
+  extraTargets = [];
 
   console.log('new tab wallpaper adaptive tone transition tests passed');
 })().catch((error) => {

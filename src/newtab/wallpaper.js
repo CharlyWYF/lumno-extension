@@ -4274,8 +4274,8 @@
           value: getGlassStyle(),
           options: [
             { value: 'none', label: t('settings_newtab_glass_style_none', 'Default') },
-            { value: 'frosted', label: t('settings_newtab_glass_style_frosted', 'Frosted glass') },
-            { value: 'liquid', label: t('settings_newtab_glass_style_liquid', 'Liquid glass') }
+            { value: 'frosted', label: t('settings_newtab_glass_style_frosted', 'Frosted glass'), badge: 'Beta' },
+            { value: 'liquid', label: t('settings_newtab_glass_style_liquid', 'Liquid glass'), badge: 'Beta' }
           ]
         },
         search: buildWallpaperSearchState(),

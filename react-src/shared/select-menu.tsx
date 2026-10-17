@@ -13,6 +13,8 @@ import { createPortal } from 'react-dom';
 
 export interface SelectMenuOption {
   action?: string;
+  /** Short tag after the label in the menu (for example "Beta"); not shown on the trigger. */
+  badge?: string;
   checked?: boolean;
   disabled?: boolean;
   dividerBefore?: boolean;
@@ -446,6 +448,11 @@ export function SelectMenu({
               <span className="_x_extension_select_option_label_2026_unique_">
                 {option.label}
               </span>
+              {option.badge ? (
+                <span className="_x_extension_select_option_badge_2026_unique_">
+                  {option.badge}
+                </span>
+              ) : null}
               {option.radio && trailingIconClass ? (
                 <span
                   aria-hidden="true"

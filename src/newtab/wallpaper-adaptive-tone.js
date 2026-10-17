@@ -831,6 +831,22 @@
       }
     }
 
+    // A target may sample several elements at once; it then reads the box around all of them.
+    function getTargetSampleBounds(sampleElement) {
+      const rects = (Array.isArray(sampleElement) ? sampleElement : [sampleElement])
+        .filter((element) => element && typeof element.getBoundingClientRect === 'function')
+        .map((element) => element.getBoundingClientRect())
+        .filter((rect) => rect.width > 1 && rect.height > 1);
+      if (rects.length === 0) {
+        return null;
+      }
+      const left = Math.min(...rects.map((rect) => rect.left));
+      const top = Math.min(...rects.map((rect) => rect.top));
+      const right = Math.max(...rects.map((rect) => rect.right));
+      const bottom = Math.max(...rects.map((rect) => rect.bottom));
+      return { left, top, right, bottom, width: right - left, height: bottom - top };
+    }
+
     function getSampleRect(rect, target) {
       const viewport = getViewportSize();
       // Glass blurs only what lies under its own plate.
@@ -1095,6 +1111,9 @@
       const overlayLuminance = clampNumber(getOverlayLuminance(), 0, 1);
       const themeMode = getDocumentThemeMode();
       const glassSamples = [];
+      // Targets in one tone group read a single sample over all their elements and
+      // keep one ink, so a caption never takes a different color from its heading.
+      const toneGroups = new Map();
       getToneTargets().forEach((target) => {
         if (!target || !target.element) {
           return;
@@ -1106,8 +1125,9 @@
         if (!target.sampleElement) {
           return;
         }
-        const rect = target.sampleElement.getBoundingClientRect();
-        if (rect.width <= 1 ||
+        const rect = getTargetSampleBounds(target.sampleElement);
+        if (!rect ||
+            rect.width <= 1 ||
             rect.height <= 1 ||
             rect.right <= 0 ||
             rect.left >= viewport.width ||
@@ -1116,8 +1136,10 @@
           clearTargetTone(target.element);
           return;
         }
-        const sampleRect = getSampleRect(rect, target);
-        const sample = sampleToneForRect(sampler, sampleRect, target, overlayLuminance, effectType);
+        const shared = target.toneGroup ? toneGroups.get(target.toneGroup) : null;
+        const sample = shared
+          ? shared.sample
+          : sampleToneForRect(sampler, getSampleRect(rect, target), target, overlayLuminance, effectType);
         const luminance = sample ? sample.luminance : null;
         if (target.glass) {
           if (Number.isFinite(luminance)) {
@@ -1136,13 +1158,18 @@
         const currentInk = config.resetInk === true
           ? null
           : target.element.getAttribute('data-wallpaper-ink');
-        const nextInk = target.surface === 'topbar' && target.preferOverlayPolarity === true
-          ? chooseSurfaceInk(
-              sample.overlayAlpha,
-              overlayLuminance,
-              chooseInk(luminance, currentInk)
-            )
-          : chooseReadableInk(chooseInk(luminance, currentInk), luminance, sample.color, effectType);
+        const nextInk = shared
+          ? shared.ink
+          : target.surface === 'topbar' && target.preferOverlayPolarity === true
+            ? chooseSurfaceInk(
+                sample.overlayAlpha,
+                overlayLuminance,
+                chooseInk(luminance, currentInk)
+              )
+            : chooseReadableInk(chooseInk(luminance, currentInk), luminance, sample.color, effectType);
+        if (target.toneGroup && !shared) {
+          toneGroups.set(target.toneGroup, { sample, ink: nextInk });
+        }
         const overlayCovered = isWallpaperOverlayCovered(sample.overlayAlpha);
         target.element.setAttribute('data-wallpaper-ink', nextInk);
         target.element.setAttribute('data-wallpaper-overlay-cover', overlayCovered ? 'true' : 'false');
