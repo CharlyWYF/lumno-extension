@@ -1,9 +1,14 @@
 // Liquid glass: the wallpaper behind a surface's rim bends inward the way a thick glass edge
-// refracts, and splits slightly into its colors there. An SVG displacement map sized to the surface
-// drives the bend through `backdrop-filter: url(#…)`, which only Chromium renders; other browsers
-// keep the CSS-only glass.
-// The bookmarks bar drives one surface; New Tab's glass style drives many through
+// refracts, and splits slightly into its colors there. An SVG displacement map drives the bend
+// through `backdrop-filter: url(#…)`, which only Chromium renders; other browsers keep the CSS-only
+// glass. The bookmarks bar drives one surface; New Tab's glass style drives many through
 // createLiquidSurfaces.
+//
+// The map is a nine-slice lens. Only the rim bends, and a rim depends on the corner radius and rim
+// width alone, so a lens is four corner tiles and four one-pixel edge strips (stretched along the
+// sides), on a flat flood. The tiles are built and decoded once per radius and rim and shared by
+// every surface; a surface that resizes only moves its tiles, in the same frame, so nothing is
+// rebuilt, encoded or decoded while the page resizes or the results plate grows.
 
 const BEZEL_PX = 16;
 // feDisplacementMap moves a pixel by up to half the scale, so the rim samples up to 24px inward:
@@ -11,7 +16,7 @@ const BEZEL_PX = 16;
 export const LIQUID_GLASS_DISPLACEMENT_SCALE = 48;
 // Blue bends further than red: each channel samples the backdrop at its own share of the bend, so
 // the rim fringes where the wallpaper has edges. Nothing splits in the flat middle.
-export const LIQUID_GLASS_DISPERSION = 0.14;
+export const LIQUID_GLASS_DISPERSION = 0.2;
 const FLOATING_RADIUS_PX = 14;
 
 export type LiquidGlassShape = 'docked' | 'floating';
@@ -98,53 +103,304 @@ function rimShift(progressFromRim: number) {
 
 const RIM_EDGE_SHIFT = rimShift(0);
 
+// Pure refraction puts nearly all of the bend in the outer few pixels, too thin to read; part of
+// it is spread over the whole rim as a smooth falloff, so the scene visibly squeezes toward the edge.
 function rimStrength(progressFromRim: number) {
-  return progressFromRim >= 1 ? 0 : rimShift(progressFromRim) / RIM_EDGE_SHIFT;
+  if (progressFromRim >= 1) {
+    return 0;
+  }
+  const rest = 1 - progressFromRim;
+  return 0.4 * (rimShift(progressFromRim) / RIM_EDGE_SHIFT) + 0.6 * rest * rest;
 }
 
-// The filter body: the backdrop is displaced once per color channel, each by its own scale, and the
-// three channels are added back together (screen on single channels is a sum).
-export function buildRefractionFilter(id: string, width: number, height: number, scale: number) {
-  const box = `x="0" y="0" width="${width}" height="${height}"`;
-  const channels = 'rgb'.split('').map((name, index) =>
-    `<feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" ` +
-    `scale="${(scale * (1 + (index - 1) * LIQUID_GLASS_DISPERSION)).toFixed(1)}"/>` +
-    // Keeps this channel and alpha only: a 1 on the diagonal of the 4x5 color matrix.
-    `<feColorMatrix type="matrix" values="${Array.from({ length: 20 }, (_, cell) =>
-      Number(cell === index * 6 || cell === 18)).join(' ')}" result="${name}"/>`);
-  return `<filter id="${id}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB" ${box}>` +
-    `<feImage ${box} preserveAspectRatio="none" result="map"/>${channels.join('')}` +
-    '<feBlend in="r" in2="g" mode="screen"/><feBlend in2="b" mode="screen"/></filter>';
+export interface LensTiles {
+  shape: LiquidGlassShape;
+  size: number;
+  urls: string[];
 }
 
-export function buildDisplacementMap(
-  documentObj: Document,
+type Rect = [number, number, number, number];
+
+// Where each tile of a lens sits on a surface of this size: corners (top left, top right, bottom
+// left, bottom right) then edges (top, bottom, left, right); a docked bar has its bottom edge only.
+export function getLensLayout(shape: LiquidGlassShape, width: number, height: number, size: number): Rect[] {
+  if (shape === 'docked') {
+    return [[0, height - size, width, size]];
+  }
+  const across = Math.max(1, width - size * 2);
+  const down = Math.max(1, height - size * 2);
+  return [
+    [0, 0, size, size],
+    [width - size, 0, size, size],
+    [0, height - size, size, size],
+    [width - size, height - size, size, size],
+    [size, 0, across, size],
+    [size, height - size, across, size],
+    [0, size, size, down],
+    [width - size, size, size, down]
+  ];
+}
+
+// The tiles' pixels, read off a probe surface one pixel wider than two tiles: its rims bend as
+// any surface at least twice the tile size does, and its edges are the one-pixel strips.
+export function getLensTilePixels(shape: LiquidGlassShape, radius: number, bezel: number) {
+  const size = Math.max(1, Math.ceil(shape === 'docked' ? bezel : Math.max(radius, bezel)));
+  const probe = size * 2 + 1;
+  const geometry = { bezel, radius };
+  const probeWidth = shape === 'docked' ? 1 : probe;
+  return {
+    size,
+    tiles: getLensLayout(shape, probeWidth, probe, size).map(([left, top, w, h]) => {
+      const data = new Uint8ClampedArray(w * h * 4);
+      for (let y = 0; y < h; y += 1) {
+        for (let x = 0; x < w; x += 1) {
+          const [dx, dy] = getRimDisplacement(left + x + 0.5, top + y + 0.5, probeWidth, probe, shape, geometry);
+          const offset = (y * w + x) * 4;
+          data[offset] = Math.round(128 + dx * 127);
+          data[offset + 1] = Math.round(128 + dy * 127);
+          data[offset + 2] = 128;
+          data[offset + 3] = 255;
+        }
+      }
+      return { width: w, height: h, data };
+    })
+  };
+}
+
+function buildLensTiles(documentObj: Document, shape: LiquidGlassShape, radius: number, bezel: number): LensTiles | null {
+  const { size, tiles } = getLensTilePixels(shape, radius, bezel);
+  const urls: string[] = [];
+  for (const tile of tiles) {
+    const canvas = documentObj.createElement('canvas');
+    canvas.width = tile.width;
+    canvas.height = tile.height;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      return null;
+    }
+    const image = context.createImageData(tile.width, tile.height);
+    image.data.set(tile.data);
+    context.putImageData(image, 0, 0);
+    urls.push(canvas.toDataURL('image/png'));
+  }
+  return { shape, size, urls };
+}
+
+// Lens tiles for one shape, radius and rim, built once and resolved once every tile has decoded,
+// so no surface points at a filter whose images are still loading (it would draw without its blur).
+function createLensCache(documentObj: Document) {
+  const cache = new Map<string, Promise<LensTiles>>();
+  return (shape: LiquidGlassShape, radius: number, bezel: number) => {
+    const key = `${shape}:${radius}:${bezel}`;
+    let entry = cache.get(key);
+    if (!entry) {
+      const tiles = buildLensTiles(documentObj, shape, radius, bezel);
+      entry = tiles
+        ? Promise.all(tiles.urls.map((url) => {
+          const image = documentObj.createElement('img');
+          image.src = url;
+          return typeof image.decode === 'function' ? image.decode() : undefined;
+        })).then(() => tiles)
+        : Promise.reject(new Error('no canvas'));
+      entry.catch(() => cache.delete(key));
+      cache.set(key, entry);
+    }
+    return entry;
+  };
+}
+
+// Only plates get a lens: Chrome redraws every backdrop filter on the page in each frame that
+// changes anything, and a lens costs a small control (a shortcut, a round button) more there than
+// all its blur does, for a bend hardly visible at that size. Controls keep the rest of the glass.
+const LENS_MIN_PX = 64;
+
+// The four bands a rim can bend in (top, bottom, left, right); the middle never moves.
+export function getLensBands(width: number, height: number, size: number): Rect[] {
+  const down = Math.max(1, height - size * 2);
+  return [[0, 0, width, size], [0, height - size, width, size], [0, size, size, down], [width - size, size, size, down]];
+}
+
+// Which tiles lie in each band, in getLensLayout order.
+const BAND_TILES = [[0, 4, 1], [2, 5, 3], [6], [7]];
+
+// A plate whose rim covers less than 60% of it bends in its bands only: the filter's passes then
+// cover a quarter of a results plate, half a card, and the middle passes through as it is.
+export function usesLensBands(width: number, height: number, size: number) {
+  return size * 2 * (width + height - size * 2) < width * height * 0.6;
+}
+
+const at = (rect: Rect) => `x="${rect[0]}" y="${rect[1]}" width="${rect[2]}" height="${rect[3]}"`;
+
+// The filter. The map is the lens tiles over a flat flood; the backdrop is displaced by it once, or
+// once per color channel, each by its own scale, the three channels added back together (screen on
+// single channels is a sum). With bands, each band builds its own map and bend inside its own
+// subregion, and the bands are laid over the untouched backdrop.
+export function buildLensFilter(
+  id: string,
   width: number,
   height: number,
-  shape: LiquidGlassShape,
-  geometry: LiquidGlassGeometry = {}
+  tiles: LensTiles,
+  scale: number,
+  dispersion: boolean,
+  bands = false
 ) {
-  const canvas = documentObj.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext('2d');
-  if (!context) {
-    return '';
+  const tileRects = getLensLayout(tiles.shape, width, height, tiles.size);
+  const pieces = tileRects.map((rect, index) =>
+    `<feImage href="${tiles.urls[index]}" preserveAspectRatio="none" data-tile="${index}" ${at(rect)} result="t${index}"/>`);
+  const bend = (map: string, region: string, result: string) => {
+    const pass = (channelScale: number) =>
+      `<feDisplacementMap in="SourceGraphic" in2="${map}" xChannelSelector="R" yChannelSelector="G" ${region}` +
+      `scale="${channelScale.toFixed(1)}"`;
+    return dispersion
+      ? 'rgb'.split('').map((name, index) => `${pass(scale * (1 + (index - 1) * LIQUID_GLASS_DISPERSION))}/>` +
+        // Keeps this channel and alpha only: a 1 on the diagonal of the 4x5 color matrix.
+        `<feColorMatrix type="matrix" values="${Array.from({ length: 20 }, (_, cell) =>
+          Number(cell === index * 6 || cell === 18)).join(' ')}" result="${result}${name}"/>`).join('') +
+        `<feBlend in="${result}r" in2="${result}g" mode="screen"/><feBlend in2="${result}b" mode="screen" result="${result}"/>`
+      : `${pass(scale)} result="${result}"/>`;
+  };
+  const merge = (nodes: string[], extra = '') =>
+    `<feMerge ${extra}>${nodes.map((node) => `<feMergeNode in="${node}"/>`).join('')}</feMerge>`;
+  const flood = (extra: string, result: string) => `<feFlood flood-color="rgb(128,128,128)" ${extra} result="${result}"/>`;
+  const body = bands
+    ? getLensBands(width, height, tiles.size).map((rect, band) => {
+      const region = `data-band="${band}" ${at(rect)} `;
+      return flood(region, `f${band}`) +
+        merge([`f${band}`, ...BAND_TILES[band].map((tile) => `t${tile}`)], `${region}result="m${band}"`) +
+        bend(`m${band}`, region, `b${band}`);
+    }).join('') + merge(['SourceGraphic', 'b0', 'b1', 'b2', 'b3'])
+    : flood('', 'flat') + merge(['flat', ...tileRects.map((_rect, index) => `t${index}`)], 'result="map"') +
+      bend('map', '', 'lens');
+  return `<filter id="${id}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB" ` +
+    `x="0" y="0" width="${width}" height="${height}">${pieces.join('')}${body}</filter>`;
+}
+
+// Fits a lens filter to a new size by moving its tiles and bands; the images stay as they are.
+export function placeLensFilter(filter: Element, width: number, height: number, tiles: LensTiles) {
+  filter.setAttribute('width', String(width));
+  filter.setAttribute('height', String(height));
+  const tileRects = getLensLayout(tiles.shape, width, height, tiles.size);
+  const bandRects = getLensBands(width, height, tiles.size);
+  filter.querySelectorAll('[data-tile], [data-band]').forEach((primitive) => {
+    const tile = primitive.getAttribute('data-tile');
+    const rect = tile === null ? bandRects[Number(primitive.getAttribute('data-band'))] : tileRects[Number(tile)];
+    ['x', 'y', 'width', 'height'].forEach((name, index) => primitive.setAttribute(name, String(rect[index])));
+  });
+}
+
+const svgNamespace = 'http://www.w3.org/2000/svg';
+
+// Each filter gets an <svg> of its own. Adding a filter to an <svg> that holds others can make
+// Chrome reload all their images, and a backdrop-filter naming a filter whose images are reloading
+// drops its blur too, so one new lens would briefly clear every plate.
+function createFilterHost(documentObj: Document, markup: string) {
+  const host = documentObj.createElementNS(svgNamespace, 'svg');
+  host.setAttribute('aria-hidden', 'true');
+  host.setAttribute('style', 'position:absolute;width:0;height:0;pointer-events:none');
+  host.innerHTML = markup;
+  (documentObj.body || documentObj.documentElement).appendChild(host);
+  return host;
+}
+
+// One surface's lens: which tiles it uses and the filter that draws them.
+interface Lens {
+  key: string;
+  host: SVGSVGElement;
+  filter: Element;
+  tiles: LensTiles;
+  width: number;
+  height: number;
+}
+
+function placeLens(lens: Lens, width: number, height: number) {
+  if (lens.width !== width || lens.height !== height) {
+    lens.width = width;
+    lens.height = height;
+    placeLensFilter(lens.filter, width, height, lens.tiles);
   }
-  const image = context.createImageData(width, height);
-  const { data } = image;
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const [dx, dy] = getRimDisplacement(x + 0.5, y + 0.5, width, height, shape, geometry);
-      const offset = (y * width + x) * 4;
-      data[offset] = Math.round(128 + dx * 127);
-      data[offset + 1] = Math.round(128 + dy * 127);
-      data[offset + 2] = 128;
-      data[offset + 3] = 255;
+}
+
+// Swaps a surface onto a lens for a new key once its tiles have decoded, one frame after the new
+// filter is in the document so it never draws before its images; meanwhile the old lens stays.
+function createLensSwitcher(options: {
+  documentObj: Document;
+  windowObj: Window;
+  idPrefix: string;
+  apply(filterId: string, lens: Lens): void;
+  measure(): [number, number];
+}) {
+  const { documentObj, windowObj, idPrefix, apply, measure } = options;
+  const tilesFor = createLensCache(documentObj);
+  let serial = 0;
+  let wanted = '';
+  let current: Lens | null = null;
+  let destroyed = false;
+  return {
+    // Fits the current lens when the key holds, or prepares one for the new key.
+    update(
+      key: string,
+      shape: LiquidGlassShape,
+      radius: number,
+      bezel: number,
+      scale: number,
+      dispersion: boolean,
+      bands = false
+    ) {
+      const [width, height] = measure();
+      // The current lens follows the size even while a lens for a new key is prepared, so its filter
+      // never stops short of the surface.
+      if (current) {
+        placeLens(current, width, height);
+      }
+      if (current && current.key === key) {
+        wanted = key;
+        return;
+      }
+      if (wanted === key) {
+        return;
+      }
+      wanted = key;
+      tilesFor(shape, radius, bezel).then((tiles) => {
+        if (destroyed || wanted !== key) {
+          return;
+        }
+        const [nextWidth, nextHeight] = measure();
+        const filterId = `${idPrefix}_${(serial += 1)}_2026_unique_`;
+        const host = createFilterHost(
+          documentObj,
+          buildLensFilter(filterId, nextWidth, nextHeight, tiles, scale, dispersion, bands)
+        );
+        windowObj.requestAnimationFrame(() => {
+          if (destroyed || wanted !== key) {
+            host.remove();
+            return;
+          }
+          const previous = current;
+          current = {
+            key,
+            host,
+            filter: host.firstElementChild as Element,
+            tiles,
+            width: nextWidth,
+            height: nextHeight
+          };
+          placeLens(current, ...measure());
+          apply(filterId, current);
+          windowObj.requestAnimationFrame(() => previous?.host.remove());
+        });
+      }).catch(() => {
+        if (wanted === key) {
+          wanted = '';
+        }
+      });
+    },
+    destroy() {
+      destroyed = true;
+      wanted = '';
+      current?.host.remove();
+      current = null;
     }
-  }
-  context.putImageData(image, 0, 0);
-  return canvas.toDataURL('image/png');
+  };
 }
 
 export interface LiquidGlass {
@@ -158,9 +414,8 @@ const DOCKED_HEIGHT_PX = 36;
 const FLOATING_HEIGHT_PX = 40;
 const FLOATING_SIDE_INSET_PX = 12;
 
-// Keeps the bar's filter matched to its size and shape while the bookmarks bar uses the clear glass
-// surface. A new map goes into its own filter and the bar switches to it only once the map image has
-// decoded, so no frame ever draws with a missing map; the previous filter is dropped afterwards.
+// Keeps the bar's lens matched to its size and shape while the bookmarks bar uses the clear glass
+// surface.
 export function createLiquidGlass(options: {
   documentObj: Document;
   element: HTMLElement;
@@ -168,109 +423,30 @@ export function createLiquidGlass(options: {
 }): LiquidGlass {
   const { documentObj, element, windowObj } = options;
   const supported = isLiquidGlassSupported(windowObj);
-  const filterIdPrefix = `_x_extension_newtab_liquid_glass_${(filterCount += 1)}`;
-  const svgNamespace = 'http://www.w3.org/2000/svg';
-  let svg: SVGSVGElement | null = null;
-  let activeFilter: Element | null = null;
-  let renderedKey = '';
-  let pendingKey = '';
-  let renderToken = 0;
-  let frameId = 0;
+  const shapeOf = (): LiquidGlassShape => element.dataset.layout === 'floating' ? 'floating' : 'docked';
+  const measure = (): [number, number] => {
+    if (element.clientWidth && element.clientHeight) {
+      return [Math.round(element.clientWidth), Math.round(element.clientHeight)];
+    }
+    const viewportWidth = documentObj.documentElement.clientWidth || windowObj.innerWidth || 0;
+    return shapeOf() === 'floating'
+      ? [Math.round(viewportWidth - FLOATING_SIDE_INSET_PX * 2), FLOATING_HEIGHT_PX]
+      : [Math.round(viewportWidth), DOCKED_HEIGHT_PX];
+  };
+  let lens: ReturnType<typeof createLensSwitcher> | null = null;
   let destroyed = false;
 
-  const ensureSvg = () => {
-    if (!svg) {
-      svg = documentObj.createElementNS(svgNamespace, 'svg');
-      svg.setAttribute('aria-hidden', 'true');
-      svg.setAttribute('style', 'position:absolute;width:0;height:0;pointer-events:none');
-      (documentObj.body || documentObj.documentElement).appendChild(svg);
-    }
-    return svg;
-  };
-
   const disable = () => {
-    renderToken += 1;
-    renderedKey = '';
-    pendingKey = '';
+    lens?.destroy();
+    lens = null;
     element.removeAttribute('data-liquid-glass');
     element.style.removeProperty('--x-nt-bookmarks-topbar-liquid-filter');
-    activeFilter?.remove();
-    activeFilter = null;
   };
 
   const isWanted = () =>
     supported &&
     element.dataset.surfaceMode === 'clear' &&
     element.dataset.active === 'true';
-
-  const measure = (shape: LiquidGlassShape): [number, number] => {
-    if (element.clientWidth && element.clientHeight) {
-      return [Math.round(element.clientWidth), Math.round(element.clientHeight)];
-    }
-    const viewportWidth = documentObj.documentElement.clientWidth || windowObj.innerWidth || 0;
-    return shape === 'floating'
-      ? [Math.round(viewportWidth - FLOATING_SIDE_INSET_PX * 2), FLOATING_HEIGHT_PX]
-      : [Math.round(viewportWidth), DOCKED_HEIGHT_PX];
-  };
-
-  const render = () => {
-    frameId = 0;
-    if (destroyed || !isWanted()) {
-      disable();
-      return;
-    }
-    const shape: LiquidGlassShape = element.dataset.layout === 'floating' ? 'floating' : 'docked';
-    const [width, height] = measure(shape);
-    if (width <= 0 || height <= 0) {
-      return;
-    }
-    const key = `${width}x${height}:${shape}`;
-    if (key === renderedKey || key === pendingKey) {
-      return;
-    }
-    const map = buildDisplacementMap(documentObj, width, height, shape);
-    if (!map) {
-      disable();
-      return;
-    }
-    pendingKey = key;
-    const token = (renderToken += 1);
-    const image = documentObj.createElement('img');
-    image.src = map;
-    const decoded = typeof image.decode === 'function' ? image.decode() : Promise.resolve();
-    decoded
-      .then(() => {
-        if (destroyed || token !== renderToken) {
-          return;
-        }
-        const filterId = `${filterIdPrefix}_${token}_2026_unique_`;
-        ensureSvg().insertAdjacentHTML(
-          'beforeend',
-          buildRefractionFilter(filterId, width, height, LIQUID_GLASS_DISPLACEMENT_SCALE)
-        );
-        const filter = svg?.lastElementChild || null;
-        filter?.querySelector('feImage')?.setAttribute('href', map);
-        // One frame for the filter to take its decoded map before the bar points at it.
-        windowObj.requestAnimationFrame(() => {
-          if (destroyed || token !== renderToken) {
-            filter?.remove();
-            return;
-          }
-          const previous = activeFilter;
-          activeFilter = filter;
-          renderedKey = key;
-          pendingKey = '';
-          element.style.setProperty('--x-nt-bookmarks-topbar-liquid-filter', `url(#${filterId})`);
-          element.dataset.liquidGlass = 'true';
-          windowObj.requestAnimationFrame(() => previous?.remove());
-        });
-      })
-      .catch(() => {
-        if (token === renderToken) {
-          disable();
-        }
-      });
-  };
 
   return {
     sync() {
@@ -281,24 +457,30 @@ export function createLiquidGlass(options: {
         disable();
         return;
       }
-      if (frameId) {
+      const [width, height] = measure();
+      if (width <= 0 || height <= 0) {
         return;
       }
-      if (typeof windowObj.requestAnimationFrame !== 'function') {
-        render();
-        return;
+      if (!lens) {
+        lens = createLensSwitcher({
+          documentObj,
+          windowObj,
+          idPrefix: `_x_extension_newtab_liquid_glass_${(filterCount += 1)}`,
+          measure,
+          apply(filterId) {
+            element.style.setProperty('--x-nt-bookmarks-topbar-liquid-filter', `url(#${filterId})`);
+            element.dataset.liquidGlass = 'true';
+          }
+        });
       }
-      frameId = windowObj.requestAnimationFrame(render);
+      const shape = shapeOf();
+      const radius = shape === 'floating' ? Math.round(Math.min(FLOATING_RADIUS_PX, width / 2, height / 2)) : 0;
+      const bezel = Math.round(Math.min(BEZEL_PX, height / 2));
+      lens.update(`${shape}:${radius}:${bezel}`, shape, radius, bezel, LIQUID_GLASS_DISPLACEMENT_SCALE, false);
     },
     destroy() {
       destroyed = true;
-      if (frameId) {
-        windowObj.cancelAnimationFrame?.(frameId);
-        frameId = 0;
-      }
       disable();
-      svg?.remove();
-      svg = null;
     }
   };
 }
@@ -329,8 +511,8 @@ export interface LiquidSurfaces {
 }
 
 // Gives every element matching `selector` a rim-refraction filter in the inline custom property
-// `property`. Surfaces of the same size and radius share one filter, so a page of identical cards
-// builds one map; maps no surface uses any more are dropped.
+// `property`. Sizes are followed from a ResizeObserver, which runs after layout and before paint,
+// so a surface's lens fits its new size in the frame it changes.
 export function createLiquidSurfaces(options: {
   documentObj: Document;
   property: string;
@@ -339,179 +521,94 @@ export function createLiquidSurfaces(options: {
 }): LiquidSurfaces {
   const { documentObj, property, selector, windowObj } = options;
   const supported = isLiquidGlassSupported(windowObj);
-  const filterIdPrefix = `_x_extension_newtab_liquid_surface_${(filterCount += 1)}`;
-  const svgNamespace = 'http://www.w3.org/2000/svg';
-  // key -> filter id once its map has decoded, or '' while it is decoding.
-  const filters = new Map<string, string>();
-  const waiting = new Map<string, Set<HTMLElement>>();
-  const keys = new Map<HTMLElement, string>();
-  // The filter each surface points at right now; it may still be an older size's while the new map
-  // decodes, and must outlive that wait: a backdrop-filter naming a missing filter drops its blur too.
-  const pointed = new Map<HTMLElement, string>();
-  let filterSerial = 0;
-  let frameId = 0;
+  const idPrefix = `_x_extension_newtab_liquid_surface_${(filterCount += 1)}`;
+  const lenses = new Map<HTMLElement, ReturnType<typeof createLensSwitcher>>();
   let destroyed = false;
 
-  // Each filter gets an <svg> of its own. Adding a filter to an <svg> that holds others can make
-  // Chrome reload all their maps, and a backdrop-filter naming a filter whose map is reloading
-  // drops its blur too, so one new size would briefly (or until the next repaint) clear every plate.
-  const createFilterHost = () => {
-    const host = documentObj.createElementNS(svgNamespace, 'svg');
-    host.setAttribute('aria-hidden', 'true');
-    host.setAttribute('style', 'position:absolute;width:0;height:0;pointer-events:none');
-    (documentObj.body || documentObj.documentElement).appendChild(host);
-    return host;
+  const size = (element: HTMLElement): [number, number] =>
+    [Math.round(element.offsetWidth), Math.round(element.offsetHeight)];
+
+  const drop = (element: HTMLElement) => {
+    lenses.get(element)?.destroy();
+    lenses.delete(element);
+    element.style.removeProperty(property);
   };
 
-  const point = (element: HTMLElement, filterId: string) => {
-    element.style.setProperty(property, `url(#${filterId})`);
-    pointed.set(element, filterId);
-  };
-
-  const build = (key: string, width: number, height: number, radius: number) => {
-    filters.set(key, '');
-    const bezel = getSurfaceBezel(width, height);
-    const map = buildDisplacementMap(documentObj, width, height, 'floating', { bezel, radius });
-    if (!map) {
-      return;
-    }
-    const image = documentObj.createElement('img');
-    image.src = map;
-    const decoded = typeof image.decode === 'function' ? image.decode() : Promise.resolve();
-    decoded.then(() => {
-      if (destroyed || filters.get(key) !== '') {
-        return;
-      }
-      const filterId = `${filterIdPrefix}_${(filterSerial += 1)}_2026_unique_`;
-      // Scale with the rim so a small control bends as far, relative to its size, as a card.
-      const scale = getSurfaceDisplacementScale(bezel);
-      const host = createFilterHost();
-      host.insertAdjacentHTML('beforeend', buildRefractionFilter(filterId, width, height, scale));
-      host.querySelector('feImage')?.setAttribute('href', map);
-      // One frame for the filter to take its decoded map before any surface points at it.
-      windowObj.requestAnimationFrame(() => {
-        if (destroyed) {
-          return;
-        }
-        filters.set(key, filterId);
-        waiting.get(key)?.forEach((element) => {
-          if (keys.get(element) === key) {
-            point(element, filterId);
-          }
-        });
-        waiting.delete(key);
-        dropUnused();
-      });
-    }).catch(() => {
-      filters.delete(key);
-    });
-  };
-
-  const dropUnused = () => {
-    const used = new Set(keys.values());
-    const inUse = new Set(pointed.values());
-    filters.forEach((filterId, key) => {
-      if (!used.has(key) && filterId && !inUse.has(filterId)) {
-        documentObj.getElementById(filterId)?.closest('svg')?.remove();
-        filters.delete(key);
-      }
-    });
-  };
-
-  const sync = () => {
-    frameId = 0;
+  const update = (element: HTMLElement) => {
     if (destroyed) {
       return;
     }
-    const current = new Set<HTMLElement>();
-    documentObj.querySelectorAll<HTMLElement>(selector).forEach((element) => {
-      const width = Math.round(element.offsetWidth);
-      const height = Math.round(element.offsetHeight);
-      if (width <= 0 || height <= 0) {
-        return;
-      }
-      current.add(element);
-      const radius = Math.round(readCornerRadius(element, windowObj, width, height));
-      const key = `${width}x${height}r${radius}`;
-      if (keys.get(element) === key) {
-        return;
-      }
-      keys.set(element, key);
-      const filterId = filters.get(key);
-      if (filterId) {
-        point(element, filterId);
-        return;
-      }
-      // Keep the previous map until the new one is ready rather than flashing flat glass.
-      if (!waiting.has(key)) {
-        waiting.set(key, new Set());
-      }
-      waiting.get(key)?.add(element);
-      if (filterId === undefined) {
-        build(key, width, height, radius);
-      }
-    });
-    keys.forEach((_key, element) => {
-      if (!current.has(element)) {
-        keys.delete(element);
-        pointed.delete(element);
-        element.style.removeProperty(property);
-      }
-    });
-    dropUnused();
-  };
-
-  const schedule = () => {
-    if (destroyed || frameId) {
+    if (!element.isConnected || !element.matches(selector)) {
+      drop(element);
+      resizeObserver?.unobserve(element);
       return;
     }
-    frameId = windowObj.requestAnimationFrame(sync);
+    const [width, height] = size(element);
+    // Hidden (the closed results plate): keep the lens for when it shows again.
+    if (width <= 0 || height <= 0) {
+      return;
+    }
+    if (Math.min(width, height) < LENS_MIN_PX) {
+      drop(element);
+      return;
+    }
+    let lens = lenses.get(element);
+    if (!lens) {
+      lens = createLensSwitcher({
+        documentObj,
+        windowObj,
+        idPrefix,
+        measure: () => size(element),
+        apply: (filterId) => element.style.setProperty(property, `url(#${filterId})`)
+      });
+      lenses.set(element, lens);
+    }
+    const radius = Math.round(Math.min(readCornerRadius(element, windowObj, width, height), width / 2, height / 2));
+    const bezel = Math.round(getSurfaceBezel(width, height));
+    const bands = usesLensBands(width, height, Math.max(radius, bezel));
+    lens.update(`${radius}:${bezel}:${bands ? 'bands' : 'full'}`, 'floating', radius, bezel,
+      getSurfaceDisplacementScale(bezel), true, bands);
   };
 
   const ResizeObserverCtor = (windowObj as Window & { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
   const MutationObserverCtor =
     (windowObj as Window & { MutationObserver?: typeof MutationObserver }).MutationObserver;
-  const resizeObserver = supported && ResizeObserverCtor ? new ResizeObserverCtor(schedule) : null;
+  const resizeObserver = supported && ResizeObserverCtor
+    ? new ResizeObserverCtor((entries) => entries.forEach((entry) => update(entry.target as HTMLElement)))
+    : null;
+  const observeAll = () => documentObj.querySelectorAll<HTMLElement>(selector).forEach((element) => {
+    resizeObserver?.observe(element);
+  });
   // Only changes that add or remove a surface matter; the clock alone rewrites its digits every second.
   const touchesSurface = (nodes: NodeList) => Array.from(nodes).some((node) =>
     node.nodeType === 1 &&
     ((node as Element).matches(selector) || Boolean((node as Element).querySelector(selector))));
   const mutationObserver = supported && MutationObserverCtor
     ? new MutationObserverCtor((records) => {
-      if (!records.some((record) => touchesSurface(record.addedNodes) || touchesSurface(record.removedNodes))) {
-        return;
+      if (records.some((record) => touchesSurface(record.removedNodes))) {
+        Array.from(lenses.keys()).filter((element) => !element.isConnected).forEach(drop);
       }
-      documentObj.querySelectorAll<HTMLElement>(selector).forEach((element) => resizeObserver?.observe(element));
-      schedule();
+      if (records.some((record) => touchesSurface(record.addedNodes))) {
+        observeAll();
+      }
     })
     : null;
 
   if (supported) {
     mutationObserver?.observe(documentObj.body || documentObj.documentElement, { childList: true, subtree: true });
-    documentObj.querySelectorAll<HTMLElement>(selector).forEach((element) => resizeObserver?.observe(element));
-    schedule();
+    observeAll();
   }
 
   return {
-    refresh: schedule,
+    refresh() {
+      observeAll();
+      lenses.forEach((_lens, element) => update(element));
+    },
     destroy() {
       destroyed = true;
-      if (frameId) {
-        windowObj.cancelAnimationFrame?.(frameId);
-        frameId = 0;
-      }
       mutationObserver?.disconnect();
       resizeObserver?.disconnect();
-      keys.forEach((_key, element) => element.style.removeProperty(property));
-      keys.clear();
-      pointed.clear();
-      waiting.clear();
-      filters.forEach((filterId) => {
-        if (filterId) {
-          documentObj.getElementById(filterId)?.closest('svg')?.remove();
-        }
-      });
-      filters.clear();
+      Array.from(lenses.keys()).forEach(drop);
     }
   };
 }

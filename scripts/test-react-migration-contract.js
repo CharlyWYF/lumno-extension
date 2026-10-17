@@ -152,11 +152,13 @@ const assertWithinBudget = (actualBytes, budgetKiB, label) => {
 // Overlay bundle and in the shared tab switcher bundle.
 // The opt-in glass style moved the New Tab route to 413 KiB and the total to 807 KiB: its Style
 // section and select, and the liquid rim refraction shared by many surfaces.
+// New Tab moved to 414 KiB / 125 KiB gzip (the total to 808 KiB / 236 KiB gzip) for the nine-slice lens
+// that replaced per-size displacement maps: band-limited filters and lenses that resize in place.
 const bundleBudgets = {
-  newtab: { uncompressed: 413, gzip: 124 },
+  newtab: { uncompressed: 414, gzip: 125 },
   options: { uncompressed: 290, gzip: 85 },
   overlay: { uncompressed: 274, gzip: 83 },
-  total: { uncompressed: 807, gzip: 235 }
+  total: { uncompressed: 808, gzip: 236 }
 };
 
 const retiredNewtabRendererScripts = [

@@ -2057,23 +2057,34 @@
       }
       return element === root ? 'search' : '';
     };
+    // Looked up by id: this can run before the page structure further down has been created.
+    const suggestionsSurface = document.getElementById('_x_extension_newtab_suggestions_surface_2026_unique_');
+    const suggestionsList = document.getElementById('_x_extension_newtab_suggestions_container_2024_unique_');
+    // The search stack reads as one sheet: the bar, the plate behind the results and the result rows
+    // (a separate layer) share one ink and one tint, sampled over everything the open plate can
+    // cover. The sample stays the same as the list opens, closes or grows with each keystroke, so the
+    // tint never jumps and the plate never repaints for a new one.
+    const searchStackSample = {
+      getBoundingClientRect() {
+        const bar = root.getBoundingClientRect();
+        const reach = Number.parseFloat(suggestionsList
+          ? window.getComputedStyle(suggestionsList).getPropertyValue('--x-nt-suggestions-max-height')
+          : '') || 594;
+        return new DOMRect(bar.left, bar.top, bar.width,
+          Math.max(bar.height, Math.min(window.innerHeight - bar.top, bar.height + reach)));
+      }
+    };
     const targets = Array.from(document.querySelectorAll(NEWTAB_GLASS_ADAPTIVE_SELECTOR)).map((element) => ({
       element,
-      sampleElement: element,
+      sampleElement: element === root ? searchStackSample : element,
       glass: true,
       glassGroup: groupOf(element)
     }));
-    // The open search stack reads as one sheet: the bar, the plate behind the results and the result
-    // rows (a separate layer) share one ink, sampled over the whole plate while it is open.
-    const suggestionsSurface = document.getElementById('_x_extension_newtab_suggestions_surface_2026_unique_');
-    const suggestionsOpen = document.body.getAttribute('data-nt-suggestions-open') === 'true';
-    // Looked up by id: this can run before the page structure further down has been created.
-    const suggestionsList = document.getElementById('_x_extension_newtab_suggestions_container_2024_unique_');
     [suggestionsSurface, suggestionsList].forEach((element) => {
       if (element) {
         targets.push({
           element,
-          sampleElement: suggestionsOpen && suggestionsSurface ? suggestionsSurface : root,
+          sampleElement: searchStackSample,
           glass: true,
           glassGroup: 'search',
           // The result rows' own icons and chips switch to their dark-theme styling with the ink.
@@ -6594,6 +6605,8 @@
   }
 
   // Surfaces whose rim bends the wallpaper under the liquid style; the same ones glass-style.css paints.
+  // Only those that are plates get a lens (createLiquidSurfaces skips small controls), so a large
+  // shortcut size or a short screen decides it, not the list.
   const NEWTAB_LIQUID_SURFACE_SELECTOR = [
     '#_x_extension_newtab_root_2024_unique_',
     '.x-nt-shortcut-icon',
@@ -6603,8 +6616,10 @@
     '.x-nt-feedback-button',
     '.x-nt-bookmarks-pager-btn:not(.x-nt-bookmarks-topbar *)',
     '.x-nt-wallpaper-panel',
-    // Not the results plate: it resizes with nearly every keystroke, and each size is a new map.
-    '._x_extension_menu_surface_2024_unique_'
+    '._x_extension_menu_surface_2024_unique_',
+    // The results plate resizes row by row; the surfaces keep a few spare maps, and each new size
+    // builds from one computed row, so it can bend like the bar it grows out of.
+    '#_x_extension_newtab_suggestions_surface_2026_unique_'
   ].join(',');
   let newtabLiquidSurfaces = null;
 
