@@ -852,6 +852,8 @@
   let currentBookmarkColumns = 6;
   let currentNewtabTopContentMode = 'brand';
   let currentNewtabTimeFontWeight = NEWTAB_TIME_FONT_WEIGHT_DEFAULT;
+  // Set once the daily quote rows are wired; language refreshes may run earlier.
+  let dailyQuoteSettings = null;
   let currentNewtabShortcutColumns = NEWTAB_SHORTCUT_COLUMNS_DEFAULT;
   let currentNewtabShortcutSize = NEWTAB_SHORTCUT_SIZE_DEFAULT;
   let currentNewtabShortcutGap = NEWTAB_SHORTCUT_GAP_DEFAULT;
@@ -2611,6 +2613,9 @@
       setRestrictedActionTabState(currentRestrictedAction);
       setNewtabTopContentTabState(currentNewtabTopContentMode);
       renderNewtabTimeFontWeightControl(currentNewtabTimeFontWeight);
+      if (dailyQuoteSettings) {
+        dailyQuoteSettings.updateLanguage();
+      }
       renderNewtabShortcutColumnsControl(currentNewtabShortcutColumns);
       renderNewtabShortcutSizeControl(currentNewtabShortcutSize);
       renderNewtabShortcutGapControl(currentNewtabShortcutGap);
@@ -3536,6 +3541,45 @@
     repairOnChange: false,
     refreshSelects: true
   });
+  // The daily quote mirrors the quote section of New Tab's appearance panel.
+  const CUSTOM_QUOTES = globalThis.LumnoCustomQuotes;
+  dailyQuoteSettings = globalThis.LumnoOptionsDailyQuote.createDailyQuoteSettings({
+    settings: SETTINGS,
+    customQuotes: CUSTOM_QUOTES,
+    getMessage,
+    showToast: (message, isError) => showToast(message, isError),
+    syncArea: storageArea,
+    localArea: localStorageArea,
+    createSegmented: createOptionsSegmentedControlController,
+    createRangeSlider: (host, controllerOptions) =>
+      optionsSettingsControlsApi.createRangeSliderControlController(host, controllerOptions),
+    registerToggle: registerOptionsToggleControl,
+    setToggleState: setOptionsToggleState,
+    registerSelect: (select, kind) => {
+      const record = registerOptionsSelectControl(select, kind);
+      if (record) {
+        renderOptionsSelectControl(select);
+      }
+      return record;
+    },
+    setSelectState: setOptionsSelectState,
+    setRowVisible: setConditionalSettingsElementVisibility,
+    animateHeight: animateOptionsPanelHeight
+  });
+  if (dailyQuoteSettings) {
+    settingBinder.bindSetting({
+      key: SETTINGS.NEWTAB_QUOTE_PREFS_STORAGE_KEY,
+      normalize: SETTINGS.normalizeNewtabQuotePrefs,
+      apply: dailyQuoteSettings.applyPrefs,
+      repairOnLoad: false,
+      repairOnChange: false,
+      refreshSelects: true
+    });
+    storageChanges.on(CUSTOM_QUOTES.KEY, (changes) => {
+      dailyQuoteSettings.applyLibrary(changes[CUSTOM_QUOTES.KEY].newValue);
+    }, { area: 'local' });
+    dailyQuoteSettings.load();
+  }
   settingBinder.bindSetting({
     key: SEARCH_RESULT_TAB_POSITION_STORAGE_KEY,
     normalize: SETTINGS.normalizeSearchResultTabPosition,

@@ -59,5 +59,15 @@
     }
     return { quote: { ...library.quotes[index], source: library.filename, url: '' }, pick: { day, revision: library.revision, index } };
   }
-  return Object.freeze({ KEY, PICK_KEY, MAX_BYTES, MAX_QUOTES, parseQuotes, parseMarkdown, normalizeLibrary, select });
+  // Reads a picked .txt / .md / .markdown file into a collection record, or
+  // throws ('type', 'too-large', 'empty', 'limit'). New Tab and Options share it.
+  async function readLibraryFile(file, now) {
+    const name = String(file && file.name || '');
+    if (!/\.(txt|md|markdown)$/i.test(name)) throw new Error('type');
+    if (!file.size || file.size > MAX_BYTES) throw new Error('too-large');
+    const text = await file.text();
+    const quotes = parseQuotes(text, /\.txt$/i.test(name) ? 'txt' : 'md');
+    return { version: 1, filename: name.slice(0, 128), revision: Number(now) || Date.now(), quotes };
+  }
+  return Object.freeze({ KEY, PICK_KEY, MAX_BYTES, MAX_QUOTES, parseQuotes, parseMarkdown, normalizeLibrary, readLibraryFile, select });
 });

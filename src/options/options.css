@@ -3207,6 +3207,45 @@ button[aria-busy="true"]:disabled,
   background: var(--control-hover-bg, rgba(15, 23, 42, 0.04));
 }
 
+/* Daily quote collection: count, Shuffle and Import on the right, an import
+   error under the title. */
+._x_extension_quote_library_info_2026_unique_ {
+  min-width: 0;
+}
+._x_extension_quote_import_status_2026_unique_ {
+  margin: 4px 0 0;
+  color: #dc2626;
+  font-size: var(--lumno-font-size-sm);
+  line-height: 1.4;
+}
+._x_extension_quote_import_status_2026_unique_[hidden] { display: none; }
+#_x_extension_settings_panel_2024_unique_[data-theme="dark"] ._x_extension_quote_import_status_2026_unique_ {
+  color: #fca5a5;
+}
+._x_extension_quote_library_actions_2026_unique_ {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+._x_extension_quote_count_2026_unique_ {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  border-radius: var(--lumno-radius-md);
+  color: var(--panel-subtext);
+  font-size: var(--lumno-font-size-sm);
+  white-space: nowrap;
+  cursor: default;
+}
+._x_extension_quote_count_2026_unique_[hidden],
+._x_extension_quote_library_actions_2026_unique_ button[hidden] { display: none; }
+._x_extension_quote_count_2026_unique_:focus-visible {
+  outline: 2px solid var(--input-focus-color);
+  outline-offset: 2px;
+}
+
 /* Keep this last: `all: unset` in component resets also clears corner-shape. */
 @supports (corner-shape: superellipse(1.25)) {
   ._x_extension_popconfirm_2024_unique_,

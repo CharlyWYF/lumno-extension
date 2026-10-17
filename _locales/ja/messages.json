@@ -3372,13 +3372,13 @@
     "message": "Hitokoto"
   },
   "newtab_quote_provider_custom": {
-    "message": "カスタム文章集 · この端末のみ"
+    "message": "カスタム文章集 · この端末に保存、WebDAV で同期"
   },
   "newtab_quote_importing": {
     "message": "読み込み中…"
   },
   "newtab_quote_import_hint": {
-    "message": "名言は毎日自動で切り替わり、「別の一言」でいつでも変更できます。TXT / MD に対応し、空でない本文の各行が 1 つの名言になります。ファイルは最大 1 MB、最大 1,000 件、各 500 文字まで。このデバイスにのみ保存されます。"
+    "message": "名言は毎日自動で切り替わり、「別の一言」でいつでも変更できます。TXT / MD に対応し、空でない本文の各行が 1 つの名言になります。ファイルは最大 1 MB、最大 1,000 件、各 500 文字まで。このデバイスに保存され、ブラウザ同期には含まれません。WebDAV を有効にすると同期されます。"
   },
   "newtab_quote_entries": {
     "message": "件"
@@ -3397,5 +3397,8 @@
   },
   "newtab_quote_shuffle_button": {
     "message": "別の一言"
+  },
+  "newtab_quote_font_size_reset": {
+    "message": "名言の文字サイズを元に戻す"
   }
 }

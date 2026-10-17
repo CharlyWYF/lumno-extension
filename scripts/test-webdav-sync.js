@@ -636,12 +636,18 @@ async function run() {
   const firstShortcut = shortcuts.createShortcutRecord({ id: 'first', title: 'First', url: 'https://example.com/' }, { now: 100 });
   const overflowShortcut = shortcuts.createShortcutRecord({ id: 'overflow', title: 'Overflow', url: 'https://other.example/' }, { now: 100 });
   const [topbarMode, topbarLight, topbarDark, topbarLegacy] = settings.BOOKMARK_TOPBAR_LOCAL_STORAGE_KEYS;
+  const customQuotes = '_x_extension_custom_quotes_2026_unique_';
+  const quotePick = '_x_extension_custom_quote_pick_2026_unique_';
+  assert(contract.LOCAL_PREFERENCE_KEYS.includes(customQuotes), 'the custom quote collection travels with WebDAV');
+  assert(!settings.CHROME_SYNC_STORAGE_KEYS.includes(customQuotes), 'the custom quote collection stays out of browser sync');
   const first = createDevice(server, {
     sync: { [theme]: 'light', [language]: 'en', [shortcuts.LEGACY_SHORTCUTS_KEY]: [firstShortcut] },
     local: { [contract.OVERFLOW_KEY]: { authoritative: false, items: [overflowShortcut] },
       [contract.ICONS_KEY]: { first: `data:image/png;base64,${icon.toString('base64')}` },
       [contract.LOCAL_WALLPAPER_KEY]: { version: 1, light: 'custom-wallpaper-test', dark: 'custom-wallpaper-test' },
-      [topbarMode]: 'custom', [topbarLight]: '#112233', [topbarDark]: '#445566', [topbarLegacy]: '#778899' }
+      [topbarMode]: 'custom', [topbarLight]: '#112233', [topbarDark]: '#445566', [topbarLegacy]: '#778899',
+      [customQuotes]: { version: 1, filename: 'quotes.md', revision: 100, quotes: [{ text: 'Well begun is half done.', from: 'Aristotle' }] },
+      [quotePick]: { day: '2026-10-18', index: 0 } }
   }, [{ id: 'custom-wallpaper-test', key: 'custom-wallpaper-test', name: 'Test', width: 480, height: 270, updatedAt: 100,
     imageDataUrl: `data:image/webp;base64,${wallpaper.toString('base64')}`, thumbnailDataUrl: `data:image/webp;base64,${wallpaper.toString('base64')}` }]);
   await first.controller.handle({ operation: 'connect', config });
@@ -663,6 +669,8 @@ async function run() {
   assert.strictEqual(second.chrome.storage.local.values[contract.ICONS_KEY].first, first.chrome.storage.local.values[contract.ICONS_KEY].first);
   assert.strictEqual((await second.wallpaperStore.readAll())[0].imageDataUrl, (await first.wallpaperStore.readAll())[0].imageDataUrl);
   assert.deepStrictEqual(second.chrome.storage.local.values[contract.LOCAL_WALLPAPER_KEY], first.chrome.storage.local.values[contract.LOCAL_WALLPAPER_KEY]);
+  assert.deepStrictEqual(second.chrome.storage.local.values[customQuotes], first.chrome.storage.local.values[customQuotes]);
+  assert.strictEqual(second.chrome.storage.local.values[quotePick], undefined, 'each device keeps its own daily quote');
   assert.deepStrictEqual([server.state().wallpapers[0].width, server.state().wallpapers[0].height], [512, 288],
     'wallpaper dimensions come from the image, not the stored record');
   // Wallpapers saved before dimensions were recorded read back as 0x0 and

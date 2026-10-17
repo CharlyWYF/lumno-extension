@@ -126,6 +126,7 @@
     ['site_search', 'settings_tab_shortcuts'], ['aggregate_searches', 'settings_tab_shortcuts'],
     ['default_search_engine', 'settings_tab_shortcuts'], ['favicon_enhanced_fetch', 'settings_favicon_enhanced_fetch_title'],
     ['blacklist', 'settings_tab_blacklist'], ['newtab_quote_prefs', 'newtab_quote_title'],
+    ['custom_quotes', 'newtab_quote_library'],
     ['newtab_zen_mode', 'webdav_preference_zen_mode'], ['newtab_favicon', 'newtab_favicon_title'],
     ['bookmark_view_mode', 'settings_bookmarks_title']
   ];

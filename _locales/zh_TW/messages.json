@@ -3372,13 +3372,13 @@
     "message": "一言"
   },
   "newtab_quote_provider_custom": {
-    "message": "自訂句庫 · 僅儲存於本機"
+    "message": "自訂句庫 · 儲存於本機，可隨 WebDAV 同步"
   },
   "newtab_quote_importing": {
     "message": "正在匯入…"
   },
   "newtab_quote_import_hint": {
-    "message": "每天自動換一句，也可以點「換一句」手動更換。支援 TXT / MD，每個非空內文行作為一句；檔案最大 1 MB，最多 1,000 句，每句不超過 500 字。僅儲存在本機。"
+    "message": "每天自動換一句，也可以點「換一句」手動更換。支援 TXT / MD，每個非空內文行作為一句；檔案最大 1 MB，最多 1,000 句，每句不超過 500 字。儲存在本機，不走瀏覽器同步；開啟 WebDAV 後會隨之同步。"
   },
   "newtab_quote_entries": {
     "message": "句"
@@ -3397,5 +3397,8 @@
   },
   "newtab_quote_shuffle_button": {
     "message": "換一句"
+  },
+  "newtab_quote_font_size_reset": {
+    "message": "恢復預設字級"
   }
 }

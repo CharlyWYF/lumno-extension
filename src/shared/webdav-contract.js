@@ -23,10 +23,12 @@
   const MAX_LINK_WALLPAPERS_BYTES = 8000;
   const PREFERENCE_KEYS = settings.CHROME_SYNC_STORAGE_KEYS.filter((key) => !SHORTCUT_KEYS.includes(key));
   // Preferences kept in chrome.storage.local that WebDAV carries but browser
-  // sync never does: the custom wallpaper selection and the bookmark bar
-  // material chosen against it.
+  // sync never does: the custom wallpaper selection, the bookmark bar
+  // material chosen against it, and the imported quote collection (too large
+  // for browser sync). Each device keeps its own daily pick.
   const TOPBAR_KEYS = settings.BOOKMARK_TOPBAR_WEBDAV_STORAGE_KEYS || [];
-  const LOCAL_PREFERENCE_KEYS = [LOCAL_WALLPAPER_KEY, ...TOPBAR_KEYS];
+  const CUSTOM_QUOTES_KEY = '_x_extension_custom_quotes_2026_unique_';
+  const LOCAL_PREFERENCE_KEYS = [LOCAL_WALLPAPER_KEY, ...TOPBAR_KEYS, CUSTOM_QUOTES_KEY];
   // Records whose fields are independent settings merge field by field, so
   // two devices editing different fields of one record do not conflict.
   // Folder colors merge per folder for the same reason.

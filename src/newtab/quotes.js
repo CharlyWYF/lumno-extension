@@ -423,7 +423,7 @@
     }
     const showShuffleLabel = () => showTooltip(shuffleButton, shuffleLabel());
     function getProviderLabel() {
-      return prefs.provider === 'custom' ? t('newtab_quote_provider_custom', 'Custom collection · stored on this device') : t('newtab_quote_provider', 'Powered by Hitokoto');
+      return prefs.provider === 'custom' ? t('newtab_quote_provider_custom', 'Custom collection · on this device, syncs with WebDAV') : t('newtab_quote_provider', 'Powered by Hitokoto');
     }
     function readCustomValues() {
       return new Promise((resolve, reject) => {
@@ -448,13 +448,7 @@
       importing = true; importError = false; importMessage = ''; updateSettings();
       let saving = false;
       try {
-        if (!/\.(txt|md|markdown)$/i.test(file.name || '')) throw new Error('type');
-        if (!file.size || file.size > custom.MAX_BYTES) throw new Error('too-large');
-        const text = typeof file.text === 'function' ? await file.text() : await new Promise((resolve, reject) => {
-          const reader = new window.FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(new Error('read')); reader.readAsText(file);
-        });
-        const quotes = custom.parseQuotes(text, /\.txt$/i.test(file.name) ? 'txt' : 'md');
-        const next = { version: 1, filename: String(file.name).slice(0, 128), revision: Date.now(), quotes };
+        const next = await custom.readLibraryFile(file);
         saving = true;
         await saveCustomValues({ [custom.KEY]: next, [custom.PICK_KEY]: null });
         saving = false;
