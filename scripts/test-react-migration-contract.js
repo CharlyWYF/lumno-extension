@@ -156,11 +156,13 @@ const assertWithinBudget = (actualBytes, budgetKiB, label) => {
 // that replaced per-size displacement maps: band-limited filters and lenses that resize in place.
 // Search sources ordering then moved the total to 809 KiB / 237 KiB gzip: move buttons on the
 // Options lists and a sortable result type group (gzip keeps headroom for Node 20's zlib, as above).
+// The daily quote's source tabs and TXT / MD import controls moved the New Tab route to 415 KiB
+// and the total to 810 KiB.
 const bundleBudgets = {
-  newtab: { uncompressed: 414, gzip: 125 },
+  newtab: { uncompressed: 415, gzip: 125 },
   options: { uncompressed: 290, gzip: 85 },
   overlay: { uncompressed: 274, gzip: 83 },
-  total: { uncompressed: 809, gzip: 237 }
+  total: { uncompressed: 810, gzip: 237 }
 };
 
 const retiredNewtabRendererScripts = [

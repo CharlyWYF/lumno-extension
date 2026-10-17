@@ -145,9 +145,11 @@ describe('New Tab React wallpaper view', () => {
     // Sections other runtimes fill in keep their element contract.
     expect(refs().quoteEnabledToggle.getAttribute('role')).toBe('switch');
     expect(refs().quoteBody.hidden).toBe(true);
+    expect(refs().quoteFileInput.getAttribute('accept')).toContain('.txt');
+    expect(refs().quoteFileInput.getAttribute('accept')).toContain('.md');
     const quoteTabGroups = refs().quoteBody.querySelectorAll('.x-nt-segmented-tabs');
     expect(Array.from(quoteTabGroups, (group) => group.getAttribute('data-wallpaper-ref')))
-      .toEqual(['quoteCategory']);
+      .toEqual(['quoteSource', 'quoteCategory']);
     expect(quoteTabGroups[0].querySelector('.x-nt-segmented-tabs-indicator')).not.toBeNull();
     const onQuotePositionChange = vi.fn();
     act(() => {

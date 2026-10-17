@@ -1369,6 +1369,43 @@ function WallpaperPanel({
               id="_x_extension_newtab_quote_section_body_2026_unique_"
             >
               <div className="x-nt-appearance-setting-row">
+                <span {...ref('quoteSourceLabel')} className="x-nt-appearance-setting-title" />
+                <div
+                  {...ref('quoteSource')}
+                  className="x-nt-segmented-tabs x-nt-wallpaper-tabs x-nt-quote-tabs x-nt-row-tabs"
+                  role="group"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="x-nt-segmented-tabs-indicator x-nt-wallpaper-tabs-indicator"
+                  />
+                  {['hitokoto', 'custom'].map((provider) => (
+                    <button
+                      aria-pressed="false"
+                      className="x-nt-segmented-tab x-nt-wallpaper-tab"
+                      data-quote-provider={provider}
+                      key={provider}
+                      type="button"
+                    />
+                  ))}
+                </div>
+              </div>
+              <div {...ref('quoteCustomBody')} className="x-nt-quote-custom-body" hidden>
+                <button
+                  {...ref('quoteImportButton')}
+                  className="x-lumno-action-button x-lumno-action-button--secondary"
+                  type="button"
+                />
+                <input
+                  {...ref('quoteFileInput')}
+                  accept=".txt,.md,.markdown,text/markdown,text/plain"
+                  hidden
+                  type="file"
+                />
+                <p {...ref('quoteImportHint')} className="x-nt-quote-import-hint" />
+                <p {...ref('quoteImportStatus')} className="x-nt-quote-import-status" role="status" />
+              </div>
+              <div className="x-nt-appearance-setting-row">
                 <span {...ref('quoteCategoryLabel')} className="x-nt-appearance-setting-title" />
                 <div
                   {...ref('quoteCategory')}

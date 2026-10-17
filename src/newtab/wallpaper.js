@@ -4277,10 +4277,16 @@
         },
         search: buildWallpaperSearchState(),
         shortcuts: buildWallpaperShortcutsState(),
-        quote: { infoTooltip: t('newtab_quote_provider', 'Powered by Hitokoto') },
+        quote: { infoTooltip: getQuoteProviderLabel() },
         wallpaper: buildWallpaperSectionState(),
         favicon: buildNewtabFaviconState()
       };
+    }
+
+    function getQuoteProviderLabel() {
+      const quoteRuntime = options.getQuoteRuntime && options.getQuoteRuntime();
+      return (quoteRuntime && typeof quoteRuntime.getProviderLabel === 'function' &&
+        quoteRuntime.getProviderLabel()) || t('newtab_quote_provider', 'Powered by Hitokoto');
     }
 
     // What changes the panel's height: a change here animates the resize.
