@@ -406,6 +406,7 @@
     let modeMenuFilterQuery = '';
     let renderedModeMenuEntries = [];
     const canReorderModeMenu = typeof config.onModeMenuReorder === 'function';
+    const canMoveModeMenuGroups = typeof config.onModeMenuGroupMove === 'function';
     let detachModeMenuReorder = () => {};
     let renderedModeMenuGroups = [];
     let modeMenuEmptyState = null;
@@ -3004,11 +3005,21 @@
           groupLabel.className = 'x-lumno-search-input-mode__menu-group';
           groupLabel.setAttribute('aria-hidden', 'true');
           groupLabel.setAttribute('role', 'presentation');
-          groupLabel.textContent = group;
+          const groupKey = item.groupKey ? String(item.groupKey) : '';
+          if (canMoveModeMenuGroups && groupKey) {
+            groupLabel.dataset.groupKey = groupKey;
+            const title = doc.createElement('span');
+            title.textContent = group;
+            groupLabel.appendChild(title);
+            groupLabel.appendChild(createModeMenuGroupMoveControls(groupKey));
+          } else {
+            groupLabel.textContent = group;
+          }
           modeMenuContent.appendChild(groupLabel);
           renderedModeMenuGroups.push({
             element: groupLabel,
             group,
+            groupKey,
             visibleCount: 0
           });
           previousGroup = group;
@@ -3045,6 +3056,7 @@
           searchIndex: buildModeMenuSearchIndex(item)
         });
       });
+      syncModeMenuGroupMoveControls();
       modeMenuEmptyState = applyNoTranslate(doc.createElement('div'));
       modeMenuEmptyState.className = 'x-lumno-search-input-mode__menu-empty';
       modeMenuEmptyState.setAttribute('data-i18n', 'overlay_empty_result');
@@ -3057,6 +3069,54 @@
       modeMenuContent.appendChild(modeMenuEmptyState);
       applyModeMenuFilter(modeMenuFilterQuery, { preserveScroll: true });
       return normalizedItems;
+    }
+
+    // Hovering a group title shows move up and move down for the whole block.
+    // The host stores the new group order and refreshes the menu.
+    function createModeMenuGroupMoveControls(groupKey) {
+      const controls = doc.createElement('span');
+      controls.className = 'x-lumno-search-input-mode__menu-group-move';
+      [['up', -1, 'ri-arrow-up-s-line', 'settings_search_source_move_up', 'Move up'],
+        ['down', 1, 'ri-arrow-down-s-line', 'settings_search_source_move_down', 'Move down']]
+        .forEach(([direction, delta, iconClass, messageKey, fallback]) => {
+          const button = doc.createElement('button');
+          button.type = 'button';
+          button.tabIndex = -1;
+          button.className = 'x-lumno-search-input-mode__menu-group-move-button';
+          button.dataset.groupMove = direction;
+          const label = formatMessage(messageKey, fallback);
+          button.setAttribute('aria-label', label);
+          button.title = label;
+          const icon = doc.createElement('i');
+          icon.className = `ri-icon ri-size-14 ${iconClass}`;
+          icon.setAttribute('aria-hidden', 'true');
+          button.appendChild(icon);
+          button.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (button.disabled) {
+              return;
+            }
+            config.onModeMenuGroupMove({
+              delta,
+              group: groupKey,
+              groups: renderedModeMenuGroups.map((entry) => entry.groupKey).filter(Boolean)
+            });
+          });
+          controls.appendChild(button);
+        });
+      return controls;
+    }
+
+    function syncModeMenuGroupMoveControls() {
+      const movable = renderedModeMenuGroups.filter((entry) => entry.groupKey);
+      movable.forEach((entry, index) => {
+        entry.element.querySelectorAll('[data-group-move]').forEach((button) => {
+          button.disabled = button.dataset.groupMove === 'up'
+            ? index === 0
+            : index === movable.length - 1;
+        });
+      });
     }
 
     // Dragging a tile reorders it among the tiles of its own order list in its

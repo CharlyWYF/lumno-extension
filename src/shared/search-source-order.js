@@ -248,6 +248,22 @@
     );
   }
 
+  // Moves one group block up (-1) or down (+1) among the blocks the panel
+  // shows; blocks it does not show (no aggregate searches yet) keep their slot.
+  function applyGroupMove(order, renderedGroups, group, delta) {
+    const record = normalizeOrder(order);
+    const shown = normalizeKeyList(renderedGroups, (item) => {
+      const id = toText(item).toLowerCase();
+      return GROUP_IDS.includes(id) ? id : '';
+    });
+    const fromIndex = shown.indexOf(toText(group).toLowerCase());
+    const toIndex = fromIndex + (Number(delta) < 0 ? -1 : 1);
+    if (fromIndex < 0 || toIndex < 0 || toIndex >= shown.length) {
+      return record;
+    }
+    return withGroups(record, applySubsetOrder(record.groups, moveIndex(shown, fromIndex, toIndex)));
+  }
+
   // Orders the search scope panel: group blocks in the chosen order, then
   // pinned and custom entries ahead of built-in ones (as they always were),
   // then the chosen position inside each list, then the surface's own order.
@@ -303,6 +319,7 @@
     LOCAL_SOURCE_TYPES,
     MAX_LIST_ENTRIES,
     MAX_RECORD_BYTES,
+    applyGroupMove,
     applyMove,
     applyScopeMenuMove,
     applySubsetOrder,

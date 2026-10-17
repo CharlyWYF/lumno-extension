@@ -4045,6 +4045,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       getModeMenuItems: getSearchModeMenuItems,
       onModeMenuSelect: selectSearchModeMenuItem,
       onModeMenuReorder: reorderSearchModeMenu,
+      onModeMenuGroupMove: moveSearchModeMenuGroup,
       onModeTagRemovalConfirmation: () => {
         showOverlayToast(t(
           'search_scope_remove_confirmation',
@@ -5282,6 +5283,23 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       return loadSearchSourceOrder().then((value) => new Promise((resolve) => {
         storageArea.set({
           [SEARCH_SOURCE_ORDER_STORAGE_KEY]: SEARCH_SOURCE_ORDER.applyScopeMenuMove(value, payload)
+        }, () => resolve());
+      })).catch(() => {});
+    }
+
+    // A group block moved from its title in the panel.
+    function moveSearchModeMenuGroup(payload) {
+      if (!SEARCH_SOURCE_ORDER || !storageArea || !payload) {
+        return Promise.resolve();
+      }
+      return loadSearchSourceOrder().then((value) => new Promise((resolve) => {
+        storageArea.set({
+          [SEARCH_SOURCE_ORDER_STORAGE_KEY]: SEARCH_SOURCE_ORDER.applyGroupMove(
+            value,
+            payload.groups,
+            payload.group,
+            payload.delta
+          )
         }, () => resolve());
       })).catch(() => {});
     }

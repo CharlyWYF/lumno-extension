@@ -192,6 +192,18 @@
         .catch(() => {});
     }
 
+    // A group block moved from its title in the panel.
+    function moveSearchModeMenuGroup(payload) {
+      if (!SEARCH_SOURCE_ORDER || typeof writeSearchSourceOrder !== 'function' || !payload) {
+        return Promise.resolve();
+      }
+      return loadSearchSourceOrder()
+        .then((value) => writeSearchSourceOrder(
+          SEARCH_SOURCE_ORDER.applyGroupMove(value, payload.groups, payload.group, payload.delta)
+        ))
+        .catch(() => {});
+    }
+
     function openSearchModeMenuFromDoubleTab() {
       const expectedInputValue = String(pageState.inputParts.input.value || '');
       const activateDefaultProvider = (providers) => {
@@ -485,6 +497,7 @@
       getSearchTriggerProviders,
       getSearchModeMenuItems,
       reorderSearchModeMenu,
+      moveSearchModeMenuGroup,
       openSearchModeMenuFromDoubleTab,
       selectSearchModeMenuItem,
       getLocalSearchScopeTabHintProvider,

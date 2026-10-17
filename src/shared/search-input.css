@@ -652,6 +652,54 @@
   white-space: nowrap !important;
 }
 
+/* Group titles that can move show up and down on hover, inside the title's
+   own line height so nothing shifts. Hidden while the menu is filtered. */
+.x-lumno-search-input-mode__menu-group[data-group-key] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.x-lumno-search-input-mode__menu-group-move {
+  all: unset !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  height: 16px !important;
+  opacity: 0 !important;
+  transition: opacity 120ms ease !important;
+}
+
+.x-lumno-search-input-mode__menu-group:hover .x-lumno-search-input-mode__menu-group-move {
+  opacity: 1 !important;
+}
+
+.x-lumno-search-input-mode__menu[data-filtered="true"] .x-lumno-search-input-mode__menu-group-move {
+  display: none !important;
+}
+
+.x-lumno-search-input-mode__menu-group-move-button {
+  all: unset !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 20px !important;
+  height: 18px !important;
+  border-radius: 5px !important;
+  color: var(--x-nt-subtext, var(--x-ov-subtext, #64748b)) !important;
+  cursor: pointer !important;
+}
+
+.x-lumno-search-input-mode__menu-group-move-button:hover:not(:disabled) {
+  background: color-mix(in srgb, currentColor 14%, transparent) !important;
+  color: var(--x-nt-text, var(--x-ov-text, #111827)) !important;
+}
+
+.x-lumno-search-input-mode__menu-group-move-button:disabled {
+  cursor: default !important;
+  opacity: 0.3 !important;
+}
+
 .x-lumno-search-input-mode__menu-group[hidden],
 .x-lumno-search-input-mode__menu-item[hidden],
 .x-lumno-search-input-mode__menu-empty[hidden] {

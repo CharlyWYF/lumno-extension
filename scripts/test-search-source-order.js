@@ -149,6 +149,27 @@ function testRecordStaysInsideTheSyncBudget() {
   });
 }
 
+function testGroupMove() {
+  // The panel shows no aggregate block; moving AI up swaps it with sites and
+  // the hidden aggregate block keeps its slot.
+  const shown = ['engine', 'site', 'ai', 'local'];
+  const next = order.applyGroupMove(null, shown, 'ai', -1);
+  assert.deepStrictEqual(next.groups, ['aggregate', 'engine', 'ai', 'site', 'local']);
+  assert.deepStrictEqual(
+    order.applyGroupMove(next, shown, 'engine', -1).groups,
+    next.groups,
+    'the first block cannot move up'
+  );
+  assert.deepStrictEqual(
+    order.applyGroupMove(null, shown, 'local', 1).groups,
+    ['aggregate', 'engine', 'site', 'ai', 'local']
+  );
+  assert.deepStrictEqual(
+    order.applyGroupMove(null, ['aggregate', 'engine'], 'aggregate', 1).groups,
+    ['engine', 'aggregate', 'site', 'ai', 'local']
+  );
+}
+
 function testMoveIndex() {
   assert.deepStrictEqual(order.moveIndex(['a', 'b', 'c'], 2, 0), ['c', 'a', 'b']);
   assert.deepStrictEqual(order.moveIndex(['a', 'b', 'c'], 0, 5), ['a', 'b', 'c']);
@@ -165,5 +186,6 @@ testApplyMoveKeepsHiddenKeys();
 testScopeMenuMove();
 testRecordStaysInsideTheSyncBudget();
 testMoveIndex();
+testGroupMove();
 
 console.log('search source order tests passed');

@@ -5558,6 +5558,7 @@
     getSearchTriggerProviders,
     getSearchModeMenuItems,
     reorderSearchModeMenu,
+    moveSearchModeMenuGroup,
     openSearchModeMenuFromDoubleTab,
     selectSearchModeMenuItem,
     getLocalSearchScopeTabHintProvider,
@@ -6837,6 +6838,7 @@
     getModeMenuItems: getSearchModeMenuItems,
     onModeMenuSelect: selectSearchModeMenuItem,
     onModeMenuReorder: reorderSearchModeMenu,
+    onModeMenuGroupMove: moveSearchModeMenuGroup,
     onModeTagRemovalConfirmation: () => {
       showToast(t(
         'search_scope_remove_confirmation',
