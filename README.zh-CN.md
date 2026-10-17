@@ -23,7 +23,7 @@
   <a href="#安装">安装</a> ·
   <a href="#功能">功能</a> ·
   <a href="#常见问题">常见问题</a> ·
-  <a href="CHANGELOG.md">更新日志</a>
+  <a href="https://github.com/kubai087/lumno-extension/releases">更新日志</a>
   <br />
   <a href="README.zh-CN.md">简体中文</a> |
   <a href="README.md">English</a> |
