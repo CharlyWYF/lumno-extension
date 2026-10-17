@@ -536,6 +536,9 @@
     let wallpaperPanelActions = null;
     let wallpaperPanelState = null;
     let wallpaperPanelLayoutKey = '';
+    // A closed panel is drawn again only when it next opens; meanwhile this records that its
+    // drawn state is out of date.
+    let wallpaperPanelDrawPending = false;
     let wallpaperPanelOpen = false;
     let wallpaperPanelRendered = false;
     let wallpaperPanelResizing = false;
@@ -4300,12 +4303,42 @@
       ]);
     }
 
-    // Rebuilds the panel state and renders it; the DOM is current when this returns.
+    // Rebuilds the panel state and renders it; while the panel is open the DOM is current when
+    // this returns. A closed panel waits for its next open, and only its button, which stays on
+    // the page, follows the state at once: the New Tab start-up changes the state many times,
+    // and drawing the whole hidden panel for each change held the page back.
     function renderWallpaperPanelState() {
       if (!wallpaperViewController) {
         return;
       }
-      const previous = wallpaperPanelState;
+      if (!wallpaperPanelOpen) {
+        wallpaperPanelDrawPending = true;
+        syncClosedWallpaperButton();
+        return;
+      }
+      drawWallpaperPanelState();
+    }
+
+    // The button's attributes as the view draws them; React leaves an attribute alone while its
+    // value matches the last render, so the DOM set here stays right until the next draw.
+    function syncClosedWallpaperButton() {
+      if (!wallpaperButton) {
+        return;
+      }
+      const label = getWallpaperButtonLabel();
+      const active = currentWallpaperId ? 'true' : 'false';
+      if (label) {
+        wallpaperButton.setAttribute('aria-label', label);
+      } else {
+        wallpaperButton.removeAttribute('aria-label');
+      }
+      wallpaperButton.setAttribute('aria-pressed', active);
+      wallpaperButton.setAttribute('data-active', active);
+    }
+
+    function drawWallpaperPanelState() {
+      const previous = wallpaperPanelDrawPending ? null : wallpaperPanelState;
+      wallpaperPanelDrawPending = false;
       const state = buildWallpaperPanelState();
       const layoutKey = getWallpaperPanelLayoutKey(state);
       const layoutChanged = Boolean(previous) && layoutKey !== wallpaperPanelLayoutKey;
@@ -4919,8 +4952,14 @@
       }
       cancelWallpaperPanelActiveControls();
       wallpaperViewController.closeOpenSelect();
+      const wasOpen = wallpaperPanelOpen;
       wallpaperPanelOpen = false;
-      renderWallpaperPanelState();
+      // The close itself is drawn, so the panel animates out.
+      if (wasOpen) {
+        drawWallpaperPanelState();
+      } else {
+        renderWallpaperPanelState();
+      }
       setWallpaperPanelOpenState(false);
       if (options && options.restoreFocus) {
         try {
