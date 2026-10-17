@@ -189,7 +189,10 @@ export interface WallpaperPanelState {
     title: string;
     value: string;
   };
-  quote: { infoTooltip: string; library: { infoTooltip: string; title: string } };
+  quote: {
+    infoTooltip: string;
+    library: { infoTooltip: string; shuffleLabel: string; shuffleTooltip: string; title: string };
+  };
   search: {
     autoFocus: { infoLabel: string; infoTooltip: string; title: string; toggle: ToggleState };
     seconds: { title: string; toggle: ToggleState; visible: boolean };
@@ -1410,11 +1413,32 @@ function WallpaperPanel({
                       role="status"
                     />
                   </span>
-                  <button
-                    {...ref('quoteImportButton')}
-                    className="x-lumno-action-button x-lumno-action-button--secondary x-nt-quote-import-button"
-                    type="button"
-                  />
+                  <span className="x-nt-quote-library-actions">
+                    <span
+                      {...ref('quoteLibraryCount')}
+                      className="x-nt-quote-library-count"
+                      hidden
+                      tabIndex={0}
+                    >
+                      <i aria-hidden="true" className="ri-icon ri-size-14 ri-file-text-line" />
+                      <span {...ref('quoteLibraryCountText')} />
+                    </span>
+                    <button
+                      {...ref('quoteLibraryShuffleButton')}
+                      {...tooltipHandlers(actions, state.quote.library.shuffleTooltip)}
+                      aria-label={state.quote.library.shuffleLabel}
+                      className="x-nt-quote-library-shuffle"
+                      hidden
+                      type="button"
+                    >
+                      <i aria-hidden="true" className="ri-icon ri-size-16 ri-shuffle-line" />
+                    </button>
+                    <button
+                      {...ref('quoteImportButton')}
+                      className="x-lumno-action-button x-lumno-action-button--secondary x-nt-quote-import-button"
+                      type="button"
+                    />
+                  </span>
                 </div>
                 <input
                   {...ref('quoteFileInput')}

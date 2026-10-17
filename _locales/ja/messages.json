@@ -3394,5 +3394,8 @@
   },
   "newtab_quote_replace": {
     "message": "ファイルを変更"
+  },
+  "newtab_quote_shuffle_daily": {
+    "message": "ランダムに別の名言を表示します。名言は毎日自動で更新されます。"
   }
 }

@@ -241,6 +241,52 @@ body[data-quote-position="bottom"].x-nt-mobile-flow {
   white-space: normal;
 }
 body[data-theme="dark"] .x-nt-quote-import-status[data-error="true"] { color: #fca5a5; }
+.x-nt-quote-library-actions {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.x-nt-quote-library-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  border-radius: var(--lumno-radius-md);
+  color: var(--x-nt-panel-muted-ink, #6b7280);
+  font-size: var(--lumno-font-size-sm);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: default;
+}
+.x-nt-quote-library-count[hidden] { display: none; }
+.x-nt-quote-library-count:focus-visible {
+  outline: 2px solid var(--input-focus-color, rgba(59, 130, 246, 0.65));
+  outline-offset: 2px;
+}
+.x-nt-quote-library-shuffle {
+  all: unset;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--lumno-radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  color: var(--x-nt-panel-muted-ink, #6b7280);
+  cursor: pointer;
+  transition: background-color var(--lumno-duration-xs) ease, color var(--lumno-duration-xs) ease;
+}
+.x-nt-quote-library-shuffle[hidden] { display: none; }
+.x-nt-quote-library-shuffle:hover:not(:disabled) {
+  background: var(--control-bg, rgba(15, 23, 42, 0.04));
+  color: var(--x-nt-text, #111827);
+}
+.x-nt-quote-library-shuffle:focus-visible {
+  outline: 2px solid var(--input-focus-color, rgba(59, 130, 246, 0.65));
+  outline-offset: 2px;
+}
+.x-nt-quote-library-shuffle:disabled { cursor: default; opacity: 0.4; }
 .x-nt-quote-import-button {
   flex: none;
   min-height: 30px;

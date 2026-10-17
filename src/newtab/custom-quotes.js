@@ -45,12 +45,18 @@
       .map(item => ({ text: item.text.trim(), author: String(item.author || '').slice(0, 120) }));
     return quotes.length ? { version: 1, filename: String(value.filename || '').slice(0, 128), revision: Number(value.revision) || 0, quotes } : null;
   }
-  function select(library, date, pick, reroll) {
+  // `random` (defaults to Math.random) is injectable so tests stay deterministic.
+  function select(library, date, pick, reroll, random) {
     const day = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
     let hash = 0; for (const char of `${day}|${library.filename}|${library.revision}`) hash = ((hash * 31) + char.charCodeAt(0)) >>> 0;
     const existing = pick && pick.day === day && pick.revision === library.revision && Number.isInteger(pick.index) && pick.index >= 0 && pick.index < library.quotes.length;
     let index = existing ? pick.index : hash % library.quotes.length;
-    if (reroll) index = (index + 1) % library.quotes.length;
+    // A reroll picks another quote at random, never the one on screen.
+    if (reroll && library.quotes.length > 1) {
+      const draw = typeof random === 'function' ? random : Math.random;
+      const offset = 1 + Math.floor(draw() * (library.quotes.length - 1));
+      index = (index + Math.min(offset, library.quotes.length - 1)) % library.quotes.length;
+    }
     return { quote: { ...library.quotes[index], source: library.filename, url: '' }, pick: { day, revision: library.revision, index } };
   }
   return Object.freeze({ KEY, PICK_KEY, MAX_BYTES, MAX_QUOTES, parseQuotes, parseMarkdown, normalizeLibrary, select });

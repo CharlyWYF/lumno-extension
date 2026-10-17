@@ -84,6 +84,17 @@ async function main() {
   const restored = makeRuntime(); await restored.mount(); await tick();
   assert.equal(restored.textElement.textContent, afterShuffle, 'Shuffle selection survives refresh');
   assert.equal(networkCalls, 0); restored.destroy(); dom.window.close();
+  // A reroll is random but never repeats the quote on screen.
+  const pool = { version: 1, filename: 'pool.txt', revision: 7, quotes: ['a', 'b', 'c', 'd'].map((text) => ({ text, author: '' })) };
+  const day = new Date(2026, 9, 18);
+  const first = custom.select(pool, day, null, false);
+  [0, 0.4, 0.999].forEach((draw) => {
+    const next = custom.select(pool, day, first.pick, true, () => draw);
+    assert.notEqual(next.pick.index, first.pick.index, 'Shuffle never shows the same quote again');
+  });
+  assert.notEqual(custom.select(pool, day, first.pick, true, () => 0).pick.index,
+    custom.select(pool, day, first.pick, true, () => 0.999).pick.index, 'Shuffle draws from the rest of the collection');
+  assert.equal(custom.select(pool, day, null, false).pick.index, first.pick.index, 'The daily quote is stable through the day');
   console.log('Custom TXT / MD quotes: one line per quote, CRLF/BOM, blank lines, limits, safe plain text, import failure, local storage, daily selection, shuffle persistence and no remote requests passed.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

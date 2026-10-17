@@ -183,15 +183,23 @@
           : (library ? t('newtab_quote_replace', 'Replace file') : t('newtab_quote_import', 'Import file'));
         refs.quoteImportButton.disabled = importing;
       }
-      // Under the title: the imported file and its size, or why an import failed.
+      if (refs.quoteLibraryShuffleButton) {
+        refs.quoteLibraryShuffleButton.hidden = !library || library.quotes.length < 2;
+        refs.quoteLibraryShuffleButton.disabled = importing;
+      }
+      // Under the title only when an import fails.
       if (refs.quoteImportStatus) {
-        const status = importMessage ||
-          (library ? `${library.filename} · ${library.quotes.length} ${t('newtab_quote_entries', 'quotes')}` : '');
-        refs.quoteImportStatus.textContent = status;
-        refs.quoteImportStatus.hidden = !status;
-        refs.quoteImportStatus.title = importError ? '' : status;
+        refs.quoteImportStatus.textContent = importMessage;
+        refs.quoteImportStatus.hidden = !importMessage;
         refs.quoteImportStatus.setAttribute('data-error', importError ? 'true' : 'false');
         refs.quoteImportStatus.setAttribute('role', importError ? 'alert' : 'status');
+      }
+      // Beside the actions: how many quotes; hovering it names the file.
+      if (refs.quoteLibraryCount) {
+        const count = library ? `${library.quotes.length} ${t('newtab_quote_entries', 'quotes')}` : '';
+        refs.quoteLibraryCount.hidden = !library;
+        if (refs.quoteLibraryCountText) refs.quoteLibraryCountText.textContent = count;
+        refs.quoteLibraryCount.setAttribute('aria-label', library ? `${library.filename} · ${count}` : '');
       }
       syncFontSizeControls(false);
       refs.quoteCategory.querySelectorAll('[data-quote-category]').forEach((item) => {
@@ -487,6 +495,18 @@
       });
       refs.quoteSource?.querySelectorAll('[data-quote-provider]').forEach(item => item.addEventListener('click', () => persist({ provider: item.dataset.quoteProvider })));
       refs.quoteImportButton?.addEventListener('click', () => refs.quoteFileInput?.click());
+      refs.quoteLibraryShuffleButton?.addEventListener('click', () => { shuffle(); });
+      if (refs.quoteLibraryCount) {
+        const showFile = () => {
+          const tooltip = getTooltip();
+          if (tooltip && library) tooltip.show(refs.quoteLibraryCount, library.filename, { placement: 'top' });
+        };
+        const hideFile = () => { const tooltip = getTooltip(); if (tooltip) tooltip.hide(); };
+        refs.quoteLibraryCount.addEventListener('mouseenter', showFile);
+        refs.quoteLibraryCount.addEventListener('focus', showFile);
+        refs.quoteLibraryCount.addEventListener('mouseleave', hideFile);
+        refs.quoteLibraryCount.addEventListener('blur', hideFile);
+      }
       refs.quoteFileInput?.addEventListener('change', () => {
         const file = refs.quoteFileInput.files && refs.quoteFileInput.files[0];
         refs.quoteFileInput.value = '';

@@ -3394,5 +3394,8 @@
   },
   "newtab_quote_replace": {
     "message": "更換檔案"
+  },
+  "newtab_quote_shuffle_daily": {
+    "message": "隨機換一句。每天也會自動更新一句。"
   }
 }

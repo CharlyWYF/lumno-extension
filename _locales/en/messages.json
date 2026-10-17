@@ -3394,5 +3394,8 @@
   },
   "newtab_quote_replace": {
     "message": "Replace file"
+  },
+  "newtab_quote_shuffle_daily": {
+    "message": "Show a random quote. A new one also comes every day."
   }
 }
