@@ -248,7 +248,9 @@ function scanHtmlLine(file, line, lineNumber, state) {
 function auditSources() {
   const files = SOURCE_ROOTS
     .flatMap(walk)
-    .map((file) => path.normalize(file))
+    // Allowlist entries are written with POSIX separators; path.normalize()
+    // returns backslashes on Windows and would report every allowlisted file.
+    .map((file) => path.normalize(file).split(path.sep).join('/'))
     .sort();
   const hits = [];
   files.forEach((file) => {

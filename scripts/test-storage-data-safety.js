@@ -127,6 +127,12 @@ assert.deepStrictEqual(
 );
 
 const sourceFiles = [];
+// Reviewed contracts below are written with POSIX separators. Windows returns
+// backslashes from path.relative(), so normalize before comparing instead of
+// reporting every path as an unreviewed removal.
+function toPosixPath(file) {
+  return path.relative(repoRoot, file).split(path.sep).join('/');
+}
 function collectSourceFiles(directory) {
   fs.readdirSync(directory, { withFileTypes: true }).forEach((entry) => {
     const entryPath = path.join(directory, entry.name);
@@ -145,18 +151,18 @@ sourceFiles.forEach((file) => {
   assert.doesNotMatch(
     source,
     /chrome\.storage\.(?:sync|local)\.clear\s*\(/,
-    `${path.relative(repoRoot, file)} must not clear a persisted storage area`
+    `${toPosixPath(file)} must not clear a persisted storage area`
   );
   assert.doesNotMatch(
     source,
     /\b(?:syncArea|localArea|bookmarkTopbarSurfaceStorageArea)\.clear\s*\(/,
-    `${path.relative(repoRoot, file)} must not clear an aliased persisted storage area`
+    `${toPosixPath(file)} must not clear an aliased persisted storage area`
   );
   const removeCallPattern = /\b(chrome\.storage\.(?:sync|local)|syncArea|localArea|bookmarkTopbarSurfaceStorageArea)\.remove\s*\(\s*([A-Za-z_$][\w$]*)/g;
   let removeCallMatch = removeCallPattern.exec(source);
   while (removeCallMatch) {
     persistedRemoveCalls.push(
-      `${path.relative(repoRoot, file)}:${removeCallMatch[1]}:${removeCallMatch[2]}`
+      `${toPosixPath(file)}:${removeCallMatch[1]}:${removeCallMatch[2]}`
     );
     removeCallMatch = removeCallPattern.exec(source);
   }
