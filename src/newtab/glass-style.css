@@ -166,6 +166,8 @@ body[data-glass-style] {
   --x-nt-glass-well: rgba(0, 0, 0, 0.15);
   /* An edge drawn inside the plate, for plates whose mask clips the outer hairline. */
   --x-nt-glass-hairline: rgba(0, 0, 0, 0.1);
+  /* A rule between groups of rows (a menu's divider). */
+  --x-nt-glass-divider: rgba(0, 0, 0, 0.08);
   /* A control lifted off the glass (a segmented tab's pill, the selected row's icon), lit rather
      than tinted. */
   --x-nt-glass-raised: rgba(255, 255, 255, 0.72);
@@ -197,6 +199,7 @@ body[data-glass-style]:not([data-theme="dark"]) :is(
   --x-nt-glass-chip-strong: rgba(255, 255, 255, 0.17);
   --x-nt-glass-well: rgba(255, 255, 255, 0.22);
   --x-nt-glass-hairline: rgba(255, 255, 255, 0.06);
+  --x-nt-glass-divider: rgba(255, 255, 255, 0.1);
   --x-nt-glass-raised: rgba(255, 255, 255, 0.18);
   --x-nt-glass-raised-edge: inset 0 0.5px 0 rgba(255, 255, 255, 0.24), 0 1px 2px rgba(0, 0, 0, 0.2);
 }
@@ -498,6 +501,11 @@ body[data-glass-style] :is(.x-nt-wallpaper-panel, ._x_extension_menu_surface_202
   --x-nt-segmented-indicator-bg: var(--x-nt-glass-raised);
   --x-nt-segmented-indicator-shadow: var(--x-nt-glass-raised-edge);
   --x-nt-segmented-hover-bg: var(--x-nt-glass-row-hover);
+}
+/* The controls' border goes clear above, and a menu's divider draws with the same variable, so it
+   takes its own rule of the glass. */
+body[data-glass-style] ._x_extension_menu_surface_2024_unique_ ._x_extension_select_divider_2026_unique_ {
+  background: var(--x-nt-glass-divider);
 }
 body[data-glass-style] .x-nt-wallpaper-panel ._x_extension_select_wrap_2024_unique_:is(:hover, [data-open="true"]) ._x_extension_select_trigger_2024_unique_ {
   background: var(--x-nt-glass-chip-strong);
