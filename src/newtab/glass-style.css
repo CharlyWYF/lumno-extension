@@ -55,14 +55,14 @@ body[data-glass-style="liquid"] {
   --x-nt-glass-float-thin: 0.26;
   --x-nt-glass-float-dense: 0.48;
   --x-nt-glass-inset: rgba(255, 255, 255, 0.3);
-  /* macOS-style liquid rim: a bevel lit from the top left, a softer catch on the bottom right, a
-     glow along the inside and a hairline outside. */
+  /* macOS-style liquid rim: no glow along the inside, light caught where the curve faces it, on
+     the top left and fainter on the bottom right, over a faint even line that keeps the outline.
+     The negative spread keeps each catch to the rim and lets it fade out along the sides. */
   --x-nt-glass-edge:
-    inset 0.5px 0.75px 0 rgba(255, 255, 255, 0.6),
-    inset -0.5px -0.5px 0 rgba(255, 255, 255, 0.22),
-    inset 0 0 0 0.5px rgba(255, 255, 255, 0.18),
-    inset 0 0 8px rgba(255, 255, 255, 0.14),
-    0 0 0 0.5px rgba(0, 0, 0, 0.12),
+    inset 1px 1px 0.5px -0.5px rgba(255, 255, 255, 0.62),
+    inset -1px -1px 0.5px -0.5px rgba(255, 255, 255, 0.26),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.1),
+    0 0 0 0.5px rgba(0, 0, 0, 0.07),
     0 4px 14px rgba(0, 0, 0, 0.08);
   --x-nt-glass-inset-edge: inset 0 1px 0 rgba(255, 255, 255, 0.45);
   --x-nt-glass-float-shadow: 0 16px 48px rgba(0, 0, 0, 0.14);
@@ -77,11 +77,10 @@ body[data-glass-style="liquid"][data-theme="dark"] {
   --x-nt-glass-float-dense: 0.54;
   --x-nt-glass-inset: rgba(255, 255, 255, 0.07);
   --x-nt-glass-edge:
-    inset 0.5px 0.75px 0 rgba(255, 255, 255, 0.34),
-    inset -0.5px -0.5px 0 rgba(255, 255, 255, 0.12),
-    inset 0 0 0 0.5px rgba(255, 255, 255, 0.1),
-    inset 0 0 10px rgba(255, 255, 255, 0.05),
-    0 0 0 0.5px rgba(0, 0, 0, 0.36),
+    inset 1px 1px 0.5px -0.5px rgba(255, 255, 255, 0.4),
+    inset -1px -1px 0.5px -0.5px rgba(255, 255, 255, 0.15),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.06),
+    0 0 0 0.5px rgba(0, 0, 0, 0.28),
     0 4px 14px rgba(0, 0, 0, 0.22);
   --x-nt-glass-inset-edge: inset 0 1px 0 rgba(255, 255, 255, 0.12);
   --x-nt-glass-float-shadow: 0 16px 48px rgba(0, 0, 0, 0.34);
@@ -104,13 +103,13 @@ body[data-glass-style="frosted"][data-nt-ready="1"][data-theme="dark"] {
 body[data-glass-style="liquid"][data-nt-ready="1"] {
   /* Light glass stays see-through: a light haze (contrast, brightness), most of the tone from the
      scene behind. */
-  --x-nt-glass-filter: blur(2px) saturate(165%) contrast(0.88) brightness(1.04);
+  --x-nt-glass-filter: blur(1px) saturate(165%) contrast(0.88) brightness(1.04);
   /* Floating layers carry lists of text: still clear glass, the scene behind softened rather than
      erased, with a little more tint than the plates to hold the labels. */
   --x-nt-glass-float-filter: blur(10px) saturate(180%) contrast(0.82) brightness(1.06);
 }
 body[data-glass-style="liquid"][data-nt-ready="1"][data-theme="dark"] {
-  --x-nt-glass-filter: blur(2px) saturate(150%) contrast(0.78) brightness(0.8);
+  --x-nt-glass-filter: blur(1px) saturate(150%) contrast(0.78) brightness(0.8);
   --x-nt-glass-float-filter: blur(10px) saturate(170%) contrast(0.82) brightness(0.82);
 }
 /* Tint density adapts per plate: newtab.js samples the wallpaper under each one and sets
@@ -545,11 +544,10 @@ body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(
   --x-nt-glass-backdrop-brightness: 0.78;
   --x-nt-glass-sheen: transparent;
   --x-nt-glass-edge:
-    inset 0.5px 0.75px 0 rgba(255, 255, 255, 0.34),
-    inset -0.5px -0.5px 0 rgba(255, 255, 255, 0.12),
-    inset 0 0 0 0.5px rgba(255, 255, 255, 0.1),
-    inset 0 0 10px rgba(255, 255, 255, 0.05),
-    0 0 0 0.5px rgba(0, 0, 0, 0.36),
+    inset 1px 1px 0.5px -0.5px rgba(255, 255, 255, 0.4),
+    inset -1px -1px 0.5px -0.5px rgba(255, 255, 255, 0.15),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.06),
+    0 0 0 0.5px rgba(0, 0, 0, 0.28),
     0 4px 14px rgba(0, 0, 0, 0.22);
 }
 

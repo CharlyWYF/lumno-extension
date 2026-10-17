@@ -16,7 +16,7 @@ const BEZEL_PX = 16;
 export const LIQUID_GLASS_DISPLACEMENT_SCALE = 48;
 // Blue bends further than red: each channel samples the backdrop at its own share of the bend, so
 // the rim fringes where the wallpaper has edges. Nothing splits in the flat middle.
-export const LIQUID_GLASS_DISPERSION = 0.2;
+export const LIQUID_GLASS_DISPERSION = 0.08;
 const FLOATING_RADIUS_PX = 14;
 
 export type LiquidGlassShape = 'docked' | 'floating';
@@ -89,28 +89,11 @@ export function getRimDisplacement(
   ];
 }
 
-// The rim is the curved shoulder of a glass slab: a convex superellipse that is steep at the edge
-// and flattens into the middle. A ray looking straight down refracts through it (Snell, n = 1.5);
-// the sideways shift it picks up, scaled so the edge is 1, is the bend at that point.
-const REFRACTIVE_INDEX = 1.5;
-
-// Height of the shoulder is (1 - u³)^⅓ with u the remaining way to the flat middle; this is its slope.
-function rimShift(progressFromRim: number) {
-  const u = 1 - Math.max(1e-3, progressFromRim);
-  const normal = Math.atan((u * u) / Math.cbrt(Math.pow(1 - u * u * u, 2)));
-  return Math.tan(normal - Math.asin(Math.sin(normal) / REFRACTIVE_INDEX));
-}
-
-const RIM_EDGE_SHIFT = rimShift(0);
-
-// Pure refraction puts nearly all of the bend in the outer few pixels, too thin to read; part of
-// it is spread over the whole rim as a smooth falloff, so the scene visibly squeezes toward the edge.
+// The rim is a band of even thickness around the plate, the way a slab's rounded edge looks from
+// above: the scene is pushed inward almost as hard across the whole band, and lets go only near its
+// inner edge, so the bend reads as a ring rather than a haze fading into the middle.
 function rimStrength(progressFromRim: number) {
-  if (progressFromRim >= 1) {
-    return 0;
-  }
-  const rest = 1 - progressFromRim;
-  return 0.4 * (rimShift(progressFromRim) / RIM_EDGE_SHIFT) + 0.6 * rest * rest;
+  return progressFromRim >= 1 ? 0 : 1 - progressFromRim * progressFromRim * progressFromRim;
 }
 
 export interface LensTiles {
@@ -209,10 +192,8 @@ function createLensCache(documentObj: Document) {
   };
 }
 
-// Only plates get a lens: Chrome redraws every backdrop filter on the page in each frame that
-// changes anything, and a lens costs a small control (a shortcut, a round button) more there than
-// all its blur does, for a bend hardly visible at that size. Controls keep the rest of the glass.
-const LENS_MIN_PX = 64;
+// Too small a surface has no flat middle to look through, so it goes without a lens.
+const LENS_MIN_PX = 32;
 
 const at = (rect: Rect) => `x="${rect[0]}" y="${rect[1]}" width="${rect[2]}" height="${rect[3]}"`;
 
@@ -456,13 +437,13 @@ export function createLiquidGlass(options: {
   };
 }
 
-// New Tab's glass surfaces are thicker than the bookmarks bar: a wider rim, so the bend reaches far
-// enough in to read on a calm wallpaper.
-const SURFACE_BEZEL_PX = 30;
+// The ring around a New Tab plate: a fifth of its height on the search bar, so most of the plate
+// stays a clear, flat window.
+const SURFACE_BEZEL_PX = 14;
 
-// Rim width for a surface of this size, narrowed so small controls keep a flat middle.
+// Rim width for a surface of this size, narrowed so small plates keep a flat middle.
 export function getSurfaceBezel(width: number, height: number) {
-  return Math.max(4, Math.min(SURFACE_BEZEL_PX, Math.min(width, height) / 2.2));
+  return Math.max(4, Math.min(SURFACE_BEZEL_PX, Math.min(width, height) / 4));
 }
 
 // How far the rim moves the backdrop: the bar's bend per pixel of rim.

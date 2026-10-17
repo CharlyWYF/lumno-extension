@@ -46,8 +46,8 @@ describe('New Tab bookmarks bar liquid glass', () => {
   });
 
   it('fits the rim to any surface size and corner radius', () => {
-    expect(getSurfaceBezel(800, 72)).toBe(30);
-    expect(getSurfaceBezel(44, 44)).toBe(20);
+    expect(getSurfaceBezel(800, 72)).toBe(14);
+    expect(getSurfaceBezel(44, 44)).toBe(11);
     expect(getSurfaceBezel(8, 8)).toBe(4);
     // Every surface bends as far per pixel of rim as the bookmarks bar's 48 over 16px.
     expect(getSurfaceDisplacementScale(16)).toBe(48);
@@ -60,13 +60,13 @@ describe('New Tab bookmarks bar liquid glass', () => {
     expect(getRimDisplacement(24, 24, 48, 48, 'floating', { radius: 16, bezel: 16 })).toEqual([0, 0]);
   });
 
-  it('bends hardest at the edge and eases into the flat middle', () => {
-    const at = (y: number) => getRimDisplacement(400, y, 800, 72, 'floating', { bezel: 30, radius: 36 })[1];
-    expect(at(0.5)).toBeGreaterThan(0.75);
-    expect(at(8)).toBeGreaterThan(0.2);
-    expect(at(8)).toBeLessThan(at(0.5));
-    expect(at(20)).toBeLessThan(at(8));
-    expect(at(20)).toBeGreaterThanOrEqual(0);
+  it('bends an even ring that lets go only near its inner edge', () => {
+    const at = (y: number) => getRimDisplacement(400, y, 800, 72, 'floating', { bezel: 14, radius: 36 })[1];
+    expect(at(0.5)).toBeGreaterThan(0.95);
+    // Halfway across the ring it still pushes almost as hard as at the edge.
+    expect(at(7)).toBeGreaterThan(0.85);
+    expect(at(12)).toBeLessThan(at(7));
+    expect(at(14.5)).toBe(0);
   });
 
   it('rebuilds the whole rim from nine-slice tiles at any size', () => {
@@ -154,6 +154,7 @@ describe('New Tab bookmarks bar liquid glass', () => {
         return element;
       };
       const size = { width: 200, height: 64 };
+      const corner = { radius: '16px' };
       const card = addSurface(size);
       let resized: ResizeObserverCallback = () => {};
       class FakeResizeObserver {
@@ -167,7 +168,7 @@ describe('New Tab bookmarks bar liquid glass', () => {
       const windowObj = {
         CSS: { supports: () => true },
         navigator: { userAgent: 'Chrome/140.0' },
-        getComputedStyle: () => ({ borderTopLeftRadius: '16px' }),
+        getComputedStyle: () => ({ borderTopLeftRadius: corner.radius }),
         requestAnimationFrame: (callback: FrameRequestCallback) => frames.push(callback),
         cancelAnimationFrame() {},
         ResizeObserver: FakeResizeObserver,
@@ -197,7 +198,7 @@ describe('New Tab bookmarks bar liquid glass', () => {
       const pointedAt = (element = card) => element.style.getPropertyValue('--refraction').replace(/^url\(#|\)$/g, '');
       const observe = (element: HTMLElement) =>
         resized([{ target: element } as unknown as ResizeObserverEntry], {} as ResizeObserver);
-      return { addSurface, encoded, filters, observe, pointedAt, resize, settle, surfaces };
+      return { addSurface, corner, encoded, filters, observe, pointedAt, resize, settle, surfaces };
     }
 
     it('fits a resize in place in the same frame, with nothing rebuilt', async () => {
@@ -222,12 +223,13 @@ describe('New Tab bookmarks bar liquid glass', () => {
     });
 
     it('keeps a surface on its old lens until the tiles for a new rim are ready', async () => {
-      const { filters, pointedAt, resize, settle, surfaces } = setup();
+      const { corner, filters, pointedAt, resize, settle, surfaces } = setup();
       resize(200, 64);
       await settle();
       const first = pointedAt();
 
-      // Taller: the rim widens, which needs new tiles.
+      // Rounder: the corner tiles change, which needs new tiles.
+      corner.radius = '24px';
       resize(200, 90);
       expect(pointedAt()).toBe(first);
       await settle();
@@ -236,7 +238,8 @@ describe('New Tab bookmarks bar liquid glass', () => {
       expect(filters().map((filter) => filter.id)).toEqual([second]);
       expect(filters()[0].getAttribute('height')).toBe('90');
 
-      // Back to the first rim: its tiles are cached, so no new images, but a fresh filter.
+      // Back to the first corner: its tiles are cached, so no new images, but a fresh filter.
+      corner.radius = '16px';
       resize(200, 64);
       await settle();
       expect(pointedAt()).not.toBe(second);
@@ -284,7 +287,7 @@ describe('New Tab bookmarks bar liquid glass', () => {
 
     it('leaves small controls without a lens', async () => {
       const { filters, pointedAt, resize, settle, surfaces } = setup();
-      resize(56, 56);
+      resize(28, 28);
       await settle();
       expect(pointedAt()).toBe('');
       expect(filters()).toEqual([]);
@@ -292,7 +295,7 @@ describe('New Tab bookmarks bar liquid glass', () => {
       resize(200, 64);
       await settle();
       expect(pointedAt()).not.toBe('');
-      resize(56, 56);
+      resize(28, 28);
       expect(pointedAt()).toBe('');
       expect(filters()).toEqual([]);
       surfaces.destroy();
