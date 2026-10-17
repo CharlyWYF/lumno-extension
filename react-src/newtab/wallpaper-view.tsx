@@ -930,7 +930,10 @@ function WallpaperPanel({
         aria-modal="false"
         className="x-nt-wallpaper-panel"
         data-open={state.open ? 'true' : 'false'}
-        onScrollCapture={() => sliderBubble.hide(null, true)}
+        onScrollCapture={() => {
+          sliderBubble.hide(null, true);
+          actions.hideTooltip();
+        }}
         role="dialog"
       >
         <div className="x-nt-appearance-header">

@@ -328,6 +328,11 @@ describe('New Tab React wallpaper view', () => {
         .dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
     });
     expect(actions.showTooltip).toHaveBeenCalledWith(expect.any(HTMLElement), 'Bridge · 2026-10-01');
+    actions.hideTooltip.mockClear();
+    act(() => {
+      refs().panel.querySelector('.x-nt-wallpaper-panel-scroll')!.dispatchEvent(new Event('scroll'));
+    });
+    expect(actions.hideTooltip).toHaveBeenCalled();
     act(() => refs().curatedItemsHost.querySelector<HTMLElement>('[data-wallpaper-id="picsum-28"]')!.click());
     expect(actions.selectCuratedWallpaper).toHaveBeenCalledWith('picsum-28');
     act(() => refs().curatedCategoryTabs.querySelector<HTMLElement>('[data-curated-category="city"]')!.click());
