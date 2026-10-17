@@ -877,18 +877,43 @@
       });
     }
 
+    // Scales the photo down to the sample size off the main thread; drawing the full image into
+    // the sample canvas there took tens of milliseconds while the New Tab was opening.
+    function scaleImageForSampling(image, width, height) {
+      if (!windowObj || typeof windowObj.createImageBitmap !== 'function') {
+        return Promise.resolve(image);
+      }
+      return windowObj.createImageBitmap(image, {
+        resizeWidth: width,
+        resizeHeight: height,
+        resizeQuality: 'low'
+      }).catch(() => image);
+    }
+
     function createSampler(image, url) {
       const naturalWidth = Math.max(1, image.naturalWidth || image.width || 1);
       const naturalHeight = Math.max(1, image.naturalHeight || image.height || 1);
       const sampleScale = Math.min(1, 420 / naturalWidth, 260 / naturalHeight);
+      const width = Math.max(1, Math.round(naturalWidth * sampleScale));
+      const height = Math.max(1, Math.round(naturalHeight * sampleScale));
+      return scaleImageForSampling(image, width, height).then((source) => {
+        const sampler = drawSampler(source, url, width, height, naturalWidth, naturalHeight);
+        if (source !== image && typeof source.close === 'function') {
+          source.close();
+        }
+        return sampler;
+      });
+    }
+
+    function drawSampler(source, url, width, height, naturalWidth, naturalHeight) {
       const canvas = documentObj.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(naturalWidth * sampleScale));
-      canvas.height = Math.max(1, Math.round(naturalHeight * sampleScale));
+      canvas.width = width;
+      canvas.height = height;
       const context = canvas.getContext('2d', { willReadFrequently: true });
       if (!context) {
         return null;
       }
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      context.drawImage(source, 0, 0, canvas.width, canvas.height);
       let imageData = null;
       try {
         imageData = context.getImageData(0, 0, canvas.width, canvas.height).data;
@@ -1268,12 +1293,14 @@
       const token = ++loadToken;
       pendingImageUrl = imageUrl;
       cancelScheduledApply();
-      loadImage(imageUrl).then((image) => {
+      loadImage(imageUrl).then((image) => (
+        token === loadToken ? createSampler(image, imageUrl) : null
+      )).then((nextSampler) => {
         if (token !== loadToken) {
           return;
         }
         pendingImageUrl = '';
-        sampler = createSampler(image, imageUrl);
+        sampler = nextSampler;
         apply({ resetInk: true });
         schedule();
       }).catch(() => {
