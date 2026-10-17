@@ -402,6 +402,8 @@
     deleteBookmarkFromContextTarget: (...args) => deleteBookmarkFromContextTarget(...args),
     hasShortcutForSite: (...args) => hasShortcutForSite(...args),
     addSiteToShortcuts: (...args) => addSiteToShortcuts(...args),
+    hasShortcutForBookmarkFolder: (...args) => hasShortcutForBookmarkFolder(...args),
+    addBookmarkFolderToShortcuts: (...args) => addBookmarkFolderToShortcuts(...args),
     closeShortcutContextMenu: (...args) => closeShortcutContextMenu(...args),
     closeRecentContextMenu: (...args) => closeRecentContextMenu(...args),
     hideCursorTooltip: (...args) => hideCursorTooltip(...args),
@@ -3832,6 +3834,8 @@
     scheduleBookmarkDragPageSwitch,
     scheduleBookmarkDragMove,
     deleteBookmarkFromContextTarget,
+    addBookmarkFolderToShortcuts,
+    hasShortcutForBookmarkFolder,
     getBookmarkUndoShortcutLabel,
     refreshOpenBookmarkCascadeMenu,
     syncOpenBookmarkCascadeAnchorVisual,
@@ -3890,6 +3894,7 @@
     applyShortcutGroupDeleteRecord,
     autoScrollShortcutArea: (...args) => autoScrollShortcutArea(...args),
     closeBookmarkContextMenu,
+    getShortcutGroups: (...args) => getShortcutGroups(...args),
     pageState
   });
 

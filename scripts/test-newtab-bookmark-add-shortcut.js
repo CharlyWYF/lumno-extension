@@ -1,8 +1,8 @@
 const assert = require('assert');
 const path = require('path');
 
-// Right-clicking a bookmarked site offers "Add to shortcuts", which copies it
-// into the shortcuts and leaves the bookmark in place.
+// Right-clicking a bookmarked site or folder offers "Add to shortcuts", which
+// adds it to the shortcuts and leaves the bookmark in place.
 global.LumnoNewtabDismissStack = { getDismissStack: () => ({ register() {} }) };
 require(path.join(__dirname, '..', 'src', 'newtab', 'bookmark-context-menu.js'));
 
@@ -30,6 +30,8 @@ const menu = globalThis.LumnoNewtabBookmarkContextMenu.createBookmarkContextMenu
   deleteBookmarkFromContextTarget() {},
   hasShortcutForSite: (site) => shortcutUrls.has(site.url),
   addSiteToShortcuts() {},
+  hasShortcutForBookmarkFolder: (id) => id === '9',
+  addBookmarkFolderToShortcuts() {},
   closeShortcutContextMenu() {},
   closeRecentContextMenu() {},
   hideCursorTooltip() {},
@@ -48,8 +50,13 @@ const existing = menu.getBookmarkContextMenuOptions({ ...site, url: 'https://alr
 assert.strictEqual(existing.label, 'Already in shortcuts');
 assert.strictEqual(existing.disabled, true, 'a site already in the shortcuts cannot be added twice');
 
-const folderValues = menu.getBookmarkContextMenuOptions({ bookmarkId: '8', title: 'Folder', isFolder: true })
-  .map((option) => option.value);
-assert.strictEqual(folderValues.includes('add-shortcut'), false, 'folders keep their own menu');
+// Folders add themselves as folder shortcuts.
+const folderOptions = menu.getBookmarkContextMenuOptions({ bookmarkId: '8', title: 'Folder', isFolder: true });
+assert.deepStrictEqual(folderOptions.map((option) => option.value), ['open-group', 'add-shortcut', 'color', 'edit', 'remove']);
+assert.strictEqual(folderOptions[1].label, 'Add to shortcuts');
+const addedFolder = menu.getBookmarkContextMenuOptions({ bookmarkId: '9', title: 'Added', isFolder: true })
+  .find((option) => option.value === 'add-shortcut');
+assert.strictEqual(addedFolder.label, 'Already in shortcuts');
+assert.strictEqual(addedFolder.disabled, true);
 
 console.log('bookmark add-to-shortcut menu tests passed');

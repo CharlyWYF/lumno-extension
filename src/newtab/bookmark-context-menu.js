@@ -16,6 +16,8 @@
       deleteBookmarkFromContextTarget,
       hasShortcutForSite,
       addSiteToShortcuts,
+      hasShortcutForBookmarkFolder,
+      addBookmarkFolderToShortcuts,
       closeShortcutContextMenu,
       closeRecentContextMenu,
       hideCursorTooltip
@@ -51,6 +53,16 @@
           value: BOOKMARK_CONTEXT_MENU_OPEN_GROUP_VALUE,
           label: t('bookmarks_open_in_new_tab_group', 'Open in new tab group'),
           disabled: getBookmarkFolderOpenCount(target) <= 0
+        });
+        // Adds the folder as a folder shortcut; the folder itself stays.
+        const isShortcut = hasShortcutForBookmarkFolder(target.bookmarkId);
+        options.push({
+          action: BOOKMARK_CONTEXT_MENU_ADD_SHORTCUT_VALUE,
+          value: BOOKMARK_CONTEXT_MENU_ADD_SHORTCUT_VALUE,
+          label: isShortcut
+            ? t('newtab_shortcuts_already_added', 'Already in shortcuts')
+            : t('recent_add_to_shortcuts', 'Add to shortcuts'),
+          disabled: isShortcut
         });
       } else if (target && !target.isFolder) {
         options.push({
@@ -171,8 +183,12 @@
         openExternalNewTabUrl(target.url, 'newTab');
         return;
       }
-      if (action === BOOKMARK_CONTEXT_MENU_ADD_SHORTCUT_VALUE && !target.isFolder) {
-        addSiteToShortcuts(getBookmarkShortcutSite(target));
+      if (action === BOOKMARK_CONTEXT_MENU_ADD_SHORTCUT_VALUE) {
+        if (target.isFolder) {
+          addBookmarkFolderToShortcuts(target.bookmarkId);
+        } else {
+          addSiteToShortcuts(getBookmarkShortcutSite(target));
+        }
         return;
       }
       if (action === BOOKMARK_CONTEXT_MENU_EDIT_VALUE) {

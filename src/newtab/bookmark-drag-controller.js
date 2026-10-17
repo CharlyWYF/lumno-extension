@@ -48,7 +48,8 @@
       renderCurrentBookmarkPage,
       applyShortcutGroupDeleteRecord,
       autoScrollShortcutArea,
-      closeBookmarkContextMenu
+      closeBookmarkContextMenu,
+      getShortcutGroups
     } = deps;
 
     // The page state object shared with newtab.js and the other modules.
@@ -662,6 +663,45 @@
         markerTopPx: anchorRect.top - gridRect.top + markerVerticalInsetPx,
         markerHeightPx: anchorRect.height - (markerVerticalInsetPx * 2)
       };
+    }
+
+    function hasShortcutForBookmarkFolder(bookmarkId) {
+      const id = String(bookmarkId || '');
+      return Boolean(id) && pageState.newtabShortcuts.some((item) => (
+        item && item.type === 'folder' && String(getShortcutFolderId(item)) === id
+      ));
+    }
+
+    // "Add to shortcuts" from a bookmark folder's context menu: the same
+    // folder shortcut a drop makes, at the end of the last group. The folder
+    // stays where it is and the step can be undone like a drop.
+    function addBookmarkFolderToShortcuts(bookmarkId) {
+      const node = bookmarksRuntime.getNode(String(bookmarkId || ''));
+      if (!node || node.url || hasShortcutForBookmarkFolder(node.id)) {
+        return Promise.resolve(false);
+      }
+      const record = NEWTAB_SHORTCUTS_STORE.createShortcutRecord(
+        { type: 'folder', folderId: node.id, title: node.title },
+        getShortcutStoreOptions()
+      );
+      if (!record) {
+        return Promise.resolve(false);
+      }
+      if (pageState.newtabShortcuts.length >= MAX_NEWTAB_SHORTCUTS) {
+        showToast(formatMessage(
+          'newtab_shortcuts_limit_reached',
+          'You can add up to {count} shortcuts.',
+          { count: MAX_NEWTAB_SHORTCUTS }
+        ), true);
+        return Promise.resolve(false);
+      }
+      const groups = typeof getShortcutGroups === 'function' ? getShortcutGroups() : [];
+      const lastGroup = groups.length ? groups[groups.length - 1] : null;
+      return moveBookmarkToShortcuts({ bookmarkId: node.id }, {
+        record,
+        index: pageState.newtabShortcuts.length,
+        groupId: lastGroup ? lastGroup.id : ''
+      });
     }
 
     function moveBookmarkToShortcuts(state, target) {
@@ -2310,6 +2350,8 @@
       scheduleBookmarkDragPageSwitch,
       scheduleBookmarkDragMove,
       deleteBookmarkFromContextTarget,
+      addBookmarkFolderToShortcuts,
+      hasShortcutForBookmarkFolder,
       getBookmarkUndoShortcutLabel,
       refreshOpenBookmarkCascadeMenu,
       syncOpenBookmarkCascadeAnchorVisual,
