@@ -36,13 +36,13 @@ body:not([data-nt-ready="1"]) .x-nt-quote {
   visibility: hidden;
 }
 body[data-nt-ready="1"][data-nt-enter] .x-nt-quote {
-  animation: _x_nt_quote_entry_2026_unique_ var(--lumno-duration-2xl) cubic-bezier(0.16, 1, 0.3, 1)
+  animation: _x_nt_quote_entry_2026_unique_ var(--lumno-duration-sm) cubic-bezier(0.16, 1, 0.3, 1)
     var(--x-nt-quote-enter-delay, 0ms) backwards;
 }
-body[data-nt-enter="run"] .x-nt-quote[data-position="top"] { --x-nt-quote-enter-delay: 40ms; }
-body[data-nt-enter="run"] .x-nt-quote[data-position="input"] { --x-nt-quote-enter-delay: 60ms; }
-body[data-nt-enter="run"] .x-nt-quote[data-position="search"] { --x-nt-quote-enter-delay: 180ms; }
-body[data-nt-enter="run"] .x-nt-quote[data-position="bottom"] { --x-nt-quote-enter-delay: 200ms; }
+body[data-nt-enter="run"] .x-nt-quote[data-position="top"] { --x-nt-quote-enter-delay: 20ms; }
+body[data-nt-enter="run"] .x-nt-quote[data-position="input"] { --x-nt-quote-enter-delay: 30ms; }
+body[data-nt-enter="run"] .x-nt-quote[data-position="search"] { --x-nt-quote-enter-delay: 80ms; }
+body[data-nt-enter="run"] .x-nt-quote[data-position="bottom"] { --x-nt-quote-enter-delay: 90ms; }
 @keyframes _x_nt_quote_entry_2026_unique_ {
   0% {
     opacity: 0;

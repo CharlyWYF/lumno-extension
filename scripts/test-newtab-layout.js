@@ -1029,7 +1029,7 @@ function testInitialEntryMotionIsStaggeredAndTransient() {
   );
   assert.match(
     newtabHtml,
-    /body\[data-nt-enter="run"\]\[data-nt-ready="1"\] \.x-nt-bookmarks-topbar\[data-visible="true"\]\s*\{\s*animation:\s*_x_nt_topbar_entry_2026_unique_ 280ms cubic-bezier\(0\.16, 1, 0\.3, 1\) both;[\s\S]*?@keyframes _x_nt_topbar_entry_2026_unique_\s*\{\s*0%\s*\{\s*clip-path:\s*inset\(0 0 100% 0\);\s*animation-timing-function:\s*cubic-bezier\(0\.33, 1, 0\.68, 1\);\s*\}\s*85%\s*\{\s*clip-path:\s*inset\(0 0 0 0\);[\s\S]*?100%\s*\{\s*clip-path:\s*inset\(0 0 -32px 0\);/,
+    /body\[data-nt-enter="run"\]\[data-nt-ready="1"\] \.x-nt-bookmarks-topbar\[data-visible="true"\]\s*\{\s*animation:\s*_x_nt_topbar_entry_2026_unique_ 220ms cubic-bezier\(0\.16, 1, 0\.3, 1\) both;[\s\S]*?@keyframes _x_nt_topbar_entry_2026_unique_\s*\{\s*0%\s*\{\s*clip-path:\s*inset\(0 0 100% 0\);\s*animation-timing-function:\s*cubic-bezier\(0\.33, 1, 0\.68, 1\);\s*\}\s*85%\s*\{\s*clip-path:\s*inset\(0 0 0 0\);[\s\S]*?100%\s*\{\s*clip-path:\s*inset\(0 0 -32px 0\);/,
     'the docked bookmarks top bar should unroll from the top edge without moving off its final position'
   );
   assert.match(
@@ -1138,15 +1138,15 @@ function testInitialEntryMotionIsStaggeredAndTransient() {
   );
   assert.match(
     newtabHtml,
-    /body\[data-nt-enter="run"\] \.x-nt-shortcuts-section\[data-visible="true"\] \.x-nt-shortcut-tile\s*\{[\s\S]*?calc\(80ms \+ \(var\(--x-nt-shortcut-enter-index\) \* 18ms\)\) both;/,
-    'shortcut tiles should enter with a tight 18ms stagger'
+    /body\[data-nt-enter="run"\] \.x-nt-shortcuts-section\[data-visible="true"\] \.x-nt-shortcut-tile\s*\{[\s\S]*?calc\(20ms \+ \(var\(--x-nt-shortcut-enter-index\) \* 10ms\)\) both;/,
+    'shortcut tiles should enter with a tight 10ms stagger'
   );
   assert.match(
     newtabHtml,
-    /#_x_extension_newtab_bookmarks_2024_unique_\[data-visible="true"\],\s*body\[data-nt-enter="run"\] #_x_extension_newtab_recent_sites_2024_unique_\[data-visible="true"\]\s*\{[\s\S]*?80ms both;/,
+    /#_x_extension_newtab_bookmarks_2024_unique_\[data-visible="true"\],\s*body\[data-nt-enter="run"\] #_x_extension_newtab_recent_sites_2024_unique_\[data-visible="true"\]\s*\{[\s\S]*?40ms both;/,
     'bottom content sections should enter together with the shortcut sequence'
   );
-  ['const NEWTAB_ENTRY_ANIMATION_TOTAL_MS = 460;', 'const WORDMARK_ENTRY_ANIMATION_TOTAL_MS = 380;'].forEach((budget) => {
+  ['const NEWTAB_ENTRY_ANIMATION_TOTAL_MS = 260;', 'const WORDMARK_ENTRY_ANIMATION_TOTAL_MS = 260;'].forEach((budget) => {
     assert.ok(
       newtabSource.includes(budget),
       'the initial entrance choreography should complete within a compact motion budget'

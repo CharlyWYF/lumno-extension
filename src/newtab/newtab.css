@@ -720,6 +720,9 @@ body ._x_extension_tooltip_2026_unique_._x_extension_cursor_tooltip_tag_2026_uni
   transform: none;
 }
 #_x_extension_newtab_root_2024_unique_ {
+  /* The search box leads the New Tab entry on the first frame after the reveal. */
+  --x-lumno-search-entry-duration: var(--lumno-duration-sm);
+  --x-lumno-search-entry-delay: 0ms;
   width: 90vw;
   max-width: var(--x-nt-search-max-width, 720px);
   display: flex;
@@ -1460,7 +1463,7 @@ body[data-glass-style] .x-nt-shortcut-context-menu-portal[data-glass-ink-theme="
   }
 }
 body[data-nt-ready="1"] #_x_extension_newtab_wordmark_2026_unique_[data-enter="run"] > .x-nt-wordmark-content {
-  animation: _x_nt_wordmark_enter_2026_unique_ 300ms cubic-bezier(0.16, 1, 0.3, 1) 20ms both;
+  animation: _x_nt_wordmark_enter_2026_unique_ 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
   will-change: transform, opacity, filter;
 }
 body[data-nt-ready="1"] #_x_extension_newtab_wordmark_2026_unique_[data-enter="done"] > .x-nt-wordmark-content {
@@ -1724,8 +1727,8 @@ body:not([data-nt-ready="1"]) #_x_extension_newtab_bottom_dock_2024_unique_ {
 }
 body[data-nt-enter="run"] .x-nt-shortcuts-section[data-visible="true"] .x-nt-shortcut-tile {
   --x-nt-shortcut-enter-index: 0;
-  animation: _x_nt_shortcut_entry_2026_unique_ var(--lumno-duration-xl) cubic-bezier(0.16, 1, 0.3, 1)
-    calc(80ms + (var(--x-nt-shortcut-enter-index) * 18ms)) both;
+  animation: _x_nt_shortcut_entry_2026_unique_ var(--lumno-duration-sm) cubic-bezier(0.16, 1, 0.3, 1)
+    calc(20ms + (var(--x-nt-shortcut-enter-index) * 10ms)) both;
 }
 body[data-nt-enter="run"] .x-nt-shortcut-tile:nth-child(2) {
   --x-nt-shortcut-enter-index: 1;
@@ -1750,12 +1753,12 @@ body[data-nt-enter="run"] .x-nt-shortcut-tile:nth-child(n + 8) {
 }
 body[data-nt-enter="run"] #_x_extension_newtab_bookmarks_2024_unique_[data-visible="true"],
 body[data-nt-enter="run"] #_x_extension_newtab_recent_sites_2024_unique_[data-visible="true"] {
-  animation: _x_nt_content_section_entry_2026_unique_ var(--lumno-duration-2xl) cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+  animation: _x_nt_content_section_entry_2026_unique_ var(--lumno-duration-sm) cubic-bezier(0.16, 1, 0.3, 1) 40ms both;
 }
 body[data-nt-enter="run"] .x-nt-wallpaper-control,
 body[data-nt-enter="run"] .x-nt-feedback-control,
 body[data-nt-enter="run"] .x-nt-bookmark-cascade-debug-control {
-  animation: _x_nt_corner_control_entry_2026_unique_ var(--lumno-duration-lg) cubic-bezier(0.16, 1, 0.3, 1) 230ms both;
+  animation: _x_nt_corner_control_entry_2026_unique_ var(--lumno-duration-sm) cubic-bezier(0.16, 1, 0.3, 1) 90ms both;
 }
 @keyframes _x_nt_shortcut_entry_2026_unique_ {
   0% {
@@ -1769,7 +1772,7 @@ body[data-nt-enter="run"] .x-nt-bookmark-cascade-debug-control {
 }
 @keyframes _x_nt_content_section_entry_2026_unique_ {
   /* Starts just above 0: Chrome does not count content painted at opacity 0 for LCP until the
-     entry animation is torn down (~460ms later), so a 0 start made the dock look slow in metrics. */
+     entry animation is torn down (~260ms later), so a 0 start made the dock look slow in metrics. */
   0% {
     opacity: 0.01;
   }
@@ -2753,21 +2756,21 @@ body[data-glass-style] .x-nt-bookmarks-topbar[data-surface-mode="clear"][data-gl
 }
 /* The docked bar unrolls downward from the browser's top edge; the floating bar settles in from a
    slightly smaller size anchored at its top. Neither moves off its final position, and its bookmarks
-   fade in a beat later. Everything finishes inside the page's 460ms entry window. */
+   fade in a beat later. Everything finishes inside the page's 260ms entry window. */
 body[data-nt-enter="run"][data-nt-ready="1"] .x-nt-bookmarks-topbar[data-visible="true"] {
-  animation: _x_nt_topbar_entry_2026_unique_ var(--lumno-duration-3xl) cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: _x_nt_topbar_entry_2026_unique_ var(--lumno-duration-xl) cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 body[data-nt-enter="run"][data-nt-ready="1"]
   .x-nt-bookmarks-topbar[data-visible="true"][data-layout="floating"] {
   animation-name: _x_nt_topbar_floating_entry_2026_unique_;
-  animation-duration: 320ms;
+  animation-duration: 240ms;
   transform-origin: 50% 0;
 }
 body[data-nt-enter="run"][data-nt-ready="1"]
   .x-nt-bookmarks-topbar[data-visible="true"] > .x-nt-bookmarks-topbar-viewport,
 body[data-nt-enter="run"][data-nt-ready="1"]
   .x-nt-bookmarks-topbar[data-visible="true"] > .x-nt-bookmarks-topbar-actions {
-  animation: _x_nt_topbar_content_entry_2026_unique_ var(--lumno-duration-2xl) cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+  animation: _x_nt_topbar_content_entry_2026_unique_ var(--lumno-duration-sm) cubic-bezier(0.16, 1, 0.3, 1) 60ms both;
 }
 /* The bar's own 36px gets most of the time on a gentle ease-out so the edge is seen travelling;
    only then does the clip open past the bottom for the drop shadow. Sweeping straight to -32px

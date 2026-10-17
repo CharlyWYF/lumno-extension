@@ -16,7 +16,7 @@
     const pageState = deps.pageState;
 
     const NEWTAB_INITIAL_VIEWPORT_SETTLE_MS = 32;
-    const NEWTAB_ENTRY_ANIMATION_TOTAL_MS = 460;
+    const NEWTAB_ENTRY_ANIMATION_TOTAL_MS = 260;
     // Compared at reveal time: a viewport that never changed while the page loaded has settled.
     const startupViewport = getSearchEntryViewportSnapshot();
     let newtabReadySettleTimer = 0;

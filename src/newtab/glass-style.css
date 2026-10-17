@@ -7,7 +7,7 @@
      and a dark forest; the edge is lit from inside.
    - liquid: clear glass. A light blur, a vivid backdrop, an even tint and a bright specular rim;
      where Chromium draws SVG backdrop filters, each plate's rim also bends the wallpaper inward
-     and fringes it into its colors (--x-nt-glass-refraction, set per plate by newtab.js through
+     and, on the search bar and its results, fringes it into its colors (--x-nt-glass-refraction, set per plate by newtab.js through
      createLiquidSurfaces; small controls go without). The lens comes last, after the blur and every
      color step, so the color steps fold into one pass and the bend and fringe stay crisp.
    Neither uses website colors. */
@@ -728,18 +728,18 @@ body[data-glass-style][data-nt-enter="run"] :is(
   .x-nt-recent-heading,
   .x-nt-recent-mode-switch
 ) {
-  animation: _x_nt_content_section_entry_2026_unique_ var(--lumno-duration-2xl) cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+  animation: _x_nt_content_section_entry_2026_unique_ var(--lumno-duration-sm) cubic-bezier(0.16, 1, 0.3, 1) 40ms both;
 }
 body[data-glass-style][data-nt-enter="run"] .x-nt-shortcuts-section[data-visible="true"] .x-nt-shortcut-icon {
-  animation: _x_nt_shortcut_entry_2026_unique_ var(--lumno-duration-xl) cubic-bezier(0.16, 1, 0.3, 1)
-    calc(80ms + (var(--x-nt-shortcut-enter-index) * 18ms)) both;
+  animation: _x_nt_shortcut_entry_2026_unique_ var(--lumno-duration-sm) cubic-bezier(0.16, 1, 0.3, 1)
+    calc(20ms + (var(--x-nt-shortcut-enter-index) * 10ms)) both;
 }
 body[data-glass-style][data-nt-enter="run"] :is(
   .x-nt-wallpaper-button,
   .x-nt-feedback-button,
   .x-nt-bookmark-cascade-debug-button
 ) {
-  animation: _x_nt_corner_control_entry_2026_unique_ var(--lumno-duration-lg) cubic-bezier(0.16, 1, 0.3, 1) 230ms both;
+  animation: _x_nt_corner_control_entry_2026_unique_ var(--lumno-duration-sm) cubic-bezier(0.16, 1, 0.3, 1) 90ms both;
 }
 @media (prefers-reduced-motion: reduce) {
   body[data-glass-style][data-nt-enter] :is(

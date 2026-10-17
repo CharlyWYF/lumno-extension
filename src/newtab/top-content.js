@@ -24,7 +24,7 @@
     const topContentLayoutAnimations = new Set();
     const recentResizeLayoutAnimations = new Set();
     let wordmarkEntryTransitionTimer = 0;
-    const WORDMARK_ENTRY_ANIMATION_TOTAL_MS = 380;
+    const WORDMARK_ENTRY_ANIMATION_TOTAL_MS = 260;
     const WORDMARK_WALLPAPER_COVER_DARK_OPACITY = '0.32';
     const WORDMARK_WALLPAPER_COVER_LIGHT_OPACITY = '0.32';
     const WORDMARK_WALLPAPER_SOLID_OPACITY = '0.6';
