@@ -448,6 +448,10 @@
   overflow-y: scroll !important;
   scrollbar-gutter: stable;
   padding-inline-end: 16px !important;
+  /* The scroll box starts below the panel's top corner, so the scrollbar's top end clears the curve
+     that clips it. The tiles keep their 16px inset: 12px of margin plus 4px of padding. */
+  margin-block-start: 12px !important;
+  padding-block-start: 4px !important;
 }
 
 /* The thin bar uses the standard properties rather than ::-webkit-scrollbar. Chrome paints a
