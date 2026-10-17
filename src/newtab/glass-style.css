@@ -5,9 +5,10 @@
    - frosted: the pre-Liquid Glass system material. The backdrop is blurred hard, saturated and
      pulled toward a mid tone (contrast + brightness), so a plate reads the same over a bright sky
      and a dark forest; the edge is lit from inside.
-   - liquid: clear glass. A light blur, a vivid backdrop and a bright specular rim; where Chromium
-     draws SVG backdrop filters, each surface's rim also bends the wallpaper inward
-     (--x-nt-glass-refraction, set per surface by newtab.js through createLiquidSurfaces).
+   - liquid: clear glass. A light blur, a vivid backdrop, an even tint and a bright specular rim;
+     where Chromium draws SVG backdrop filters, each surface's rim also bends the wallpaper inward
+     and fringes it into its colors (--x-nt-glass-refraction, set per surface by newtab.js through
+     createLiquidSurfaces). The blur comes first, so the bend and the fringe stay crisp.
    Neither uses website colors. */
 body[data-glass-style="frosted"] {
   --x-nt-glass-tint-rgb: 255 255 255;
@@ -46,8 +47,9 @@ body[data-glass-style="frosted"][data-theme="dark"] {
 body[data-glass-style="liquid"] {
   --x-nt-glass-tint-rgb: 255 255 255;
   --x-nt-glass-tint-thin: 0.24;
-  --x-nt-glass-tint-dense: 0.62;
-  --x-nt-glass-sheen: rgba(255, 255, 255, 0.26);
+  --x-nt-glass-tint-dense: 0.54;
+  /* Liquid glass is lit at its rim, not washed from the top. */
+  --x-nt-glass-sheen: transparent;
   /* Floating layers hide what lies behind with blur, not tint, so they stay clear glass. */
   --x-nt-glass-float-rgb: 250 250 252;
   --x-nt-glass-float-thin: 0.22;
@@ -68,8 +70,8 @@ body[data-glass-style="liquid"] {
 body[data-glass-style="liquid"][data-theme="dark"] {
   --x-nt-glass-tint-rgb: 30 30 34;
   --x-nt-glass-tint-thin: 0.28;
-  --x-nt-glass-tint-dense: 0.64;
-  --x-nt-glass-sheen: rgba(255, 255, 255, 0.07);
+  --x-nt-glass-tint-dense: 0.56;
+  --x-nt-glass-sheen: transparent;
   --x-nt-glass-float-rgb: 30 30 34;
   --x-nt-glass-float-thin: 0.24;
   --x-nt-glass-float-dense: 0.48;
@@ -100,13 +102,13 @@ body[data-glass-style="frosted"][data-nt-ready="1"][data-theme="dark"] {
   --x-nt-glass-float-filter: var(--x-nt-glass-filter);
 }
 body[data-glass-style="liquid"][data-nt-ready="1"] {
-  --x-nt-glass-filter: blur(3px) saturate(165%) contrast(0.78) brightness(1.08);
+  --x-nt-glass-filter: blur(2px) saturate(165%) contrast(0.78) brightness(1.08);
   /* Floating layers carry lists of text: clear glass, but blurred enough that the scene behind
      cannot compete with it. */
   --x-nt-glass-float-filter: blur(30px) saturate(180%) contrast(0.82) brightness(1.06);
 }
 body[data-glass-style="liquid"][data-nt-ready="1"][data-theme="dark"] {
-  --x-nt-glass-filter: blur(3px) saturate(150%) contrast(0.78) brightness(0.8);
+  --x-nt-glass-filter: blur(2px) saturate(150%) contrast(0.78) brightness(0.8);
   --x-nt-glass-float-filter: blur(30px) saturate(170%) contrast(0.82) brightness(0.82);
 }
 /* Tint density adapts per plate: newtab.js samples the wallpaper under each one and sets
@@ -173,8 +175,8 @@ body[data-glass-style]:not([data-nt-suggestions-open="true"])
   background: var(--x-nt-glass-fill);
   border-color: transparent;
   box-shadow: var(--x-nt-glass-edge);
-  backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
-  -webkit-backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  backdrop-filter: var(--x-nt-glass-filter) var(--x-nt-glass-refraction,) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  -webkit-backdrop-filter: var(--x-nt-glass-filter) var(--x-nt-glass-refraction,) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
 }
 body[data-glass-style]:not([data-nt-suggestions-open="true"])
   #_x_extension_newtab_root_2024_unique_:focus-within {
@@ -210,8 +212,8 @@ body[data-glass-style] .x-nt-wallpaper-panel {
 body[data-glass-style][data-nt-suggestions-open="true"] #_x_extension_newtab_suggestions_surface_2026_unique_,
 body[data-glass-style] ._x_extension_menu_surface_2024_unique_,
 body[data-glass-style] .x-nt-wallpaper-panel[data-open="true"] {
-  backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-float-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
-  -webkit-backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-float-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  backdrop-filter: var(--x-nt-glass-float-filter) var(--x-nt-glass-refraction,) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  -webkit-backdrop-filter: var(--x-nt-glass-float-filter) var(--x-nt-glass-refraction,) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
 }
 body[data-glass-style] #_x_extension_newtab_suggestions_outline_2026_unique_ {
   border-color: transparent;
@@ -439,10 +441,11 @@ body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(
   ):not([data-glass-ink]):not(.x-nt-bookmarks-topbar *)
 ) {
   --x-nt-glass-tint-thin: 0.22;
-  --x-nt-glass-tint-dense: 0.56;
+  --x-nt-glass-tint-dense: 0.5;
   --x-nt-glass-float-thin: 0.2;
   --x-nt-glass-float-dense: 0.44;
   --x-nt-glass-backdrop-brightness: 0.78;
+  --x-nt-glass-sheen: transparent;
   --x-nt-glass-edge:
     inset 0.5px 0.75px 0 rgba(255, 255, 255, 0.34),
     inset -0.5px -0.5px 0 rgba(255, 255, 255, 0.12),
@@ -482,8 +485,8 @@ body[data-glass-style] :is(.x-nt-recent-url-text, .x-nt-recent-action) {
 body[data-glass-style] .x-nt-bookmark-card:not(.x-nt-bookmarks-topbar .x-nt-bookmark-card):not(.x-nt-bookmark-card-drag-preview) {
   background: var(--x-nt-glass-fill);
   box-shadow: var(--x-nt-glass-edge);
-  backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
-  -webkit-backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  backdrop-filter: var(--x-nt-glass-filter) var(--x-nt-glass-refraction,) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  -webkit-backdrop-filter: var(--x-nt-glass-filter) var(--x-nt-glass-refraction,) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
 }
 body[data-glass-style] .x-nt-bookmark-card:not(.x-nt-bookmarks-topbar .x-nt-bookmark-card):not([data-bookmark-drop-target="true"]):not([data-bookmark-context-menu-open="true"]) {
   border-color: transparent;
@@ -508,8 +511,8 @@ body[data-glass-style] .x-nt-recent-card[data-recent-context-menu-open="true"] .
   background: var(--x-nt-glass-fill);
   border-color: transparent;
   box-shadow: var(--x-nt-glass-edge);
-  backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
-  -webkit-backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  backdrop-filter: var(--x-nt-glass-filter) var(--x-nt-glass-refraction,) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  -webkit-backdrop-filter: var(--x-nt-glass-filter) var(--x-nt-glass-refraction,) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
 }
 body[data-glass-style] .x-nt-recent-inner {
   background: none;
@@ -544,8 +547,8 @@ body[data-glass-style][data-theme="dark"] .x-nt-recent-inner::before {
 body[data-glass-style] .x-nt-shortcut-icon {
   background: var(--x-nt-glass-fill);
   box-shadow: var(--x-nt-glass-edge);
-  backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
-  -webkit-backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  backdrop-filter: var(--x-nt-glass-filter) var(--x-nt-glass-refraction,) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  -webkit-backdrop-filter: var(--x-nt-glass-filter) var(--x-nt-glass-refraction,) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
   color: var(--x-nt-text);
 }
 body[data-glass-style] .x-nt-shortcut-favicon-mask {
@@ -569,8 +572,8 @@ body[data-glass-style][data-nt-ready="1"] :is(
   background: var(--x-nt-glass-fill);
   border-color: transparent;
   box-shadow: var(--x-nt-glass-edge);
-  backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
-  -webkit-backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  backdrop-filter: var(--x-nt-glass-filter) var(--x-nt-glass-refraction,) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  -webkit-backdrop-filter: var(--x-nt-glass-filter) var(--x-nt-glass-refraction,) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
   color: var(--x-nt-text);
   filter: none;
   text-shadow: none;

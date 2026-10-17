@@ -1,12 +1,17 @@
 // Liquid glass: the wallpaper behind a surface's rim bends inward the way a thick glass edge
-// refracts. An SVG displacement map sized to the surface drives the bend through
-// `backdrop-filter: url(#…)`, which only Chromium renders; other browsers keep the CSS-only glass.
+// refracts, and splits slightly into its colors there. An SVG displacement map sized to the surface
+// drives the bend through `backdrop-filter: url(#…)`, which only Chromium renders; other browsers
+// keep the CSS-only glass.
 // The bookmarks bar drives one surface; New Tab's glass style drives many through
 // createLiquidSurfaces.
 
 const BEZEL_PX = 16;
-// feDisplacementMap moves a pixel by up to half the scale, so the rim samples up to 24px inward.
+// feDisplacementMap moves a pixel by up to half the scale, so the rim samples up to 24px inward:
+// one and a half rims, so the outer edge shows the scene from past the rim, flipped and squeezed.
 export const LIQUID_GLASS_DISPLACEMENT_SCALE = 48;
+// Blue bends further than red: each channel samples the backdrop at its own share of the bend, so
+// the rim fringes where the wallpaper has edges. Nothing splits in the flat middle.
+export const LIQUID_GLASS_DISPERSION = 0.14;
 const FLOATING_RADIUS_PX = 14;
 
 export type LiquidGlassShape = 'docked' | 'floating';
@@ -79,9 +84,37 @@ export function getRimDisplacement(
   ];
 }
 
+// The rim is the curved shoulder of a glass slab: a convex superellipse that is steep at the edge
+// and flattens into the middle. A ray looking straight down refracts through it (Snell, n = 1.5);
+// the sideways shift it picks up, scaled so the edge is 1, is the bend at that point.
+const REFRACTIVE_INDEX = 1.5;
+
+// Height of the shoulder is (1 - u³)^⅓ with u the remaining way to the flat middle; this is its slope.
+function rimShift(progressFromRim: number) {
+  const u = 1 - Math.max(1e-3, progressFromRim);
+  const normal = Math.atan((u * u) / Math.cbrt(Math.pow(1 - u * u * u, 2)));
+  return Math.tan(normal - Math.asin(Math.sin(normal) / REFRACTIVE_INDEX));
+}
+
+const RIM_EDGE_SHIFT = rimShift(0);
+
 function rimStrength(progressFromRim: number) {
-  const t = 1 - Math.min(1, Math.max(0, progressFromRim));
-  return Math.pow(t, 1.5);
+  return progressFromRim >= 1 ? 0 : rimShift(progressFromRim) / RIM_EDGE_SHIFT;
+}
+
+// The filter body: the backdrop is displaced once per color channel, each by its own scale, and the
+// three channels are added back together (screen on single channels is a sum).
+export function buildRefractionFilter(id: string, width: number, height: number, scale: number) {
+  const box = `x="0" y="0" width="${width}" height="${height}"`;
+  const channels = 'rgb'.split('').map((name, index) =>
+    `<feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" ` +
+    `scale="${(scale * (1 + (index - 1) * LIQUID_GLASS_DISPERSION)).toFixed(1)}"/>` +
+    // Keeps this channel and alpha only: a 1 on the diagonal of the 4x5 color matrix.
+    `<feColorMatrix type="matrix" values="${Array.from({ length: 20 }, (_, cell) =>
+      Number(cell === index * 6 || cell === 18)).join(' ')}" result="${name}"/>`);
+  return `<filter id="${id}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB" ${box}>` +
+    `<feImage ${box} preserveAspectRatio="none" result="map"/>${channels.join('')}` +
+    '<feBlend in="r" in2="g" mode="screen"/><feBlend in2="b" mode="screen"/></filter>';
 }
 
 export function buildDisplacementMap(
@@ -213,11 +246,7 @@ export function createLiquidGlass(options: {
         const filterId = `${filterIdPrefix}_${token}_2026_unique_`;
         ensureSvg().insertAdjacentHTML(
           'beforeend',
-          `<filter id="${filterId}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB" ` +
-            `x="0" y="0" width="${width}" height="${height}">` +
-            `<feImage x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none" result="map"/>` +
-            `<feDisplacementMap in="SourceGraphic" in2="map" scale="${LIQUID_GLASS_DISPLACEMENT_SCALE}" ` +
-            'xChannelSelector="R" yChannelSelector="G"/></filter>'
+          buildRefractionFilter(filterId, width, height, LIQUID_GLASS_DISPLACEMENT_SCALE)
         );
         const filter = svg?.lastElementChild || null;
         filter?.querySelector('feImage')?.setAttribute('href', map);
@@ -274,18 +303,18 @@ export function createLiquidGlass(options: {
   };
 }
 
-// New Tab's glass surfaces are thicker than the bookmarks bar: a wider rim that bends further.
-const SURFACE_BEZEL_PX = 24;
-const SURFACE_BEND_BOOST = 1.6;
+// New Tab's glass surfaces are thicker than the bookmarks bar: a wider rim, so the bend reaches far
+// enough in to read on a calm wallpaper.
+const SURFACE_BEZEL_PX = 30;
 
 // Rim width for a surface of this size, narrowed so small controls keep a flat middle.
 export function getSurfaceBezel(width: number, height: number) {
-  return Math.max(4, Math.min(SURFACE_BEZEL_PX, Math.min(width, height) / 2.4));
+  return Math.max(4, Math.min(SURFACE_BEZEL_PX, Math.min(width, height) / 2.2));
 }
 
-// How far the rim moves the backdrop: the bar's bend per pixel of rim, boosted.
+// How far the rim moves the backdrop: the bar's bend per pixel of rim.
 export function getSurfaceDisplacementScale(bezel: number) {
-  return Math.round((LIQUID_GLASS_DISPLACEMENT_SCALE * bezel * SURFACE_BEND_BOOST) / BEZEL_PX);
+  return Math.round((LIQUID_GLASS_DISPLACEMENT_SCALE * bezel) / BEZEL_PX);
 }
 
 function readCornerRadius(element: HTMLElement, windowObj: Window, width: number, height: number) {
@@ -357,14 +386,7 @@ export function createLiquidSurfaces(options: {
       // Scale with the rim so a small control bends as far, relative to its size, as a card.
       const scale = getSurfaceDisplacementScale(bezel);
       const host = createFilterHost();
-      host.insertAdjacentHTML(
-        'beforeend',
-        `<filter id="${filterId}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB" ` +
-          `x="0" y="0" width="${width}" height="${height}">` +
-          `<feImage x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none" result="map"/>` +
-          `<feDisplacementMap in="SourceGraphic" in2="map" scale="${scale}" ` +
-          'xChannelSelector="R" yChannelSelector="G"/></filter>'
-      );
+      host.insertAdjacentHTML('beforeend', buildRefractionFilter(filterId, width, height, scale));
       host.querySelector('feImage')?.setAttribute('href', map);
       // One frame for the filter to take its decoded map before any surface points at it.
       windowObj.requestAnimationFrame(() => {

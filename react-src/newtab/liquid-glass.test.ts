@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  buildRefractionFilter,
   createLiquidSurfaces,
   getRimDisplacement,
   getSurfaceBezel,
@@ -26,33 +27,55 @@ describe('New Tab bookmarks bar liquid glass', () => {
     expect(getRimDisplacement(400, 18, 800, 36, 'docked')).toEqual([0, 0]);
     const [dx, dy] = getRimDisplacement(400, 35.5, 800, 36, 'docked');
     expect(dx).toBe(0);
-    expect(dy).toBeLessThan(-0.8);
+    expect(dy).toBeLessThan(-0.6);
     expect(getRimDisplacement(400, 30, 800, 36, 'docked')[1]).toBeGreaterThan(dy);
   });
 
   it('bends every floating rim toward the middle and leaves the middle flat', () => {
     expect(getRimDisplacement(400, 18, 800, 36, 'floating')).toEqual([0, 0]);
-    expect(getRimDisplacement(400, 0.5, 800, 36, 'floating')[1]).toBeGreaterThan(0.8);
-    expect(getRimDisplacement(400, 35.5, 800, 36, 'floating')[1]).toBeLessThan(-0.8);
-    expect(getRimDisplacement(0.5, 18, 800, 36, 'floating')[0]).toBeGreaterThan(0.8);
-    expect(getRimDisplacement(799.5, 18, 800, 36, 'floating')[0]).toBeLessThan(-0.8);
+    expect(getRimDisplacement(400, 0.5, 800, 36, 'floating')[1]).toBeGreaterThan(0.6);
+    expect(getRimDisplacement(400, 35.5, 800, 36, 'floating')[1]).toBeLessThan(-0.6);
+    expect(getRimDisplacement(0.5, 18, 800, 36, 'floating')[0]).toBeGreaterThan(0.6);
+    expect(getRimDisplacement(799.5, 18, 800, 36, 'floating')[0]).toBeLessThan(-0.6);
     const [cornerX, cornerY] = getRimDisplacement(2, 2, 800, 36, 'floating');
     expect(cornerX).toBeGreaterThan(0);
     expect(cornerY).toBeGreaterThan(0);
   });
 
   it('fits the rim to any surface size and corner radius', () => {
-    expect(getSurfaceBezel(800, 72)).toBe(24);
-    expect(getSurfaceBezel(36, 36)).toBe(15);
+    expect(getSurfaceBezel(800, 72)).toBe(30);
+    expect(getSurfaceBezel(44, 44)).toBe(20);
     expect(getSurfaceBezel(8, 8)).toBe(4);
-    // Cards bend further per pixel of rim than the bookmarks bar's 48 over 16px.
-    expect(getSurfaceDisplacementScale(16)).toBeGreaterThan(48);
+    // Every surface bends as far per pixel of rim as the bookmarks bar's 48 over 16px.
+    expect(getSurfaceDisplacementScale(16)).toBe(48);
+    expect(getSurfaceDisplacementScale(30)).toBe(90);
     // A rounder corner pushes the rim's bend off the straight edge near the corner.
     const sharp = getRimDisplacement(4, 2, 48, 48, 'floating', { radius: 4, bezel: 16 });
     const round = getRimDisplacement(4, 2, 48, 48, 'floating', { radius: 16, bezel: 16 });
     expect(sharp[0]).toBe(0);
     expect(round[0]).toBeGreaterThan(0);
     expect(getRimDisplacement(24, 24, 48, 48, 'floating', { radius: 16, bezel: 16 })).toEqual([0, 0]);
+  });
+
+  it('bends hardest at the edge and eases into the flat middle', () => {
+    const at = (y: number) => getRimDisplacement(400, y, 800, 72, 'floating', { bezel: 30, radius: 36 })[1];
+    expect(at(0.5)).toBeGreaterThan(0.75);
+    expect(at(8)).toBeGreaterThan(0.2);
+    expect(at(8)).toBeLessThan(at(0.5));
+    expect(at(20)).toBeLessThan(at(8));
+    expect(at(20)).toBeGreaterThanOrEqual(0);
+  });
+
+  it('splits the bend into color channels, blue bending furthest', () => {
+    const markup = buildRefractionFilter('lens', 120, 40, 90);
+    const scales = Array.from(markup.matchAll(/feDisplacementMap[^>]*scale="([\d.]+)"/g), (match) => Number(match[1]));
+    expect(scales).toHaveLength(3);
+    expect(scales[0]).toBeLessThan(90);
+    expect(scales[1]).toBe(90);
+    expect(markup).toContain('values="0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0"');
+    expect(scales[2]).toBeGreaterThan(90);
+    expect(markup).toContain('id="lens"');
+    expect(markup.match(/<feBlend/g)).toHaveLength(2);
   });
 
   describe('surfaces', () => {

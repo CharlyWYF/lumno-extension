@@ -2724,13 +2724,13 @@ body[data-glass-style] .x-nt-bookmarks-topbar[data-surface-mode="clear"][data-gl
 }
 .x-nt-bookmarks-topbar[data-surface-mode="clear"][data-liquid-glass="true"] {
   backdrop-filter:
-    var(--x-nt-bookmarks-topbar-liquid-filter)
     blur(2px)
+    var(--x-nt-bookmarks-topbar-liquid-filter)
     saturate(var(--x-nt-bookmarks-topbar-saturate))
     var(--x-nt-bookmarks-topbar-liquid-tone);
   -webkit-backdrop-filter:
-    var(--x-nt-bookmarks-topbar-liquid-filter)
     blur(2px)
+    var(--x-nt-bookmarks-topbar-liquid-filter)
     saturate(var(--x-nt-bookmarks-topbar-saturate))
     var(--x-nt-bookmarks-topbar-liquid-tone);
 }
