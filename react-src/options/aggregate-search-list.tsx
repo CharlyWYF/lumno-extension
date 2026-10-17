@@ -9,6 +9,7 @@ import {
   useExclusiveAsyncAction
 } from '../shared/use-exclusive-async-action';
 import { BusyLabel } from '../shared/busy-label';
+import { ReorderButtons, type ReorderCopyModel } from './reorder-buttons';
 
 export interface AggregateSearchProviderOptionModel {
   available: boolean;
@@ -55,6 +56,7 @@ export interface AggregateSearchCopyModel {
 export interface AggregateSearchListRenderModel {
   copy: AggregateSearchCopyModel;
   items: AggregateSearchItemModel[];
+  reorder?: ReorderCopyModel;
   maxKeyLength: number;
   maxNameLength: number;
   maxSourceCount: number;
@@ -74,6 +76,8 @@ export interface AggregateSearchSaveResult {
 }
 
 export interface AggregateSearchListControllerOptions {
+  // Present when the reader can order the list; rows then drag and show move buttons.
+  onMove?(fromIndex: number, toIndex: number): void;
   onRemove(id: string): void | Promise<void>;
   onSave(
     id: string | null,
@@ -499,16 +503,18 @@ function AggregateSearchList({
       : { kind: 'add' };
   };
 
+  const onMove = model.reorder ? options.onMove : undefined;
   return (
     <>
       <div className="_x_extension_shortcut_list_2024_unique_">
-        {model.items.map((item) => {
+        {model.items.map((item, index) => {
           const expanded = editingId === item.id;
           return (
             <div
               className="_x_extension_shortcut_item_2024_unique_"
               data-aggregate-id={item.id}
               data-expanded={expanded ? 'true' : 'false'}
+              data-sortable={onMove && model.items.length > 1 ? 'true' : undefined}
               data-type="aggregate"
               key={item.id}
             >
@@ -526,6 +532,14 @@ function AggregateSearchList({
                   </div>
                 </div>
                 <div className="_x_extension_shortcut_item_actions_2024_unique_">
+                  {model.reorder && onMove ? (
+                    <ReorderButtons
+                      copy={model.reorder}
+                      index={index}
+                      onMove={onMove}
+                      total={model.items.length}
+                    />
+                  ) : null}
                   <button
                     aria-label={model.copy.editLabel}
                     className="_x_extension_shortcut_edit_2024_unique_"

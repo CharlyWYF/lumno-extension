@@ -2209,6 +2209,8 @@ function openOverlayOnTab(activeTab, tabs, source, options) {
     'src/shared/search-input-history.js',
     'src/shared/toast.js',
     'src/shared/menu-surface.js',
+    'src/shared/search-source-order.js',
+    'src/shared/sortable-drag.js',
     'src/shared/search-input-mode.js',
     'src/shared/shortcut-display.js',
     'src/shared/favicon-utils.js',

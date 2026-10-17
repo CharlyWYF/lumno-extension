@@ -47,6 +47,9 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
   const OVERLAY_CONTEXT_TOKEN_ATTRIBUTE = 'data-lumno-overlay-context-token';
   const overlayContextToken = getOrCreateOverlayContextToken();
   const SETTINGS = globalThis.LumnoSettings;
+  const SEARCH_SOURCE_ORDER = globalThis.LumnoSearchSourceOrder;
+  const SEARCH_SOURCE_ORDER_STORAGE_KEY = (SEARCH_SOURCE_ORDER && SEARCH_SOURCE_ORDER.STORAGE_KEY) ||
+    '_x_extension_search_source_order_2026_unique_';
   const NAVIGATION_DISPOSITION = globalThis.LumnoNavigationDisposition;
   const SEARCH_UTILS = globalThis.LumnoSearchUtils;
   const HELP_CENTER_SEARCH = globalThis.LumnoHelpCenterSearch;
@@ -4041,6 +4044,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       modeMenuCursorTooltipController: overlayModeMenuCursorTooltipController,
       getModeMenuItems: getSearchModeMenuItems,
       onModeMenuSelect: selectSearchModeMenuItem,
+      onModeMenuReorder: reorderSearchModeMenu,
       onModeTagRemovalConfirmation: () => {
         showOverlayToast(t(
           'search_scope_remove_confirmation',
@@ -4836,9 +4840,16 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       if (!isPrimaryStorageAreaName(areaName) || !(
         changes[SITE_SEARCH_STORAGE_KEY] ||
         changes[SITE_SEARCH_DISABLED_STORAGE_KEY] ||
-        changes[AGGREGATE_SEARCH_STORAGE_KEY]
+        changes[AGGREGATE_SEARCH_STORAGE_KEY] ||
+        changes[SEARCH_SOURCE_ORDER_STORAGE_KEY]
       )) {
         return;
+      }
+      // A new order from Settings or another surface reaches an open scope
+      // panel now; a closed one reads it when it opens.
+      if (changes[SEARCH_SOURCE_ORDER_STORAGE_KEY] &&
+          inputModeController && typeof inputModeController.refreshModeMenu === 'function') {
+        inputModeController.refreshModeMenu();
       }
       if (changes[AGGREGATE_SEARCH_STORAGE_KEY]) {
         aggregateSearchesLoadVersion += 1;
@@ -5145,7 +5156,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       );
     }
 
-    function buildSearchModeMenuItems() {
+    function buildSearchModeMenuItems(sourceOrder) {
       const engineGroup = t('search_scope_group_engines', '搜索引擎');
       const localGroup = t('search_scope_group_local', '浏览器内容');
       const aiGroup = t('search_scope_group_ai', 'AI 搜索');
@@ -5168,6 +5179,9 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
           provider,
           label: definition.name,
           group: aggregateGroup,
+          groupKey: 'aggregate',
+          orderList: 'aggregate',
+          orderKey: definition.id,
           iconClass: 'ri-stack-line',
           searchTerms: [definition.name].concat(definition.sourceRefs || []),
           active: Boolean(
@@ -5185,12 +5199,16 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         .forEach((provider) => {
           const isAi = isAiSiteSearchProvider(provider);
           const isSearchEngine = isSearchEngineSiteSearchProvider(provider);
+          const groupKey = isSearchEngine ? 'engine' : (isAi ? 'ai' : 'site');
           items.push({
             id: getSearchModeProviderId(provider),
             kind: 'provider',
             provider,
             label: getSiteSearchDisplayName(provider),
             group: isSearchEngine ? engineGroup : (isAi ? aiGroup : siteGroup),
+            groupKey,
+            orderList: provider._xIsCustom ? 'custom' : groupKey,
+            orderKey: provider.key,
             iconUrl: getPageRenderableProviderIcon(provider),
             iconClass: isAi ? 'ri-search-ai-line' : 'ri-global-line',
             isAi,
@@ -5203,6 +5221,9 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
         label: t('search_open_tabs_only_entry', '搜索已打开标签页'),
         searchTerms: ['open tabs', 'tabs', 'browser'],
         group: localGroup,
+        // Leads browser content and is not reorderable.
+        groupKey: 'local',
+        orderList: 'pinned',
         iconClass: 'ri-window-line',
         menuIconName: 'browser',
         active: openTabsSearchModeActive
@@ -5216,6 +5237,9 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
           kind: 'local',
           sourceType,
           label: getLocalSearchScopeLabel({ sourceType }),
+          groupKey: 'local',
+          orderList: 'local',
+          orderKey: sourceType,
           searchTerms: sourceType === 'topSite'
             ? ['top sites', 'frequent sites', 'favorites']
             : (sourceType === 'bookmark'
@@ -5227,7 +5251,15 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
           active: Boolean(localSearchScopeState && localSearchScopeState.sourceType === sourceType)
         });
       });
-      return items;
+      return SEARCH_SOURCE_ORDER
+        ? SEARCH_SOURCE_ORDER.rankScopeItems(items, sourceOrder)
+        : items;
+    }
+
+    function loadSearchSourceOrder() {
+      return getStorageValuesAsync([SEARCH_SOURCE_ORDER_STORAGE_KEY])
+        .then((result) => result && result[SEARCH_SOURCE_ORDER_STORAGE_KEY])
+        .catch(() => null);
     }
 
     function getSearchModeMenuItems() {
@@ -5236,8 +5268,22 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
           ? Promise.resolve(siteSearchIconCache)
           : loadSiteSearchIconCache(),
         getSiteSearchProviders(),
-        getAggregateSearches()
-      ]).then(buildSearchModeMenuItems);
+        getAggregateSearches(),
+        loadSearchSourceOrder()
+      ]).then((results) => buildSearchModeMenuItems(results[3]));
+    }
+
+    // A tile dragged in the panel: store the new order on top of the latest
+    // stored one, so a concurrent change from Settings is not lost.
+    function reorderSearchModeMenu(payload) {
+      if (!SEARCH_SOURCE_ORDER || !storageArea) {
+        return Promise.resolve();
+      }
+      return loadSearchSourceOrder().then((value) => new Promise((resolve) => {
+        storageArea.set({
+          [SEARCH_SOURCE_ORDER_STORAGE_KEY]: SEARCH_SOURCE_ORDER.applyScopeMenuMove(value, payload)
+        }, () => resolve());
+      })).catch(() => {});
     }
 
     function openSearchModeMenuFromDoubleTab() {

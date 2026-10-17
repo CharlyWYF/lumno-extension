@@ -405,6 +405,8 @@
     let modeMenuRevealFrameKind = '';
     let modeMenuFilterQuery = '';
     let renderedModeMenuEntries = [];
+    const canReorderModeMenu = typeof config.onModeMenuReorder === 'function';
+    let detachModeMenuReorder = () => {};
     let renderedModeMenuGroups = [];
     let modeMenuEmptyState = null;
     let modeMenuDoubleTabPending = false;
@@ -3020,6 +3022,10 @@
         button.setAttribute('aria-label', String(item.label));
         button.setAttribute('data-label-truncated', 'false');
         button.dataset.modeId = String(item.id);
+        // Items of one order list drag among themselves inside their group.
+        if (canReorderModeMenu && item.orderList && item.orderList !== 'pinned') {
+          button.dataset.sortList = String(item.orderList);
+        }
         button.appendChild(createModeMenuIcon(item, button));
         const label = createModeMenuLabel(item.label);
         button.appendChild(label);
@@ -3051,6 +3057,54 @@
       modeMenuContent.appendChild(modeMenuEmptyState);
       applyModeMenuFilter(modeMenuFilterQuery, { preserveScroll: true });
       return normalizedItems;
+    }
+
+    // Dragging a tile reorders it among the tiles of its own order list in its
+    // group (custom searches among custom ones, built-ins among built-ins).
+    // The tiles move at once; the host stores the order through
+    // `onModeMenuReorder` and may refresh the menu afterwards.
+    function attachModeMenuReorder() {
+      const sortable = globalThis.LumnoSortableDrag;
+      if (!canReorderModeMenu || !sortable || typeof sortable.attach !== 'function') {
+        return () => {};
+      }
+      const getEntry = (button) => renderedModeMenuEntries.find((entry) => entry.button === button);
+      return sortable.attach(modeMenuContent, {
+        itemSelector: '.x-lumno-search-input-mode__menu-item[data-sort-list]',
+        canStart: () => modeMenuOpen && modeMenu.getAttribute('data-filtered') !== 'true',
+        getPeers: (button) => {
+          const entry = getEntry(button);
+          if (!entry) {
+            return [];
+          }
+          return renderedModeMenuEntries
+            .filter((candidate) => (
+              candidate.group === entry.group &&
+              !candidate.button.hidden &&
+              candidate.button.dataset.sortList === button.dataset.sortList
+            ))
+            .map((candidate) => candidate.button);
+        },
+        onReorder: (button, fromIndex, toIndex, peers) => {
+          const moved = peers.slice();
+          moved.splice(toIndex, 0, moved.splice(fromIndex, 1)[0]);
+          const anchor = peers[peers.length - 1].nextSibling;
+          moved.forEach((peer) => modeMenuContent.insertBefore(peer, anchor));
+          renderedModeMenuEntries.sort((left, right) => (
+            left.button.compareDocumentPosition(right.button) & 4 ? -1 : 1
+          ));
+          const entry = getEntry(button);
+          const listId = button.dataset.sortList;
+          config.onModeMenuReorder({
+            item: entry ? entry.item : null,
+            list: listId,
+            movedItems: moved.map((peer) => getEntry(peer).item),
+            listItems: renderedModeMenuEntries
+              .filter((candidate) => candidate.button.dataset.sortList === listId)
+              .map((candidate) => candidate.item)
+          });
+        }
+      });
     }
 
     function applyModeMenuFilter(query, filterOptions) {
@@ -3603,6 +3657,7 @@
     input.addEventListener('focus', handleModeInputFocus);
     modeMenu.addEventListener('keydown', handleMenuKeydown);
     modeMenu.addEventListener('pointerdown', handleModeMenuPointerDown);
+    detachModeMenuReorder = attachModeMenuReorder();
     if (doc && typeof doc.addEventListener === 'function') {
       doc.addEventListener('pointerdown', handleDocumentPointerDown, true);
     }
@@ -3636,6 +3691,7 @@
 
     function destroy() {
       destroyed = true;
+      detachModeMenuReorder();
       modeMenuRequestId += 1;
       modeMenuPending = false;
       cancelModeMenuRevealFrame();

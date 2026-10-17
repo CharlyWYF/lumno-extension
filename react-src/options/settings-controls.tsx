@@ -65,11 +65,15 @@ export interface RequiredCheckboxItemModel {
 
 export interface RequiredCheckboxGroupRenderModel {
   items: RequiredCheckboxItemModel[];
+  // The items can be reordered: dragged (wired by the page) or moved with
+  // Alt+Left and Alt+Right from a focused checkbox.
+  sortable?: boolean;
 }
 
 export interface RequiredCheckboxGroupControllerOptions {
   kind: string;
   onChange(values: string[]): void;
+  onMove?(fromIndex: number, toIndex: number): void;
 }
 
 export type RequiredCheckboxGroupController =
@@ -117,11 +121,14 @@ function ToggleControl({
 
 function RequiredCheckboxGroup({
   model,
-  onChange
+  onChange,
+  onMove
 }: {
   model: RequiredCheckboxGroupRenderModel;
   onChange(values: string[]): void;
+  onMove?(fromIndex: number, toIndex: number): void;
 }) {
+  const sortable = Boolean(model.sortable && onMove && model.items.length > 1);
   const serializedValues = model.items
     .filter((item) => item.checked)
     .map((item) => item.value)
@@ -136,12 +143,27 @@ function RequiredCheckboxGroup({
 
   return (
     <>
-      {model.items.map((item) => (
-        <label className="_x_extension_checkbox_2026_unique_" key={item.value}>
+      {model.items.map((item, index) => (
+        <label
+          className="_x_extension_checkbox_2026_unique_"
+          data-sortable={sortable ? 'true' : undefined}
+          data-value={item.value}
+          key={item.value}
+        >
           <input
             checked={selected.has(item.value)}
             data-search-result-source-type={item.value}
             id={item.id}
+            onKeyDown={sortable ? (event) => {
+              if (!event.altKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) {
+                return;
+              }
+              const target = index + (event.key === 'ArrowLeft' ? -1 : 1);
+              event.preventDefault();
+              if (target >= 0 && target < model.items.length && onMove) {
+                onMove(index, target);
+              }
+            } : undefined}
             onChange={(event) => {
               const next = new Set(selected);
               if (event.currentTarget.checked) {
@@ -302,7 +324,11 @@ export function createRequiredCheckboxGroupController(
   return createReactRootController(
     host,
     (model: RequiredCheckboxGroupRenderModel) => (
-      <RequiredCheckboxGroup model={model} onChange={options.onChange} />
+      <RequiredCheckboxGroup
+        model={model}
+        onChange={options.onChange}
+        onMove={options.onMove}
+      />
     )
   );
 }

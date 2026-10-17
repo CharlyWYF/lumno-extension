@@ -76,6 +76,42 @@ afterEach(() => {
 });
 
 describe('Options site-search list React island', () => {
+  it('shows move buttons and marks rows sortable only on orderable lists', () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const onMove = vi.fn();
+    const controller = createSiteSearchListController(host, {
+      kind: 'builtin-search',
+      onLocateDuplicate: vi.fn(),
+      onMove,
+      onRemove: vi.fn(),
+      onSave: vi.fn().mockResolvedValue({ ok: true })
+    });
+    controllers.push(controller);
+    const second = { ...model.items[0], id: 'builtin:yt', isBuiltin: true, key: 'yt', name: 'YouTube' };
+    act(() => controller.render({
+      ...model,
+      items: [model.items[0], second],
+      reorder: { moveDownLabel: '下移', moveUpLabel: '上移' }
+    }));
+
+    const rows = host.querySelectorAll('._x_extension_shortcut_item_2024_unique_');
+    expect(Array.from(rows).map((row) => row.getAttribute('data-sortable'))).toEqual(['true', 'true']);
+    const up = host.querySelectorAll<HTMLButtonElement>('[data-move="up"]');
+    const down = host.querySelectorAll<HTMLButtonElement>('[data-move="down"]');
+    expect(up[0]?.disabled).toBe(true);
+    expect(down[1]?.disabled).toBe(true);
+    expect(down[0]?.getAttribute('aria-label')).toBe('下移');
+
+    act(() => down[0]?.click());
+    act(() => up[1]?.click());
+    expect(onMove.mock.calls).toEqual([[0, 1], [1, 0]]);
+
+    act(() => controller.render({ ...model, items: [model.items[0], second] }));
+    expect(host.querySelector('[data-move]')).toBeNull();
+    expect(host.querySelector('[data-sortable]')).toBeNull();
+  });
+
   it('renders provider metadata, legacy classes, and host contracts', () => {
     const { controller, host } = createFixture();
     act(() => controller.render(model));

@@ -46,6 +46,40 @@ describe('Options settings controls React islands', () => {
     expect(onChange).toHaveBeenCalledWith(false);
   });
 
+  it('moves a sortable checkbox with Alt and the arrow keys', () => {
+    const host = document.createElement('div');
+    const onMove = vi.fn();
+    document.body.appendChild(host);
+    const controller = createRequiredCheckboxGroupController(host, {
+      kind: 'search-result-sources',
+      onChange: vi.fn(),
+      onMove
+    });
+    controllers.push(controller);
+    const items = ['topSite', 'bookmark', 'history'].map((value) => ({
+      checked: true,
+      id: value,
+      label: value,
+      labelKey: `search_tag_${value}`,
+      value
+    }));
+
+    act(() => controller.render({ items, sortable: true }));
+    const labels = host.querySelectorAll('label');
+    expect(Array.from(labels).map((label) => label.getAttribute('data-sortable'))).toEqual(['true', 'true', 'true']);
+    const inputs = host.querySelectorAll<HTMLInputElement>('input');
+    act(() => {
+      inputs[1]?.dispatchEvent(new KeyboardEvent('keydown', { altKey: true, bubbles: true, key: 'ArrowLeft' }));
+      inputs[1]?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowLeft' }));
+      inputs[0]?.dispatchEvent(new KeyboardEvent('keydown', { altKey: true, bubbles: true, key: 'ArrowLeft' }));
+      inputs[2]?.dispatchEvent(new KeyboardEvent('keydown', { altKey: true, bubbles: true, key: 'ArrowRight' }));
+    });
+    expect(onMove.mock.calls).toEqual([[1, 0]]);
+
+    act(() => controller.render({ items }));
+    expect(host.querySelector('[data-sortable]')).toBeNull();
+  });
+
   it('keeps at least one required checkbox selected', () => {
     const host = document.createElement('div');
     const onChange = vi.fn();

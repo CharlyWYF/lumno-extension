@@ -3085,6 +3085,128 @@ button[aria-busy="true"]:disabled,
   font-weight: 400;
 }
 
+/* Search sources order: rows and chips drag (LumnoSortableDrag); rows also
+   get move buttons that show while the row is hovered or focused, in space
+   the row already reserves, so nothing shifts. */
+._x_extension_shortcut_item_2024_unique_[data-sortable="true"] ._x_extension_shortcut_item_header_2024_unique_ {
+  cursor: grab;
+}
+._x_extension_shortcut_item_2024_unique_[data-sort-dragging="true"],
+._x_extension_order_chip_2026_unique_[data-sort-dragging="true"],
+._x_extension_checkbox_2026_unique_[data-sort-dragging="true"] {
+  cursor: grabbing;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+}
+/* Solid while lifted, so nothing it passes over shows through. */
+._x_extension_shortcut_item_2024_unique_[data-sort-dragging="true"],
+._x_extension_order_chip_2026_unique_[data-sort-dragging="true"],
+#_x_extension_settings_panel_2024_unique_[data-theme="dark"] ._x_extension_shortcut_item_2024_unique_[data-sort-dragging="true"],
+#_x_extension_settings_panel_2024_unique_[data-theme="dark"] ._x_extension_order_chip_2026_unique_[data-sort-dragging="true"] {
+  background: var(--panel-bg);
+}
+[data-sort-active="true"],
+[data-sort-active="true"] * {
+  cursor: grabbing !important;
+}
+._x_extension_shortcut_reorder_2026_unique_ {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--lumno-duration-sm) ease;
+}
+._x_extension_shortcut_item_2024_unique_:hover ._x_extension_shortcut_reorder_2026_unique_,
+._x_extension_shortcut_item_2024_unique_:focus-within ._x_extension_shortcut_reorder_2026_unique_ {
+  opacity: 1;
+}
+[data-sort-active="true"] ._x_extension_shortcut_reorder_2026_unique_ {
+  opacity: 0;
+}
+@media (hover: none) {
+  ._x_extension_shortcut_reorder_2026_unique_ {
+    opacity: 1;
+  }
+}
+._x_extension_shortcut_move_2026_unique_ {
+  all: unset;
+  cursor: pointer;
+  width: 26px;
+  height: 26px;
+  margin-top: 2px;
+  border-radius: var(--lumno-radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--panel-text);
+  opacity: 0.6;
+  transition: background-color var(--lumno-duration-sm) ease, opacity var(--lumno-duration-sm) ease;
+}
+._x_extension_shortcut_move_2026_unique_:hover:not(:disabled) {
+  background: var(--tab-bg);
+  opacity: 1;
+}
+._x_extension_shortcut_move_2026_unique_:focus-visible {
+  outline: 2px solid var(--input-focus-color);
+  outline-offset: 2px;
+  opacity: 1;
+}
+._x_extension_shortcut_move_2026_unique_:disabled {
+  cursor: default;
+  opacity: 0.22;
+}
+._x_extension_order_chips_2026_unique_ {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+._x_extension_order_chip_2026_unique_ {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 14px 0 10px;
+  box-sizing: border-box;
+  border-radius: var(--lumno-radius-pill);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+  color: var(--panel-text);
+  font-size: var(--lumno-font-size-md);
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: grab;
+  user-select: none;
+  transition: background-color var(--lumno-duration-sm) ease, border-color var(--lumno-duration-sm) ease;
+}
+._x_extension_order_chip_2026_unique_ .ri-icon {
+  opacity: 0.4;
+}
+._x_extension_order_chip_2026_unique_:hover {
+  border-color: rgba(15, 23, 42, 0.18);
+}
+._x_extension_order_chip_2026_unique_:focus-visible {
+  outline: 2px solid var(--input-focus-color);
+  outline-offset: 2px;
+}
+#_x_extension_settings_panel_2024_unique_[data-theme="dark"] ._x_extension_order_chip_2026_unique_ {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+}
+#_x_extension_settings_panel_2024_unique_[data-theme="dark"] ._x_extension_order_chip_2026_unique_:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+}
+#_x_extension_settings_panel_2024_unique_[data-theme="dark"] ._x_extension_shortcut_item_2024_unique_[data-sort-dragging="true"],
+#_x_extension_settings_panel_2024_unique_[data-theme="dark"] ._x_extension_order_chip_2026_unique_[data-sort-dragging="true"] {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+._x_extension_checkbox_2026_unique_[data-sortable="true"] {
+  cursor: grab;
+}
+._x_extension_checkbox_2026_unique_[data-sort-dragging="true"] {
+  background: var(--control-hover-bg, rgba(15, 23, 42, 0.04));
+}
+
 /* Keep this last: `all: unset` in component resets also clears corner-shape. */
 @supports (corner-shape: superellipse(1.25)) {
   ._x_extension_popconfirm_2024_unique_,

@@ -8,6 +8,7 @@ import settingBindingsSource from '../../src/options/options-setting-bindings.js
 import toggleSettingsSource from '../../src/options/options-toggle-settings.js?raw';
 import siteSearchSource from '../../src/options/options-site-search.js?raw';
 import aggregateSearchSource from '../../src/options/options-aggregate-search.js?raw';
+import searchSourceOrderOptionsSource from '../../src/options/options-search-source-order.js?raw';
 import syncTransferSource from '../../src/options/options-sync-transfer.js?raw';
 import syncSectionSource from '../../src/options/options-sync-section.js?raw';
 import shortcutKeysSource from '../../src/options/options-shortcut-keys.js?raw';
@@ -20,6 +21,8 @@ import blacklistUtilsSource from '../../src/shared/blacklist-utils.js?raw';
 import navigationDispositionSource from '../../src/shared/navigation-disposition.js?raw';
 import communityLinksSource from '../../src/shared/community-links.js?raw';
 import searchUtilsSource from '../../src/shared/search-utils.js?raw';
+import searchSourceOrderSource from '../../src/shared/search-source-order.js?raw';
+import sortableDragSource from '../../src/shared/sortable-drag.js?raw';
 import aggregateSearchStoreSource from '../../src/shared/aggregate-search-store.js?raw';
 import faviconUtilsSource from '../../src/shared/favicon-utils.js?raw';
 import shortcutFaviconSource from '../../src/shared/shortcut-favicon.js?raw';
@@ -58,6 +61,8 @@ const PAGE_SCRIPTS = [
   navigationDispositionSource,
   communityLinksSource,
   searchUtilsSource,
+  searchSourceOrderSource,
+  sortableDragSource,
   aggregateSearchStoreSource,
   faviconUtilsSource,
   shortcutFaviconSource,
@@ -76,6 +81,7 @@ const PAGE_SCRIPTS = [
   toggleSettingsSource,
   siteSearchSource,
   aggregateSearchSource,
+  searchSourceOrderOptionsSource,
   syncTransferSource,
   syncSectionSource,
   shortcutKeysSource,
@@ -324,6 +330,47 @@ describe('Options page storage wiring', () => {
     });
     await settle();
     expect(list.textContent).toContain('Synced tech');
+  });
+
+  it('renders the stored search source order and stores moves', async () => {
+    const settings = SETTINGS;
+    const key = settings.SEARCH_SOURCE_ORDER_STORAGE_KEY;
+    const chrome = await bootOptionsPage({
+      [key]: { version: 1, groups: ['local', 'ai'], lists: { site: ['gh', 'yt'] }, local: ['history'] }
+    });
+    const chips = () => Array.from(document.querySelectorAll(
+      '#_x_extension_search_source_group_order_2026_unique_ [data-group]'
+    )).map((chip) => chip.getAttribute('data-group'));
+    const siteKeys = () => Array.from(document.querySelectorAll(
+      '#_x_extension_site_search_builtin_list_2024_unique_ > [data-key]'
+    )).map((row) => row.getAttribute('data-key'));
+    const types = () => Array.from(document.querySelectorAll(
+      '#_x_extension_search_result_source_types_2026_unique_ label'
+    )).map((label) => label.getAttribute('data-value'));
+
+    await vi.waitFor(() => expect(siteKeys().slice(0, 3)).toEqual(['gh', 'yt', 'bb']));
+    expect(chips()).toEqual(['local', 'ai', 'aggregate', 'engine', 'site']);
+    expect(types()).toEqual(['history', 'topSite', 'bookmark']);
+
+    const firstDown = document.querySelector<HTMLButtonElement>(
+      '#_x_extension_site_search_builtin_list_2024_unique_ > [data-key] [data-move="down"]'
+    );
+    await act(async () => {
+      firstDown?.click();
+    });
+    await settle();
+    expect(siteKeys().slice(0, 3)).toEqual(['yt', 'gh', 'bb']);
+    const stored = chrome.storage.sync.values[key] as { lists: { site: string[] }; groups: string[] };
+    expect(stored.lists.site.slice(0, 3)).toEqual(['yt', 'gh', 'bb']);
+    expect(stored.groups).toEqual(['local', 'ai', 'aggregate', 'engine', 'site']);
+
+    await act(async () => {
+      chrome.storage.sync.externalSet({ [key]: { version: 1, groups: ['site'] } });
+    });
+    await settle();
+    expect(chips()).toEqual(['site', 'aggregate', 'engine', 'ai', 'local']);
+    expect(siteKeys().slice(0, 3)).toEqual(['yt', 'bb', 'gh']);
+    expect(types()).toEqual(['topSite', 'bookmark', 'history']);
   });
 
   it('binds every switch in the shared table to its storage key', async () => {

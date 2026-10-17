@@ -28,8 +28,11 @@
       getTopSiteMatchCandidate,
       getSiteSearchTriggerCandidate,
       getLocalSearchScopeCandidate,
-      getShortcutRules
+      getShortcutRules,
+      readSearchSourceOrder,
+      writeSearchSourceOrder
     } = deps;
+    const SEARCH_SOURCE_ORDER = globalThis.LumnoSearchSourceOrder;
 
     // The page state object shared with newtab.js and the other modules.
     const pageState = deps.pageState;
@@ -74,7 +77,7 @@
       );
     }
 
-    function buildSearchModeMenuItems() {
+    function buildSearchModeMenuItems(sourceOrder) {
       const engineGroup = t('search_scope_group_engines', '搜索引擎');
       const localGroup = t('search_scope_group_local', '浏览器内容');
       const aiGroup = t('search_scope_group_ai', 'AI 搜索');
@@ -97,6 +100,9 @@
           provider,
           label: definition.name,
           group: aggregateGroup,
+          groupKey: 'aggregate',
+          orderList: 'aggregate',
+          orderKey: definition.id,
           iconClass: 'ri-stack-line',
           searchTerms: [definition.name].concat(definition.sourceRefs || []),
           active: Boolean(
@@ -114,12 +120,16 @@
         .forEach((provider) => {
           const isAi = isAiSiteSearchProvider(provider);
           const isSearchEngine = isSearchEngineSiteSearchProvider(provider);
+          const groupKey = isSearchEngine ? 'engine' : (isAi ? 'ai' : 'site');
           items.push({
             id: getSearchModeProviderId(provider),
             kind: 'provider',
             provider,
             label: getSiteSearchDisplayName(provider),
             group: isSearchEngine ? engineGroup : (isAi ? aiGroup : siteGroup),
+            groupKey,
+            orderList: provider._xIsCustom ? 'custom' : groupKey,
+            orderKey: provider.key,
             iconUrl: getProviderIcon(provider),
             iconClass: isAi ? 'ri-search-ai-line' : 'ri-global-line',
             isAi,
@@ -135,6 +145,9 @@
           kind: 'local',
           sourceType,
           label: getLocalSearchScopeLabel({ sourceType }),
+          groupKey: 'local',
+          orderList: 'local',
+          orderKey: sourceType,
           searchTerms: sourceType === 'topSite'
             ? ['top sites', 'frequent sites', 'favorites']
             : (sourceType === 'bookmark'
@@ -146,15 +159,37 @@
           active: Boolean(pageState.localSearchScopeState && pageState.localSearchScopeState.sourceType === sourceType)
         });
       });
-      return items;
+      return SEARCH_SOURCE_ORDER
+        ? SEARCH_SOURCE_ORDER.rankScopeItems(items, sourceOrder)
+        : items;
+    }
+
+    function loadSearchSourceOrder() {
+      return typeof readSearchSourceOrder === 'function'
+        ? Promise.resolve(readSearchSourceOrder()).catch(() => null)
+        : Promise.resolve(null);
     }
 
     function getSearchModeMenuItems() {
       return Promise.all([
         loadSiteSearchIconCache(),
         getSiteSearchProviders(),
-        getAggregateSearches()
-      ]).then(buildSearchModeMenuItems);
+        getAggregateSearches(),
+        loadSearchSourceOrder()
+      ]).then((results) => buildSearchModeMenuItems(results[3]));
+    }
+
+    // A tile dragged in the panel: store the new order on top of the latest
+    // stored one, so a concurrent change from Settings is not lost.
+    function reorderSearchModeMenu(payload) {
+      if (!SEARCH_SOURCE_ORDER || typeof writeSearchSourceOrder !== 'function') {
+        return Promise.resolve();
+      }
+      return loadSearchSourceOrder()
+        .then((value) => writeSearchSourceOrder(
+          SEARCH_SOURCE_ORDER.applyScopeMenuMove(value, payload)
+        ))
+        .catch(() => {});
     }
 
     function openSearchModeMenuFromDoubleTab() {
@@ -449,6 +484,7 @@
       isAggregateSearchDefinitionAvailable,
       getSearchTriggerProviders,
       getSearchModeMenuItems,
+      reorderSearchModeMenu,
       openSearchModeMenuFromDoubleTab,
       selectSearchModeMenuItem,
       getLocalSearchScopeTabHintProvider,

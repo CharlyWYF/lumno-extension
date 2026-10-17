@@ -5557,6 +5557,7 @@
     isAggregateSearchDefinitionAvailable,
     getSearchTriggerProviders,
     getSearchModeMenuItems,
+    reorderSearchModeMenu,
     openSearchModeMenuFromDoubleTab,
     selectSearchModeMenuItem,
     getLocalSearchScopeTabHintProvider,
@@ -5594,6 +5595,17 @@
     getSiteSearchTriggerCandidate,
     getLocalSearchScopeCandidate,
     getShortcutRules: (...args) => getShortcutRules(...args),
+    readSearchSourceOrder: () => SETTINGS.readStorageValue(
+      storageArea,
+      chrome,
+      SETTINGS.SEARCH_SOURCE_ORDER_STORAGE_KEY
+    ),
+    writeSearchSourceOrder: (value) => SETTINGS.writeStorageValue(
+      storageArea,
+      chrome,
+      SETTINGS.SEARCH_SOURCE_ORDER_STORAGE_KEY,
+      value
+    ),
     pageState
   });
 
@@ -6824,6 +6836,7 @@
     modeMenuCursorTooltipController: bookmarkCursorTooltipController,
     getModeMenuItems: getSearchModeMenuItems,
     onModeMenuSelect: selectSearchModeMenuItem,
+    onModeMenuReorder: reorderSearchModeMenu,
     onModeTagRemovalConfirmation: () => {
       showToast(t(
         'search_scope_remove_confirmation',
@@ -7011,6 +7024,14 @@
     }
     if (pageState.latestQuery) {
       requestSuggestions(pageState.latestQuery, { immediate: true });
+    }
+  });
+
+  // A new order from Settings or another tab reaches an open scope panel now;
+  // a closed one reads it when it opens.
+  storageChanges.on(SETTINGS.SEARCH_SOURCE_ORDER_STORAGE_KEY, () => {
+    if (pageState.inputModeController && typeof pageState.inputModeController.refreshModeMenu === 'function') {
+      pageState.inputModeController.refreshModeMenu();
     }
   });
 

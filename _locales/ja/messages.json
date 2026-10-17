@@ -3331,5 +3331,26 @@
   },
   "settings_newtab_glass_style_liquid": {
     "message": "リキッドグラス"
+  },
+  "settings_search_source_group_order_title": {
+    "message": "検索パネルの並び順"
+  },
+  "settings_search_source_group_order_desc": {
+    "message": "タグをドラッグして、検索ボックスのパネルに並ぶグループの順序を変更します。各グループ内の順序は下のリストでドラッグして変更します。"
+  },
+  "settings_search_source_order_keyboard_hint": {
+    "message": "Alt キーと左右の矢印キーで移動します"
+  },
+  "settings_search_source_order_failed": {
+    "message": "並び順を保存できませんでした。もう一度お試しください。"
+  },
+  "settings_search_source_move_up": {
+    "message": "上へ移動"
+  },
+  "settings_search_source_move_down": {
+    "message": "下へ移動"
+  },
+  "settings_search_result_sources_order_desc": {
+    "message": "ドラッグして、検索ボックスのパネルの「ブラウザ内検索」での順序を変更します"
   }
 }

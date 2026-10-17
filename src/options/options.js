@@ -381,6 +381,11 @@
       searchResultSourceTypeGroupHost,
       {
         kind: 'search-result-sources',
+        onMove: (fromIndex, toIndex) => searchSourceOrderController.moveLocal(
+          renderedSearchSourceKeys.local || [],
+          fromIndex,
+          toIndex
+        ),
         onChange(values) {
           const selected = new Set(values);
           let changedInput = null;
@@ -402,11 +407,17 @@
       return;
     }
     const selected = new Set(normalizeSearchResultSourceTypes(value));
+    const values = searchSourceOrderController.sortLocalSourceTypes(
+      searchResultSourceTypeItems.map((item) => item.value)
+    );
+    renderedSearchSourceKeys.local = values;
     searchResultSourceTypeController.render({
-      items: searchResultSourceTypeItems.map((item) => Object.assign({}, item, {
-        checked: selected.has(item.value),
-        label: getMessage(item.labelKey, item.labelFallback)
-      }))
+      items: values.map((type) => searchResultSourceTypeItems.find((item) => item.value === type))
+        .map((item) => Object.assign({}, item, {
+          checked: selected.has(item.value),
+          label: getMessage(item.labelKey, item.labelFallback)
+        })),
+      sortable: true
     });
   }
   const settingsNavigationController =
@@ -424,10 +435,26 @@
       kind: 'favicon',
       onRemove: handleFaviconBlacklistRemove
     });
+  // Each Search sources list orders on its own; the record keys them by list.
+  const SITE_SEARCH_ORDER_LIST_BY_KIND = Object.freeze({
+    custom: 'custom',
+    'builtin-engine': 'engine',
+    'builtin-search': 'site',
+    'builtin-ai': 'ai'
+  });
+  // The keys each list shows right now, in order, for the move buttons.
+  const renderedSearchSourceKeys = {};
   function createSiteSearchListController(host, kind) {
+    const listId = SITE_SEARCH_ORDER_LIST_BY_KIND[kind];
     return optionsSiteSearchListApi.createSiteSearchListController(host, {
       kind,
       onLocateDuplicate: locateBuiltinSiteSearchProvider,
+      onMove: (fromIndex, toIndex) => searchSourceOrderController.moveListItem(
+        listId,
+        renderedSearchSourceKeys[listId] || [],
+        fromIndex,
+        toIndex
+      ),
       onRemove: removeSiteSearchItem,
       onSave: handleSiteSearchProviderSave
     });
@@ -450,6 +477,12 @@
   );
   const aggregateSearchListController =
     optionsAggregateSearchListApi.createAggregateSearchListController(aggregateSearchList, {
+      onMove: (fromIndex, toIndex) => searchSourceOrderController.moveListItem(
+        'aggregate',
+        renderedSearchSourceKeys.aggregate || [],
+        fromIndex,
+        toIndex
+      ),
       onRemove: handleAggregateSearchRemove,
       onSave: handleAggregateSearchSave
     });
@@ -664,6 +697,45 @@
     NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY
   } = SETTINGS;
   const SYNC_KEYS = SETTINGS.CHROME_SYNC_STORAGE_KEYS;
+  const SEARCH_SOURCE_ORDER_STORAGE_KEY = SETTINGS.SEARCH_SOURCE_ORDER_STORAGE_KEY;
+  const searchSourceOrderController =
+    globalThis.LumnoOptionsSearchSourceOrder.createSearchSourceOrderController({
+      groupHost: document.getElementById('_x_extension_search_source_group_order_2026_unique_'),
+      getMessage,
+      showToast: (message, isError) => showToast(message, isError),
+      read: () => SETTINGS.readStorageValue(storageArea, chrome, SEARCH_SOURCE_ORDER_STORAGE_KEY),
+      write: (value) => SETTINGS.writeStorageValue(
+        rawStorageArea,
+        chrome,
+        SEARCH_SOURCE_ORDER_STORAGE_KEY,
+        value
+      ),
+      onChange() {
+        if (siteSearchProvidersLoaded) {
+          renderSiteSearchList();
+        }
+        renderAggregateSearchList();
+        renderSearchResultSourceTypeControl(collectCheckedSearchResultSourceTypes());
+      }
+    });
+  searchSourceOrderController.attachListDrag(siteSearchCustomList, 'custom', getSearchSourceRowKey);
+  searchSourceOrderController.attachListDrag(siteSearchEngineBuiltinList, 'engine', getSearchSourceRowKey);
+  searchSourceOrderController.attachListDrag(siteSearchBuiltinList, 'site', getSearchSourceRowKey);
+  searchSourceOrderController.attachListDrag(siteSearchAiBuiltinList, 'ai', getSearchSourceRowKey);
+  searchSourceOrderController.attachListDrag(
+    aggregateSearchList,
+    'aggregate',
+    (row) => row.getAttribute('data-aggregate-id') || ''
+  );
+  searchSourceOrderController.attachLocalDrag(searchResultSourceTypeGroupHost);
+  storageChanges.on(SEARCH_SOURCE_ORDER_STORAGE_KEY, (changes) => {
+    searchSourceOrderController.accept(changes[SEARCH_SOURCE_ORDER_STORAGE_KEY].newValue);
+  });
+  searchSourceOrderController.load();
+
+  function getSearchSourceRowKey(row) {
+    return String(row.getAttribute('data-key') || '').toLowerCase();
+  }
   // Grouped shortcut state. Its three keys are one save and move together.
   const blacklistModel = globalThis.LumnoOptionsBlacklist.createBlacklistModel({
     blacklistUtils: globalThis.LumnoBlacklistUtils
@@ -3725,21 +3797,36 @@
     };
   }
 
+  function getSearchSourceReorderCopy() {
+    return {
+      moveDownLabel: getMessage('settings_search_source_move_down', '下移'),
+      moveUpLabel: getMessage('settings_search_source_move_up', '上移')
+    };
+  }
+
   function renderSiteSearchListController(
     controller,
     items,
     placeholder,
-    builtinTemplateSet
+    builtinTemplateSet,
+    listId
   ) {
     if (!controller || typeof controller.render !== 'function') {
       return false;
     }
+    const ordered = searchSourceOrderController.sortList(
+      Array.isArray(items) ? items : [],
+      listId,
+      (item) => item && item.key
+    );
+    renderedSearchSourceKeys[listId] = ordered.map((item) => String(item.key || '').toLowerCase());
     controller.render({
       copy: getSiteSearchListCopy(),
-      items: (Array.isArray(items) ? items : []).map(
+      items: ordered.map(
         (item) => getSiteSearchProviderItemModel(item, builtinTemplateSet)
       ),
-      placeholder: placeholder || ''
+      placeholder: placeholder || '',
+      reorder: getSearchSourceReorderCopy()
     });
     return true;
   }
@@ -3860,27 +3947,31 @@
       siteSearchEngineBuiltinListController,
       engineItems,
       getMessage('shortcuts_empty_engines', '暂无内置搜索引擎'),
-      builtinTemplateSet
+      builtinTemplateSet,
+      'engine'
     );
     syncClearButtonAvailability(customClearButton, customItems.length > 0);
     renderSiteSearchListController(
       siteSearchCustomListController,
       customItems,
       '',
-      builtinTemplateSet
+      builtinTemplateSet,
+      'custom'
     );
     renderSiteSearchListController(
       siteSearchBuiltinListController,
       searchItems,
       getMessage('shortcuts_empty_builtin', '暂无内置站内搜索'),
-      builtinTemplateSet
+      builtinTemplateSet,
+      'site'
     );
     if (siteSearchAiBuiltinList) {
       renderSiteSearchListController(
         siteSearchAiBuiltinListController,
         aiItems,
         getMessage('shortcuts_empty_ai', '暂无内置 AI 搜索'),
-        builtinTemplateSet
+        builtinTemplateSet,
+        'ai'
       );
     }
     initTooltips();
@@ -4144,9 +4235,16 @@
       return;
     }
     syncClearButtonAvailability(aggregateSearchClearButton, aggregateSearches.length > 0);
+    const ordered = searchSourceOrderController.sortList(
+      aggregateSearches,
+      'aggregate',
+      (item) => item && item.id
+    );
+    renderedSearchSourceKeys.aggregate = ordered.map((item) => String(item.id || ''));
     aggregateSearchListController.render({
       copy: getAggregateSearchListCopy(),
-      items: aggregateSearches.map(getAggregateSearchItemModel),
+      items: ordered.map(getAggregateSearchItemModel),
+      reorder: getSearchSourceReorderCopy(),
       maxKeyLength: aggregateSearchModel.limits.maxKeyLength,
       maxNameLength: aggregateSearchModel.limits.maxNameLength,
       maxSourceCount: aggregateSearchModel.limits.maxSources,

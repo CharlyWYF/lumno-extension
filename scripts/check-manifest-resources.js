@@ -33,6 +33,8 @@ const injectedScriptFiles = [
   'src/shared/search-input-history.js',
   'assets/vendor/pinyin-pro.js',
   'src/shared/search-input-mode.js',
+  'src/shared/search-source-order.js',
+  'src/shared/sortable-drag.js',
   'src/shared/toast.js',
   'src/shared/page-color-scheme.js',
   'src/shared/selection-action-icons.js',

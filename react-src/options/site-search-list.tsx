@@ -11,6 +11,7 @@ import { InlinePopconfirm } from './inline-popconfirm';
 import { InfoButton } from './info-button';
 import { useSegmentedIndicator } from '../shared/segmented-indicator';
 import { BusyLabel } from '../shared/busy-label';
+import { ReorderButtons, type ReorderCopyModel } from './reorder-buttons';
 
 export type SiteSearchProviderCategory = 'site' | 'searchEngine';
 
@@ -62,6 +63,7 @@ export interface SiteSearchListRenderModel {
   copy: SiteSearchListCopyModel;
   items: SiteSearchProviderItemModel[];
   placeholder: string;
+  reorder?: ReorderCopyModel;
 }
 
 export interface SiteSearchProviderDraft {
@@ -130,6 +132,8 @@ export interface SiteSearchSaveResult {
 export interface SiteSearchListControllerOptions {
   kind: string;
   onLocateDuplicate(template: string): void;
+  // Present on lists the reader can order; rows then drag and show move buttons.
+  onMove?(fromIndex: number, toIndex: number): void;
   onRemove(key: string, isBuiltin: boolean): void | Promise<void>;
   onSave(
     key: string,
@@ -312,9 +316,10 @@ function SiteSearchList({
     ) : null;
   }
 
+  const onMove = model.reorder ? options.onMove : undefined;
   return (
     <>
-      {model.items.map((item) => {
+      {model.items.map((item, index) => {
         const expanded = expandedId === item.id;
         return (
           <div
@@ -323,6 +328,7 @@ function SiteSearchList({
             data-key={item.key}
             data-provider-category={item.category}
             data-provider-id={item.id}
+            data-sortable={onMove && model.items.length > 1 ? 'true' : undefined}
             data-template={item.normalizedTemplate}
             data-type={item.isBuiltin ? 'builtin' : 'custom'}
             key={item.id}
@@ -375,6 +381,14 @@ function SiteSearchList({
                 </div>
               </div>
               <div className="_x_extension_shortcut_item_actions_2024_unique_">
+                {model.reorder && onMove ? (
+                  <ReorderButtons
+                    copy={model.reorder}
+                    index={index}
+                    onMove={onMove}
+                    total={model.items.length}
+                  />
+                ) : null}
                 <button
                   aria-label={model.copy.editLabel}
                   className="_x_extension_shortcut_edit_2024_unique_"

@@ -3331,5 +3331,26 @@
   },
   "settings_newtab_glass_style_liquid": {
     "message": "液態玻璃"
+  },
+  "settings_search_source_group_order_title": {
+    "message": "搜尋面板順序"
+  },
+  "settings_search_source_group_order_desc": {
+    "message": "拖曳標籤，調整搜尋框面板中各分組的先後順序；各分組內的順序在下方清單中拖曳調整"
+  },
+  "settings_search_source_order_keyboard_hint": {
+    "message": "按 Alt + 左右方向鍵調整位置"
+  },
+  "settings_search_source_order_failed": {
+    "message": "排序儲存失敗，請重試。"
+  },
+  "settings_search_source_move_up": {
+    "message": "上移"
+  },
+  "settings_search_source_move_down": {
+    "message": "下移"
+  },
+  "settings_search_result_sources_order_desc": {
+    "message": "拖曳可調整它們在搜尋框面板「瀏覽器內容」中的順序"
   }
 }

@@ -728,6 +728,17 @@
   color: var(--x-nt-text, var(--x-ov-text, #0f172a)) !important;
 }
 
+/* A tile being dragged to a new place (LumnoSortableDrag) lifts slightly. */
+.x-lumno-search-input-mode__menu-item[data-sort-dragging="true"] {
+  scale: 1.06 !important;
+  filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.18)) !important;
+}
+
+.x-lumno-search-input-mode__menu-content[data-sort-active="true"],
+.x-lumno-search-input-mode__menu-content[data-sort-active="true"] .x-lumno-search-input-mode__menu-item {
+  cursor: grabbing !important;
+}
+
 .x-lumno-search-input-mode__menu-item[aria-checked="true"]:focus-visible {
   border-color: var(
     --x-lumno-search-mode-item-focus-ring,

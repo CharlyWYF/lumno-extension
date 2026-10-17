@@ -154,11 +154,13 @@ const assertWithinBudget = (actualBytes, budgetKiB, label) => {
 // section and select, and the liquid rim refraction shared by many surfaces.
 // New Tab moved to 414 KiB / 125 KiB gzip (the total to 808 KiB / 236 KiB gzip) for the nine-slice lens
 // that replaced per-size displacement maps: band-limited filters and lenses that resize in place.
+// Search sources ordering then moved the total to 809 KiB / 237 KiB gzip: move buttons on the
+// Options lists and a sortable result type group (gzip keeps headroom for Node 20's zlib, as above).
 const bundleBudgets = {
   newtab: { uncompressed: 414, gzip: 125 },
   options: { uncompressed: 290, gzip: 85 },
   overlay: { uncompressed: 274, gzip: 83 },
-  total: { uncompressed: 808, gzip: 236 }
+  total: { uncompressed: 809, gzip: 237 }
 };
 
 const retiredNewtabRendererScripts = [
