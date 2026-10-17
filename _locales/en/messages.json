@@ -1502,6 +1502,9 @@
   "bookmark_topbar_surface_title": {
     "message": "Bar background"
   },
+  "bookmark_topbar_surface_follow": {
+    "message": "Match style"
+  },
   "bookmark_topbar_surface_adaptive": {
     "message": "Adaptive mist"
   },
@@ -3310,5 +3313,23 @@
   },
   "newtab_shortcuts_group_name_placeholder": {
     "message": "Optional; an untitled group only starts a new row"
+  },
+  "newtab_style_section_title": {
+    "message": "Style"
+  },
+  "settings_newtab_glass_style_title": {
+    "message": "Material"
+  },
+  "settings_newtab_glass_style_desc": {
+    "message": "Give the search bar, cards, buttons, menus, and the Appearance panel a glass finish. Looks best with a wallpaper."
+  },
+  "settings_newtab_glass_style_none": {
+    "message": "Default"
+  },
+  "settings_newtab_glass_style_frosted": {
+    "message": "Frosted glass"
+  },
+  "settings_newtab_glass_style_liquid": {
+    "message": "Liquid glass"
   }
 }

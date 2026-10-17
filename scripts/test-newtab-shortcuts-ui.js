@@ -47,7 +47,8 @@ function assertMessage(locale, messages, key) {
 
 function getCssRuleBlock(source, selector) {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = new RegExp(`^\\s*${escapedSelector} \\{`, 'm').exec(source);
+  // The selector may share its rule with siblings (the glass style's dark-palette variants).
+  const match = new RegExp(`^\\s*${escapedSelector}(?:,\\n[^{]*)? \\{`, 'm').exec(source);
   const selectorIndex = match ? match.index : -1;
   assert.ok(selectorIndex >= 0, `${selector} rule should exist`);
   const blockStart = source.indexOf('{', selectorIndex);

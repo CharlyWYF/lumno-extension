@@ -144,6 +144,7 @@ export interface WallpaperPanelActions extends TooltipActions {
   setCuratedDaily(enabled: boolean): void;
   setEffectParameter(key: EffectSliderKey, value: number, change: SliderChange): void;
   setInputAutoFocus(enabled: boolean): void;
+  setGlassStyle(value: string): void;
   setModeSync(enabled: boolean): void;
   setOverlay(value: number, change: SliderChange): void;
   setSearchWidth(value: number, change: SliderChange): void;
@@ -180,6 +181,14 @@ export interface WallpaperPanelState {
   };
   open: boolean;
   panelLabel: string;
+  glassStyle: {
+    ariaLabel: string;
+    infoTooltip: string;
+    options: SelectMenuOption[];
+    sectionTitle: string;
+    title: string;
+    value: string;
+  };
   quote: { infoTooltip: string };
   search: {
     autoFocus: { infoLabel: string; infoTooltip: string; title: string; toggle: ToggleState };
@@ -805,7 +814,9 @@ const EFFECT_SELECT_ID = 'x-nt-wallpaper-effect';
 const QUOTE_POSITION_SELECT_ID = 'x-nt-quote-position';
 const BOOKMARK_VIEW_MODE_SELECT_ID = 'x-nt-bookmark-view-mode';
 const BOOKMARK_TOPBAR_SURFACE_SELECT_ID = 'x-nt-bookmark-topbar-surface';
+const GLASS_STYLE_SELECT_ID = 'x-nt-glass-style';
 const SELECT_HOST_REFS: Record<string, string> = {
+  [GLASS_STYLE_SELECT_ID]: 'glassStyleSelectHost',
   [EFFECT_SELECT_ID]: 'effectSelectHost',
   [QUOTE_POSITION_SELECT_ID]: 'quotePositionSelectHost',
   [BOOKMARK_VIEW_MODE_SELECT_ID]: 'bookmarkViewModeSelectHost',
@@ -852,7 +863,7 @@ function WallpaperPanel({
   registerSelect(id: string, controls: SelectMenuControls): void;
   state: WallpaperPanelState;
 }) {
-  const { actions } = state;
+  const { actions, glassStyle } = state;
   const checkIcon = String(model.icons?.check || '');
   const arrowIcon = String(model.icons?.arrow || '');
   const infoIcon = String(model.icons?.info || '');
@@ -862,6 +873,7 @@ function WallpaperPanel({
   const urlInput = useRef<HTMLInputElement>(null);
   const [themeExpanded, setThemeExpanded] = useState(true);
   const [searchExpanded, setSearchExpanded] = useState(true);
+  const [styleExpanded, setStyleExpanded] = useState(true);
   const [faviconExpanded, setFaviconExpanded] = useState(true);
   const [wallpaperExpanded, setWallpaperExpanded] = useState(true);
   const [shortcutsExpanded, setShortcutsExpanded] = useState(false);
@@ -1002,6 +1014,53 @@ function WallpaperPanel({
                     </button>
                   );
                 })}
+              </div>
+            </div>
+          </div>
+          <div className="x-nt-panel-divider" />
+          <div className="x-nt-wallpaper-section">
+            <div className="x-nt-wallpaper-panel-header">
+              <SectionTrigger
+                arrowIcon={arrowIcon}
+                bodyId="_x_extension_newtab_style_section_body_2026_unique_"
+                expanded={styleExpanded}
+                onToggle={() => setStyleExpanded(!styleExpanded)}
+                title={glassStyle.sectionTitle}
+                titleRef="styleSectionTitle"
+                triggerRef="styleSectionTrigger"
+              />
+            </div>
+            <div
+              {...ref('styleSectionBody')}
+              {...collapsible(styleExpanded)}
+              className="x-nt-panel-section-body x-nt-panel-collapsible"
+              id="_x_extension_newtab_style_section_body_2026_unique_"
+            >
+              <div className="x-nt-appearance-setting-row">
+                <span className="x-nt-appearance-setting-title-group">
+                  <span {...ref('glassStyleTitle')} className="x-nt-appearance-setting-title">
+                    {glassStyle.title}
+                  </span>
+                  <InfoButton
+                    actions={actions}
+                    icon={infoIcon}
+                    label={glassStyle.title}
+                    name="glassStyleInfoButton"
+                    tooltip={glassStyle.infoTooltip}
+                  />
+                </span>
+                <PanelSelect
+                  documentObj={documentObj}
+                  hostRef="glassStyleSelectHost"
+                  id={GLASS_STYLE_SELECT_ID}
+                  registerControls={registerSelect}
+                  select={{
+                    ariaLabel: glassStyle.ariaLabel,
+                    onChange: actions.setGlassStyle,
+                    options: glassStyle.options,
+                    value: glassStyle.value
+                  }}
+                />
               </div>
             </div>
           </div>

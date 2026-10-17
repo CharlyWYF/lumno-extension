@@ -150,11 +150,13 @@ const assertWithinBudget = (actualBytes, budgetKiB, label) => {
 // from the classic wallpaper.js (about 84 KiB smaller) into its React view.
 // The total moved to 802 KiB at 1.0.1 for the tab switcher's close button, which ships twice: in the injected
 // Overlay bundle and in the shared tab switcher bundle.
+// The opt-in glass style moved the New Tab route to 413 KiB and the total to 807 KiB: its Style
+// section and select, and the liquid rim refraction shared by many surfaces.
 const bundleBudgets = {
-  newtab: { uncompressed: 409, gzip: 123 },
+  newtab: { uncompressed: 413, gzip: 124 },
   options: { uncompressed: 290, gzip: 85 },
   overlay: { uncompressed: 274, gzip: 83 },
-  total: { uncompressed: 802, gzip: 234 }
+  total: { uncompressed: 807, gzip: 235 }
 };
 
 const retiredNewtabRendererScripts = [

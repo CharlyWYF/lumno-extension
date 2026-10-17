@@ -1,6 +1,8 @@
-// Liquid glass for the bookmarks bar: the wallpaper behind the bar's rim bends inward the way a
-// thick glass edge refracts. An SVG displacement map sized to the bar drives the bend through
+// Liquid glass: the wallpaper behind a surface's rim bends inward the way a thick glass edge
+// refracts. An SVG displacement map sized to the surface drives the bend through
 // `backdrop-filter: url(#…)`, which only Chromium renders; other browsers keep the CSS-only glass.
+// The bookmarks bar drives one surface; New Tab's glass style drives many through
+// createLiquidSurfaces.
 
 const BEZEL_PX = 16;
 // feDisplacementMap moves a pixel by up to half the scale, so the rim samples up to 24px inward.
@@ -8,6 +10,12 @@ export const LIQUID_GLASS_DISPLACEMENT_SCALE = 48;
 const FLOATING_RADIUS_PX = 14;
 
 export type LiquidGlassShape = 'docked' | 'floating';
+
+// A floating surface's corner radius and rim width; the bar's own values when left out.
+export interface LiquidGlassGeometry {
+  bezel?: number;
+  radius?: number;
+}
 
 let filterCount = 0;
 
@@ -29,9 +37,10 @@ export function getRimDisplacement(
   y: number,
   width: number,
   height: number,
-  shape: LiquidGlassShape
+  shape: LiquidGlassShape,
+  geometry: LiquidGlassGeometry = {}
 ): [number, number] {
-  const bezel = Math.min(BEZEL_PX, height / 2);
+  const bezel = Math.min(geometry.bezel ?? BEZEL_PX, height / 2);
   if (shape === 'docked') {
     // The docked bar meets the browser and window at its top and sides; only its bottom edge shows.
     const distance = height - y;
@@ -40,7 +49,7 @@ export function getRimDisplacement(
     }
     return [0, -rimStrength(distance / bezel)];
   }
-  const radius = Math.min(FLOATING_RADIUS_PX, width / 2, height / 2);
+  const radius = Math.min(geometry.radius ?? FLOATING_RADIUS_PX, width / 2, height / 2);
   const centerX = width / 2;
   const centerY = height / 2;
   const qx = Math.abs(x - centerX) - (centerX - radius);
@@ -79,7 +88,8 @@ export function buildDisplacementMap(
   documentObj: Document,
   width: number,
   height: number,
-  shape: LiquidGlassShape
+  shape: LiquidGlassShape,
+  geometry: LiquidGlassGeometry = {}
 ) {
   const canvas = documentObj.createElement('canvas');
   canvas.width = width;
@@ -92,7 +102,7 @@ export function buildDisplacementMap(
   const { data } = image;
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      const [dx, dy] = getRimDisplacement(x + 0.5, y + 0.5, width, height, shape);
+      const [dx, dy] = getRimDisplacement(x + 0.5, y + 0.5, width, height, shape, geometry);
       const offset = (y * width + x) * 4;
       data[offset] = Math.round(128 + dx * 127);
       data[offset + 1] = Math.round(128 + dy * 127);
@@ -260,6 +270,226 @@ export function createLiquidGlass(options: {
       disable();
       svg?.remove();
       svg = null;
+    }
+  };
+}
+
+// New Tab's glass surfaces are thicker than the bookmarks bar: a wider rim that bends further.
+const SURFACE_BEZEL_PX = 24;
+const SURFACE_BEND_BOOST = 1.6;
+
+// Rim width for a surface of this size, narrowed so small controls keep a flat middle.
+export function getSurfaceBezel(width: number, height: number) {
+  return Math.max(4, Math.min(SURFACE_BEZEL_PX, Math.min(width, height) / 2.4));
+}
+
+// How far the rim moves the backdrop: the bar's bend per pixel of rim, boosted.
+export function getSurfaceDisplacementScale(bezel: number) {
+  return Math.round((LIQUID_GLASS_DISPLACEMENT_SCALE * bezel * SURFACE_BEND_BOOST) / BEZEL_PX);
+}
+
+function readCornerRadius(element: HTMLElement, windowObj: Window, width: number, height: number) {
+  const value = String(windowObj.getComputedStyle(element).borderTopLeftRadius || '0').split(' ')[0];
+  const amount = Number.parseFloat(value) || 0;
+  return value.endsWith('%') ? (amount / 100) * Math.min(width, height) : amount;
+}
+
+export interface LiquidSurfaces {
+  destroy(): void;
+  refresh(): void;
+}
+
+// Gives every element matching `selector` a rim-refraction filter in the inline custom property
+// `property`. Surfaces of the same size and radius share one filter, so a page of identical cards
+// builds one map; maps no surface uses any more are dropped.
+export function createLiquidSurfaces(options: {
+  documentObj: Document;
+  property: string;
+  selector: string;
+  windowObj: Window;
+}): LiquidSurfaces {
+  const { documentObj, property, selector, windowObj } = options;
+  const supported = isLiquidGlassSupported(windowObj);
+  const filterIdPrefix = `_x_extension_newtab_liquid_surface_${(filterCount += 1)}`;
+  const svgNamespace = 'http://www.w3.org/2000/svg';
+  // key -> filter id once its map has decoded, or '' while it is decoding.
+  const filters = new Map<string, string>();
+  const waiting = new Map<string, Set<HTMLElement>>();
+  const keys = new Map<HTMLElement, string>();
+  // The filter each surface points at right now; it may still be an older size's while the new map
+  // decodes, and must outlive that wait: a backdrop-filter naming a missing filter drops its blur too.
+  const pointed = new Map<HTMLElement, string>();
+  let filterSerial = 0;
+  let frameId = 0;
+  let destroyed = false;
+
+  // Each filter gets an <svg> of its own. Adding a filter to an <svg> that holds others can make
+  // Chrome reload all their maps, and a backdrop-filter naming a filter whose map is reloading
+  // drops its blur too, so one new size would briefly (or until the next repaint) clear every plate.
+  const createFilterHost = () => {
+    const host = documentObj.createElementNS(svgNamespace, 'svg');
+    host.setAttribute('aria-hidden', 'true');
+    host.setAttribute('style', 'position:absolute;width:0;height:0;pointer-events:none');
+    (documentObj.body || documentObj.documentElement).appendChild(host);
+    return host;
+  };
+
+  const point = (element: HTMLElement, filterId: string) => {
+    element.style.setProperty(property, `url(#${filterId})`);
+    pointed.set(element, filterId);
+  };
+
+  const build = (key: string, width: number, height: number, radius: number) => {
+    filters.set(key, '');
+    const bezel = getSurfaceBezel(width, height);
+    const map = buildDisplacementMap(documentObj, width, height, 'floating', { bezel, radius });
+    if (!map) {
+      return;
+    }
+    const image = documentObj.createElement('img');
+    image.src = map;
+    const decoded = typeof image.decode === 'function' ? image.decode() : Promise.resolve();
+    decoded.then(() => {
+      if (destroyed || filters.get(key) !== '') {
+        return;
+      }
+      const filterId = `${filterIdPrefix}_${(filterSerial += 1)}_2026_unique_`;
+      // Scale with the rim so a small control bends as far, relative to its size, as a card.
+      const scale = getSurfaceDisplacementScale(bezel);
+      const host = createFilterHost();
+      host.insertAdjacentHTML(
+        'beforeend',
+        `<filter id="${filterId}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB" ` +
+          `x="0" y="0" width="${width}" height="${height}">` +
+          `<feImage x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none" result="map"/>` +
+          `<feDisplacementMap in="SourceGraphic" in2="map" scale="${scale}" ` +
+          'xChannelSelector="R" yChannelSelector="G"/></filter>'
+      );
+      host.querySelector('feImage')?.setAttribute('href', map);
+      // One frame for the filter to take its decoded map before any surface points at it.
+      windowObj.requestAnimationFrame(() => {
+        if (destroyed) {
+          return;
+        }
+        filters.set(key, filterId);
+        waiting.get(key)?.forEach((element) => {
+          if (keys.get(element) === key) {
+            point(element, filterId);
+          }
+        });
+        waiting.delete(key);
+        dropUnused();
+      });
+    }).catch(() => {
+      filters.delete(key);
+    });
+  };
+
+  const dropUnused = () => {
+    const used = new Set(keys.values());
+    const inUse = new Set(pointed.values());
+    filters.forEach((filterId, key) => {
+      if (!used.has(key) && filterId && !inUse.has(filterId)) {
+        documentObj.getElementById(filterId)?.closest('svg')?.remove();
+        filters.delete(key);
+      }
+    });
+  };
+
+  const sync = () => {
+    frameId = 0;
+    if (destroyed) {
+      return;
+    }
+    const current = new Set<HTMLElement>();
+    documentObj.querySelectorAll<HTMLElement>(selector).forEach((element) => {
+      const width = Math.round(element.offsetWidth);
+      const height = Math.round(element.offsetHeight);
+      if (width <= 0 || height <= 0) {
+        return;
+      }
+      current.add(element);
+      const radius = Math.round(readCornerRadius(element, windowObj, width, height));
+      const key = `${width}x${height}r${radius}`;
+      if (keys.get(element) === key) {
+        return;
+      }
+      keys.set(element, key);
+      const filterId = filters.get(key);
+      if (filterId) {
+        point(element, filterId);
+        return;
+      }
+      // Keep the previous map until the new one is ready rather than flashing flat glass.
+      if (!waiting.has(key)) {
+        waiting.set(key, new Set());
+      }
+      waiting.get(key)?.add(element);
+      if (filterId === undefined) {
+        build(key, width, height, radius);
+      }
+    });
+    keys.forEach((_key, element) => {
+      if (!current.has(element)) {
+        keys.delete(element);
+        pointed.delete(element);
+        element.style.removeProperty(property);
+      }
+    });
+    dropUnused();
+  };
+
+  const schedule = () => {
+    if (destroyed || frameId) {
+      return;
+    }
+    frameId = windowObj.requestAnimationFrame(sync);
+  };
+
+  const ResizeObserverCtor = (windowObj as Window & { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+  const MutationObserverCtor =
+    (windowObj as Window & { MutationObserver?: typeof MutationObserver }).MutationObserver;
+  const resizeObserver = supported && ResizeObserverCtor ? new ResizeObserverCtor(schedule) : null;
+  // Only changes that add or remove a surface matter; the clock alone rewrites its digits every second.
+  const touchesSurface = (nodes: NodeList) => Array.from(nodes).some((node) =>
+    node.nodeType === 1 &&
+    ((node as Element).matches(selector) || Boolean((node as Element).querySelector(selector))));
+  const mutationObserver = supported && MutationObserverCtor
+    ? new MutationObserverCtor((records) => {
+      if (!records.some((record) => touchesSurface(record.addedNodes) || touchesSurface(record.removedNodes))) {
+        return;
+      }
+      documentObj.querySelectorAll<HTMLElement>(selector).forEach((element) => resizeObserver?.observe(element));
+      schedule();
+    })
+    : null;
+
+  if (supported) {
+    mutationObserver?.observe(documentObj.body || documentObj.documentElement, { childList: true, subtree: true });
+    documentObj.querySelectorAll<HTMLElement>(selector).forEach((element) => resizeObserver?.observe(element));
+    schedule();
+  }
+
+  return {
+    refresh: schedule,
+    destroy() {
+      destroyed = true;
+      if (frameId) {
+        windowObj.cancelAnimationFrame?.(frameId);
+        frameId = 0;
+      }
+      mutationObserver?.disconnect();
+      resizeObserver?.disconnect();
+      keys.forEach((_key, element) => element.style.removeProperty(property));
+      keys.clear();
+      pointed.clear();
+      waiting.clear();
+      filters.forEach((filterId) => {
+        if (filterId) {
+          documentObj.getElementById(filterId)?.closest('svg')?.remove();
+        }
+      });
+      filters.clear();
     }
   };
 }

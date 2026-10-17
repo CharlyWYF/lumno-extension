@@ -40,7 +40,7 @@ assert.match(
 );
 assert.match(
   newtabHtml,
-  /body\[data-theme="dark"\]\s*\{[\s\S]*?--x-nt-search-shell-border:\s*var\(\s*--x-lumno-search-shell-border-dark,\s*rgba\(255, 255, 255, 0\.16\)\s*\);/,
+  /body\[data-theme="dark"\][^{]*\{[\s\S]*?--x-nt-search-shell-border:\s*var\(\s*--x-lumno-search-shell-border-dark,\s*rgba\(255, 255, 255, 0\.16\)\s*\);/,
   'dark New Tab should map its search shell to the shared 16% border token'
 );
 assert.match(

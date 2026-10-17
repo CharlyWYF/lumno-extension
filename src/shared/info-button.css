@@ -41,12 +41,18 @@ button._x_extension_info_button_2026_unique_ {
   line-height: 1;
 }
 
-[data-theme="dark"] ._x_extension_info_button_2026_unique_ {
+[data-theme="dark"] ._x_extension_info_button_2026_unique_,
+[data-glass-ink-theme="dark"] ._x_extension_info_button_2026_unique_,
+._x_extension_info_button_2026_unique_[data-glass-ink-theme="dark"] {
   color: rgba(156, 163, 175, 0.82);
 }
 
 [data-theme="dark"] ._x_extension_info_button_2026_unique_:hover,
-[data-theme="dark"] ._x_extension_info_button_2026_unique_:focus-visible {
+[data-theme="dark"] ._x_extension_info_button_2026_unique_:focus-visible,
+[data-glass-ink-theme="dark"] ._x_extension_info_button_2026_unique_:hover,
+[data-glass-ink-theme="dark"] ._x_extension_info_button_2026_unique_:focus-visible,
+._x_extension_info_button_2026_unique_[data-glass-ink-theme="dark"]:hover,
+._x_extension_info_button_2026_unique_[data-glass-ink-theme="dark"]:focus-visible {
   background: rgba(147, 197, 253, 0.14);
 }
 

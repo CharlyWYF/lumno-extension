@@ -106,6 +106,13 @@ describe('New Tab React bookmarks topbar', () => {
     runtime.setVisible(true);
     expect(runtime.syncOverflowFade()).toBe(true);
     expect(runtime.edgeFade.dataset.visible).toBe('true');
+    // Both ends report overflow, so the viewport can fade whichever side runs past the bar.
+    expect(runtime.viewport.dataset.overflowEnd).toBe('true');
+    expect(runtime.viewport.dataset.overflowStart).toBe('false');
+    runtime.viewport.scrollLeft = 400;
+    runtime.syncOverflowFade();
+    expect(runtime.viewport.dataset.overflowStart).toBe('true');
+    expect(runtime.viewport.dataset.overflowEnd).toBe('false');
   });
 
   it('keeps horizontal wheel gestures native and batches vertical wheel input', () => {

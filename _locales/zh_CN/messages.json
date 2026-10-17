@@ -1502,6 +1502,9 @@
   "bookmark_topbar_surface_title": {
     "message": "书签栏背景"
   },
+  "bookmark_topbar_surface_follow": {
+    "message": "跟随风格"
+  },
   "bookmark_topbar_surface_adaptive": {
     "message": "自适应雾面"
   },
@@ -3310,5 +3313,23 @@
   },
   "newtab_shortcuts_group_name_placeholder": {
     "message": "可以留空，留空时只用来分隔"
+  },
+  "newtab_style_section_title": {
+    "message": "风格"
+  },
+  "settings_newtab_glass_style_title": {
+    "message": "材质"
+  },
+  "settings_newtab_glass_style_desc": {
+    "message": "给搜索框、卡片、按钮、菜单和外观面板换上玻璃质感，搭配壁纸效果更佳"
+  },
+  "settings_newtab_glass_style_none": {
+    "message": "默认"
+  },
+  "settings_newtab_glass_style_frosted": {
+    "message": "磨砂玻璃"
+  },
+  "settings_newtab_glass_style_liquid": {
+    "message": "液态玻璃"
   }
 }

@@ -190,10 +190,14 @@ async function main() {
     refs.bookmarkTopbarLayoutTabs.querySelector('[data-active="true"]').getAttribute('data-bookmark-topbar-layout'),
     'floating'
   );
-  assert.equal(selects.surface.onChange('clear'), undefined);
-  assert.deepEqual(calls.pop(), ['surface', 'clear']);
-  assert.equal(selects.surface.value, 'clear');
-  assert.equal(selects.surface.options.find((option) => option.value === 'clear').checked, true);
+  // Liquid glass moved to the page-wide Style setting; the bar's background offers match style,
+  // transparent and a custom color.
+  assert.deepEqual(selects.surface.options.map((option) => option.value), ['adaptive', 'transparent', 'custom']);
+  assert.equal(selects.surface.onChange('clear'), false);
+  assert.equal(selects.surface.onChange('transparent'), undefined);
+  assert.deepEqual(calls.pop(), ['surface', 'transparent']);
+  assert.equal(selects.surface.value, 'transparent');
+  assert.equal(selects.surface.options.find((option) => option.value === 'transparent').checked, true);
   assert.equal(
     selects.surface.onChange('custom'),
     false,

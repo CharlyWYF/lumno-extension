@@ -1502,6 +1502,9 @@
   "bookmark_topbar_surface_title": {
     "message": "書籤列背景"
   },
+  "bookmark_topbar_surface_follow": {
+    "message": "跟隨風格"
+  },
   "bookmark_topbar_surface_adaptive": {
     "message": "自適應霧面"
   },
@@ -3310,5 +3313,23 @@
   },
   "newtab_shortcuts_group_name_placeholder": {
     "message": "可以留空，留空時只用來分隔"
+  },
+  "newtab_style_section_title": {
+    "message": "風格"
+  },
+  "settings_newtab_glass_style_title": {
+    "message": "材質"
+  },
+  "settings_newtab_glass_style_desc": {
+    "message": "為搜尋框、卡片、按鈕、選單和外觀面板換上玻璃質感，搭配桌布效果更佳"
+  },
+  "settings_newtab_glass_style_none": {
+    "message": "預設"
+  },
+  "settings_newtab_glass_style_frosted": {
+    "message": "霧面玻璃"
+  },
+  "settings_newtab_glass_style_liquid": {
+    "message": "液態玻璃"
   }
 }

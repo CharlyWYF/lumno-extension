@@ -1,0 +1,652 @@
+/* Opt-in New Tab materials, chosen in Appearance → Style. Without data-glass-style on the body
+   nothing here applies and the original surfaces stay.
+
+   Both materials paint the same surfaces and differ only in the tokens below:
+   - frosted: the pre-Liquid Glass system material. The backdrop is blurred hard, saturated and
+     pulled toward a mid tone (contrast + brightness), so a plate reads the same over a bright sky
+     and a dark forest; the edge is lit from inside.
+   - liquid: clear glass. A light blur, a vivid backdrop and a bright specular rim; where Chromium
+     draws SVG backdrop filters, each surface's rim also bends the wallpaper inward
+     (--x-nt-glass-refraction, set per surface by newtab.js through createLiquidSurfaces).
+   Neither uses website colors. */
+body[data-glass-style="frosted"] {
+  --x-nt-glass-tint-rgb: 255 255 255;
+  --x-nt-glass-tint-thin: 0.42;
+  --x-nt-glass-tint-dense: 0.68;
+  --x-nt-glass-sheen: rgba(255, 255, 255, 0.22);
+  --x-nt-glass-float-rgb: 250 250 251;
+  --x-nt-glass-float-thin: 0.66;
+  --x-nt-glass-float-dense: 0.86;
+  --x-nt-glass-inset: rgba(255, 255, 255, 0.48);
+  --x-nt-glass-edge:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    inset 0 0 18px rgba(255, 255, 255, 0.16),
+    0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  --x-nt-glass-inset-edge: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  --x-nt-glass-float-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+}
+body[data-glass-style="frosted"][data-theme="dark"] {
+  --x-nt-glass-tint-rgb: 104 104 110;
+  --x-nt-glass-tint-thin: 0.24;
+  --x-nt-glass-tint-dense: 0.48;
+  --x-nt-glass-sheen: rgba(255, 255, 255, 0.05);
+  --x-nt-glass-float-rgb: 36 36 40;
+  --x-nt-glass-float-thin: 0.62;
+  --x-nt-glass-float-dense: 0.84;
+  --x-nt-glass-inset: rgba(255, 255, 255, 0.06);
+  --x-nt-glass-edge:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 0 18px rgba(255, 255, 255, 0.04),
+    0 0 0 0.5px rgba(0, 0, 0, 0.32);
+  --x-nt-glass-inset-edge: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --x-nt-glass-float-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+}
+body[data-glass-style="liquid"] {
+  --x-nt-glass-tint-rgb: 255 255 255;
+  --x-nt-glass-tint-thin: 0.24;
+  --x-nt-glass-tint-dense: 0.62;
+  --x-nt-glass-sheen: rgba(255, 255, 255, 0.26);
+  /* Floating layers hide what lies behind with blur, not tint, so they stay clear glass. */
+  --x-nt-glass-float-rgb: 250 250 252;
+  --x-nt-glass-float-thin: 0.22;
+  --x-nt-glass-float-dense: 0.46;
+  --x-nt-glass-inset: rgba(255, 255, 255, 0.36);
+  /* macOS-style liquid rim: a bevel lit from the top left, a softer catch on the bottom right, a
+     glow along the inside and a hairline outside. */
+  --x-nt-glass-edge:
+    inset 0.5px 0.75px 0 rgba(255, 255, 255, 0.6),
+    inset -0.5px -0.5px 0 rgba(255, 255, 255, 0.22),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.18),
+    inset 0 0 8px rgba(255, 255, 255, 0.14),
+    0 0 0 0.5px rgba(0, 0, 0, 0.12),
+    0 4px 14px rgba(0, 0, 0, 0.08);
+  --x-nt-glass-inset-edge: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  --x-nt-glass-float-shadow: 0 16px 48px rgba(0, 0, 0, 0.14);
+}
+body[data-glass-style="liquid"][data-theme="dark"] {
+  --x-nt-glass-tint-rgb: 30 30 34;
+  --x-nt-glass-tint-thin: 0.28;
+  --x-nt-glass-tint-dense: 0.64;
+  --x-nt-glass-sheen: rgba(255, 255, 255, 0.07);
+  --x-nt-glass-float-rgb: 30 30 34;
+  --x-nt-glass-float-thin: 0.24;
+  --x-nt-glass-float-dense: 0.48;
+  --x-nt-glass-inset: rgba(255, 255, 255, 0.07);
+  --x-nt-glass-edge:
+    inset 0.5px 0.75px 0 rgba(255, 255, 255, 0.34),
+    inset -0.5px -0.5px 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.1),
+    inset 0 0 10px rgba(255, 255, 255, 0.05),
+    0 0 0 0.5px rgba(0, 0, 0, 0.36),
+    0 4px 14px rgba(0, 0, 0, 0.22);
+  --x-nt-glass-inset-edge: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --x-nt-glass-float-shadow: 0 16px 48px rgba(0, 0, 0, 0.34);
+}
+/* The backdrop filters only exist once the page reveals. Chrome still draws the backdrop of an
+   element under visibility: hidden, so glass waiting to enter would otherwise show as bare squares of
+   blurred wallpaper. Before then the filter is none, which also voids a surface's refraction url. */
+body[data-glass-style] {
+  --x-nt-glass-filter: none;
+  --x-nt-glass-float-filter: none;
+}
+body[data-glass-style="frosted"][data-nt-ready="1"] {
+  --x-nt-glass-filter: blur(30px) saturate(170%) contrast(0.6) brightness(1.18);
+  --x-nt-glass-float-filter: var(--x-nt-glass-filter);
+}
+body[data-glass-style="frosted"][data-nt-ready="1"][data-theme="dark"] {
+  --x-nt-glass-filter: blur(30px) saturate(150%) contrast(0.62) brightness(0.62);
+  --x-nt-glass-float-filter: var(--x-nt-glass-filter);
+}
+body[data-glass-style="liquid"][data-nt-ready="1"] {
+  --x-nt-glass-filter: blur(3px) saturate(165%) contrast(0.78) brightness(1.08);
+  /* Floating layers carry lists of text: clear glass, but blurred enough that the scene behind
+     cannot compete with it. */
+  --x-nt-glass-float-filter: blur(30px) saturate(180%) contrast(0.82) brightness(1.06);
+}
+body[data-glass-style="liquid"][data-nt-ready="1"][data-theme="dark"] {
+  --x-nt-glass-filter: blur(3px) saturate(150%) contrast(0.78) brightness(0.8);
+  --x-nt-glass-float-filter: blur(30px) saturate(170%) contrast(0.82) brightness(0.82);
+}
+/* Tint density adapts per plate: newtab.js samples the wallpaper under each one and sets
+   --x-nt-glass-density (0 thin, 1 dense) and --x-nt-glass-saturate (how much of the material's
+   saturation boost to keep). These are declared on every plate, not the body, so each resolves
+   against its own sample. Without a wallpaper sample the plates sit a little past thin. */
+body[data-glass-style],
+body[data-glass-style] :is(
+  #_x_extension_newtab_root_2024_unique_,
+  .x-nt-shortcut-icon,
+  .x-nt-bookmark-card,
+  .x-nt-recent-card-visual,
+  .x-nt-wallpaper-button,
+  .x-nt-feedback-button,
+  .x-nt-bookmark-cascade-debug-button,
+  .x-nt-bookmarks-pager-btn,
+  .x-nt-section-mode-select ._x_extension_select_trigger_2024_unique_,
+  #_x_extension_newtab_suggestions_surface_2026_unique_,
+  ._x_extension_menu_surface_2024_unique_,
+  .x-nt-wallpaper-panel,
+  .x-nt-bookmarks-topbar
+) {
+  --x-nt-glass-tint-alpha: calc(
+    var(--x-nt-glass-tint-thin) +
+    (var(--x-nt-glass-tint-dense) - var(--x-nt-glass-tint-thin)) * var(--x-nt-glass-density, 0.35)
+  );
+  --x-nt-glass-tint: rgb(var(--x-nt-glass-tint-rgb) / var(--x-nt-glass-tint-alpha));
+  --x-nt-glass-tint-hover: rgb(var(--x-nt-glass-tint-rgb) / calc(var(--x-nt-glass-tint-alpha) + 0.14));
+  --x-nt-glass-fill:
+    linear-gradient(180deg, var(--x-nt-glass-sheen), transparent 60%),
+    linear-gradient(var(--x-nt-glass-tint), var(--x-nt-glass-tint));
+  --x-nt-glass-fill-hover:
+    linear-gradient(180deg, var(--x-nt-glass-sheen), transparent 60%),
+    linear-gradient(var(--x-nt-glass-tint-hover), var(--x-nt-glass-tint-hover));
+}
+body[data-glass-style] {
+  /* Secondary ink is a translucent dark, so it keeps its contrast whatever the plate shows. */
+  --x-nt-placeholder: rgba(60, 60, 67, 0.62);
+  --x-nt-bookmark-card-hover-underlay: transparent;
+  /* Search results: two steps of one neutral ink, so hover and the keyboard selection read apart. */
+  --x-nt-glass-row-hover: rgba(0, 0, 0, 0.04);
+  --x-nt-glass-row-active: rgba(0, 0, 0, 0.085);
+  --x-nt-glass-chip: rgba(0, 0, 0, 0.055);
+  --x-nt-glass-chip-strong: rgba(0, 0, 0, 0.09);
+  /* A control lifted off the glass (a segmented tab's pill), lit rather than tinted. */
+  --x-nt-glass-raised: rgba(255, 255, 255, 0.62);
+  --x-nt-glass-raised-edge: inset 0 0.5px 0 rgba(255, 255, 255, 0.8), 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+body[data-glass-style][data-theme="dark"] {
+  --x-nt-placeholder: rgba(235, 235, 245, 0.6);
+  --x-nt-glass-row-hover: rgba(255, 255, 255, 0.06);
+  --x-nt-glass-row-active: rgba(255, 255, 255, 0.12);
+  --x-nt-glass-chip: rgba(255, 255, 255, 0.09);
+  --x-nt-glass-chip-strong: rgba(255, 255, 255, 0.15);
+  --x-nt-glass-raised: rgba(255, 255, 255, 0.16);
+  --x-nt-glass-raised-edge: inset 0 0.5px 0 rgba(255, 255, 255, 0.22), 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Search: one plate. The inner input layer goes clear so the shell is the only surface. It keeps
+   its glass while the Appearance panel is open, where the default style turns it solid, so the
+   material being picked there shows on it. */
+body[data-glass-style]:not([data-nt-suggestions-open="true"])
+  #_x_extension_newtab_root_2024_unique_ {
+  background: var(--x-nt-glass-fill);
+  border-color: transparent;
+  box-shadow: var(--x-nt-glass-edge);
+  backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  -webkit-backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+}
+body[data-glass-style]:not([data-nt-suggestions-open="true"])
+  #_x_extension_newtab_root_2024_unique_:focus-within {
+  background: var(--x-nt-glass-fill-hover);
+}
+/* Icons in the plate share the placeholder's translucent ink. */
+body[data-glass-style] #_x_extension_newtab_root_2024_unique_ {
+  --x-ext-input-icon: var(--x-nt-placeholder);
+}
+body[data-glass-style] #_x_extension_newtab_root_2024_unique_ .x-nt-close-other-tabs:not(:hover) {
+  color: var(--x-nt-placeholder);
+}
+body[data-glass-style] #_x_extension_newtab_search_layer_2024_unique_ {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+/* The open search stack, menus and the Appearance panel float: the same material as the plates,
+   density adapting the same way, from a higher floor because they carry more to read. */
+body[data-glass-style] #_x_extension_newtab_suggestions_surface_2026_unique_,
+/* :is() lifts menus to the specificity of a menu's own dark-palette surface rule (the shortcut
+   context menu paints one), so the glass wins as the later sheet. */
+body[data-glass-style] ._x_extension_menu_surface_2024_unique_:is(*, [data-glass-ink]),
+body[data-glass-style] .x-nt-wallpaper-panel {
+  --x-nt-glass-tint-rgb: var(--x-nt-glass-float-rgb);
+  --x-nt-glass-tint-thin: var(--x-nt-glass-float-thin);
+  --x-nt-glass-tint-dense: var(--x-nt-glass-float-dense);
+  background: var(--x-nt-glass-fill);
+  border-color: transparent;
+  box-shadow: var(--x-nt-glass-edge), var(--x-nt-glass-float-shadow);
+}
+/* Only while shown: closed, the panel and the suggestions sit under visibility: hidden. */
+body[data-glass-style][data-nt-suggestions-open="true"] #_x_extension_newtab_suggestions_surface_2026_unique_,
+body[data-glass-style] ._x_extension_menu_surface_2024_unique_,
+body[data-glass-style] .x-nt-wallpaper-panel[data-open="true"] {
+  backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-float-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  -webkit-backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-float-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+}
+body[data-glass-style] #_x_extension_newtab_suggestions_outline_2026_unique_ {
+  border-color: transparent;
+}
+/* The panel's header sits outside its scrolling body, so it can share the panel's glass. */
+body[data-glass-style] .x-nt-appearance-header {
+  background: transparent;
+}
+
+/* Search results. The default style tints a row, its tags, its query marks and its buttons with
+   the site's own color (set inline per row); glass keeps them all on the neutral steps above. */
+body[data-glass-style] .x-nt-suggestion-item[data-row-state="hover"] {
+  background: var(--x-nt-glass-row-hover);
+}
+body[data-glass-style] .x-nt-suggestion-item[data-row-state="active"] {
+  background: var(--x-nt-glass-row-active);
+}
+body[data-glass-style] .x-nt-suggestion-mark {
+  background: var(--x-nt-glass-chip);
+  color: inherit;
+}
+body[data-glass-style] .x-nt-suggestion-tag {
+  background: var(--x-nt-glass-chip);
+  border-color: transparent;
+  color: var(--x-nt-subtext);
+}
+body[data-glass-style] .x-nt-suggestion-action-tag {
+  background: var(--x-nt-glass-chip);
+  color: var(--x-nt-text);
+}
+body[data-glass-style] .x-nt-suggestion-action-button {
+  background: transparent;
+  border-color: transparent;
+  color: var(--x-nt-subtext);
+}
+body[data-glass-style] .x-nt-suggestion-item:is([data-row-state="hover"], [data-row-state="active"]) .x-nt-suggestion-action-button {
+  color: var(--x-nt-text);
+}
+body[data-glass-style] .x-nt-suggestion-item[data-row-state="active"] .x-nt-suggestion-action-button {
+  background: var(--x-nt-glass-chip-strong);
+}
+body[data-glass-style] .x-nt-suggestion-utility-button[data-visible="true"] {
+  background: transparent;
+  border-color: transparent;
+  color: var(--x-nt-subtext);
+}
+body[data-glass-style] .x-nt-suggestion-utility-button[data-hover="true"] {
+  background: var(--x-nt-glass-chip);
+  border-color: transparent;
+  color: var(--x-nt-text);
+}
+
+/* The shortcuts sit right under the open results and run wider than them; seen through translucent
+   glass, the parts under the plate blur while the parts outside stay sharp, like slivers stuck to its
+   sides. They step back while the results are open. Each icon fades on its own, never a parent,
+   so their glass keeps its blur as they return. */
+body[data-glass-style] .x-nt-shortcut-icon,
+body[data-glass-style] .x-nt-shortcut-group-header {
+  transition:
+    transform var(--x-nt-shortcut-dock-duration, 300ms) var(--x-nt-shortcut-dock-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    background-color var(--lumno-duration-sm) ease,
+    color var(--lumno-duration-sm) ease,
+    filter var(--lumno-duration-sm) ease,
+    opacity var(--lumno-duration-sm) ease;
+}
+body[data-glass-style][data-nt-suggestions-open="true"] :is(.x-nt-shortcut-icon, .x-nt-shortcut-group-header) {
+  opacity: 0;
+}
+
+/* The bookmarks bar under "match style" with the frosted material: the plates' glass, sampled and
+   flipped the same way, its ink following the glass rather than the mist's own tone. Under the
+   liquid material the bar keeps its own liquid glass ('clear'), whose rim bends only where the
+   docked bar shows an edge. */
+body[data-glass-style][data-nt-ready="1"] .x-nt-bookmarks-topbar[data-surface-mode="frosted"] {
+  --x-nt-bookmarks-topbar-ink: rgba(0, 0, 0, 0.86);
+  background: var(--x-nt-glass-fill);
+  border-bottom-color: transparent;
+  box-shadow: inset 0 -0.5px 0 rgba(255, 255, 255, 0.35), 0 0.5px 0 rgba(0, 0, 0, 0.1);
+  backdrop-filter: var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  -webkit-backdrop-filter: var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+}
+body[data-glass-style][data-nt-ready="1"] .x-nt-bookmarks-topbar[data-surface-mode="frosted"][data-layout="floating"] {
+  box-shadow: var(--x-nt-glass-edge), var(--x-nt-bookmarks-topbar-floating-shadow);
+}
+/* Under the liquid material the bar keeps its own liquid filter and rim, but takes the page's tint
+   and ink so it never stays white beside dark glass. */
+body[data-glass-style][data-nt-ready="1"] .x-nt-bookmarks-topbar[data-surface-mode="clear"][data-glass-ink] {
+  --x-nt-bookmarks-topbar-ink: rgba(0, 0, 0, 0.86);
+  background: var(--x-nt-glass-fill);
+}
+body[data-glass-style][data-nt-ready="1"] .x-nt-bookmarks-topbar:is([data-surface-mode="frosted"], [data-surface-mode="clear"][data-glass-ink]):is([data-glass-ink="light"], body[data-theme="dark"] *) {
+  --x-nt-bookmarks-topbar-ink: rgba(255, 255, 255, 0.92);
+}
+
+/* Menus: the highlighted and chosen options are a layer of the glass, not a solid chip. */
+body[data-glass-style] :is(._x_extension_menu_surface_2024_unique_) {
+  --select-hover-bg: var(--x-nt-glass-row-hover);
+  --select-selected-bg: var(--x-nt-glass-row-active);
+  --select-selected-text: var(--x-nt-text);
+}
+
+/* Controls on a glass panel are layers of the glass too: fields and tracks sit recessed in it, a
+   segmented tab's pill is lifted and lit. The variables are set on the controls themselves because
+   several are set again there (a row select's own control fill). */
+body[data-glass-style] :is(.x-nt-wallpaper-panel, ._x_extension_menu_surface_2024_unique_),
+body[data-glass-style] :is(.x-nt-wallpaper-panel, ._x_extension_menu_surface_2024_unique_) :is(
+  .x-nt-row-select,
+  ._x_extension_select_wrap_2024_unique_,
+  .x-nt-range-slider-row,
+  .x-range-slider,
+  .x-nt-segmented-tabs
+) {
+  --control-bg: var(--x-nt-glass-chip);
+  --tab-border: transparent;
+  --x-nt-segmented-bg: var(--x-nt-glass-chip);
+  --x-nt-segmented-border: transparent;
+  --x-nt-segmented-indicator-bg: var(--x-nt-glass-raised);
+  --x-nt-segmented-indicator-shadow: var(--x-nt-glass-raised-edge);
+  --x-nt-segmented-hover-bg: var(--x-nt-glass-row-hover);
+}
+body[data-glass-style] .x-nt-wallpaper-panel ._x_extension_select_wrap_2024_unique_:is(:hover, [data-open="true"]) ._x_extension_select_trigger_2024_unique_ {
+  background: var(--x-nt-glass-chip-strong);
+}
+
+/* Feature hints float over the page like menus, so they take the same glass and ink. */
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint {
+  --x-lumno-feature-hint-bg-top: rgb(var(--x-nt-glass-float-rgb) / var(--x-nt-glass-float-dense));
+  --x-lumno-feature-hint-bg-bottom: rgb(var(--x-nt-glass-float-rgb) / var(--x-nt-glass-float-dense));
+  --x-lumno-feature-hint-border: transparent;
+  box-shadow: var(--x-nt-glass-edge), var(--x-nt-glass-float-shadow);
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint[data-visible="true"] {
+  backdrop-filter: var(--x-nt-glass-float-filter);
+  -webkit-backdrop-filter: var(--x-nt-glass-float-filter);
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:is([data-glass-ink="light"], body[data-theme="dark"] *) {
+  --x-lumno-feature-hint-arrow-border: rgba(255, 255, 255, 0.16);
+  --x-lumno-feature-hint-text: rgba(235, 235, 245, 0.78);
+  --x-lumno-feature-hint-strong: #f5f5f7;
+  --x-lumno-feature-hint-badge-bg: rgba(255, 255, 255, 0.1);
+  --x-lumno-feature-hint-badge-text: rgba(235, 235, 245, 0.8);
+  --x-lumno-feature-hint-badge-gloss: transparent;
+  --x-lumno-feature-hint-badge-border: rgba(255, 255, 255, 0.14);
+  --x-lumno-feature-hint-badge-shadow: none;
+}
+
+/* Light theme over dark wallpaper. A plate whose backdrop is dark (data-glass-ink="light", set by
+   newtab.js from the wallpaper sample) flips to light ink on a thin dark tint, so a dark wallpaper
+   stays see-through instead of turning milky, and dims its backdrop a touch so the light ink holds.
+   Until the first sample lands, the plates take the ink the last page settled on
+   (body[data-glass-ink-hint], remembered by the sampler), so they open in it instead of flipping
+   a second later. The tint keeps a floor: thin, but always visibly glass.
+   The open search stack (bar, results plate, result rows) shares one ink, so it flips as a whole. */
+body[data-glass-style]:not([data-theme="dark"]) :is(
+  [data-glass-ink="light"],
+  body[data-glass-ink-hint="light"] :is(
+    #_x_extension_newtab_root_2024_unique_,
+    #_x_extension_newtab_suggestions_surface_2026_unique_,
+    #_x_extension_newtab_suggestions_container_2024_unique_,
+    .x-nt-shortcut-icon,
+    .x-nt-bookmark-card,
+    .x-nt-recent-card-visual,
+    .x-nt-wallpaper-button,
+    .x-nt-feedback-button,
+    .x-nt-bookmarks-pager-btn
+  ):not([data-glass-ink]):not(.x-nt-bookmarks-topbar *)
+) {
+  --x-nt-glass-tint-rgb: 16 18 22;
+  --x-nt-glass-float-rgb: 16 18 22;
+  --x-nt-glass-row-hover: rgba(255, 255, 255, 0.07);
+  --x-nt-glass-row-active: rgba(255, 255, 255, 0.13);
+  --x-nt-glass-chip: rgba(255, 255, 255, 0.1);
+  --x-nt-glass-chip-strong: rgba(255, 255, 255, 0.16);
+  --x-nt-glass-raised: rgba(255, 255, 255, 0.16);
+  --x-nt-glass-raised-edge: inset 0 0.5px 0 rgba(255, 255, 255, 0.22), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --x-nt-glass-sheen: rgba(255, 255, 255, 0.08);
+  --x-nt-glass-inset: rgba(255, 255, 255, 0.08);
+  --x-nt-glass-inset-edge: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --x-nt-glass-edge:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    inset 0 0 16px rgba(255, 255, 255, 0.08),
+    0 0 0 0.5px rgba(0, 0, 0, 0.3);
+  --x-nt-glass-ink: rgba(255, 255, 255, 0.94);
+  --x-nt-glass-ink-secondary: rgba(255, 255, 255, 0.58);
+  --x-nt-glass-ink-blend: plus-lighter;
+  --x-nt-text: #f5f5f7;
+  --x-nt-subtext: rgba(235, 235, 245, 0.62);
+  --x-nt-placeholder: rgba(235, 235, 245, 0.62);
+  --x-nt-recent-title: rgba(255, 255, 255, 0.86);
+  --x-ext-input-text: #f5f5f7;
+}
+body[data-glass-style="frosted"]:not([data-theme="dark"]) :is(
+  [data-glass-ink="light"],
+  body[data-glass-ink-hint="light"] :is(
+    #_x_extension_newtab_root_2024_unique_,
+    #_x_extension_newtab_suggestions_surface_2026_unique_,
+    #_x_extension_newtab_suggestions_container_2024_unique_,
+    .x-nt-shortcut-icon,
+    .x-nt-bookmark-card,
+    .x-nt-recent-card-visual,
+    .x-nt-wallpaper-button,
+    .x-nt-feedback-button,
+    .x-nt-bookmarks-pager-btn
+  ):not([data-glass-ink]):not(.x-nt-bookmarks-topbar *)
+) {
+  --x-nt-glass-tint-thin: 0.2;
+  --x-nt-glass-tint-dense: 0.58;
+  --x-nt-glass-float-thin: 0.36;
+  --x-nt-glass-float-dense: 0.66;
+  --x-nt-glass-backdrop-brightness: 0.62;
+}
+body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(
+  [data-glass-ink="light"],
+  body[data-glass-ink-hint="light"] :is(
+    #_x_extension_newtab_root_2024_unique_,
+    #_x_extension_newtab_suggestions_surface_2026_unique_,
+    #_x_extension_newtab_suggestions_container_2024_unique_,
+    .x-nt-shortcut-icon,
+    .x-nt-bookmark-card,
+    .x-nt-recent-card-visual,
+    .x-nt-wallpaper-button,
+    .x-nt-feedback-button,
+    .x-nt-bookmarks-pager-btn
+  ):not([data-glass-ink]):not(.x-nt-bookmarks-topbar *)
+) {
+  --x-nt-glass-tint-thin: 0.22;
+  --x-nt-glass-tint-dense: 0.56;
+  --x-nt-glass-float-thin: 0.2;
+  --x-nt-glass-float-dense: 0.44;
+  --x-nt-glass-backdrop-brightness: 0.78;
+  --x-nt-glass-edge:
+    inset 0.5px 0.75px 0 rgba(255, 255, 255, 0.34),
+    inset -0.5px -0.5px 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.1),
+    inset 0 0 10px rgba(255, 255, 255, 0.05),
+    0 0 0 0.5px rgba(0, 0, 0, 0.36),
+    0 4px 14px rgba(0, 0, 0, 0.22);
+}
+
+/* Vibrancy: text on a plate blends with the glass under it, the way system materials draw labels.
+   Light glass multiplies (Chromium has no plus-darker), dark glass adds light; titles stay near
+   solid for reading and the secondary lines carry most of the color they pick up. */
+body[data-glass-style] {
+  --x-nt-glass-ink: rgba(0, 0, 0, 0.86);
+  --x-nt-glass-ink-secondary: rgba(0, 0, 0, 0.5);
+  --x-nt-glass-ink-blend: multiply;
+}
+body[data-glass-style][data-theme="dark"] {
+  --x-nt-glass-ink: rgba(255, 255, 255, 0.92);
+  --x-nt-glass-ink-secondary: rgba(255, 255, 255, 0.5);
+  --x-nt-glass-ink-blend: plus-lighter;
+}
+body[data-glass-style] :is(
+  .x-nt-bookmark-card:not(.x-nt-bookmarks-topbar .x-nt-bookmark-card) .x-nt-bookmark-title,
+  .x-nt-recent-name
+) {
+  color: var(--x-nt-glass-ink);
+  mix-blend-mode: var(--x-nt-glass-ink-blend);
+}
+body[data-glass-style] :is(.x-nt-recent-url-text, .x-nt-recent-action) {
+  color: var(--x-nt-glass-ink-secondary);
+  mix-blend-mode: var(--x-nt-glass-ink-blend);
+}
+
+/* Bookmark cards; the bookmarks bar keeps its own plain rows. Hover brightens the tint instead of
+   lifting a shadow. */
+body[data-glass-style] .x-nt-bookmark-card:not(.x-nt-bookmarks-topbar .x-nt-bookmark-card):not(.x-nt-bookmark-card-drag-preview) {
+  background: var(--x-nt-glass-fill);
+  box-shadow: var(--x-nt-glass-edge);
+  backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  -webkit-backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+}
+body[data-glass-style] .x-nt-bookmark-card:not(.x-nt-bookmarks-topbar .x-nt-bookmark-card):not([data-bookmark-drop-target="true"]):not([data-bookmark-context-menu-open="true"]) {
+  border-color: transparent;
+}
+body[data-glass-style] .x-nt-bookmark-card:not(.x-nt-bookmarks-topbar .x-nt-bookmark-card):not([data-bookmark-drop-target="true"])::before {
+  background: var(--x-nt-glass-tint-hover);
+}
+body[data-glass-style] .x-nt-bookmark-icon {
+  background: transparent;
+}
+body[data-glass-style] .x-nt-folder-preview-favicon {
+  background: var(--x-nt-glass-inset);
+  border-color: transparent;
+}
+
+/* Recent cards: one plate with a lighter inset for the content, like a grouped list. The glass sits
+   on the card itself: moved to a pseudo-element, Chrome drew no backdrop for it once the cards sit
+   in the bottom dock's scroll container (the bookmarks bar layout), leaving the bare wallpaper. */
+body[data-glass-style] .x-nt-recent-card-visual,
+body[data-glass-style] .x-nt-recent-card:hover .x-nt-recent-card-visual,
+body[data-glass-style] .x-nt-recent-card[data-recent-context-menu-open="true"] .x-nt-recent-card-visual {
+  background: var(--x-nt-glass-fill);
+  border-color: transparent;
+  box-shadow: var(--x-nt-glass-edge);
+  backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  -webkit-backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+}
+body[data-glass-style] .x-nt-recent-inner {
+  background: none;
+  background-color: var(--x-nt-glass-inset);
+  border-color: transparent;
+  box-shadow: var(--x-nt-glass-inset-edge);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: height var(--lumno-duration-xl) ease, transform var(--lumno-duration-xl) ease,
+    margin-bottom var(--lumno-duration-xl) ease, background-color var(--lumno-duration-xl) ease;
+}
+/* On hover the inset rises out of the card like a sheet. It becomes a denser pane of the same
+   glass: inside the card it blurs the card's glass again, and past the card's edge, where it can see
+   nothing (the card is its backdrop root), the denser tint keeps it from reading as a ghost. */
+body[data-glass-style] .x-nt-recent-card:hover .x-nt-recent-inner,
+body[data-glass-style] .x-nt-recent-card[data-recent-context-menu-open="true"] .x-nt-recent-inner {
+  background-color: rgb(var(--x-nt-glass-tint-rgb) / calc(var(--x-nt-glass-tint-dense) + 0.12));
+  box-shadow: var(--x-nt-glass-edge);
+  backdrop-filter: var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  -webkit-backdrop-filter: var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+}
+body[data-glass-style] .x-nt-recent-card.x-nt-recent-card--rollback:hover .x-nt-recent-inner {
+  background-color: var(--x-nt-glass-inset);
+}
+/* Dark mode draws its own gradient rim on the inset; the material's edge replaces it. */
+body[data-glass-style][data-theme="dark"] .x-nt-recent-inner::before {
+  display: none;
+}
+
+/* Shortcut backplates keep the default shape: its border-radius and smoothing mask. The rim is an
+   inset shadow, so it follows the same border-radius the blur and fill are clipped to. */
+body[data-glass-style] .x-nt-shortcut-icon {
+  background: var(--x-nt-glass-fill);
+  box-shadow: var(--x-nt-glass-edge);
+  backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  -webkit-backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  color: var(--x-nt-text);
+}
+body[data-glass-style] .x-nt-shortcut-favicon-mask {
+  color: var(--x-nt-text);
+}
+
+/* Controls that sit on the wallpaper get a plate, as the default style's solid fills do. Icon
+   buttons inside a surface (a card's pin, the bookmarks bar's actions) stay bare until hovered. */
+body[data-glass-style][data-nt-ready="1"] :is(
+  .x-nt-wallpaper-button,
+  .x-nt-feedback-button,
+  .x-nt-bookmark-cascade-debug-button,
+  .x-nt-bookmarks-pager-btn,
+  .x-nt-section-mode-select ._x_extension_select_trigger_2024_unique_
+):not([data-wallpaper-overlay-cover="true"]):not(.x-nt-bookmarks-topbar *) {
+  --x-nt-wallpaper-icon-solid-bg: var(--x-nt-glass-tint);
+  --x-nt-wallpaper-icon-solid-bg-hover: var(--x-nt-glass-tint-hover);
+  --x-nt-wallpaper-icon-solid-bg-press: var(--x-nt-glass-tint-hover);
+  --x-nt-wallpaper-icon-solid-ink: var(--x-nt-text);
+  --x-nt-wallpaper-icon-solid-ink-hover: var(--x-nt-text);
+  background: var(--x-nt-glass-fill);
+  border-color: transparent;
+  box-shadow: var(--x-nt-glass-edge);
+  backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  -webkit-backdrop-filter: var(--x-nt-glass-refraction,) var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  color: var(--x-nt-text);
+  filter: none;
+  text-shadow: none;
+}
+body[data-glass-style][data-nt-ready="1"] :is(
+  .x-nt-wallpaper-button,
+  .x-nt-feedback-button,
+  .x-nt-bookmark-cascade-debug-button,
+  .x-nt-bookmarks-pager-btn,
+  .x-nt-section-mode-select ._x_extension_select_trigger_2024_unique_
+):not([data-wallpaper-overlay-cover="true"]):not(.x-nt-bookmarks-topbar *):hover {
+  background: var(--x-nt-glass-fill-hover);
+}
+body[data-glass-style] :is(.x-nt-recent-pin--active, .x-nt-recent-track--active) {
+  background: var(--x-nt-glass-chip);
+  color: rgb(var(--lumno-color-accent-rgb));
+}
+
+/* Entry. A fading ancestor becomes the backdrop root for everything inside it, so glass under a
+   fading section shows no blur until the fade ends and then snaps to frosted. Fade each glass
+   surface (and the loose text beside it) instead, on the same timing. */
+body[data-glass-style][data-nt-enter="run"] :is(
+  #_x_extension_newtab_bookmarks_2024_unique_,
+  #_x_extension_newtab_recent_sites_2024_unique_
+)[data-visible="true"],
+body[data-glass-style][data-nt-enter="run"] .x-nt-shortcuts-section[data-visible="true"] .x-nt-shortcut-tile,
+body[data-glass-style][data-nt-enter="run"] :is(
+  .x-nt-wallpaper-control,
+  .x-nt-feedback-control,
+  .x-nt-bookmark-cascade-debug-control
+) {
+  animation: none;
+}
+body[data-glass-style][data-nt-enter="run"] :is(
+  #_x_extension_newtab_bookmarks_2024_unique_,
+  #_x_extension_newtab_recent_sites_2024_unique_
+)[data-visible="true"] :is(
+  .x-nt-bookmark-card,
+  .x-nt-recent-card-visual,
+  .x-nt-bookmarks-heading,
+  .x-nt-bookmarks-crumb,
+  .x-nt-bookmarks-crumb-sep,
+  .x-nt-bookmarks-pager-btn,
+  .x-nt-section-mode-select ._x_extension_select_trigger_2024_unique_,
+  .x-nt-recent-heading,
+  .x-nt-recent-mode-switch
+) {
+  animation: _x_nt_content_section_entry_2026_unique_ var(--lumno-duration-2xl) cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+}
+body[data-glass-style][data-nt-enter="run"] .x-nt-shortcuts-section[data-visible="true"] .x-nt-shortcut-icon {
+  animation: _x_nt_shortcut_entry_2026_unique_ var(--lumno-duration-xl) cubic-bezier(0.16, 1, 0.3, 1)
+    calc(80ms + (var(--x-nt-shortcut-enter-index) * 18ms)) both;
+}
+body[data-glass-style][data-nt-enter="run"] :is(
+  .x-nt-wallpaper-button,
+  .x-nt-feedback-button,
+  .x-nt-bookmark-cascade-debug-button
+) {
+  animation: _x_nt_corner_control_entry_2026_unique_ var(--lumno-duration-lg) cubic-bezier(0.16, 1, 0.3, 1) 230ms both;
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-glass-style][data-nt-enter] :is(
+    .x-nt-bookmark-card,
+    .x-nt-recent-card-visual,
+    .x-nt-bookmarks-heading,
+    .x-nt-bookmarks-crumb,
+    .x-nt-bookmarks-crumb-sep,
+    .x-nt-bookmarks-pager-btn,
+    .x-nt-section-mode-select ._x_extension_select_trigger_2024_unique_,
+    .x-nt-recent-heading,
+    .x-nt-recent-mode-switch,
+    .x-nt-shortcut-icon,
+    .x-nt-wallpaper-button,
+    .x-nt-feedback-button,
+    .x-nt-bookmark-cascade-debug-button
+  ) {
+    animation: none;
+  }
+}

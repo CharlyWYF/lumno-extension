@@ -109,6 +109,31 @@ function key(target: HTMLElement, name: string) {
 }
 
 describe('New Tab React wallpaper view', () => {
+  it('picks a glass style and follows updated preferences without remounting', () => {
+    const { state, actions } = createState();
+    mount(state);
+    const host = refs().glassStyleSelectHost;
+    const select = host.querySelector('select');
+    expect(select?.value).toBe('none');
+    act(() => host.querySelector<HTMLButtonElement>('button')!.click());
+    const liquid = document.querySelector<HTMLElement>(
+      '[data-react-select-owner="x-nt-glass-style"] [data-value="liquid"]'
+    );
+    act(() => liquid?.click());
+    expect(actions.setGlassStyle).toHaveBeenCalledWith('liquid');
+    state.glassStyle.value = 'frosted';
+    rerender(state);
+    expect(refs().glassStyleSelectHost.querySelector('select')).toBe(select);
+    expect(select?.value).toBe('frosted');
+    act(() => refs().styleSectionTrigger.click());
+    expect(refs().styleSectionBody.hidden).toBe(true);
+    rerender(state);
+    expect(refs().styleSectionBody.hidden).toBe(true);
+    act(() => refs().styleSectionTrigger.click());
+    expect(refs().styleSectionBody.hidden).toBe(false);
+    expect(refs().glassStyleTitle.textContent).toBe(state.glassStyle.title);
+  });
+
   it('renders the complete appearance panel contract', () => {
     const { state } = createState();
     mount(state);
@@ -150,6 +175,7 @@ describe('New Tab React wallpaper view', () => {
     );
     expect(sectionTriggers.map((trigger) => trigger.dataset.wallpaperRef)).toEqual([
       'themeSectionTrigger',
+      'styleSectionTrigger',
       'searchSectionTrigger',
       'shortcutsAccordionTrigger',
       'bookmarkSettingsTrigger',

@@ -181,7 +181,8 @@
 }
 
 /* Dark values. Kept as one block so both selectors stay in sync. */
-body[data-theme="dark"] {
+body[data-theme="dark"],
+body[data-glass-style] [data-glass-ink-theme="dark"] {
   --lumno-color-text: #e5e7eb;
   --lumno-color-text-muted: #9ca3af;
   --lumno-color-border: rgba(255, 255, 255, 0.12);
