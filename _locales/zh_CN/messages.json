@@ -1326,7 +1326,7 @@
     "message": "内置"
   },
   "shortcuts_group_ai": {
-    "message": "AI"
+    "message": "AI 搜索"
   },
   "shortcuts_group_ai_desc": {
     "message": "输入关键词，按下 Tab 并键入内容（Prompt）后，可跳转至以下 AI 网站并自动填入（需先登录对应网站）"
@@ -1338,7 +1338,7 @@
     "message": "内置"
   },
   "shortcuts_badge_ai": {
-    "message": "AI"
+    "message": "AI 搜索"
   },
   "shortcuts_label_key": {
     "message": "触发词"
@@ -1395,7 +1395,7 @@
     "message": "暂无内置搜索引擎"
   },
   "shortcuts_empty_ai": {
-    "message": "暂无内置 AI"
+    "message": "暂无内置 AI 搜索"
   },
   "toast_saved": {
     "message": "已保存"

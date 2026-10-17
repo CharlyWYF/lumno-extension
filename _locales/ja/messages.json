@@ -1326,7 +1326,7 @@
     "message": "内蔵"
   },
   "shortcuts_group_ai": {
-    "message": "AI"
+    "message": "AI検索"
   },
   "shortcuts_group_ai_desc": {
     "message": "検索語を入力してTabを押し、質問文を入力すると、以下のAIサイトへ移動して自動入力します（事前に各サイトへのログインが必要です）"
@@ -1338,7 +1338,7 @@
     "message": "内蔵"
   },
   "shortcuts_badge_ai": {
-    "message": "AI"
+    "message": "AI検索"
   },
   "shortcuts_label_key": {
     "message": "起動ワード"
@@ -1395,7 +1395,7 @@
     "message": "内蔵検索エンジンはありません"
   },
   "shortcuts_empty_ai": {
-    "message": "内蔵AIはありません"
+    "message": "内蔵のAI検索はありません"
   },
   "toast_saved": {
     "message": "保存しました"

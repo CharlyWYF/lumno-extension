@@ -1317,7 +1317,7 @@
     "message": "內建"
   },
   "shortcuts_group_ai": {
-    "message": "AI"
+    "message": "AI 搜尋"
   },
   "shortcuts_group_ai_desc": {
     "message": "輸入關鍵字，按下 Tab 並輸入內容（Prompt）後，可前往以下 AI 網站並自動填入（需先登入對應網站）"
@@ -1329,7 +1329,7 @@
     "message": "內建"
   },
   "shortcuts_badge_ai": {
-    "message": "AI"
+    "message": "AI 搜尋"
   },
   "shortcuts_duplicate_tag": {
     "message": "與內置重複"
@@ -1395,7 +1395,7 @@
     "message": "沒有內建搜尋引擎"
   },
   "shortcuts_empty_ai": {
-    "message": "沒有內建 AI"
+    "message": "沒有內建 AI 搜尋"
   },
   "toast_saved": {
     "message": "已儲存"

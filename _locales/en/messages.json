@@ -1326,7 +1326,7 @@
     "message": "Built-in"
   },
   "shortcuts_group_ai": {
-    "message": "AI"
+    "message": "AI search"
   },
   "shortcuts_group_ai_desc": {
     "message": "Enter a keyword, press Tab, then type your prompt to open one of these AI sites and fill it in automatically (sign in to the site first)"
@@ -1338,7 +1338,7 @@
     "message": "Built-in"
   },
   "shortcuts_badge_ai": {
-    "message": "AI"
+    "message": "AI search"
   },
   "shortcuts_label_key": {
     "message": "Keyword"
@@ -1395,7 +1395,7 @@
     "message": "No built-in search engines"
   },
   "shortcuts_empty_ai": {
-    "message": "No built-in AI providers"
+    "message": "No built-in AI search providers"
   },
   "toast_saved": {
     "message": "Saved"

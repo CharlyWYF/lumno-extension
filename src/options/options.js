@@ -3696,7 +3696,7 @@
         : isSearchEngine
           ? getMessage('search_scope_group_engines', '搜索引擎')
           : isAiSiteSearchProvider(item)
-            ? getMessage('shortcuts_badge_ai', 'AI')
+            ? getMessage('shortcuts_badge_ai', 'AI 搜索')
             : getMessage('shortcuts_badge_builtin', '内置'),
       category: isSearchEngine ? 'searchEngine' : 'site',
       duplicateLabel: duplicate
@@ -3879,7 +3879,7 @@
       renderSiteSearchListController(
         siteSearchAiBuiltinListController,
         aiItems,
-        getMessage('shortcuts_empty_ai', '暂无内置 AI'),
+        getMessage('shortcuts_empty_ai', '暂无内置 AI 搜索'),
         builtinTemplateSet
       );
     }
@@ -4011,7 +4011,7 @@
     if (isAiSiteSearchProvider(provider)) {
       return {
         group: 'aiSearch',
-        label: getMessage('shortcuts_group_ai', 'AI')
+        label: getMessage('shortcuts_group_ai', 'AI 搜索')
       };
     }
     if (isSearchEngineSiteSearchProvider(provider)) {
