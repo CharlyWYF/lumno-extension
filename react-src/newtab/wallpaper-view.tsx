@@ -191,7 +191,7 @@ export interface WallpaperPanelState {
   };
   quote: {
     infoTooltip: string;
-    library: { infoTooltip: string; shuffleLabel: string; shuffleTooltip: string; title: string };
+    library: { infoTooltip: string; shuffleLabel: string; title: string };
   };
   search: {
     autoFocus: { infoLabel: string; infoTooltip: string; title: string; toggle: ToggleState };
@@ -1425,13 +1425,11 @@ function WallpaperPanel({
                     </span>
                     <button
                       {...ref('quoteLibraryShuffleButton')}
-                      {...tooltipHandlers(actions, state.quote.library.shuffleTooltip)}
-                      aria-label={state.quote.library.shuffleLabel}
-                      className="x-nt-quote-library-shuffle"
+                      className="x-lumno-action-button x-lumno-action-button--secondary x-nt-quote-import-button"
                       hidden
                       type="button"
                     >
-                      <i aria-hidden="true" className="ri-icon ri-size-16 ri-shuffle-line" />
+                      {state.quote.library.shuffleLabel}
                     </button>
                     <button
                       {...ref('quoteImportButton')}

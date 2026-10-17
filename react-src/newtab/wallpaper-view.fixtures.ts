@@ -65,7 +65,7 @@ export function createDefaultPanelState(): WallpaperPanelState {
       title: 'Material',
       value: 'none'
     },
-    quote: { infoTooltip: '', library: { infoTooltip: '', shuffleLabel: '', shuffleTooltip: '', title: '' } },
+    quote: { infoTooltip: '', library: { infoTooltip: '', shuffleLabel: '', title: '' } },
     search: {
       autoFocus: { infoLabel: '', infoTooltip: '', title: '', toggle: toggle('Automatically focus input') },
       seconds: { title: 'Show seconds', toggle: toggle('Show seconds'), visible: false },

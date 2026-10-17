@@ -4284,8 +4284,7 @@
           infoTooltip: getQuoteProviderLabel(),
           library: {
             title: t('newtab_quote_library', 'Quote collection'),
-            shuffleLabel: t('newtab_quote_shuffle', 'Show another quote'),
-            shuffleTooltip: t('newtab_quote_shuffle_daily', 'Show a random quote. A new one also comes every day.'),
+            shuffleLabel: t('newtab_quote_shuffle_button', 'Shuffle'),
             infoTooltip: t('newtab_quote_import_hint', 'TXT / MD: one non-empty content line per quote. Up to 1 MB, 1,000 quotes, 500 characters each; stored on this device only.')
           }
         },

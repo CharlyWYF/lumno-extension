@@ -221,6 +221,7 @@ body[data-quote-position="bottom"].x-nt-mobile-flow {
    tip) with the imported file under it, and a compact action on the right. */
 .x-nt-quote-library-row { align-items: center; }
 .x-nt-quote-library-info {
+  flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -241,6 +242,11 @@ body[data-quote-position="bottom"].x-nt-mobile-flow {
   white-space: normal;
 }
 body[data-theme="dark"] .x-nt-quote-import-status[data-error="true"] { color: #fca5a5; }
+.x-nt-quote-library-row .x-nt-appearance-setting-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .x-nt-quote-library-actions {
   flex: none;
   display: inline-flex;
@@ -264,29 +270,7 @@ body[data-theme="dark"] .x-nt-quote-import-status[data-error="true"] { color: #f
   outline: 2px solid var(--input-focus-color, rgba(59, 130, 246, 0.65));
   outline-offset: 2px;
 }
-.x-nt-quote-library-shuffle {
-  all: unset;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--lumno-radius-pill);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  color: var(--x-nt-panel-muted-ink, #6b7280);
-  cursor: pointer;
-  transition: background-color var(--lumno-duration-xs) ease, color var(--lumno-duration-xs) ease;
-}
-.x-nt-quote-library-shuffle[hidden] { display: none; }
-.x-nt-quote-library-shuffle:hover:not(:disabled) {
-  background: var(--control-bg, rgba(15, 23, 42, 0.04));
-  color: var(--x-nt-text, #111827);
-}
-.x-nt-quote-library-shuffle:focus-visible {
-  outline: 2px solid var(--input-focus-color, rgba(59, 130, 246, 0.65));
-  outline-offset: 2px;
-}
-.x-nt-quote-library-shuffle:disabled { cursor: default; opacity: 0.4; }
+.x-nt-quote-import-button[hidden] { display: none; }
 .x-nt-quote-import-button {
   flex: none;
   min-height: 30px;

@@ -3378,7 +3378,7 @@
     "message": "読み込み中…"
   },
   "newtab_quote_import_hint": {
-    "message": "TXT / MD の空白でない本文1行を一文として読み込みます。最大 1 MB、1,000 件、各 500 文字。この端末のみに保存します。"
+    "message": "名言は毎日自動で切り替わり、「別の一言」でいつでも変更できます。TXT / MD に対応し、空でない本文の各行が 1 つの名言になります。ファイルは最大 1 MB、最大 1,000 件、各 500 文字まで。このデバイスにのみ保存されます。"
   },
   "newtab_quote_entries": {
     "message": "件"
@@ -3395,7 +3395,7 @@
   "newtab_quote_replace": {
     "message": "ファイルを変更"
   },
-  "newtab_quote_shuffle_daily": {
-    "message": "ランダムに別の名言を表示します。名言は毎日自動で更新されます。"
+  "newtab_quote_shuffle_button": {
+    "message": "別の一言"
   }
 }

@@ -3378,7 +3378,7 @@
     "message": "Importing…"
   },
   "newtab_quote_import_hint": {
-    "message": "TXT / MD: one non-empty content line per quote. Up to 1 MB, 1,000 quotes, 500 characters each; stored on this device only."
+    "message": "A new quote shows every day; Shuffle changes it any time. TXT / MD: one non-empty content line per quote. Up to 1 MB, 1,000 quotes, 500 characters each; stored on this device only."
   },
   "newtab_quote_entries": {
     "message": "quotes"
@@ -3387,7 +3387,7 @@
     "message": "Import failed: the file doesn’t meet the format or size limits. Your previous collection is kept."
   },
   "newtab_quote_library": {
-    "message": "Quote collection"
+    "message": "Quotes"
   },
   "newtab_quote_import": {
     "message": "Import file"
@@ -3395,7 +3395,7 @@
   "newtab_quote_replace": {
     "message": "Replace file"
   },
-  "newtab_quote_shuffle_daily": {
-    "message": "Show a random quote. A new one also comes every day."
+  "newtab_quote_shuffle_button": {
+    "message": "Shuffle"
   }
 }
