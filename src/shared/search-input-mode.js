@@ -484,7 +484,17 @@
         return null;
       }
     }
-    const modeMenuPinyinRuntimeReady = ensureModeMenuPinyinRuntime();
+    // Only the scope panel's filter reads pinyin, so the runtime loads on the first typed
+    // character or the first panel open, not while the page is opening.
+    let modeMenuPinyinRuntimeReady;
+    let modeMenuPinyinRuntimeRequested = false;
+    function requestModeMenuPinyinRuntime() {
+      if (!modeMenuPinyinRuntimeRequested) {
+        modeMenuPinyinRuntimeRequested = true;
+        modeMenuPinyinRuntimeReady = ensureModeMenuPinyinRuntime();
+      }
+      return modeMenuPinyinRuntimeReady;
+    }
     const providedModeMenuCursorTooltipController =
       config.modeMenuCursorTooltipController || config.modeMenuTooltipController || null;
     const modeMenuCursorTooltipController = providedModeMenuCursorTooltipController || (
@@ -3242,6 +3252,7 @@
     }
 
     function handleModeInput(event) {
+      requestModeMenuPinyinRuntime();
       resetModeMenuDoubleTab();
       resetModeTagRemovalConfirmation();
       syncModeMenuQueryLift(event);
@@ -3471,6 +3482,7 @@
         return true;
       };
       const items = config.getModeMenuItems();
+      requestModeMenuPinyinRuntime();
       if ((items && typeof items.then === 'function') ||
           (modeMenuPinyinRuntimeReady &&
             typeof modeMenuPinyinRuntimeReady.then === 'function')) {

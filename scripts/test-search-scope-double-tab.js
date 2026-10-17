@@ -25,7 +25,7 @@ assert.match(
 );
 assert.match(
   sharedSource,
-  /function handleModeInput\(event\) \{\s*resetModeMenuDoubleTab\(\);[\s\S]*?function handleModeInputKeydown\(event\)[\s\S]*?event\.key !== 'Tab'[\s\S]*?resetModeMenuDoubleTab\(\);[\s\S]*?input\.addEventListener\('blur', handleModeInputBlur\)/,
+  /function handleModeInput\(event\) \{\s*requestModeMenuPinyinRuntime\(\);\s*resetModeMenuDoubleTab\(\);[\s\S]*?function handleModeInputKeydown\(event\)[\s\S]*?event\.key !== 'Tab'[\s\S]*?resetModeMenuDoubleTab\(\);[\s\S]*?input\.addEventListener\('blur', handleModeInputBlur\)/,
   'input, non-Tab keys, and blur should reset the pending double-Tab gesture'
 );
 assert.match(

@@ -349,10 +349,15 @@ assert.match(
   /function handleGlobalTypingFocus\(event\)[\s\S]*?shouldHandleModeMenuKeyEvent\(event\)[\s\S]*?const activeElement = document\.activeElement/,
   'newtab global typing should not steal text while the scope panel owns focus'
 );
-assert.match(
+assert.doesNotMatch(
   newtabHtml,
-  /assets\/vendor\/pinyin-pro\.js[\s\S]*?shared\/search-input-mode\.js/,
-  'newtab should load the local pinyin runtime before the shared scope controller'
+  /assets\/vendor\/pinyin-pro\.js/,
+  'newtab should not parse the pinyin runtime while the page opens'
+);
+assert.match(
+  inputModeSource,
+  /function handleModeInput\(event\) \{\s*requestModeMenuPinyinRuntime\(\);[\s\S]*?const items = config\.getModeMenuItems\(\);\s*requestModeMenuPinyinRuntime\(\);/,
+  'the scope panel should load the pinyin runtime on the first typed character or panel open'
 );
 assert.doesNotMatch(
   backgroundSource,
