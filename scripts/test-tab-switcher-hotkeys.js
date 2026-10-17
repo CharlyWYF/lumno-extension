@@ -75,11 +75,11 @@ assert.match(
 );
 assert.ok(
   manifest.content_scripts &&
-    manifest.content_scripts[0] &&
-    Array.isArray(manifest.content_scripts[0].js) &&
-    manifest.content_scripts[0].js.includes('src/content/hotkey-listener.js') &&
-    !manifest.content_scripts[0].js.includes('src/overlay/tab-switcher.js') &&
-    !manifest.content_scripts[0].js.includes('src/overlay/tab-switcher-page-bridge.js'),
+    manifest.content_scripts.every((entry) => (
+      Array.isArray(entry.js) &&
+      !entry.js.includes('src/overlay/tab-switcher.js') &&
+      !entry.js.includes('src/overlay/tab-switcher-page-bridge.js')
+    )),
   'normal pages should not preload the tab switcher runtime or bridge as content scripts'
 );
 assert.match(
@@ -164,8 +164,8 @@ assert.match(
 );
 assert.match(
   backgroundSource,
-  /function prepareShortcutKeyObserversInOpenTabs\(\)[\s\S]*chrome\.tabs\.query\(\{\},[\s\S]*prepareShortcutKeyObserver\(tab\)[\s\S]*chrome\.runtime\.onInstalled\.addListener\([\s\S]*prepareShortcutKeyObserversInOpenTabs\(\)[\s\S]*chrome\.runtime\.onStartup\.addListener\([\s\S]*prepareShortcutKeyObserversInOpenTabs\(\)/,
-  'extension reload and browser startup should prepare already-open tabs before the user presses the shortcut'
+  /function prepareShortcutKeyObserversInOpenTabs\(\)[\s\S]*chrome\.tabs\.query\(\{\},[\s\S]*prepareShortcutKeyObserver\(tab\)[\s\S]*chrome\.runtime\.onInstalled\.addListener\([\s\S]*prepareShortcutKeyObserversInOpenTabs\(\)/,
+  'an extension reload or update should prepare already-open tabs before the user presses the shortcut'
 );
 const shortcutReleaseContentScript = manifest.content_scripts.find((entry) => (
   entry &&

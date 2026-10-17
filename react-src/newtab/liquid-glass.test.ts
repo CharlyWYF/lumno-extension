@@ -49,9 +49,9 @@ describe('New Tab bookmarks bar liquid glass', () => {
     expect(getSurfaceBezel(800, 72)).toBe(14);
     expect(getSurfaceBezel(44, 44)).toBe(11);
     expect(getSurfaceBezel(8, 8)).toBe(4);
-    // Every surface bends as far per pixel of rim as the bookmarks bar's 48 over 16px.
-    expect(getSurfaceDisplacementScale(16)).toBe(48);
-    expect(getSurfaceDisplacementScale(30)).toBe(90);
+    // Every surface bends as far per pixel of rim as the bookmarks bar's 12 over 16px.
+    expect(getSurfaceDisplacementScale(16)).toBe(12);
+    expect(getSurfaceDisplacementScale(30)).toBe(23);
     // A rounder corner pushes the rim's bend off the straight edge near the corner.
     const sharp = getRimDisplacement(4, 2, 48, 48, 'floating', { radius: 4, bezel: 16 });
     const round = getRimDisplacement(4, 2, 48, 48, 'floating', { radius: 16, bezel: 16 });
@@ -60,13 +60,23 @@ describe('New Tab bookmarks bar liquid glass', () => {
     expect(getRimDisplacement(24, 24, 48, 48, 'floating', { radius: 16, bezel: 16 })).toEqual([0, 0]);
   });
 
-  it('bends an even ring that lets go only near its inner edge', () => {
-    const at = (y: number) => getRimDisplacement(400, y, 800, 72, 'floating', { bezel: 14, radius: 36 })[1];
-    expect(at(0.5)).toBeGreaterThan(0.95);
-    // Halfway across the ring it still pushes almost as hard as at the edge.
-    expect(at(7)).toBeGreaterThan(0.85);
-    expect(at(12)).toBeLessThan(at(7));
+  it('eases the bend out to nothing at the rim\'s inner edge, without folding the scene', () => {
+    const bezel = 14;
+    const at = (y: number) => getRimDisplacement(400, y, 800, 72, 'floating', { bezel, radius: 36 })[1];
+    expect(at(0.5)).toBeGreaterThan(0.9);
+    expect(at(7)).toBeLessThan(at(0.5));
+    // No slope left at the inner edge, so no line where the rim meets the flat middle.
+    expect(at(13.5)).toBeLessThan(0.01);
     expect(at(14.5)).toBe(0);
+    // Where each point samples the scene moves inward steadily from the edge (the bluest channel
+    // bends furthest): the scene stretches toward the rim but never mirrors back on itself.
+    const shift = (getSurfaceDisplacementScale(bezel) * 1.25) / 2;
+    let sampled = -Infinity;
+    for (let y = 0.5; y < bezel; y += 0.5) {
+      const next = y + at(y) * shift;
+      expect(next).toBeGreaterThan(sampled);
+      sampled = next;
+    }
   });
 
   it('rebuilds the whole rim from nine-slice tiles at any size', () => {
@@ -154,7 +164,7 @@ describe('New Tab bookmarks bar liquid glass', () => {
         return element;
       };
       const size = { width: 200, height: 64 };
-      const corner = { radius: '16px' };
+      const corner = { radius: '16px', rim: '' };
       const card = addSurface(size);
       let resized: ResizeObserverCallback = () => {};
       class FakeResizeObserver {
@@ -168,7 +178,10 @@ describe('New Tab bookmarks bar liquid glass', () => {
       const windowObj = {
         CSS: { supports: () => true },
         navigator: { userAgent: 'Chrome/140.0' },
-        getComputedStyle: () => ({ borderTopLeftRadius: corner.radius }),
+        getComputedStyle: () => ({
+          borderTopLeftRadius: corner.radius,
+          getPropertyValue: (name: string) => (name === '--rim' ? corner.rim : '')
+        }),
         requestAnimationFrame: (callback: FrameRequestCallback) => frames.push(callback),
         cancelAnimationFrame() {},
         ResizeObserver: FakeResizeObserver,
@@ -178,6 +191,7 @@ describe('New Tab bookmarks bar liquid glass', () => {
         documentObj: document,
         dispersionSelector: '.glass.search',
         property: '--refraction',
+        rimProperty: '--rim',
         selector: '.glass',
         windowObj
       });
@@ -282,6 +296,29 @@ describe('New Tab bookmarks bar liquid glass', () => {
       expect(passes(pointedAt())).toBe(1);
       expect(passes(pointedAt(search))).toBe(3);
       expect(filters()).toHaveLength(2);
+      surfaces.destroy();
+    });
+
+    it('holds a rim the surface sets for itself while it grows', async () => {
+      const { corner, encoded, filters, pointedAt, resize, settle, surfaces } = setup();
+      corner.rim = '22px';
+      resize(640, 70);
+      await settle();
+      const first = pointedAt();
+      const builds = encoded.mock.calls.length;
+      // The default would widen the rim from 14px only once the plate reached 88px; this one is
+      // 22px from the start, so growing never asks for new tiles.
+      const map = () => (filters()[0].querySelector('feDisplacementMap') as Element).getAttribute('scale');
+      expect(map()).toBe(getSurfaceDisplacementScale(22).toFixed(1));
+      resize(640, 180);
+      resize(640, 412);
+      await settle();
+      expect(pointedAt()).toBe(first);
+      expect(encoded.mock.calls.length).toBe(builds);
+      // Too short for it, the rim narrows to half the surface.
+      resize(640, 40);
+      await settle();
+      expect(map()).toBe(getSurfaceDisplacementScale(20).toFixed(1));
       surfaces.destroy();
     });
 

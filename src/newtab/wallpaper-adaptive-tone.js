@@ -831,11 +831,24 @@
       }
     }
 
-    // A target may sample several elements at once; it then reads the box around all of them.
+    // A target may sample several elements at once; it then reads the box around all of them
+    // that lies on screen, so a row scrolled partly out of view centers on what is shown.
     function getTargetSampleBounds(sampleElement) {
-      const rects = (Array.isArray(sampleElement) ? sampleElement : [sampleElement])
-        .filter((element) => element && typeof element.getBoundingClientRect === 'function')
+      const elements = (Array.isArray(sampleElement) ? sampleElement : [sampleElement])
+        .filter((element) => element && typeof element.getBoundingClientRect === 'function');
+      const viewport = elements.length > 1 ? getViewportSize() : null;
+      const rects = elements
         .map((element) => element.getBoundingClientRect())
+        .map((rect) => {
+          if (!viewport) {
+            return rect;
+          }
+          const left = Math.max(rect.left, 0);
+          const top = Math.max(rect.top, 0);
+          const right = Math.min(rect.right, viewport.width);
+          const bottom = Math.min(rect.bottom, viewport.height);
+          return { left, top, right, bottom, width: right - left, height: bottom - top };
+        })
         .filter((rect) => rect.width > 1 && rect.height > 1);
       if (rects.length === 0) {
         return null;

@@ -6567,6 +6567,16 @@ body[data-glass-style] [data-glass-ink-theme="dark"] .x-nt-suggestion-icon-slot[
 body[data-glass-style] .x-nt-suggestion-icon-slot[data-emphasis="true"][data-favicon="false"][data-glass-ink-theme="dark"] {
   background-color: rgba(255, 255, 255, 0.12);
 }
+/* A favicon slot showing the fallback glyph is an icon, not a favicon: the selected row lifts it
+   onto the icon tile instead of the white favicon backing, which the light glyph vanishes into. */
+.x-nt-suggestion-item[data-row-state="active"] .x-nt-suggestion-icon-slot[data-favicon="true"]:has(> .x-nt-favicon-fallback[data-visible="true"]) {
+  background-color: #FFFFFF;
+}
+body[data-theme="dark"] .x-nt-suggestion-item[data-row-state="active"] .x-nt-suggestion-icon-slot[data-favicon="true"]:has(> .x-nt-favicon-fallback[data-visible="true"]),
+body[data-glass-style] [data-glass-ink-theme="dark"] .x-nt-suggestion-item[data-row-state="active"] .x-nt-suggestion-icon-slot[data-favicon="true"]:has(> .x-nt-favicon-fallback[data-visible="true"]),
+body[data-glass-style] .x-nt-suggestion-item[data-row-state="active"][data-glass-ink-theme="dark"] .x-nt-suggestion-icon-slot[data-favicon="true"]:has(> .x-nt-favicon-fallback[data-visible="true"]) {
+  background-color: rgba(255, 255, 255, 0.12);
+}
 .x-nt-suggestion-action-tags {
   all: unset;
   display: none;

@@ -97,8 +97,13 @@ const documentStartMessages = runtimeMessages.filter((message) =>
 );
 assert.strictEqual(
   documentStartMessages.length,
+  1,
+  'the committed top-frame Document should be announced once; a reinjected observer runs in a started page'
+);
+assert.strictEqual(
+  shortcutResponseCallbacks.length,
   2,
-  'each observer runtime should announce the committed top-frame Document once'
+  'a replacement made before the shortcut arrived should ask for it again, since the answer reaches the old observer'
 );
 documentStartMessages.forEach((message) => {
   assert.deepStrictEqual(
@@ -383,6 +388,49 @@ assert.deepStrictEqual(
   } finally {
     window.Date.now = realNow;
   }
+}
+
+// Each switcher command injects the observer into its tab again. A release
+// the running observer buffered just before must survive the replacement,
+// and an observer that already knows the shortcut must not ask again.
+{
+  shortcutResponseCallbacks.length = 0;
+  const commandStartedAt = Date.now();
+  keydownHandler({
+    altKey: true,
+    code: 'KeyQ',
+    ctrlKey: false,
+    isComposing: false,
+    isTrusted: true,
+    key: 'q',
+    metaKey: false,
+    preventDefault() {},
+    repeat: false,
+    shiftKey: false,
+    stopPropagation() {},
+    target: window.document.body
+  });
+  keyupHandler({ isTrusted: true, key: 'Alt', code: 'AltLeft' });
+  const relayedBefore = runtimeMessages.length;
+  window.eval(source);
+  assert.strictEqual(keyupHandlers.size, 1, 'the replacement should leave one keyup listener');
+  assert.strictEqual(shortcutResponseCallbacks.length, 0,
+    'a replacement should reuse the shortcut its predecessor already received');
+  assert.strictEqual(
+    runtimeMessages.filter((message) => message && message.action === 'notifyTopFrameDocumentStarted').length,
+    0,
+    'a replacement should not announce a new Document'
+  );
+  runtimeMessageListener({
+    action: 'armTabSwitcherShortcutRelease',
+    keys: ['Alt'],
+    commandStartedAt
+  }, {}, () => {});
+  assert.deepStrictEqual(
+    runtimeMessages.slice(relayedBefore).map((message) => ({ ...message })),
+    [{ action: 'notifyTabSwitcherShortcutModifierReleased', key: 'Alt' }],
+    'a release buffered by the replaced observer should still commit the switcher'
+  );
 }
 
 dom.window.close();

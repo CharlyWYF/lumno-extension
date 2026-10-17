@@ -3,10 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
 
-// Loads the two manifest content scripts every ordinary page gets (the
-// top-frame copy-URL listener and the all-frames shortcut observer) into a
-// JSDOM page and counts what they send the background while the user works in
-// the page.
+// Loads the all-frames shortcut observer every ordinary page gets, and the
+// copy-URL listener the first copy command injects, into a JSDOM page and
+// counts what they send the background while the user works in the page.
 
 const repoRoot = path.join(__dirname, '..');
 const read = (relativePath) => fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
@@ -196,8 +195,41 @@ async function testCopyToastFetchesOnlyItsStringsForAChosenLanguage() {
   assert.strictEqual(page.sent.length, 1, 'the toast strings should be fetched once per page');
 }
 
+// A subframe gets the shortcut observer too (an editor iframe can hold the
+// focus), but it cannot receive keys until its window takes focus.
+async function testSubframeAsksForTheShortcutOnlyWhenFocused() {
+  const dom = new JSDOM('<!doctype html><html><body><iframe></iframe></body></html>', {
+    runScripts: 'outside-only',
+    pretendToBeVisual: true,
+    url: 'https://news.example.test/article'
+  });
+  const frameWindow = dom.window.document.querySelector('iframe').contentWindow;
+  const sent = [];
+  frameWindow.chrome = {
+    runtime: {
+      lastError: null,
+      sendMessage(message, callback) {
+        sent.push(message && message.action);
+        if (typeof callback === 'function') {
+          setTimeout(() => callback({ shortcut: 'Command+Shift+K' }), 0);
+        }
+      },
+      onMessage: { addListener() {}, removeListener() {} }
+    }
+  };
+  frameWindow.eval(read('src/shared/shortcut-key-matcher.js'));
+  frameWindow.eval(read('src/content/shortcut-key-observer.js'));
+  await settle();
+  assert.deepStrictEqual(sent, [], 'loading a subframe should not message the background');
+  frameWindow.dispatchEvent(new frameWindow.FocusEvent('focus'));
+  await settle();
+  assert.deepStrictEqual(sent, ['getShowSearchShortcut'], 'the subframe should ask once its window takes focus');
+  dom.window.close();
+}
+
 (async () => {
   await testElementFocusSendsNothing();
+  await testSubframeAsksForTheShortcutOnlyWhenFocused();
   await testWindowFocusRefreshesTheShortcutAtMostEveryTwoSeconds();
   await testBackForwardCacheRestoreRefreshesTheShortcut();
   await testCopyToastUsesBrowserLanguageWithoutMessaging();

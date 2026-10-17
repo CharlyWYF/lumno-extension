@@ -537,6 +537,29 @@ function getCssRgbChannels(value) {
     heading.style.getPropertyValue('--x-nt-wallpaper-adaptive-ink'),
     'a grouped caption should share its heading adaptive ink'
   );
+
+  // A row of icons scrolled partly out of view reads only the icons on screen:
+  // one far off the left edge must not drag the sample over the dark half.
+  const shownFolder = createElement({ left: 620, top: 500, right: 668, bottom: 548, width: 48, height: 48 });
+  const shownAdd = createElement({ left: 720, top: 500, right: 768, bottom: 548, width: 48, height: 48 });
+  const scrolledAway = createElement({ left: -1400, top: 500, right: -1352, bottom: 548, width: 48, height: 48 });
+  const rowIcons = [scrolledAway, shownFolder, shownAdd];
+  extraTargets = rowIcons.map((element) => ({
+    element,
+    sampleElement: rowIcons,
+    toneGroup: 'row',
+    minWidth: 42,
+    minHeight: 42
+  }));
+  runtime.schedule();
+  runFrames();
+  const shownRowLuma = Number(shownFolder.style.getPropertyValue('--x-nt-wallpaper-local-luma'));
+  assert.ok(shownRowLuma > 0.8,
+    `a row scrolled partly out of view should sample only its shown icons (luma ${shownRowLuma})`);
+  assert.strictEqual(shownAdd.getAttribute('data-wallpaper-ink'), 'dark',
+    'the shown icons over the bright half should take the dark ink');
+  assert.strictEqual(shownAdd.getAttribute('data-wallpaper-ink'), shownFolder.getAttribute('data-wallpaper-ink'),
+    'icons in one row should share one ink');
   extraTargets = [];
 
   console.log('new tab wallpaper adaptive tone transition tests passed');

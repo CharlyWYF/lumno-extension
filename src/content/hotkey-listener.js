@@ -1,8 +1,16 @@
 (function() {
-  if (window._x_extension_hotkey_listener_2024_unique_) {
-    return;
+  // The background injects this script on the first copy-URL command in a tab
+  // and again after an extension reload or update, when the earlier copy
+  // belongs to a context that can no longer answer; the newest copy listens.
+  const RUNTIME_KEY = '_x_extension_hotkey_listener_2024_unique_';
+  const previousRuntime = window[RUNTIME_KEY];
+  if (previousRuntime && typeof previousRuntime.cleanup === 'function') {
+    try {
+      previousRuntime.cleanup();
+    } catch (error) {
+      // A listener from the previous extension context may already be invalid.
+    }
   }
-  window._x_extension_hotkey_listener_2024_unique_ = true;
 
   const PAGE_TOAST_ID = '_x_extension_page_toast_2026_unique_';
   const PAGE_TOAST_FONT_FACE_STYLE_ID = '_x_extension_page_toast_font_face_2026_unique_';
@@ -446,20 +454,39 @@
 
   // This script only answers the copy-URL command: the search shortcut lives in
   // shortcut-key-observer.js and switcher thumbnails follow the browser's own
-  // tab events, so nothing here messages the background while a page loads.
-  if (chrome && chrome.runtime && chrome.runtime.onMessage) {
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-      if (!request) {
-        return;
-      }
-      if (request.action === 'copyCurrentPageUrlFromCommand') {
-        copyCurrentPageUrlWithToast().then((ok) => {
-          sendResponse({ ok: Boolean(ok) });
-        }).catch(() => {
-          sendResponse({ ok: false });
-        });
-        return true;
-      }
+  // tab events, so nothing here messages the background on its own.
+  const runtimeMessageListener = (request, sender, sendResponse) => {
+    if (!request || request.action !== 'copyCurrentPageUrlFromCommand') {
+      return;
+    }
+    copyCurrentPageUrlWithToast().then((ok) => {
+      sendResponse({ ok: Boolean(ok) });
+    }).catch(() => {
+      sendResponse({ ok: false });
     });
+    return true;
+  };
+  if (chrome && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener(runtimeMessageListener);
   }
+  window[RUNTIME_KEY] = Object.freeze({
+    cleanup() {
+      if (pageToastTimer) {
+        window.clearTimeout(pageToastTimer);
+        pageToastTimer = null;
+      }
+      if (pageToastParts && pageToastParts.host) {
+        pageToastParts.host.remove();
+        pageToastParts = null;
+      }
+      if (chrome && chrome.runtime && chrome.runtime.onMessage &&
+          typeof chrome.runtime.onMessage.removeListener === 'function') {
+        try {
+          chrome.runtime.onMessage.removeListener(runtimeMessageListener);
+        } catch (error) {
+          // Ignore a listener that belongs to an invalidated extension context.
+        }
+      }
+    }
+  });
 })();

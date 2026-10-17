@@ -119,7 +119,7 @@ const startupContentScript = manifest.content_scripts.find((entry) => (
   entry.matches.includes('<all_urls>') &&
   entry.run_at === 'document_start' &&
   Array.isArray(entry.js) &&
-  entry.js.includes('src/content/hotkey-listener.js')
+  entry.js.includes('src/content/shortcut-key-observer.js')
 ));
 assert(startupContentScript, 'the ordinary-page startup content script should remain declared');
 const startupScripts = startupContentScript.js;

@@ -541,16 +541,46 @@ function prepareShortcutKeyObserver(tab) {
   });
 }
 
+// Tabs left open across an extension reload or update only get the manifest
+// observer on their next load. The sweep skips tabs a script cannot reach and
+// tabs not loaded yet (those load with the manifest scripts), starts with the
+// active tab of each window and injects a few tabs at a time: hundreds of
+// open tabs compiling the observer in every frame at once, while the
+// onboarding page and the first New Tab load, stalled the whole browser.
+const SHORTCUT_OBSERVER_SWEEP_CONCURRENCY = 3;
+
+function canSweepShortcutKeyObserverIntoTab(tab) {
+  return Boolean(
+    tab &&
+    typeof tab.id === 'number' &&
+    tab.discarded !== true &&
+    tab.status !== 'unloaded' &&
+    canOpenOverlayOnUrl(getResolvedTabUrl(tab))
+  );
+}
+
 function prepareShortcutKeyObserversInOpenTabs() {
   if (!chrome || !chrome.tabs || typeof chrome.tabs.query !== 'function') {
-    return;
+    return Promise.resolve();
   }
-  chrome.tabs.query({}, (tabs) => {
-    if (chrome.runtime && chrome.runtime.lastError) {
-      return;
-    }
-    (Array.isArray(tabs) ? tabs : []).forEach((tab) => {
-      prepareShortcutKeyObserver(tab);
+  return new Promise((resolve) => {
+    chrome.tabs.query({}, (tabs) => {
+      if (chrome.runtime && chrome.runtime.lastError) {
+        resolve();
+        return;
+      }
+      const queue = (Array.isArray(tabs) ? tabs : [])
+        .filter(canSweepShortcutKeyObserverIntoTab)
+        .sort((left, right) => Number(right.active === true) - Number(left.active === true));
+      const runNext = () => {
+        const tab = queue.shift();
+        return tab ? prepareShortcutKeyObserver(tab).then(runNext) : Promise.resolve();
+      };
+      const workers = Array.from(
+        { length: Math.min(SHORTCUT_OBSERVER_SWEEP_CONCURRENCY, queue.length) },
+        runNext
+      );
+      Promise.all(workers).then(() => resolve());
     });
   });
 }
@@ -859,30 +889,121 @@ function getTabSwitcherStateStorageArea() {
   return chrome.storage.session || chrome.storage.local || null;
 }
 
-function getTabSwitcherStateFromStorage() {
-  const storageArea = getTabSwitcherStateStorageArea();
-  if (!storageArea || typeof storageArea.get !== 'function') {
-    return Promise.resolve(null);
-  }
+// The switcher state is saved as one small record (the recent-tab stack and
+// which tabs have thumbnails) plus one key per thumbnail, and a save writes
+// only the keys that changed. Saving every thumbnail on each tab switch
+// rewrote ~150 KB, and storage.onChanged delivered the old and new copies to
+// every open extension page.
+const TAB_SWITCHER_THUMBNAIL_KEY_PREFIX = '_x_extension_tab_switcher_thumbnail_2026_unique_:';
+let persistedTabSwitcherHeadSignature = '';
+const persistedThumbnailSignatureByTabId = new Map();
+
+function getTabSwitcherThumbnailStorageKey(tabId) {
+  return `${TAB_SWITCHER_THUMBNAIL_KEY_PREFIX}${tabId}`;
+}
+
+function getThumbnailPersistSignature(entry) {
+  return [
+    entry.updatedAt,
+    entry.capturedAt,
+    entry.status,
+    entry.url,
+    entry.reason,
+    typeof entry.dataUrl === 'string' ? entry.dataUrl.length : 0
+  ].join('|');
+}
+
+function getTabSwitcherHeadSignature(head) {
+  return JSON.stringify([head.stack, head.thumbnailTabIds]);
+}
+
+function readTabSwitcherStorage(storageArea, keys) {
   return new Promise((resolve) => {
-    storageArea.get([TAB_SWITCHER_THUMBNAIL_STORAGE_KEY], (result) => {
-      if (chrome.runtime && chrome.runtime.lastError) {
-        resolve(null);
-        return;
-      }
-      resolve(result ? result[TAB_SWITCHER_THUMBNAIL_STORAGE_KEY] : null);
+    storageArea.get(keys, (result) => {
+      resolve(chrome.runtime && chrome.runtime.lastError ? null : (result || {}));
     });
   });
 }
 
+async function getTabSwitcherStateFromStorage() {
+  const storageArea = getTabSwitcherStateStorageArea();
+  if (!storageArea || typeof storageArea.get !== 'function') {
+    return null;
+  }
+  const headResult = await readTabSwitcherStorage(storageArea, [TAB_SWITCHER_THUMBNAIL_STORAGE_KEY]);
+  const head = headResult ? headResult[TAB_SWITCHER_THUMBNAIL_STORAGE_KEY] : null;
+  if (!head || typeof head !== 'object') {
+    return null;
+  }
+  // A state saved before the split keeps its thumbnails inline.
+  if (Array.isArray(head.thumbnails)) {
+    return head;
+  }
+  const thumbnailTabIds = (Array.isArray(head.thumbnailTabIds) ? head.thumbnailTabIds : [])
+    .filter((tabId) => Number.isInteger(tabId));
+  const thumbnailResult = thumbnailTabIds.length
+    ? await readTabSwitcherStorage(storageArea, thumbnailTabIds.map(getTabSwitcherThumbnailStorageKey))
+    : {};
+  const thumbnails = thumbnailTabIds
+    .map((tabId) => thumbnailResult && thumbnailResult[getTabSwitcherThumbnailStorageKey(tabId)])
+    .filter((entry) => entry && typeof entry === 'object');
+  persistedTabSwitcherHeadSignature = getTabSwitcherHeadSignature(head);
+  persistedThumbnailSignatureByTabId.clear();
+  thumbnails.forEach((entry) => {
+    persistedThumbnailSignatureByTabId.set(entry.tabId, getThumbnailPersistSignature(entry));
+  });
+  return { ...head, thumbnails };
+}
+
 function setTabSwitcherStateToStorage(state) {
   const storageArea = getTabSwitcherStateStorageArea();
-  if (!storageArea || typeof storageArea.set !== 'function') {
+  if (!storageArea || typeof storageArea.set !== 'function' || !state) {
     return Promise.resolve(false);
   }
+  const thumbnails = Array.isArray(state.thumbnails) ? state.thumbnails : [];
+  const head = {
+    version: state.version,
+    savedAt: state.savedAt,
+    stack: state.stack,
+    thumbnailTabIds: thumbnails.map((entry) => entry.tabId)
+  };
+  const headSignature = getTabSwitcherHeadSignature(head);
+  const writes = {};
+  const nextSignatures = new Map();
+  thumbnails.forEach((entry) => {
+    const signature = getThumbnailPersistSignature(entry);
+    nextSignatures.set(entry.tabId, signature);
+    if (persistedThumbnailSignatureByTabId.get(entry.tabId) !== signature) {
+      writes[getTabSwitcherThumbnailStorageKey(entry.tabId)] = entry;
+    }
+  });
+  if (headSignature !== persistedTabSwitcherHeadSignature) {
+    writes[TAB_SWITCHER_THUMBNAIL_STORAGE_KEY] = head;
+  }
+  const removals = Array.from(persistedThumbnailSignatureByTabId.keys())
+    .filter((tabId) => !nextSignatures.has(tabId))
+    .map(getTabSwitcherThumbnailStorageKey);
+  if (!Object.keys(writes).length && !removals.length) {
+    return Promise.resolve(true);
+  }
   return new Promise((resolve) => {
-    storageArea.set({ [TAB_SWITCHER_THUMBNAIL_STORAGE_KEY]: state }, () => {
-      resolve(!(chrome.runtime && chrome.runtime.lastError));
+    storageArea.set(writes, () => {
+      if (chrome.runtime && chrome.runtime.lastError) {
+        resolve(false);
+        return;
+      }
+      persistedTabSwitcherHeadSignature = headSignature;
+      persistedThumbnailSignatureByTabId.clear();
+      nextSignatures.forEach((signature, tabId) => {
+        persistedThumbnailSignatureByTabId.set(tabId, signature);
+      });
+      if (!removals.length || typeof storageArea.remove !== 'function') {
+        resolve(true);
+        return;
+      }
+      storageArea.remove(removals, () => {
+        resolve(!(chrome.runtime && chrome.runtime.lastError));
+      });
     });
   });
 }

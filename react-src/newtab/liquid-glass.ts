@@ -11,12 +11,14 @@
 // rebuilt, encoded or decoded while the page resizes or the results plate grows.
 
 const BEZEL_PX = 16;
-// feDisplacementMap moves a pixel by up to half the scale, so the rim samples up to 24px inward:
-// one and a half rims, so the outer edge shows the scene from past the rim, flipped and squeezed.
-export const LIQUID_GLASS_DISPLACEMENT_SCALE = 48;
+// feDisplacementMap moves a pixel by up to half the scale, so the rim samples up to 6px inward,
+// under half the rim even in the bluest channel: the scene stretches out toward the edge but
+// never folds back on itself. A bend past the rim mirrors the scene there, and the fold leaves a
+// hard seam inside it.
+export const LIQUID_GLASS_DISPLACEMENT_SCALE = 12;
 // Blue bends further than red: each channel samples the backdrop at its own share of the bend, so
 // the rim fringes where the wallpaper has edges. Nothing splits in the flat middle.
-export const LIQUID_GLASS_DISPERSION = 0.08;
+export const LIQUID_GLASS_DISPERSION = 0.25;
 const FLOATING_RADIUS_PX = 14;
 
 export type LiquidGlassShape = 'docked' | 'floating';
@@ -89,11 +91,11 @@ export function getRimDisplacement(
   ];
 }
 
-// The rim is a band of even thickness around the plate, the way a slab's rounded edge looks from
-// above: the scene is pushed inward almost as hard across the whole band, and lets go only near its
-// inner edge, so the bend reads as a ring rather than a haze fading into the middle.
+// The bend is strongest at the edge and eases out to nothing at the rim's inner edge, with no
+// slope left there, so the rim melts into the flat middle without a visible line.
 function rimStrength(progressFromRim: number) {
-  return progressFromRim >= 1 ? 0 : 1 - progressFromRim * progressFromRim * progressFromRim;
+  const rest = 1 - Math.min(1, progressFromRim);
+  return rest * rest;
 }
 
 export interface LensTiles {
@@ -451,8 +453,8 @@ export function getSurfaceDisplacementScale(bezel: number) {
   return Math.round((LIQUID_GLASS_DISPLACEMENT_SCALE * bezel) / BEZEL_PX);
 }
 
-function readCornerRadius(element: HTMLElement, windowObj: Window, width: number, height: number) {
-  const value = String(windowObj.getComputedStyle(element).borderTopLeftRadius || '0').split(' ')[0];
+function readCornerRadius(style: CSSStyleDeclaration, width: number, height: number) {
+  const value = String(style.borderTopLeftRadius || '0').split(' ')[0];
   const amount = Number.parseFloat(value) || 0;
   return value.endsWith('%') ? (amount / 100) * Math.min(width, height) : amount;
 }
@@ -463,17 +465,21 @@ export interface LiquidSurfaces {
 }
 
 // Gives every element matching `selector` a rim-refraction filter in the inline custom property
-// `property`. Only surfaces matching `dispersionSelector` split the bend into colors: on a card or a
-// menu, a colored fringe along the rim reads as a rendering fault rather than glass. Sizes are followed from a ResizeObserver, which runs after layout and before paint,
+// `property`. Only surfaces matching `dispersionSelector` split the bend into colors; each costs
+// three displacement passes instead of one. A surface may
+// set its own rim width in the CSS property `rimProperty`, held whatever its size (narrowed only
+// on a surface too short for it), so a plate that grows keeps one lens instead of a new one at
+// every step. Sizes are followed from a ResizeObserver, which runs after layout and before paint,
 // so a surface's lens fits its new size in the frame it changes.
 export function createLiquidSurfaces(options: {
   documentObj: Document;
   dispersionSelector?: string;
   property: string;
+  rimProperty?: string;
   selector: string;
   windowObj: Window;
 }): LiquidSurfaces {
-  const { documentObj, dispersionSelector, property, selector, windowObj } = options;
+  const { documentObj, dispersionSelector, property, rimProperty, selector, windowObj } = options;
   const supported = isLiquidGlassSupported(windowObj);
   const idPrefix = '_x_extension_newtab_liquid_surface';
   const lenses = new Map<HTMLElement, ReturnType<typeof createLensSwitcher>>();
@@ -517,8 +523,11 @@ export function createLiquidSurfaces(options: {
       });
       lenses.set(element, lens);
     }
-    const radius = Math.round(Math.min(readCornerRadius(element, windowObj, width, height), width / 2, height / 2));
-    const bezel = Math.round(getSurfaceBezel(width, height));
+    const style = windowObj.getComputedStyle(element);
+    const radius = Math.round(Math.min(readCornerRadius(style, width, height), width / 2, height / 2));
+    // The rim width the surface sets for itself, in px; none leaves it to getSurfaceBezel.
+    const rim = rimProperty ? Number.parseFloat(style.getPropertyValue(rimProperty)) : 0;
+    const bezel = Math.round(rim > 0 ? Math.min(rim, Math.min(width, height) / 2) : getSurfaceBezel(width, height));
     const dispersion = Boolean(dispersionSelector && element.matches(dispersionSelector));
     lens.update(`${radius}:${bezel}:${dispersion ? 'rgb' : 'g'}`, 'floating', radius, bezel,
       getSurfaceDisplacementScale(bezel), dispersion);

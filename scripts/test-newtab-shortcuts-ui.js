@@ -1799,6 +1799,12 @@ assertContains(
 );
 
 assertContains(
+  getFunctionSource(newtabJs, 'createWallpaperAdaptiveToneTargets'),
+  "sampleElement: shortcutIconSample,\n      toneGroup: 'shortcut-icons',",
+  'dock icons should read one sample over the whole row and share one ink'
+);
+
+assertContains(
   wallpaperAdaptiveToneJs,
   "setStyleProperty(element, '--x-nt-shortcut-add-bg'",
   'wallpaper adaptive tone should write the add shortcut background variable'

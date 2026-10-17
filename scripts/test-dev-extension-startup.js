@@ -32,7 +32,8 @@ async function run() {
   assert.match(backgroundSource, /DEV_EXTENSION_STARTUP\.isSameVersionReload\(details, chrome\.runtime\.getManifest\(\)\.version\)/);
   assert.match(
     backgroundSource,
-    /chrome\.runtime\.onStartup\.addListener\(\(\) => \{\s*prepareShortcutKeyObserversInOpenTabs\(\);\s*restoreBackgroundStateOnStartup\(\);\s*\}\)/
+    /chrome\.runtime\.onStartup\.addListener\(\(\) => \{\s*restoreBackgroundStateOnStartup\(\);\s*\}\)/,
+    'restored tabs load with the manifest content scripts, so startup should not sweep them'
   );
   assert.doesNotMatch(backgroundSource, /reloadDevelopmentExtensionOnStartup/);
 }

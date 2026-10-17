@@ -7,8 +7,8 @@
      and a dark forest; the edge is lit from inside.
    - liquid: clear glass. A light blur, a vivid backdrop, an even tint and a bright specular rim;
      where Chromium draws SVG backdrop filters, the rim of the search bar, its results and the
-     dock's cards also bends the wallpaper inward, and on the search stack fringes it into its
-     colors (--x-nt-glass-refraction, set by newtab.js through createLiquidSurfaces). The lens comes last, after the blur and every
+     dock's cards also bends the wallpaper inward and fringes it into its colors
+     (--x-nt-glass-refraction, set by newtab.js through createLiquidSurfaces). The lens comes last, after the blur and every
      color step, so the color steps fold into one pass and the bend and fringe stay crisp.
    Neither uses website colors. */
 body[data-glass-style="frosted"] {
@@ -262,6 +262,9 @@ body[data-glass-style] .x-nt-wallpaper-panel[data-open="true"] {
    blur, tint and refraction, so opening or closing the list changes nothing under the bar (the
    sampler gives the bar and the plate one tint, measured over the area the plate can cover). */
 body[data-glass-style="liquid"] #_x_extension_newtab_suggestions_surface_2026_unique_ {
+  /* A wider rim than the bar's 14px (read by createLiquidSurfaces), so the bend still shows along
+     a plate this size; the closed bar keeps its own. */
+  --x-nt-glass-rim: 22px;
   background: var(--x-nt-glass-fill);
   border-color: transparent;
   box-shadow: var(--x-nt-glass-edge), var(--x-nt-glass-float-shadow);
@@ -349,8 +352,10 @@ body[data-glass-style] .x-nt-suggestion-item:is([data-row-state="hover"], [data-
 body[data-glass-style] .x-nt-suggestion-item[data-row-state="active"]:not([data-simple-mode="false"]) .x-nt-suggestion-action-button {
   background: var(--x-nt-glass-chip-strong);
 }
-/* The selected row's search icon sits on a lifted tile, the same in both palettes. */
-body[data-glass-style] .x-nt-suggestion-item .x-nt-suggestion-icon-slot[data-emphasis="true"][data-favicon="false"] {
+/* The selected row's search icon, and a favicon fallen back to its glyph, sit on a lifted tile,
+   the same in both palettes. */
+body[data-glass-style] .x-nt-suggestion-item .x-nt-suggestion-icon-slot[data-emphasis="true"][data-favicon="false"],
+body[data-glass-style] .x-nt-suggestion-item[data-row-state="active"]:is(*, [data-glass-ink-theme]) .x-nt-suggestion-icon-slot[data-favicon="true"]:has(> .x-nt-favicon-fallback[data-visible="true"]):is(*, [data-glass-ink-theme]) {
   background-color: var(--x-nt-glass-raised);
   box-shadow: var(--x-nt-glass-raised-edge);
 }
@@ -449,8 +454,8 @@ body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(._x_extension_menu_
 }
 /* On light glass a highlighted row is a lighter layer of the glass rather than a gray wash, which
    reads muddy over color: hover lightens, the selection lightens further. Each takes a solid
-   white inner stroke for a crisp edge; no dark hairline or shadow, which blur it against the
-   light glass. */
+   white stroke for a crisp edge, drawn on the row's own (otherwise transparent) border so it sits
+   flush with the outer edge; no dark hairline or shadow, which blur it against the light glass. */
 body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(
   #_x_extension_newtab_suggestions_container_2024_unique_,
   ._x_extension_menu_surface_2024_unique_
@@ -461,10 +466,10 @@ body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(
   --select-selected-bg: rgba(255, 255, 255, 0.76);
 }
 body[data-glass-style="liquid"]:not([data-theme="dark"]) #_x_extension_newtab_suggestions_container_2024_unique_[data-glass-ink="dark"] .x-nt-suggestion-item[data-row-state="hover"] {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 body[data-glass-style="liquid"]:not([data-theme="dark"]) #_x_extension_newtab_suggestions_container_2024_unique_[data-glass-ink="dark"] .x-nt-suggestion-item[data-row-state="active"] {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.9);
 }
 
 /* The bookmarks bar under "match style" with the frosted material: the plates' glass, sampled and

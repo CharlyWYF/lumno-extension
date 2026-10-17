@@ -1,11 +1,26 @@
 (function() {
   const RUNTIME_KEY = '_x_extension_shortcut_key_observer_2026_unique_';
   const previousRuntime = window[RUNTIME_KEY];
-  if (previousRuntime && typeof previousRuntime.cleanup === 'function') {
+  // The background injects this script again into frames that may already run
+  // it: on every tab switcher command and after an extension reload or update.
+  // The replacement takes over the running observer's state, so a modifier
+  // release buffered moments before still commits the switcher, and it asks
+  // the worker nothing the previous observer already knew.
+  let inheritedState = null;
+  if (previousRuntime) {
     try {
-      previousRuntime.cleanup();
+      inheritedState = typeof previousRuntime.exportState === 'function'
+        ? previousRuntime.exportState()
+        : null;
     } catch (error) {
-      // A listener from the previous extension context may already be invalid.
+      inheritedState = null;
+    }
+    if (typeof previousRuntime.cleanup === 'function') {
+      try {
+        previousRuntime.cleanup();
+      } catch (error) {
+        // A listener from the previous extension context may already be invalid.
+      }
     }
   }
   // The configured shortcut lives in chrome.commands, which a content script
@@ -22,6 +37,9 @@
   let showSearchShortcutRaw = '';
   let showSearchShortcutSpec = null;
   let showSearchShortcutRefreshedAt = 0;
+  // Whether the background has answered; until then a replacement asks again
+  // instead of inheriting a request whose answer reaches the old observer.
+  let showSearchShortcutResolved = false;
   let armedReleaseKeys = [];
   const recentTrustedKeydownAtByKey = new Map();
   const recentTrustedReleaseAtByKey = new Map();
@@ -44,9 +62,46 @@
     }
   }
 
+  function adoptInheritedState(state) {
+    if (!state || typeof state !== 'object') {
+      return;
+    }
+    if (state.showSearchShortcutResolved === true && typeof state.showSearchShortcut === 'string') {
+      applyShowSearchShortcut(state.showSearchShortcut);
+      if (Number.isFinite(state.showSearchShortcutRefreshedAt)) {
+        showSearchShortcutRefreshedAt = state.showSearchShortcutRefreshedAt;
+      }
+    }
+    if (Array.isArray(state.armedReleaseKeys)) {
+      armedReleaseKeys = state.armedReleaseKeys.map(normalizeReleaseKey).filter(Boolean);
+    }
+    [
+      [state.trustedKeydowns, recentTrustedKeydownAtByKey],
+      [state.trustedReleases, recentTrustedReleaseAtByKey]
+    ].forEach(([entries, eventsByKey]) => {
+      (Array.isArray(entries) ? entries : []).forEach((entry) => {
+        if (Array.isArray(entry) && typeof entry[0] === 'string' && Number.isFinite(entry[1])) {
+          eventsByKey.set(entry[0], entry[1]);
+        }
+      });
+    });
+  }
+
+  function exportState() {
+    return {
+      showSearchShortcut: showSearchShortcutRaw,
+      showSearchShortcutRefreshedAt,
+      showSearchShortcutResolved,
+      armedReleaseKeys: armedReleaseKeys.slice(),
+      trustedKeydowns: Array.from(recentTrustedKeydownAtByKey.entries()),
+      trustedReleases: Array.from(recentTrustedReleaseAtByKey.entries())
+    };
+  }
+
   function applyShowSearchShortcut(shortcut) {
     const nextShortcut = String(shortcut || '').trim();
     showSearchShortcutRaw = nextShortcut;
+    showSearchShortcutResolved = true;
     showSearchShortcutSpec = SHORTCUT_KEY_MATCHER.parseShortcut(nextShortcut);
   }
 
@@ -65,6 +120,7 @@
           ? response.shortcut
           : '';
         if (nextShortcut === showSearchShortcutRaw) {
+          showSearchShortcutResolved = true;
           return;
         }
         applyShowSearchShortcut(nextShortcut);
@@ -313,14 +369,27 @@
     }
   };
 
-  notifyTopFrameDocumentStarted();
-  refreshShowSearchShortcut();
+  adoptInheritedState(inheritedState);
+  // Only the observer a Document starts with reports that start; a
+  // replacement, or a sweep of tabs open before an install, runs in a page
+  // that is already showing.
+  if (!previousRuntime && document.readyState === 'loading') {
+    notifyTopFrameDocumentStarted();
+  }
+  // A subframe cannot receive keys before its window takes focus, which
+  // refreshes the shortcut, so only the top frame asks at startup. Asking from
+  // every frame messaged the worker once per iframe on each page load, ads and
+  // about:blank frames included.
+  if (!showSearchShortcutResolved && window.top === window) {
+    refreshShowSearchShortcut();
+  }
   window.addEventListener('keydown', relayShowSearchShortcut, true);
   window.addEventListener('keyup', notifyTabSwitcherShortcutModifierReleased, true);
   window.addEventListener('focus', refreshShowSearchShortcutOnFocus);
   window.addEventListener('pageshow', refreshShowSearchShortcutOnPageShow);
   document.addEventListener('visibilitychange', refreshShowSearchShortcutOnVisibility, true);
   window[RUNTIME_KEY] = Object.freeze({
+    exportState,
     cleanup() {
       window.removeEventListener('keydown', relayShowSearchShortcut, true);
       window.removeEventListener('keyup', notifyTabSwitcherShortcutModifierReleased, true);

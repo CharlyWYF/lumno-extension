@@ -229,9 +229,28 @@
       element.setAttribute(name, value ? 'true' : 'false');
     }
 
+    // The open plate shows and hides in one frame, so the search box hands its
+    // edge and shadow over in that same frame: its focus shadow transition
+    // would otherwise cross-fade them with the plate's.
     function setSuggestionsOpenState(open) {
       const body = documentObj && documentObj.body;
+      const root = getRoot();
+      const rootStyle = root && root.style;
+      const changed = Boolean(body) &&
+        body.getAttribute(suggestionsOpenAttribute) !== (open ? 'true' : 'false');
+      if (!changed || !rootStyle || typeof windowObj.getComputedStyle !== 'function') {
+        setBooleanAttribute(body, suggestionsOpenAttribute, Boolean(open));
+        return;
+      }
+      const inlineTransition = rootStyle.getPropertyValue('transition');
+      rootStyle.setProperty('transition', 'none');
       setBooleanAttribute(body, suggestionsOpenAttribute, Boolean(open));
+      void windowObj.getComputedStyle(root).boxShadow;
+      if (inlineTransition) {
+        rootStyle.setProperty('transition', inlineTransition);
+      } else {
+        rootStyle.removeProperty('transition');
+      }
     }
 
     function setPixelStyle(element, property, value) {

@@ -2730,6 +2730,24 @@ function getConfiguredCopyUrlCommandShortcut(callback) {
   });
 }
 
+// The copy-URL listener is injected into a tab the first time the command
+// runs there instead of being a content script of every page: it is the only
+// user of these files in a page, and most tabs never copy their URL.
+const COPY_URL_LISTENER_FILES = Object.freeze([
+  'src/shared/settings.js',
+  'src/shared/page-color-scheme.js',
+  'src/content/hotkey-listener.js'
+]);
+
+function sendCopyCurrentUrlCommand(tabId, callback) {
+  chrome.tabs.sendMessage(tabId, { action: 'copyCurrentPageUrlFromCommand' }, (response) => {
+    const error = chrome.runtime && chrome.runtime.lastError
+      ? chrome.runtime.lastError.message || 'unknown'
+      : '';
+    callback(error, response);
+  });
+}
+
 function triggerCopyCurrentUrlForTab(activeTab, source, callback) {
   const finish = typeof callback === 'function' ? callback : function() {};
   if (!activeTab || typeof activeTab.id !== 'number') {
@@ -2737,22 +2755,40 @@ function triggerCopyCurrentUrlForTab(activeTab, source, callback) {
     finish(false);
     return;
   }
-  chrome.tabs.sendMessage(activeTab.id, { action: 'copyCurrentPageUrlFromCommand' }, (response) => {
-    if (chrome.runtime && chrome.runtime.lastError) {
+  const tabId = activeTab.id;
+  const report = (error, response) => {
+    if (error) {
       logHotkeyDebug('copy-url-send-message-failed', {
-        tabId: activeTab.id,
+        tabId,
         source: source || '',
-        error: chrome.runtime.lastError.message || 'unknown'
+        error
       });
       finish(false);
       return;
     }
     logHotkeyDebug('copy-url-triggered', {
-      tabId: activeTab.id,
+      tabId,
       source: source || '',
       ok: Boolean(response && response.ok)
     });
     finish(Boolean(response && response.ok));
+  };
+  sendCopyCurrentUrlCommand(tabId, (error, response) => {
+    if (!error) {
+      report('', response);
+      return;
+    }
+    // No listener in the page yet: install it and ask again.
+    chrome.scripting.executeScript({
+      target: { tabId },
+      files: COPY_URL_LISTENER_FILES.slice()
+    }, () => {
+      if (chrome.runtime && chrome.runtime.lastError) {
+        report(chrome.runtime.lastError.message || 'unknown');
+        return;
+      }
+      sendCopyCurrentUrlCommand(tabId, report);
+    });
   });
 }
 
@@ -2856,8 +2892,10 @@ function restoreBackgroundStateOnStartup() {
 }
 
 if (chrome && chrome.runtime && chrome.runtime.onStartup) {
+  // Tabs restored at browser startup load with the manifest content scripts,
+  // and each tab switcher command prepares its own tab, so startup does not
+  // sweep the open tabs.
   chrome.runtime.onStartup.addListener(() => {
-    prepareShortcutKeyObserversInOpenTabs();
     restoreBackgroundStateOnStartup();
   });
 }

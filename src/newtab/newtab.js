@@ -1932,26 +1932,31 @@
     const bookmarkPager = pageState.bookmarkPagerPrevButton && pageState.bookmarkPagerPrevButton.parentElement
       ? pageState.bookmarkPagerPrevButton.parentElement
       : null;
-    const shortcutToneTargets = shortcutTiles.map((tile) => ({
+    const shortcutIconTargets = shortcutTiles.map((tile) => ({
       element: tile,
-      sampleElement: getShortcutDockIcon(tile) || tile,
-      minWidth: 42,
-      minHeight: 42,
-      iconButton: true,
       forcedIconBackground: 'shortcut-fallback'
     }));
     if (pageState.shortcutGrid) {
       pageState.shortcutGrid.querySelectorAll('.x-nt-shortcut-group-empty').forEach((slot) => {
-        shortcutToneTargets.push({
-          element: slot,
-          sampleElement: getShortcutDockIcon(slot) || slot,
-          minWidth: 42,
-          minHeight: 42,
-          iconButton: true,
-          forcedIconBackground: 'shortcut-add'
-        });
+        shortcutIconTargets.push({ element: slot, forcedIconBackground: 'shortcut-add' });
       });
     }
+    if (pageState.addShortcutButton) {
+      shortcutIconTargets.push({ element: pageState.addShortcutButton, forcedIconBackground: 'shortcut-add' });
+    }
+    // The dock's icons read one sample over the whole row and keep one ink, so a
+    // folder or the add button never flips tone against its neighbor where the
+    // wallpaper under the row changes from light to dark.
+    const shortcutIconSample = shortcutIconTargets.map(({ element }) => getShortcutDockIcon(element) || element);
+    const shortcutToneTargets = shortcutIconTargets.map(({ element, forcedIconBackground }) => ({
+      element,
+      sampleElement: shortcutIconSample,
+      toneGroup: 'shortcut-icons',
+      minWidth: 42,
+      minHeight: 42,
+      iconButton: true,
+      forcedIconBackground
+    }));
     // A group's menu button and title placeholder fill with the header's solid tone
     // while pointed at or open.
     shortcutGroupHeaders.forEach((header) => {
@@ -1963,16 +1968,6 @@
         iconButton: true
       });
     });
-    if (pageState.addShortcutButton) {
-      shortcutToneTargets.push({
-        element: pageState.addShortcutButton,
-        sampleElement: getShortcutDockIcon(pageState.addShortcutButton) || pageState.addShortcutButton,
-        minWidth: 42,
-        minHeight: 42,
-        iconButton: true,
-        forcedIconBackground: 'shortcut-add'
-      });
-    }
     const topContentSample = pageState.topContentController && typeof pageState.topContentController.getContent === 'function'
       ? (pageState.topContentController.getContent() || pageState.topContentContainer)
       : (pageState.wordmarkImageEl || pageState.topContentContainer);
@@ -6646,13 +6641,14 @@
   // own (will-change: transform) as its displacement map instead of the bent backdrop when another
   // layer appears, such as a tooltip: menus and the Appearance panel, which need their layers, go
   // without the bend, and the cards drop their will-change under liquid glass (glass-style.css).
-  // Only the search stack fringes into colors.
-  const NEWTAB_LIQUID_DISPERSION_SELECTOR = [
+  // Every lensed surface fringes into colors along its rim. A surface can widen its rim in
+  // --x-nt-glass-rim (the open results plate does, in glass-style.css).
+  const NEWTAB_LIQUID_SEARCH_SELECTOR = [
     '#_x_extension_newtab_root_2024_unique_',
     '#_x_extension_newtab_suggestions_surface_2026_unique_'
   ].join(',');
   const NEWTAB_LIQUID_SURFACE_SELECTOR = [
-    NEWTAB_LIQUID_DISPERSION_SELECTOR,
+    NEWTAB_LIQUID_SEARCH_SELECTOR,
     '.x-nt-recent-card-visual',
     '.x-nt-bookmark-card:not(.x-nt-bookmarks-topbar .x-nt-bookmark-card):not(.x-nt-bookmark-card-drag-preview)'
   ].join(',');
@@ -6674,8 +6670,9 @@
       documentObj: document,
       windowObj: window,
       selector: NEWTAB_LIQUID_SURFACE_SELECTOR,
-      dispersionSelector: NEWTAB_LIQUID_DISPERSION_SELECTOR,
-      property: '--x-nt-glass-refraction'
+      dispersionSelector: NEWTAB_LIQUID_SURFACE_SELECTOR,
+      property: '--x-nt-glass-refraction',
+      rimProperty: '--x-nt-glass-rim'
     });
   }
 
