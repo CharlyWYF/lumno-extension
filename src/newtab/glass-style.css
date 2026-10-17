@@ -6,9 +6,9 @@
      pulled toward a mid tone (contrast + brightness), so a plate reads the same over a bright sky
      and a dark forest; the edge is lit from inside.
    - liquid: clear glass. A light blur, a vivid backdrop, an even tint and a bright specular rim;
-     where Chromium draws SVG backdrop filters, the search bar's and its results' rim also bends
-     the wallpaper inward and fringes it into its colors (--x-nt-glass-refraction, set by newtab.js
-     through createLiquidSurfaces). The lens comes last, after the blur and every
+     where Chromium draws SVG backdrop filters, the rim of the search bar, its results and the
+     dock's cards also bends the wallpaper inward, and on the search stack fringes it into its
+     colors (--x-nt-glass-refraction, set by newtab.js through createLiquidSurfaces). The lens comes last, after the blur and every
      color step, so the color steps fold into one pass and the bend and fringe stay crisp.
    Neither uses website colors. */
 body[data-glass-style="frosted"] {
@@ -377,6 +377,60 @@ body[data-glass-style][data-nt-suggestions-open="true"] :is(.x-nt-shortcut-icon,
   transition-duration: var(--x-nt-shortcut-dock-duration, 300ms), var(--lumno-duration-sm), var(--lumno-duration-sm), var(--lumno-duration-sm), 0s;
 }
 
+/* Light liquid glass under text: a light veil. Plates that carry lists and labels (the results,
+   cards, menus, the Appearance panel) flatten the scene behind them a little (contrast down, light
+   up) and take a slightly denser tint, so a busy photo calms under the text while the glass stays
+   clear.
+   It is part of the backdrop filter, not a layer of its own. Only on light glass with dark ink:
+   flipped plates have their own tint. */
+body[data-glass-style="liquid"][data-nt-ready="1"]:not([data-theme="dark"]) :is(
+  #_x_extension_newtab_suggestions_surface_2026_unique_,
+  .x-nt-recent-card-visual,
+  .x-nt-bookmark-card,
+  ._x_extension_menu_surface_2024_unique_,
+  .x-nt-wallpaper-panel
+)[data-glass-ink="dark"] {
+  /* brightness is 1 / (0.5 + contrast / 2): whites stay white, the darks lift toward them, so the
+     veil lightens the scene instead of graying it. */
+  --x-nt-glass-filter: blur(1px) saturate(150%) contrast(0.74) brightness(1.15);
+  --x-nt-glass-float-filter: blur(10px) saturate(160%) contrast(0.76) brightness(1.14);
+}
+body[data-glass-style="liquid"][data-nt-ready="1"]:not([data-theme="dark"]) :is(.x-nt-recent-card-visual, .x-nt-bookmark-card)[data-glass-ink="dark"] {
+  --x-nt-glass-filter: blur(1px) saturate(160%) contrast(0.8) brightness(1.11);
+}
+body[data-glass-style="liquid"]:not([data-theme="dark"]) #_x_extension_newtab_suggestions_surface_2026_unique_[data-glass-ink="dark"] {
+  --x-nt-glass-tint-thin: 0.42;
+  --x-nt-glass-tint-dense: 0.62;
+}
+body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(.x-nt-recent-card-visual, .x-nt-bookmark-card)[data-glass-ink="dark"] {
+  --x-nt-glass-tint-thin: 0.3;
+  --x-nt-glass-tint-dense: 0.54;
+  --x-nt-glass-inset: rgba(255, 255, 255, 0.42);
+}
+body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(._x_extension_menu_surface_2024_unique_, .x-nt-wallpaper-panel)[data-glass-ink="dark"] {
+  --x-nt-glass-tint-thin: 0.42;
+  --x-nt-glass-tint-dense: 0.62;
+}
+/* On light glass a highlighted row is a lighter layer of the glass rather than a gray wash, which
+   reads muddy over color: hover lightens, the selection lightens further. Each takes a solid
+   white inner stroke for a crisp edge; no dark hairline or shadow, which blur it against the
+   light glass. */
+body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(
+  #_x_extension_newtab_suggestions_container_2024_unique_,
+  ._x_extension_menu_surface_2024_unique_
+)[data-glass-ink="dark"] {
+  --x-nt-glass-row-hover: rgba(255, 255, 255, 0.42);
+  --x-nt-glass-row-active: rgba(255, 255, 255, 0.76);
+  --select-hover-bg: rgba(255, 255, 255, 0.42);
+  --select-selected-bg: rgba(255, 255, 255, 0.76);
+}
+body[data-glass-style="liquid"]:not([data-theme="dark"]) #_x_extension_newtab_suggestions_container_2024_unique_[data-glass-ink="dark"] .x-nt-suggestion-item[data-row-state="hover"] {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+body[data-glass-style="liquid"]:not([data-theme="dark"]) #_x_extension_newtab_suggestions_container_2024_unique_[data-glass-ink="dark"] .x-nt-suggestion-item[data-row-state="active"] {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.9);
+}
+
 /* The bookmarks bar under "match style" with the frosted material: the plates' glass, sampled and
    flipped the same way, its ink following the glass rather than the mist's own tone. Under the
    liquid material the bar keeps its own liquid glass ('clear'), whose rim bends only where the
@@ -586,6 +640,13 @@ body[data-glass-style] .x-nt-bookmark-icon {
 body[data-glass-style] .x-nt-folder-preview-favicon {
   background: var(--x-nt-glass-inset);
   border-color: transparent;
+}
+
+/* Lensed cards keep off layers of their own: Chrome 155 can draw a lens on a will-change layer as
+   its map when a tooltip appears. They still animate; a running transition promotes them only
+   while it runs. */
+body[data-glass-style="liquid"] .x-nt-recent-card-visual {
+  will-change: auto;
 }
 
 /* Recent cards: one plate with a lighter inset for the content, like a grouped list. The glass sits

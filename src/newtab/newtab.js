@@ -6631,13 +6631,19 @@
   }
 
   // Surfaces whose rim bends the wallpaper under the liquid style; the search bar and the results
-  // plate it grows into. Chrome 155 sometimes draws a lens on a layer of its own (will-change:
-  // transform, as cards, menus and the Appearance panel are) as its displacement map instead of
-  // the bent backdrop when another layer appears, such as a tooltip, so those plates keep the
-  // rest of the glass and go without the bend.
-  const NEWTAB_LIQUID_SURFACE_SELECTOR = [
+  // plate it grows into, and the dock's cards. Chrome 155 sometimes draws a lens on a layer of its
+  // own (will-change: transform) as its displacement map instead of the bent backdrop when another
+  // layer appears, such as a tooltip: menus and the Appearance panel, which need their layers, go
+  // without the bend, and the cards drop their will-change under liquid glass (glass-style.css).
+  // Only the search stack fringes into colors.
+  const NEWTAB_LIQUID_DISPERSION_SELECTOR = [
     '#_x_extension_newtab_root_2024_unique_',
     '#_x_extension_newtab_suggestions_surface_2026_unique_'
+  ].join(',');
+  const NEWTAB_LIQUID_SURFACE_SELECTOR = [
+    NEWTAB_LIQUID_DISPERSION_SELECTOR,
+    '.x-nt-recent-card-visual',
+    '.x-nt-bookmark-card:not(.x-nt-bookmarks-topbar .x-nt-bookmark-card):not(.x-nt-bookmark-card-drag-preview)'
   ].join(',');
   let newtabLiquidSurfaces = null;
 
@@ -6657,7 +6663,7 @@
       documentObj: document,
       windowObj: window,
       selector: NEWTAB_LIQUID_SURFACE_SELECTOR,
-      dispersionSelector: NEWTAB_LIQUID_SURFACE_SELECTOR,
+      dispersionSelector: NEWTAB_LIQUID_DISPERSION_SELECTOR,
       property: '--x-nt-glass-refraction'
     });
   }
