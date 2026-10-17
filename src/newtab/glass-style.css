@@ -213,10 +213,8 @@ body[data-glass-style]:not([data-nt-suggestions-open="true"])
   backdrop-filter: var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1)) var(--x-nt-glass-refraction,);
   -webkit-backdrop-filter: var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1)) var(--x-nt-glass-refraction,);
 }
-body[data-glass-style]:not([data-nt-suggestions-open="true"])
-  #_x_extension_newtab_root_2024_unique_:focus-within {
-  background: var(--x-nt-glass-fill-hover);
-}
+/* Focus keeps the plate's tint: the caret marks it, and a plate that thinned whenever focus moved
+   (a right click on a shortcut, a menu, a panel) would flicker under every one of them. */
 /* Icons in the plate share the placeholder's translucent ink. */
 body[data-glass-style] #_x_extension_newtab_root_2024_unique_ {
   --x-ext-input-icon: var(--x-nt-placeholder);
@@ -244,9 +242,11 @@ body[data-glass-style] .x-nt-wallpaper-panel {
   border-color: transparent;
   box-shadow: var(--x-nt-glass-edge), var(--x-nt-glass-float-shadow);
 }
-/* Only while shown: closed, the panel and the suggestions sit under visibility: hidden. */
+/* Only while shown. Closed, menus stay in the page at opacity 0 and the panel and the results sit
+   under visibility: hidden, and Chrome still filters the backdrop of a layer it is not showing: a
+   page's few closed menus cost every frame as much as open ones. */
 body[data-glass-style][data-nt-suggestions-open="true"] #_x_extension_newtab_suggestions_surface_2026_unique_,
-body[data-glass-style] ._x_extension_menu_surface_2024_unique_,
+body[data-glass-style] ._x_extension_menu_surface_2024_unique_:is([data-open="true"], [data-open="true"] > :not([data-open])),
 body[data-glass-style] .x-nt-wallpaper-panel[data-open="true"] {
   backdrop-filter: var(--x-nt-glass-float-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1)) var(--x-nt-glass-refraction,);
   -webkit-backdrop-filter: var(--x-nt-glass-float-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1)) var(--x-nt-glass-refraction,);
@@ -268,6 +268,37 @@ body[data-glass-style="liquid"][data-nt-suggestions-open="true"] #_x_extension_n
 }
 body[data-glass-style] #_x_extension_newtab_suggestions_outline_2026_unique_ {
   border-color: transparent;
+}
+/* On close the glass holds until the fade ends, then goes: a delayed, discrete step of the backdrop
+   filter, set on the closed state only, so opening shows the glass at once. */
+@media (prefers-reduced-motion: no-preference) {
+  body[data-glass-style] ._x_extension_menu_surface_2024_unique_ {
+    transition: opacity 170ms ease, transform 360ms var(--lumno-ease-menu, cubic-bezier(0.2, 1.45, 0.35, 1)),
+      backdrop-filter 0s linear 170ms allow-discrete, -webkit-backdrop-filter 0s linear 170ms allow-discrete;
+  }
+  body[data-glass-style] ._x_extension_menu_surface_2024_unique_:is([data-open="true"], [data-open="true"] > :not([data-open])) {
+    transition: opacity 170ms ease, transform 360ms var(--lumno-ease-menu, cubic-bezier(0.2, 1.45, 0.35, 1));
+  }
+  body[data-glass-style] .x-nt-wallpaper-panel {
+    transition: opacity var(--lumno-duration-sm) ease, visibility var(--lumno-duration-sm) ease,
+      transform var(--lumno-duration-lg) cubic-bezier(0.22, 1, 0.36, 1),
+      backdrop-filter 0s linear var(--lumno-duration-sm) allow-discrete,
+      -webkit-backdrop-filter 0s linear var(--lumno-duration-sm) allow-discrete;
+  }
+  body[data-glass-style] .x-nt-wallpaper-panel[data-open="true"] {
+    transition: opacity var(--lumno-duration-sm) ease, visibility var(--lumno-duration-sm) ease,
+      transform var(--lumno-duration-lg) cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint {
+    transition: opacity var(--lumno-duration-md, 0.18s) ease, transform var(--lumno-duration-md, 0.18s) ease,
+      visibility var(--lumno-duration-md, 0.18s) ease,
+      backdrop-filter 0s linear var(--lumno-duration-md, 0.18s) allow-discrete,
+      -webkit-backdrop-filter 0s linear var(--lumno-duration-md, 0.18s) allow-discrete;
+  }
+  body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint[data-visible="true"] {
+    transition: opacity var(--lumno-duration-md, 0.18s) ease, transform var(--lumno-duration-md, 0.18s) ease,
+      visibility var(--lumno-duration-md, 0.18s) ease;
+  }
 }
 /* The panel's header sits outside its scrolling body, so it can share the panel's glass. */
 body[data-glass-style] .x-nt-appearance-header {
@@ -614,17 +645,13 @@ body[data-glass-style] .x-nt-shortcut-favicon-mask {
   color: var(--x-nt-text);
 }
 /* The default style cuts the squircle with a mask. The glass rim is an inset shadow drawn inside
-   the border-radius, a slightly different curve, so the mask slices the one-pixel rim at every
-   corner into steps. Where corner-shape exists the plate takes the mask's exact shape itself (a 32%
-   corner on a superellipse of exponent 4) and drops the mask, so the fill, the blur and the rim share
-   one antialiased edge. Elsewhere the mask stays. */
-@supports (corner-shape: superellipse(2)) {
-  body[data-glass-style] .x-nt-shortcut-icon {
-    border-radius: 32%;
-    corner-shape: superellipse(2);
-    -webkit-mask-image: none;
-    mask-image: none;
-  }
+   the border-radius, a slightly different curve, so the mask sliced the one-pixel rim at every
+   corner into steps. Glass plates drop the mask and keep their border-radius (a third of the icon,
+   the corner the rim has always traced), so the fill, the blur and the rim share one antialiased
+   edge. */
+body[data-glass-style] .x-nt-shortcut-icon {
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 
 /* Controls that sit on the wallpaper get a plate, as the default style's solid fills do. Icon

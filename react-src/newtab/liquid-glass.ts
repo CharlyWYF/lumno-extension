@@ -331,7 +331,6 @@ function createLensSwitcher(options: {
 }) {
   const { documentObj, windowObj, idPrefix, apply, measure } = options;
   const tilesFor = createLensCache(documentObj);
-  let serial = 0;
   let wanted = '';
   let current: Lens | null = null;
   let destroyed = false;
@@ -365,7 +364,9 @@ function createLensSwitcher(options: {
           return;
         }
         const [nextWidth, nextHeight] = measure();
-        const filterId = `${idPrefix}_${(serial += 1)}_2026_unique_`;
+        // Numbered across every lens on the page: url(#id) takes the first element with an id, so a
+        // repeated id would give every surface the first surface's lens.
+        const filterId = `${idPrefix}_${(filterCount += 1)}_2026_unique_`;
         const host = createFilterHost(
           documentObj,
           buildLensFilter(filterId, nextWidth, nextHeight, tiles, scale, dispersion, bands)
@@ -465,7 +466,7 @@ export function createLiquidGlass(options: {
         lens = createLensSwitcher({
           documentObj,
           windowObj,
-          idPrefix: `_x_extension_newtab_liquid_glass_${(filterCount += 1)}`,
+          idPrefix: '_x_extension_newtab_liquid_glass',
           measure,
           apply(filterId) {
             element.style.setProperty('--x-nt-bookmarks-topbar-liquid-filter', `url(#${filterId})`);
@@ -521,7 +522,7 @@ export function createLiquidSurfaces(options: {
 }): LiquidSurfaces {
   const { documentObj, property, selector, windowObj } = options;
   const supported = isLiquidGlassSupported(windowObj);
-  const idPrefix = `_x_extension_newtab_liquid_surface_${(filterCount += 1)}`;
+  const idPrefix = '_x_extension_newtab_liquid_surface';
   const lenses = new Map<HTMLElement, ReturnType<typeof createLensSwitcher>>();
   let destroyed = false;
 

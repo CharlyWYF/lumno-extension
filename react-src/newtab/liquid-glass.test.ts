@@ -155,12 +155,16 @@ describe('New Tab bookmarks bar liquid glass', () => {
       } as unknown as CanvasRenderingContext2D);
       const encoded = vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/png;base64,AA==');
       const frames: FrameRequestCallback[] = [];
-      const card = document.createElement('div');
-      card.className = 'glass';
-      document.body.appendChild(card);
+      const addSurface = (size: { width: number; height: number }) => {
+        const element = document.createElement('div');
+        element.className = 'glass';
+        document.body.appendChild(element);
+        Object.defineProperty(element, 'offsetWidth', { get: () => size.width });
+        Object.defineProperty(element, 'offsetHeight', { get: () => size.height });
+        return element;
+      };
       const size = { width: 200, height: 64 };
-      Object.defineProperty(card, 'offsetWidth', { get: () => size.width });
-      Object.defineProperty(card, 'offsetHeight', { get: () => size.height });
+      const card = addSurface(size);
       let resized: ResizeObserverCallback = () => {};
       class FakeResizeObserver {
         constructor(callback: ResizeObserverCallback) {
@@ -199,8 +203,10 @@ describe('New Tab bookmarks bar liquid glass', () => {
         }
       };
       const filters = () => Array.from(document.querySelectorAll('filter'));
-      const pointedAt = () => card.style.getPropertyValue('--refraction').replace(/^url\(#|\)$/g, '');
-      return { encoded, filters, pointedAt, resize, settle, surfaces };
+      const pointedAt = (element = card) => element.style.getPropertyValue('--refraction').replace(/^url\(#|\)$/g, '');
+      const observe = (element: HTMLElement) =>
+        resized([{ target: element } as unknown as ResizeObserverEntry], {} as ResizeObserver);
+      return { addSurface, encoded, filters, observe, pointedAt, resize, settle, surfaces };
     }
 
     it('fits a resize in place in the same frame, with nothing rebuilt', async () => {
@@ -247,6 +253,28 @@ describe('New Tab bookmarks bar liquid glass', () => {
       surfaces.destroy();
       expect(filters()).toEqual([]);
       expect(pointedAt()).toBe('');
+    });
+
+    it('gives every surface its own lens, sized to it', async () => {
+      const { addSurface, filters, observe, pointedAt, resize, settle, surfaces } = setup();
+      const menu = addSurface({ width: 168, height: 138 });
+      const plate = addSurface({ width: 640, height: 470 });
+      resize(640, 70);
+      observe(menu);
+      observe(plate);
+      await settle();
+      const ids = [pointedAt(), pointedAt(menu), pointedAt(plate)];
+      expect(new Set(ids).size).toBe(3);
+      // Each id names one filter, the size of the surface pointing at it.
+      expect(filters().map((filter) => filter.id).sort()).toEqual(ids.slice().sort());
+      const sizeOf = (id: string) => {
+        const filter = document.getElementById(id) as Element;
+        return [filter.getAttribute('width'), filter.getAttribute('height')];
+      };
+      expect(sizeOf(ids[0])).toEqual(['640', '70']);
+      expect(sizeOf(ids[1])).toEqual(['168', '138']);
+      expect(sizeOf(ids[2])).toEqual(['640', '470']);
+      surfaces.destroy();
     });
 
     it('leaves small controls without a lens', async () => {
