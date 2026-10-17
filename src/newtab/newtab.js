@@ -400,6 +400,8 @@
     openBookmarkEditor,
     openBookmarkFolderTabGroupConfirmation,
     deleteBookmarkFromContextTarget: (...args) => deleteBookmarkFromContextTarget(...args),
+    hasShortcutForSite: (...args) => hasShortcutForSite(...args),
+    addSiteToShortcuts: (...args) => addSiteToShortcuts(...args),
     closeShortcutContextMenu: (...args) => closeShortcutContextMenu(...args),
     closeRecentContextMenu: (...args) => closeRecentContextMenu(...args),
     hideCursorTooltip: (...args) => hideCursorTooltip(...args),

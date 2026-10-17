@@ -14,6 +14,8 @@
       openBookmarkEditor,
       openBookmarkFolderTabGroupConfirmation,
       deleteBookmarkFromContextTarget,
+      hasShortcutForSite,
+      addSiteToShortcuts,
       closeShortcutContextMenu,
       closeRecentContextMenu,
       hideCursorTooltip
@@ -23,6 +25,7 @@
     const pageState = deps.pageState;
 
     const BOOKMARK_CONTEXT_MENU_REMOVE_VALUE = 'remove';
+    const BOOKMARK_CONTEXT_MENU_ADD_SHORTCUT_VALUE = 'add-shortcut';
     const BOOKMARK_CONTEXT_MENU_MIN_WIDTH_PX = 124;
     const BOOKMARK_CONTEXT_MENU_MAX_WIDTH_PX = 240;
     const BOOKMARK_CONTEXT_MENU_PORTAL_Z_INDEX = 10060;
@@ -34,6 +37,10 @@
       }
       const node = bookmarksRuntime.getNode(target.bookmarkId);
       return NEWTAB_BOOKMARKS_STORE.collectFolderBookmarkUrls(node).length;
+    }
+
+    function getBookmarkShortcutSite(target) {
+      return { title: target.title, url: target.url };
     }
 
     function getBookmarkContextMenuOptions(target) {
@@ -50,6 +57,17 @@
           action: NEWTAB_CONTEXT_MENU_OPEN_VALUE,
           value: NEWTAB_CONTEXT_MENU_OPEN_VALUE,
           label: t('newtab_open_in_new_tab', 'Open in new tab')
+        });
+        // Copies the site into the shortcuts and leaves the bookmark where
+        // it is; dragging the bookmark onto the shortcuts moves it instead.
+        const isShortcut = hasShortcutForSite(getBookmarkShortcutSite(target));
+        options.push({
+          action: BOOKMARK_CONTEXT_MENU_ADD_SHORTCUT_VALUE,
+          value: BOOKMARK_CONTEXT_MENU_ADD_SHORTCUT_VALUE,
+          label: isShortcut
+            ? t('newtab_shortcuts_already_added', 'Already in shortcuts')
+            : t('recent_add_to_shortcuts', 'Add to shortcuts'),
+          disabled: isShortcut
         });
       }
       if (target && target.isFolder) {
@@ -151,6 +169,10 @@
       }
       if (action === NEWTAB_CONTEXT_MENU_OPEN_VALUE) {
         openExternalNewTabUrl(target.url, 'newTab');
+        return;
+      }
+      if (action === BOOKMARK_CONTEXT_MENU_ADD_SHORTCUT_VALUE && !target.isFolder) {
+        addSiteToShortcuts(getBookmarkShortcutSite(target));
         return;
       }
       if (action === BOOKMARK_CONTEXT_MENU_EDIT_VALUE) {
