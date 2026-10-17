@@ -384,6 +384,7 @@ body[data-glass-style][data-nt-suggestions-open="true"] :is(.x-nt-shortcut-icon,
    It is part of the backdrop filter, not a layer of its own. Only on light glass with dark ink:
    flipped plates have their own tint. */
 body[data-glass-style="liquid"][data-nt-ready="1"]:not([data-theme="dark"]) :is(
+  #_x_extension_newtab_root_2024_unique_,
   #_x_extension_newtab_suggestions_surface_2026_unique_,
   .x-nt-recent-card-visual,
   .x-nt-bookmark-card,
@@ -398,9 +399,28 @@ body[data-glass-style="liquid"][data-nt-ready="1"]:not([data-theme="dark"]) :is(
 body[data-glass-style="liquid"][data-nt-ready="1"]:not([data-theme="dark"]) :is(.x-nt-recent-card-visual, .x-nt-bookmark-card)[data-glass-ink="dark"] {
   --x-nt-glass-filter: blur(1px) saturate(160%) contrast(0.8) brightness(1.11);
 }
-body[data-glass-style="liquid"]:not([data-theme="dark"]) #_x_extension_newtab_suggestions_surface_2026_unique_[data-glass-ink="dark"] {
+/* The search bar takes the results' veil and tint, so it reads the same pane closed and open. */
+body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(
+  #_x_extension_newtab_root_2024_unique_,
+  #_x_extension_newtab_suggestions_surface_2026_unique_
+)[data-glass-ink="dark"] {
   --x-nt-glass-tint-thin: 0.42;
   --x-nt-glass-tint-dense: 0.62;
+}
+/* The bookmarks bar carries a row of labels across the top of the scene. */
+body[data-glass-style="liquid"]:not([data-theme="dark"]) .x-nt-bookmarks-topbar[data-surface-mode="clear"][data-glass-ink="dark"] {
+  --x-nt-glass-tint-thin: 0.38;
+  --x-nt-glass-tint-dense: 0.58;
+  /* The bar's own backdrop chain ends in this tone step: the same veil as the plates. */
+  --x-nt-bookmarks-topbar-liquid-tone: contrast(0.8) brightness(1.11);
+}
+body[data-glass-style="frosted"]:not([data-theme="dark"]) #_x_extension_newtab_root_2024_unique_[data-glass-ink="dark"] {
+  --x-nt-glass-tint-thin: var(--x-nt-glass-float-thin);
+  --x-nt-glass-tint-dense: var(--x-nt-glass-float-dense);
+}
+body[data-glass-style="frosted"]:not([data-theme="dark"]) .x-nt-bookmarks-topbar[data-surface-mode="frosted"][data-glass-ink="dark"] {
+  --x-nt-glass-tint-thin: 0.52;
+  --x-nt-glass-tint-dense: 0.76;
 }
 body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(.x-nt-recent-card-visual, .x-nt-bookmark-card)[data-glass-ink="dark"] {
   --x-nt-glass-tint-thin: 0.3;
@@ -671,15 +691,16 @@ body[data-glass-style] .x-nt-recent-inner {
   transition: height var(--lumno-duration-xl) ease, transform var(--lumno-duration-xl) ease,
     margin-bottom var(--lumno-duration-xl) ease, background-color var(--lumno-duration-xl) ease;
 }
-/* On hover the inset rises out of the card like a sheet. It becomes a denser pane of the same
-   glass: inside the card it blurs the card's glass again, and past the card's edge, where it can see
-   nothing (the card is its backdrop root), the denser tint keeps it from reading as a ghost. */
+/* On hover the inset rises out of the card like a sheet. It becomes a dense, frosted pane of the
+   same glass, near solid under its text: inside the card it blurs the card's glass hard, whatever
+   blur the plates use, and past the card's edge, where it can see nothing (the card is its backdrop
+   root), the dense tint keeps it from reading as a ghost. */
 body[data-glass-style] .x-nt-recent-card:hover .x-nt-recent-inner,
 body[data-glass-style] .x-nt-recent-card[data-recent-context-menu-open="true"] .x-nt-recent-inner {
-  background-color: rgb(var(--x-nt-glass-tint-rgb) / calc(var(--x-nt-glass-tint-dense) + 0.12));
+  background-color: rgb(var(--x-nt-glass-tint-rgb) / min(0.9, calc(var(--x-nt-glass-tint-dense) + 0.24)));
   box-shadow: var(--x-nt-glass-edge);
-  backdrop-filter: var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
-  -webkit-backdrop-filter: var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  backdrop-filter: blur(24px) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+  -webkit-backdrop-filter: blur(24px) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1));
 }
 body[data-glass-style] .x-nt-recent-card.x-nt-recent-card--rollback:hover .x-nt-recent-inner {
   background-color: var(--x-nt-glass-inset);
