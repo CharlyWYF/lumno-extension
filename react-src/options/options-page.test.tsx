@@ -364,12 +364,52 @@ describe('Options page storage wiring', () => {
     expect(stored.lists.site.slice(0, 3)).toEqual(['yt', 'gh', 'bb']);
     expect(stored.groups).toEqual(['local', 'ai', 'aggregate', 'engine', 'site']);
 
+    // A second move, then consecutive undos and redos from the keyboard.
+    const secondDown = document.querySelectorAll<HTMLButtonElement>(
+      '#_x_extension_site_search_builtin_list_2024_unique_ > [data-key] [data-move="down"]'
+    )[1];
+    await act(async () => {
+      secondDown?.click();
+    });
+    await settle();
+    expect(siteKeys().slice(0, 3)).toEqual(['yt', 'bb', 'gh']);
+    const press = async (init: KeyboardEventInit) => {
+      await act(async () => {
+        document.body.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }));
+      });
+      await settle();
+    };
+    await press({ ctrlKey: true, key: 'z' });
+    expect(siteKeys().slice(0, 3)).toEqual(['yt', 'gh', 'bb']);
+    await press({ ctrlKey: true, key: 'z' });
+    expect(siteKeys().slice(0, 3)).toEqual(['gh', 'yt', 'bb']);
+    expect((chrome.storage.sync.values[key] as { lists: { site: string[] } }).lists.site.slice(0, 2))
+      .toEqual(['gh', 'yt']);
+    // Nothing older to undo.
+    await press({ ctrlKey: true, key: 'z' });
+    expect(siteKeys().slice(0, 3)).toEqual(['gh', 'yt', 'bb']);
+    await press({ ctrlKey: true, key: 'z', shiftKey: true });
+    await press({ ctrlKey: true, key: 'y' });
+    expect(siteKeys().slice(0, 3)).toEqual(['yt', 'bb', 'gh']);
+    // Text fields keep their own undo.
+    const field = document.createElement('input');
+    document.body.appendChild(field);
+    await act(async () => {
+      field.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ctrlKey: true, key: 'z' }));
+    });
+    await settle();
+    expect(siteKeys().slice(0, 3)).toEqual(['yt', 'bb', 'gh']);
+    field.remove();
+
     await act(async () => {
       chrome.storage.sync.externalSet({ [key]: { version: 1, groups: ['site'] } });
     });
     await settle();
     expect(chips()).toEqual(['site', 'aggregate', 'engine', 'ai', 'local']);
     expect(siteKeys().slice(0, 3)).toEqual(['yt', 'bb', 'gh']);
+    // The order changed elsewhere, so this page's history no longer applies.
+    await press({ ctrlKey: true, key: 'z' });
+    expect(chips()).toEqual(['site', 'aggregate', 'engine', 'ai', 'local']);
     expect(types()).toEqual(['topSite', 'bookmark', 'history']);
   });
 

@@ -3071,6 +3071,26 @@
       return normalizedItems;
     }
 
+    // While the panel is open, Ctrl/Cmd+Z and Shift+Ctrl/Cmd+Z step back and
+    // forth through the moves made in it. The host answers whether it had a
+    // step to take; when it had none, the keys keep their usual meaning.
+    function handleModeMenuHistoryKeydown(event) {
+      if (!modeMenuOpen || modeMenu.hidden || event.altKey || !(event.metaKey || event.ctrlKey)) {
+        return;
+      }
+      const key = String(event.key || '').toLowerCase();
+      let direction = '';
+      if (key === 'z') {
+        direction = event.shiftKey ? 'redo' : 'undo';
+      } else if (key === 'y' && event.ctrlKey && !event.metaKey && !event.shiftKey) {
+        direction = 'redo';
+      }
+      if (direction && config.onModeMenuHistory(direction) === true) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }
+
     // Hovering a group title shows move up and move down for the whole block.
     // The host stores the new group order and refreshes the menu.
     function createModeMenuGroupMoveControls(groupKey) {
@@ -3718,6 +3738,9 @@
     modeMenu.addEventListener('keydown', handleMenuKeydown);
     modeMenu.addEventListener('pointerdown', handleModeMenuPointerDown);
     detachModeMenuReorder = attachModeMenuReorder();
+    if (typeof config.onModeMenuHistory === 'function' && typeof container.addEventListener === 'function') {
+      container.addEventListener('keydown', handleModeMenuHistoryKeydown, true);
+    }
     if (doc && typeof doc.addEventListener === 'function') {
       doc.addEventListener('pointerdown', handleDocumentPointerDown, true);
     }
@@ -3752,6 +3775,9 @@
     function destroy() {
       destroyed = true;
       detachModeMenuReorder();
+      if (typeof container.removeEventListener === 'function') {
+        container.removeEventListener('keydown', handleModeMenuHistoryKeydown, true);
+      }
       modeMenuRequestId += 1;
       modeMenuPending = false;
       cancelModeMenuRevealFrame();

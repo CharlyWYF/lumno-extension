@@ -5559,6 +5559,7 @@
     getSearchModeMenuItems,
     reorderSearchModeMenu,
     moveSearchModeMenuGroup,
+    stepSearchModeMenuHistory,
     openSearchModeMenuFromDoubleTab,
     selectSearchModeMenuItem,
     getLocalSearchScopeTabHintProvider,
@@ -6839,6 +6840,7 @@
     onModeMenuSelect: selectSearchModeMenuItem,
     onModeMenuReorder: reorderSearchModeMenu,
     onModeMenuGroupMove: moveSearchModeMenuGroup,
+    onModeMenuHistory: stepSearchModeMenuHistory,
     onModeTagRemovalConfirmation: () => {
       showToast(t(
         'search_scope_remove_confirmation',

@@ -33,6 +33,15 @@
       writeSearchSourceOrder
     } = deps;
     const SEARCH_SOURCE_ORDER = globalThis.LumnoSearchSourceOrder;
+    // Undo and redo for the moves made in this page's panel.
+    const searchSourceOrderHistory = SEARCH_SOURCE_ORDER ? SEARCH_SOURCE_ORDER.createHistory() : null;
+    // Moves, undos and redos run one after another, so each reads what the
+    // previous one stored.
+    let searchSourceOrderQueue = Promise.resolve();
+    function queueSearchSourceOrderTask(task) {
+      searchSourceOrderQueue = searchSourceOrderQueue.then(task).catch(() => {});
+      return searchSourceOrderQueue;
+    }
 
     // The page state object shared with newtab.js and the other modules.
     const pageState = deps.pageState;
@@ -185,11 +194,33 @@
       if (!SEARCH_SOURCE_ORDER || typeof writeSearchSourceOrder !== 'function') {
         return Promise.resolve();
       }
-      return loadSearchSourceOrder()
-        .then((value) => writeSearchSourceOrder(
+      return queueSearchSourceOrderTask(() => loadSearchSourceOrder()
+        .then((value) => recordSearchSourceOrder(
+          value,
           SEARCH_SOURCE_ORDER.applyScopeMenuMove(value, payload)
-        ))
-        .catch(() => {});
+        )));
+    }
+
+    function recordSearchSourceOrder(before, after) {
+      searchSourceOrderHistory.record(before, after);
+      return writeSearchSourceOrder(after);
+    }
+
+    // Returns whether there was a step to take, so the panel only claims
+    // Ctrl/Cmd+Z when it does something.
+    function stepSearchModeMenuHistory(direction) {
+      if (!searchSourceOrderHistory || typeof writeSearchSourceOrder !== 'function' ||
+          !(direction === 'redo' ? searchSourceOrderHistory.canRedo() : searchSourceOrderHistory.canUndo())) {
+        return false;
+      }
+      queueSearchSourceOrderTask(() => loadSearchSourceOrder()
+        .then((value) => {
+          const target = direction === 'redo'
+            ? searchSourceOrderHistory.redo(value)
+            : searchSourceOrderHistory.undo(value);
+          return target ? writeSearchSourceOrder(target) : null;
+        }));
+      return true;
     }
 
     // A group block moved from its title in the panel.
@@ -197,11 +228,11 @@
       if (!SEARCH_SOURCE_ORDER || typeof writeSearchSourceOrder !== 'function' || !payload) {
         return Promise.resolve();
       }
-      return loadSearchSourceOrder()
-        .then((value) => writeSearchSourceOrder(
+      return queueSearchSourceOrderTask(() => loadSearchSourceOrder()
+        .then((value) => recordSearchSourceOrder(
+          value,
           SEARCH_SOURCE_ORDER.applyGroupMove(value, payload.groups, payload.group, payload.delta)
-        ))
-        .catch(() => {});
+        )));
     }
 
     function openSearchModeMenuFromDoubleTab() {
@@ -498,6 +529,7 @@
       getSearchModeMenuItems,
       reorderSearchModeMenu,
       moveSearchModeMenuGroup,
+      stepSearchModeMenuHistory,
       openSearchModeMenuFromDoubleTab,
       selectSearchModeMenuItem,
       getLocalSearchScopeTabHintProvider,

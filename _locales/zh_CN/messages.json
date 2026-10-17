@@ -3336,7 +3336,7 @@
     "message": "搜索面板顺序"
   },
   "settings_search_source_group_order_desc": {
-    "message": "拖动标签，调整搜索框面板中各分组的先后顺序；各分组内的顺序在下方列表中拖动调整"
+    "message": "拖动标签，调整搜索框面板中各分组的先后顺序；各分组内的顺序在下方列表中拖动调整。按 Ctrl/⌘ + Z 撤销，Shift + Ctrl/⌘ + Z 恢复。"
   },
   "settings_search_source_order_keyboard_hint": {
     "message": "按 Alt + 左右方向键调整位置"
@@ -3351,6 +3351,12 @@
     "message": "下移"
   },
   "settings_search_result_sources_order_desc": {
-    "message": "拖动可调整它们在搜索框面板「浏览器内容」中的顺序"
+    "message": "拖动可调整它们在搜索框面板「浏览器内容」中的顺序。按 Ctrl/⌘ + Z 撤销，Shift + Ctrl/⌘ + Z 恢复。"
+  },
+  "settings_search_source_order_undone": {
+    "message": "已撤销排序"
+  },
+  "settings_search_source_order_redone": {
+    "message": "已恢复排序"
   }
 }

@@ -3336,7 +3336,7 @@
     "message": "Search Panel Order"
   },
   "settings_search_source_group_order_desc": {
-    "message": "Drag the tags to set the order of the groups in the search box panel. Drag rows in the lists below to order each group."
+    "message": "Drag the tags to set the order of the groups in the search box panel. Drag rows in the lists below to order each group. Press Ctrl/⌘ + Z to undo and Shift + Ctrl/⌘ + Z to redo."
   },
   "settings_search_source_order_keyboard_hint": {
     "message": "Press Alt with the Left or Right arrow key to move"
@@ -3351,6 +3351,12 @@
     "message": "Move down"
   },
   "settings_search_result_sources_order_desc": {
-    "message": "Drag to set their order in the Browser content group of the search box panel"
+    "message": "Drag to set their order in the Browser content group of the search box panel. Press Ctrl/⌘ + Z to undo and Shift + Ctrl/⌘ + Z to redo."
+  },
+  "settings_search_source_order_undone": {
+    "message": "Order change undone"
+  },
+  "settings_search_source_order_redone": {
+    "message": "Order change redone"
   }
 }

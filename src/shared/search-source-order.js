@@ -264,6 +264,71 @@
     return withGroups(record, applySubsetOrder(record.groups, moveIndex(shown, fromIndex, toIndex)));
   }
 
+  function isSameOrder(left, right) {
+    return JSON.stringify(normalizeOrder(left)) === JSON.stringify(normalizeOrder(right));
+  }
+
+  // Undo and redo for the moves one page makes. Each step keeps the record
+  // before and after the move. A step only applies while storage still holds
+  // the record it expects; if another page changed the order meanwhile, the
+  // history no longer describes what is stored and is dropped.
+  function createHistory(options) {
+    const limit = Math.max(1, Number(options && options.limit) || 50);
+    const done = [];
+    const undone = [];
+    function clear() {
+      done.length = 0;
+      undone.length = 0;
+    }
+    function step(from, to, expected, current) {
+      const entry = from[from.length - 1];
+      if (!entry) {
+        return null;
+      }
+      if (current !== undefined && !isSameOrder(current, entry[expected])) {
+        clear();
+        return null;
+      }
+      from.pop();
+      to.push(entry);
+      return expected === 'after' ? entry.before : entry.after;
+    }
+    return Object.freeze({
+      record(before, after) {
+        if (isSameOrder(before, after)) {
+          return;
+        }
+        done.push({ before: normalizeOrder(before), after: normalizeOrder(after) });
+        if (done.length > limit) {
+          done.shift();
+        }
+        undone.length = 0;
+      },
+      canUndo: () => done.length > 0,
+      canRedo: () => undone.length > 0,
+      // `current` is the stored record; leave it out to skip the check.
+      undo: (current) => step(done, undone, 'after', current),
+      redo: (current) => step(undone, done, 'before', current),
+      clear
+    });
+  }
+
+  // Ctrl or Cmd with Z undoes; adding Shift, or Ctrl+Y, redoes. Alt is left
+  // alone so other shortcuts keep working.
+  function getHistoryShortcut(event) {
+    if (!event || event.altKey || !(event.metaKey || event.ctrlKey)) {
+      return '';
+    }
+    const key = String(event.key || '').toLowerCase();
+    if (key === 'z') {
+      return event.shiftKey ? 'redo' : 'undo';
+    }
+    if (key === 'y' && event.ctrlKey && !event.metaKey && !event.shiftKey) {
+      return 'redo';
+    }
+    return '';
+  }
+
   // Orders the search scope panel: group blocks in the chosen order, then
   // pinned and custom entries ahead of built-in ones (as they always were),
   // then the chosen position inside each list, then the surface's own order.
@@ -323,7 +388,10 @@
     applyMove,
     applyScopeMenuMove,
     applySubsetOrder,
+    createHistory,
+    getHistoryShortcut,
     getListKeys,
+    isSameOrder,
     moveIndex,
     normalizeOrder,
     rankScopeItems,

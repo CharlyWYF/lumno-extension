@@ -18,6 +18,7 @@
     let order = ORDER.normalizeOrder(null);
     let writeQueue = Promise.resolve();
     const detachers = [];
+    const history = ORDER.createHistory();
 
     function notify() {
       if (typeof options.onChange === 'function') {
@@ -37,7 +38,10 @@
         .catch(() => notify());
     }
 
-    function persist(next) {
+    function persist(next, persistOptions) {
+      if (!persistOptions || persistOptions.record !== false) {
+        history.record(order, next);
+      }
       order = next;
       notify();
       writeQueue = writeQueue
@@ -50,6 +54,52 @@
           return load();
         });
       return writeQueue;
+    }
+
+    // Ctrl/Cmd+Z and Shift+Ctrl/Cmd+Z step through this page's moves, one at a
+    // time and as many times as there are moves to step through.
+    function stepHistory(direction) {
+      const target = direction === 'redo' ? history.redo(order) : history.undo(order);
+      if (!target) {
+        return false;
+      }
+      persist(target, { record: false });
+      if (typeof options.showToast === 'function') {
+        options.showToast(direction === 'redo'
+          ? getMessage('settings_search_source_order_redone', '已恢复排序')
+          : getMessage('settings_search_source_order_undone', '已撤销排序'));
+      }
+      return true;
+    }
+
+    // Text fields keep their own undo.
+    function isTextEditingTarget(target) {
+      if (!target || target.nodeType !== 1) {
+        return false;
+      }
+      if (target.isContentEditable || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+        return true;
+      }
+      return target.tagName === 'INPUT' &&
+        !['checkbox', 'radio', 'button', 'range'].includes(String(target.type || '').toLowerCase());
+    }
+
+    function handleHistoryKeydown(event) {
+      const direction = ORDER.getHistoryShortcut(event);
+      if (!direction || event.defaultPrevented || isTextEditingTarget(event.target)) {
+        return;
+      }
+      if (!(direction === 'redo' ? history.canRedo() : history.canUndo())) {
+        return;
+      }
+      event.preventDefault();
+      stepHistory(direction);
+    }
+
+    const historyDocument = options.document || root.document;
+    if (historyDocument) {
+      historyDocument.addEventListener('keydown', handleHistoryKeydown);
+      detachers.push(() => historyDocument.removeEventListener('keydown', handleHistoryKeydown));
     }
 
     function sortList(items, listId, getKey) {
@@ -180,8 +230,10 @@
       load,
       moveListItem,
       moveLocal,
+      redo: () => stepHistory('redo'),
       sortList,
       sortLocalSourceTypes,
+      undo: () => stepHistory('undo'),
       destroy() {
         detachers.splice(0).forEach((detach) => detach());
       }

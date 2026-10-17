@@ -3336,7 +3336,7 @@
     "message": "検索パネルの並び順"
   },
   "settings_search_source_group_order_desc": {
-    "message": "タグをドラッグして、検索ボックスのパネルに並ぶグループの順序を変更します。各グループ内の順序は下のリストでドラッグして変更します。"
+    "message": "タグをドラッグして、検索ボックスのパネルに並ぶグループの順序を変更します。各グループ内の順序は下のリストでドラッグして変更します。 Ctrl/⌘ + Z で取り消し、Shift + Ctrl/⌘ + Z でやり直します。"
   },
   "settings_search_source_order_keyboard_hint": {
     "message": "Alt キーと左右の矢印キーで移動します"
@@ -3351,6 +3351,12 @@
     "message": "下へ移動"
   },
   "settings_search_result_sources_order_desc": {
-    "message": "ドラッグして、検索ボックスのパネルの「ブラウザ内検索」での順序を変更します"
+    "message": "ドラッグして、検索ボックスのパネルの「ブラウザ内検索」での順序を変更します Ctrl/⌘ + Z で取り消し、Shift + Ctrl/⌘ + Z でやり直します。"
+  },
+  "settings_search_source_order_undone": {
+    "message": "並び替えを取り消しました"
+  },
+  "settings_search_source_order_redone": {
+    "message": "並び替えをやり直しました"
   }
 }

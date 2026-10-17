@@ -170,6 +170,53 @@ function testGroupMove() {
   );
 }
 
+function testHistory() {
+  const history = order.createHistory({ limit: 3 });
+  const a = order.normalizeOrder(null);
+  const b = order.withGroups(a, ['ai']);
+  const c = order.withGroups(b, ['local']);
+  const d = order.withGroups(c, ['site']);
+  assert.strictEqual(history.canUndo(), false);
+  history.record(a, b);
+  history.record(b, c);
+  history.record(c, c);
+  assert.strictEqual(history.canRedo(), false);
+  // Consecutive undos walk back, consecutive redos walk forward again.
+  assert.ok(order.isSameOrder(history.undo(c), b));
+  assert.ok(order.isSameOrder(history.undo(b), a));
+  assert.strictEqual(history.undo(a), null, 'nothing left to undo');
+  assert.ok(order.isSameOrder(history.redo(a), b));
+  assert.ok(order.isSameOrder(history.redo(b), c));
+  assert.strictEqual(history.redo(c), null);
+  // A new move after an undo drops the redo branch.
+  history.undo(c);
+  history.record(b, d);
+  assert.strictEqual(history.canRedo(), false);
+  // A record changed elsewhere invalidates the history instead of
+  // overwriting that change.
+  assert.strictEqual(history.undo(c), null);
+  assert.strictEqual(history.canUndo(), false);
+  // The oldest steps fall off past the limit.
+  [a, b, c, d].forEach((record, index, all) => {
+    if (index) history.record(all[index - 1], record);
+  });
+  history.record(d, a);
+  assert.ok(order.isSameOrder(history.undo(a), d));
+  assert.ok(order.isSameOrder(history.undo(d), c));
+  assert.ok(order.isSameOrder(history.undo(c), b));
+  assert.strictEqual(history.canUndo(), false);
+}
+
+function testHistoryShortcut() {
+  assert.strictEqual(order.getHistoryShortcut({ key: 'z', metaKey: true }), 'undo');
+  assert.strictEqual(order.getHistoryShortcut({ key: 'z', ctrlKey: true }), 'undo');
+  assert.strictEqual(order.getHistoryShortcut({ key: 'Z', metaKey: true, shiftKey: true }), 'redo');
+  assert.strictEqual(order.getHistoryShortcut({ key: 'y', ctrlKey: true }), 'redo');
+  assert.strictEqual(order.getHistoryShortcut({ key: 'y', metaKey: true }), '');
+  assert.strictEqual(order.getHistoryShortcut({ key: 'z', ctrlKey: true, altKey: true }), '');
+  assert.strictEqual(order.getHistoryShortcut({ key: 'z' }), '');
+}
+
 function testMoveIndex() {
   assert.deepStrictEqual(order.moveIndex(['a', 'b', 'c'], 2, 0), ['c', 'a', 'b']);
   assert.deepStrictEqual(order.moveIndex(['a', 'b', 'c'], 0, 5), ['a', 'b', 'c']);
@@ -187,5 +234,7 @@ testScopeMenuMove();
 testRecordStaysInsideTheSyncBudget();
 testMoveIndex();
 testGroupMove();
+testHistory();
+testHistoryShortcut();
 
 console.log('search source order tests passed');

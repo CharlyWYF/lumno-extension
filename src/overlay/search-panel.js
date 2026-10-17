@@ -4046,6 +4046,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       onModeMenuSelect: selectSearchModeMenuItem,
       onModeMenuReorder: reorderSearchModeMenu,
       onModeMenuGroupMove: moveSearchModeMenuGroup,
+      onModeMenuHistory: stepSearchModeMenuHistory,
       onModeTagRemovalConfirmation: () => {
         showOverlayToast(t(
           'search_scope_remove_confirmation',
@@ -5280,11 +5281,54 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       if (!SEARCH_SOURCE_ORDER || !storageArea) {
         return Promise.resolve();
       }
-      return loadSearchSourceOrder().then((value) => new Promise((resolve) => {
-        storageArea.set({
-          [SEARCH_SOURCE_ORDER_STORAGE_KEY]: SEARCH_SOURCE_ORDER.applyScopeMenuMove(value, payload)
-        }, () => resolve());
-      })).catch(() => {});
+      return queueSearchSourceOrderTask(() => loadSearchSourceOrder()
+        .then((value) => recordSearchSourceOrder(value, SEARCH_SOURCE_ORDER.applyScopeMenuMove(value, payload))));
+    }
+
+    // Moves, undos and redos run one after another, so each reads what the
+    // previous one stored.
+    let searchSourceOrderQueue = Promise.resolve();
+    function queueSearchSourceOrderTask(task) {
+      searchSourceOrderQueue = searchSourceOrderQueue.then(task).catch(() => {});
+      return searchSourceOrderQueue;
+    }
+
+    function writeSearchSourceOrder(value) {
+      return new Promise((resolve) => {
+        storageArea.set({ [SEARCH_SOURCE_ORDER_STORAGE_KEY]: value }, () => resolve());
+      });
+    }
+
+    // Undo and redo for the moves made in this page's panel. Kept on the
+    // content script's global so it outlives one opening of the command bar.
+    function getSearchSourceOrderHistory() {
+      if (!globalThis.__lumnoSearchSourceOrderHistory2026) {
+        globalThis.__lumnoSearchSourceOrderHistory2026 = SEARCH_SOURCE_ORDER.createHistory();
+      }
+      return globalThis.__lumnoSearchSourceOrderHistory2026;
+    }
+
+    function recordSearchSourceOrder(before, after) {
+      getSearchSourceOrderHistory().record(before, after);
+      return writeSearchSourceOrder(after);
+    }
+
+    // Returns whether there was a step to take, so the panel only claims
+    // Ctrl/Cmd+Z when it does something.
+    function stepSearchModeMenuHistory(direction) {
+      if (!SEARCH_SOURCE_ORDER || !storageArea) {
+        return false;
+      }
+      const history = getSearchSourceOrderHistory();
+      if (!(direction === 'redo' ? history.canRedo() : history.canUndo())) {
+        return false;
+      }
+      queueSearchSourceOrderTask(() => loadSearchSourceOrder()
+        .then((value) => {
+          const target = direction === 'redo' ? history.redo(value) : history.undo(value);
+          return target ? writeSearchSourceOrder(target) : null;
+        }));
+      return true;
     }
 
     // A group block moved from its title in the panel.
@@ -5292,16 +5336,11 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       if (!SEARCH_SOURCE_ORDER || !storageArea || !payload) {
         return Promise.resolve();
       }
-      return loadSearchSourceOrder().then((value) => new Promise((resolve) => {
-        storageArea.set({
-          [SEARCH_SOURCE_ORDER_STORAGE_KEY]: SEARCH_SOURCE_ORDER.applyGroupMove(
-            value,
-            payload.groups,
-            payload.group,
-            payload.delta
-          )
-        }, () => resolve());
-      })).catch(() => {});
+      return queueSearchSourceOrderTask(() => loadSearchSourceOrder()
+        .then((value) => recordSearchSourceOrder(
+          value,
+          SEARCH_SOURCE_ORDER.applyGroupMove(value, payload.groups, payload.group, payload.delta)
+        )));
     }
 
     function openSearchModeMenuFromDoubleTab() {
