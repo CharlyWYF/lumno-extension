@@ -178,12 +178,19 @@
       refs.quoteCategory.hidden = customMode;
       if (refs.quoteCategory.parentElement?.classList.contains('x-nt-appearance-setting-row')) refs.quoteCategory.parentElement.hidden = customMode;
       if (refs.quoteImportButton) {
-        refs.quoteImportButton.textContent = importing ? t('newtab_quote_importing', 'Importing…') : t('newtab_quote_import_md', 'Import TXT / MD file');
+        refs.quoteImportButton.textContent = importing
+          ? t('newtab_quote_importing', 'Importing…')
+          : (library ? t('newtab_quote_replace', 'Replace file') : t('newtab_quote_import', 'Import file'));
         refs.quoteImportButton.disabled = importing;
       }
-      if (refs.quoteImportHint) refs.quoteImportHint.textContent = t('newtab_quote_import_hint', 'TXT / MD: one non-empty content line per quote. Up to 1 MB, 1,000 quotes, 500 characters each; stored on this device only.');
+      // Under the title: the imported file and its size, or why an import failed.
       if (refs.quoteImportStatus) {
-        refs.quoteImportStatus.textContent = importMessage || (library ? `${library.filename} · ${library.quotes.length} ${t('newtab_quote_entries', 'quotes')}` : t('newtab_quote_import_empty', 'Import a TXT or MD file to start.'));
+        const status = importMessage ||
+          (library ? `${library.filename} · ${library.quotes.length} ${t('newtab_quote_entries', 'quotes')}` : '');
+        refs.quoteImportStatus.textContent = status;
+        refs.quoteImportStatus.hidden = !status;
+        refs.quoteImportStatus.title = importError ? '' : status;
+        refs.quoteImportStatus.setAttribute('data-error', importError ? 'true' : 'false');
         refs.quoteImportStatus.setAttribute('role', importError ? 'alert' : 'status');
       }
       syncFontSizeControls(false);
@@ -452,8 +459,8 @@
         if (!disposed) {
           importError = true;
           importMessage = saving
-            ? t('newtab_quote_collection_save_error', 'Could not save on this device. Your previous collection is retained. Try again.')
-            : t('newtab_quote_import_error', 'Import failed. Choose a valid TXT or MD file up to 1 MB with 1–1,000 non-empty content lines, each no longer than 500 characters.');
+            ? t('newtab_quote_collection_save_error', 'Couldn’t save on this device. Your previous collection is kept.')
+            : t('newtab_quote_import_error', 'Import failed: the file doesn’t meet the format or size limits. Your previous collection is kept.');
         }
         return false;
       } finally { importing = false; if (!disposed) updateSettings(); }

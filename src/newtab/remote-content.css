@@ -215,23 +215,37 @@ body[data-quote-position="bottom"].x-nt-mobile-flow {
   flex-direction: column;
   gap: var(--x-nt-panel-content-gap);
 }
-.x-nt-quote-custom-body { display: grid; gap: 10px; min-width: 0; }
+.x-nt-quote-custom-body { display: contents; }
 .x-nt-quote-custom-body[hidden] { display: none; }
-.x-nt-quote-import-hint, .x-nt-quote-import-status {
-  margin: 0;
-  color: var(--x-nt-text, #111827);
+/* Custom quotes read like the rows around them: the title (rules in its info
+   tip) with the imported file under it, and a compact action on the right. */
+.x-nt-quote-library-row { align-items: center; }
+.x-nt-quote-library-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.x-nt-quote-import-status {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--x-nt-subtext, #6b7280);
+  font-size: var(--lumno-font-size-xs);
+  line-height: 1.4;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.x-nt-quote-import-status[hidden] { display: none; }
+.x-nt-quote-import-status[data-error="true"] {
+  color: #dc2626;
+  white-space: normal;
+}
+body[data-theme="dark"] .x-nt-quote-import-status[data-error="true"] { color: #fca5a5; }
+.x-nt-quote-import-button {
+  flex: none;
+  min-height: 30px;
+  padding: 0 14px;
   font-size: var(--lumno-font-size-sm);
-  line-height: 1.6;
-  overflow-wrap: anywhere;
-}
-/* The format note reads as help text; the collection status stays prominent. */
-.x-nt-quote-import-hint {
-  color: color-mix(in srgb, var(--x-nt-text, #111827) 62%, transparent);
-}
-.x-nt-quote-import-status { font-weight: 500; }
-.x-nt-quote-custom-body button:focus-visible {
-  outline: 2px solid var(--input-focus-color);
-  outline-offset: 2px;
 }
 
 .x-nt-wallpaper-body:not([data-active-tab="bing"]) .x-nt-bing-panel,

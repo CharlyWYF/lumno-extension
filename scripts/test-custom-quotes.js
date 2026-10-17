@@ -71,11 +71,11 @@ async function main() {
   assert.equal(await runtime.importMarkdown({ ...file, text: async () => '# Empty' }), false);
   assert.equal(JSON.stringify(local[custom.KEY]), before);
   assert.equal(await runtime.importQuoteFile({ ...file, name: 'wrong.pdf' }), false);
-  assert.match(refs.quoteImportStatus.textContent, /valid TXT or MD file/);
+  assert.match(refs.quoteImportStatus.textContent, /format or size limits/);
   failSave = true; assert.equal(await runtime.importMarkdown(file), false); failSave = false;
   assert.equal(JSON.stringify(local[custom.KEY]), before, 'Failed save preserves the previous collection');
-  assert.match(refs.quoteImportStatus.textContent, /Could not save on this device.*previous collection is retained/);
-  assert.doesNotMatch(refs.quoteImportStatus.textContent, /valid TXT or MD file/);
+  assert.match(refs.quoteImportStatus.textContent, /save on this device.*previous collection is kept/);
+  assert.doesNotMatch(refs.quoteImportStatus.textContent, /format or size limits/);
   assert.equal(refs.quoteImportStatus.getAttribute('role'), 'alert');
   runtime.element.querySelector('.x-nt-quote-shuffle').click(); await tick();
   const afterShuffle = runtime.textElement.textContent;

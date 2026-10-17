@@ -189,7 +189,7 @@ export interface WallpaperPanelState {
     title: string;
     value: string;
   };
-  quote: { infoTooltip: string };
+  quote: { infoTooltip: string; library: { infoTooltip: string; title: string } };
   search: {
     autoFocus: { infoLabel: string; infoTooltip: string; title: string; toggle: ToggleState };
     seconds: { title: string; toggle: ToggleState; visible: boolean };
@@ -1391,19 +1391,37 @@ function WallpaperPanel({
                 </div>
               </div>
               <div {...ref('quoteCustomBody')} className="x-nt-quote-custom-body" hidden>
-                <button
-                  {...ref('quoteImportButton')}
-                  className="x-lumno-action-button x-lumno-action-button--secondary"
-                  type="button"
-                />
+                <div className="x-nt-appearance-setting-row x-nt-quote-library-row">
+                  <span className="x-nt-quote-library-info">
+                    <span className="x-nt-appearance-setting-title-group">
+                      <span className="x-nt-appearance-setting-title">{state.quote.library.title}</span>
+                      <InfoButton
+                        actions={actions}
+                        icon={infoIcon}
+                        label={state.quote.library.title}
+                        name="quoteImportInfoButton"
+                        tooltip={state.quote.library.infoTooltip}
+                      />
+                    </span>
+                    <span
+                      {...ref('quoteImportStatus')}
+                      className="x-nt-quote-import-status"
+                      hidden
+                      role="status"
+                    />
+                  </span>
+                  <button
+                    {...ref('quoteImportButton')}
+                    className="x-lumno-action-button x-lumno-action-button--secondary x-nt-quote-import-button"
+                    type="button"
+                  />
+                </div>
                 <input
                   {...ref('quoteFileInput')}
                   accept=".txt,.md,.markdown,text/markdown,text/plain"
                   hidden
                   type="file"
                 />
-                <p {...ref('quoteImportHint')} className="x-nt-quote-import-hint" />
-                <p {...ref('quoteImportStatus')} className="x-nt-quote-import-status" role="status" />
               </div>
               <div className="x-nt-appearance-setting-row">
                 <span {...ref('quoteCategoryLabel')} className="x-nt-appearance-setting-title" />
