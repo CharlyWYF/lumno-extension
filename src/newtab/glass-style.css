@@ -6,9 +6,9 @@
      pulled toward a mid tone (contrast + brightness), so a plate reads the same over a bright sky
      and a dark forest; the edge is lit from inside.
    - liquid: clear glass. A light blur, a vivid backdrop, an even tint and a bright specular rim;
-     where Chromium draws SVG backdrop filters, each plate's rim also bends the wallpaper inward
-     and, on the search bar and its results, fringes it into its colors (--x-nt-glass-refraction, set per plate by newtab.js through
-     createLiquidSurfaces; small controls go without). The lens comes last, after the blur and every
+     where Chromium draws SVG backdrop filters, the search bar's and its results' rim also bends
+     the wallpaper inward and fringes it into its colors (--x-nt-glass-refraction, set by newtab.js
+     through createLiquidSurfaces). The lens comes last, after the blur and every
      color step, so the color steps fold into one pass and the bend and fringe stay crisp.
    Neither uses website colors. */
 body[data-glass-style="frosted"] {

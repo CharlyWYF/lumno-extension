@@ -214,77 +214,48 @@ function createLensCache(documentObj: Document) {
 // all its blur does, for a bend hardly visible at that size. Controls keep the rest of the glass.
 const LENS_MIN_PX = 64;
 
-// The four bands a rim can bend in (top, bottom, left, right); the middle never moves.
-export function getLensBands(width: number, height: number, size: number): Rect[] {
-  const down = Math.max(1, height - size * 2);
-  return [[0, 0, width, size], [0, height - size, width, size], [0, size, size, down], [width - size, size, size, down]];
-}
-
-// Which tiles lie in each band, in getLensLayout order.
-const BAND_TILES = [[0, 4, 1], [2, 5, 3], [6], [7]];
-
-// A plate whose rim covers less than 60% of it bends in its bands only: the filter's passes then
-// cover a quarter of a results plate, half a card, and the middle passes through as it is.
-export function usesLensBands(width: number, height: number, size: number) {
-  return size * 2 * (width + height - size * 2) < width * height * 0.6;
-}
-
 const at = (rect: Rect) => `x="${rect[0]}" y="${rect[1]}" width="${rect[2]}" height="${rect[3]}"`;
 
 // The filter. The map is the lens tiles over a flat flood; the backdrop is displaced by it once, or
 // once per color channel, each by its own scale, the three channels added back together (screen on
-// single channels is a sum). With bands, each band builds its own map and bend inside its own
-// subregion, and the bands are laid over the untouched backdrop.
+// single channels is a sum). Every pass covers the whole surface: Chrome 155 draws displacement
+// passes held to a primitive subregion wrong over a backdrop (parts left unblurred, rims lit), so
+// limiting the passes to the rim is not an option.
 export function buildLensFilter(
   id: string,
   width: number,
   height: number,
   tiles: LensTiles,
   scale: number,
-  dispersion: boolean,
-  bands = false
+  dispersion: boolean
 ) {
   const tileRects = getLensLayout(tiles.shape, width, height, tiles.size);
   const pieces = tileRects.map((rect, index) =>
-    `<feImage href="${tiles.urls[index]}" preserveAspectRatio="none" data-tile="${index}" ${at(rect)} result="t${index}"/>`);
-  const bend = (map: string, region: string, result: string) => {
-    const pass = (channelScale: number) =>
-      `<feDisplacementMap in="SourceGraphic" in2="${map}" xChannelSelector="R" yChannelSelector="G" ${region}` +
-      `scale="${channelScale.toFixed(1)}"`;
-    return dispersion
-      ? 'rgb'.split('').map((name, index) => `${pass(scale * (1 + (index - 1) * LIQUID_GLASS_DISPERSION))}/>` +
-        // Keeps this channel and alpha only: a 1 on the diagonal of the 4x5 color matrix.
-        `<feColorMatrix type="matrix" values="${Array.from({ length: 20 }, (_, cell) =>
-          Number(cell === index * 6 || cell === 18)).join(' ')}" result="${result}${name}"/>`).join('') +
-        `<feBlend in="${result}r" in2="${result}g" mode="screen"/><feBlend in2="${result}b" mode="screen" result="${result}"/>`
-      : `${pass(scale)} result="${result}"/>`;
-  };
-  const merge = (nodes: string[], extra = '') =>
-    `<feMerge ${extra}>${nodes.map((node) => `<feMergeNode in="${node}"/>`).join('')}</feMerge>`;
-  const flood = (extra: string, result: string) => `<feFlood flood-color="rgb(128,128,128)" ${extra} result="${result}"/>`;
-  const body = bands
-    ? getLensBands(width, height, tiles.size).map((rect, band) => {
-      const region = `data-band="${band}" ${at(rect)} `;
-      return flood(region, `f${band}`) +
-        merge([`f${band}`, ...BAND_TILES[band].map((tile) => `t${tile}`)], `${region}result="m${band}"`) +
-        bend(`m${band}`, region, `b${band}`);
-    }).join('') + merge(['SourceGraphic', 'b0', 'b1', 'b2', 'b3'])
-    : flood('', 'flat') + merge(['flat', ...tileRects.map((_rect, index) => `t${index}`)], 'result="map"') +
-      bend('map', '', 'lens');
+    `<feImage href="${tiles.urls[index]}" preserveAspectRatio="none" ${at(rect)} result="t${index}"/>`);
+  const pass = (channelScale: number) =>
+    '<feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" ' +
+    `scale="${channelScale.toFixed(1)}"`;
+  const bend = dispersion
+    ? 'rgb'.split('').map((name, index) => `${pass(scale * (1 + (index - 1) * LIQUID_GLASS_DISPERSION))}/>` +
+      // Keeps this channel and alpha only: a 1 on the diagonal of the 4x5 color matrix.
+      `<feColorMatrix type="matrix" values="${Array.from({ length: 20 }, (_, cell) =>
+        Number(cell === index * 6 || cell === 18)).join(' ')}" result="${name}"/>`).join('') +
+      '<feBlend in="r" in2="g" mode="screen"/><feBlend in2="b" mode="screen"/>'
+    : `${pass(scale)}/>`;
   return `<filter id="${id}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB" ` +
-    `x="0" y="0" width="${width}" height="${height}">${pieces.join('')}${body}</filter>`;
+    `x="0" y="0" width="${width}" height="${height}">` +
+    `<feFlood flood-color="rgb(128,128,128)" result="flat"/>${pieces.join('')}` +
+    `<feMerge result="map"><feMergeNode in="flat"/>${tileRects.map((_rect, index) =>
+      `<feMergeNode in="t${index}"/>`).join('')}</feMerge>${bend}</filter>`;
 }
 
-// Fits a lens filter to a new size by moving its tiles and bands; the images stay as they are.
+// Fits a lens filter to a new size by moving its tiles; the images stay as they are.
 export function placeLensFilter(filter: Element, width: number, height: number, tiles: LensTiles) {
   filter.setAttribute('width', String(width));
   filter.setAttribute('height', String(height));
   const tileRects = getLensLayout(tiles.shape, width, height, tiles.size);
-  const bandRects = getLensBands(width, height, tiles.size);
-  filter.querySelectorAll('[data-tile], [data-band]').forEach((primitive) => {
-    const tile = primitive.getAttribute('data-tile');
-    const rect = tile === null ? bandRects[Number(primitive.getAttribute('data-band'))] : tileRects[Number(tile)];
-    ['x', 'y', 'width', 'height'].forEach((name, index) => primitive.setAttribute(name, String(rect[index])));
+  filter.querySelectorAll('feImage').forEach((piece, index) => {
+    ['x', 'y', 'width', 'height'].forEach((name, at) => piece.setAttribute(name, String(tileRects[index][at])));
   });
 }
 
@@ -342,8 +313,7 @@ function createLensSwitcher(options: {
       radius: number,
       bezel: number,
       scale: number,
-      dispersion: boolean,
-      bands = false
+      dispersion: boolean
     ) {
       const [width, height] = measure();
       // The current lens follows the size even while a lens for a new key is prepared, so its filter
@@ -369,7 +339,7 @@ function createLensSwitcher(options: {
         const filterId = `${idPrefix}_${(filterCount += 1)}_2026_unique_`;
         const host = createFilterHost(
           documentObj,
-          buildLensFilter(filterId, nextWidth, nextHeight, tiles, scale, dispersion, bands)
+          buildLensFilter(filterId, nextWidth, nextHeight, tiles, scale, dispersion)
         );
         windowObj.requestAnimationFrame(() => {
           if (destroyed || wanted !== key) {
@@ -512,15 +482,17 @@ export interface LiquidSurfaces {
 }
 
 // Gives every element matching `selector` a rim-refraction filter in the inline custom property
-// `property`. Sizes are followed from a ResizeObserver, which runs after layout and before paint,
+// `property`. Only surfaces matching `dispersionSelector` split the bend into colors: on a card or a
+// menu, a colored fringe along the rim reads as a rendering fault rather than glass. Sizes are followed from a ResizeObserver, which runs after layout and before paint,
 // so a surface's lens fits its new size in the frame it changes.
 export function createLiquidSurfaces(options: {
   documentObj: Document;
+  dispersionSelector?: string;
   property: string;
   selector: string;
   windowObj: Window;
 }): LiquidSurfaces {
-  const { documentObj, property, selector, windowObj } = options;
+  const { documentObj, dispersionSelector, property, selector, windowObj } = options;
   const supported = isLiquidGlassSupported(windowObj);
   const idPrefix = '_x_extension_newtab_liquid_surface';
   const lenses = new Map<HTMLElement, ReturnType<typeof createLensSwitcher>>();
@@ -566,9 +538,9 @@ export function createLiquidSurfaces(options: {
     }
     const radius = Math.round(Math.min(readCornerRadius(element, windowObj, width, height), width / 2, height / 2));
     const bezel = Math.round(getSurfaceBezel(width, height));
-    const bands = usesLensBands(width, height, Math.max(radius, bezel));
-    lens.update(`${radius}:${bezel}:${bands ? 'bands' : 'full'}`, 'floating', radius, bezel,
-      getSurfaceDisplacementScale(bezel), true, bands);
+    const dispersion = Boolean(dispersionSelector && element.matches(dispersionSelector));
+    lens.update(`${radius}:${bezel}:${dispersion ? 'rgb' : 'g'}`, 'floating', radius, bezel,
+      getSurfaceDisplacementScale(bezel), dispersion);
   };
 
   const ResizeObserverCtor = (windowObj as Window & { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;

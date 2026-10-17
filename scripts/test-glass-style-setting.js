@@ -74,9 +74,10 @@ async function main() {
   frosted.change('liquid');
   assert.strictEqual(frosted.style(), 'liquid', 'a synchronized choice applies live');
   assert.strictEqual(frosted.surfaces.created, 1, 'liquid glass starts the rim refraction');
-  assert(frosted.surfaces.selector.includes('.x-nt-shortcut-icon'));
-  assert(frosted.surfaces.selector.includes(':not(.x-nt-bookmarks-topbar .x-nt-bookmark-card)'),
-    'the bookmarks bar keeps its own glass');
+  // Only the search bar and its results bend: plates on layers of their own (cards, menus, the
+  // panel) sometimes show their lens's map in Chrome 155.
+  assert.deepStrictEqual(frosted.surfaces.selector.split(','),
+    ['#_x_extension_newtab_root_2024_unique_', '#_x_extension_newtab_suggestions_surface_2026_unique_']);
   frosted.change('liquid');
   assert.strictEqual(frosted.surfaces.created, 1, 'staying on liquid keeps the same maps');
   frosted.change('none');

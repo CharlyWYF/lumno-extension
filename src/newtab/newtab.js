@@ -6625,21 +6625,13 @@
     setNewtabActionControlVisibility(wallpaperControl, newtabAppearanceButtonVisible);
   }
 
-  // Surfaces whose rim bends the wallpaper under the liquid style; the same ones glass-style.css paints.
-  // Only those that are plates get a lens (createLiquidSurfaces skips small controls), so a large
-  // shortcut size or a short screen decides it, not the list.
+  // Surfaces whose rim bends the wallpaper under the liquid style; the search bar and the results
+  // plate it grows into. Chrome 155 sometimes draws a lens on a layer of its own (will-change:
+  // transform, as cards, menus and the Appearance panel are) as its displacement map instead of
+  // the bent backdrop when another layer appears, such as a tooltip, so those plates keep the
+  // rest of the glass and go without the bend.
   const NEWTAB_LIQUID_SURFACE_SELECTOR = [
     '#_x_extension_newtab_root_2024_unique_',
-    '.x-nt-shortcut-icon',
-    '.x-nt-bookmark-card:not(.x-nt-bookmarks-topbar .x-nt-bookmark-card):not(.x-nt-bookmark-card-drag-preview)',
-    '.x-nt-recent-card-visual',
-    '.x-nt-wallpaper-button',
-    '.x-nt-feedback-button',
-    '.x-nt-bookmarks-pager-btn:not(.x-nt-bookmarks-topbar *)',
-    '.x-nt-wallpaper-panel',
-    '._x_extension_menu_surface_2024_unique_',
-    // The results plate resizes row by row; the surfaces keep a few spare maps, and each new size
-    // builds from one computed row, so it can bend like the bar it grows out of.
     '#_x_extension_newtab_suggestions_surface_2026_unique_'
   ].join(',');
   let newtabLiquidSurfaces = null;
@@ -6660,9 +6652,7 @@
       documentObj: document,
       windowObj: window,
       selector: NEWTAB_LIQUID_SURFACE_SELECTOR,
-      // The search bar and the results it grows into fringe into colors at the rim; plates that
-      // carry content (cards, menus, the panel) only bend.
-      dispersionSelector: '#_x_extension_newtab_root_2024_unique_, #_x_extension_newtab_suggestions_surface_2026_unique_',
+      dispersionSelector: NEWTAB_LIQUID_SURFACE_SELECTOR,
       property: '--x-nt-glass-refraction'
     });
   }

@@ -2,15 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildLensFilter,
   createLiquidSurfaces,
-  getLensBands,
   getLensLayout,
   getLensTilePixels,
   getRimDisplacement,
   getSurfaceBezel,
   getSurfaceDisplacementScale,
   isLiquidGlassSupported,
-  placeLensFilter,
-  usesLensBands
+  placeLensFilter
 } from './liquid-glass';
 
 function fakeWindow(supportsUrl: boolean, userAgent: string) {
@@ -120,25 +118,17 @@ describe('New Tab bookmarks bar liquid glass', () => {
     expect(single).not.toContain('feBlend');
   });
 
-  it('bends a large plate inside its rim bands only, the middle passing through', () => {
-    expect(usesLensBands(640, 470, 30)).toBe(true);
-    expect(usesLensBands(640, 76, 30)).toBe(false);
-    expect(usesLensBands(56, 56, 25)).toBe(false);
+  it('bends the whole surface in every pass and moves only its tiles on resize', () => {
     const tiles = { shape: 'floating' as const, size: 30, urls: Array.from({ length: 8 }, (_, i) => `data:t${i}`) };
-    document.body.innerHTML = `<svg>${buildLensFilter('lens', 640, 470, tiles, 90, true, true)}</svg>`;
+    document.body.innerHTML = `<svg>${buildLensFilter('lens', 640, 470, tiles, 90, true)}</svg>`;
     const filter = document.querySelector('filter') as Element;
-    // Every pass that reads the backdrop is held to a band.
+    // No pass that reads the backdrop is held to a subregion: Chrome draws those wrong.
     const bends = Array.from(filter.querySelectorAll('feDisplacementMap'));
-    expect(bends).toHaveLength(12);
-    bends.forEach((bend) => expect(bend.hasAttribute('data-band')).toBe(true));
-    const last = filter.lastElementChild as Element;
-    expect(last.tagName.toLowerCase()).toBe('femerge');
-    expect(Array.from(last.children).map((node) => node.getAttribute('in'))).toEqual(['SourceGraphic', 'b0', 'b1', 'b2', 'b3']);
-    // Resizing moves the bands with the tiles.
+    expect(bends).toHaveLength(3);
+    bends.forEach((bend) => ['x', 'y', 'width', 'height'].forEach((name) => expect(bend.hasAttribute(name)).toBe(false)));
     placeLensFilter(filter, 640, 300, tiles);
-    const bottom = filter.querySelectorAll('feDisplacementMap[data-band="1"]')[0];
-    expect(['x', 'y', 'width', 'height'].map((name) => Number(bottom.getAttribute(name)))).toEqual(getLensBands(640, 300, 30)[1]);
-    expect(filter.querySelector('[data-tile="3"]')?.getAttribute('y')).toBe('270');
+    expect(filter.getAttribute('height')).toBe('300');
+    expect(filter.querySelectorAll('feImage')[3].getAttribute('y')).toBe('270');
     document.body.innerHTML = '';
   });
 
@@ -185,6 +175,7 @@ describe('New Tab bookmarks bar liquid glass', () => {
       } as unknown as Window;
       const surfaces = createLiquidSurfaces({
         documentObj: document,
+        dispersionSelector: '.glass.search',
         property: '--refraction',
         selector: '.glass',
         windowObj
@@ -274,6 +265,20 @@ describe('New Tab bookmarks bar liquid glass', () => {
       expect(sizeOf(ids[0])).toEqual(['640', '70']);
       expect(sizeOf(ids[1])).toEqual(['168', '138']);
       expect(sizeOf(ids[2])).toEqual(['640', '470']);
+      surfaces.destroy();
+    });
+
+    it('splits colors only on the surfaces chosen for it', async () => {
+      const { addSurface, filters, observe, pointedAt, resize, settle, surfaces } = setup();
+      const search = addSurface({ width: 640, height: 70 });
+      search.classList.add('search');
+      resize(270, 156);
+      observe(search);
+      await settle();
+      const passes = (id: string) => (document.getElementById(id) as Element).querySelectorAll('feDisplacementMap').length;
+      expect(passes(pointedAt())).toBe(1);
+      expect(passes(pointedAt(search))).toBe(3);
+      expect(filters()).toHaveLength(2);
       surfaces.destroy();
     });
 
