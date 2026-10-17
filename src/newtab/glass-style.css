@@ -100,17 +100,22 @@ body[data-glass-style="frosted"][data-nt-ready="1"][data-theme="dark"] {
   --x-nt-glass-filter: blur(30px) saturate(150%) contrast(0.62) brightness(0.62);
   --x-nt-glass-float-filter: var(--x-nt-glass-filter);
 }
+/* Liquid glass lightens or dims the scene inside the backdrop filter, the way a screen or multiply
+   overlay would, rather than with a colored wash on top:
+   - light: contrast c then brightness 2 / (1 + c), which is screen with white at (1 - c) / (1 + c):
+     whites stay white and the darks lift toward them, so the glass brightens instead of graying;
+   - dark: brightness alone, which is multiply with black: blacks stay black and the lights come
+     down, so the glass dims instead of going muddy.
+   The saturation boost stays small, so a strongly colored wallpaper does not stain the glass. */
 body[data-glass-style="liquid"][data-nt-ready="1"] {
-  /* Light glass stays see-through: a light haze (contrast, brightness), most of the tone from the
-     scene behind. */
-  --x-nt-glass-filter: blur(1px) saturate(165%) contrast(0.88) brightness(1.04);
+  --x-nt-glass-filter: blur(1px) saturate(120%) contrast(0.86) brightness(1.075);
   /* Floating layers carry lists of text: still clear glass, the scene behind softened rather than
      erased, with a little more tint than the plates to hold the labels. */
-  --x-nt-glass-float-filter: blur(10px) saturate(180%) contrast(0.82) brightness(1.06);
+  --x-nt-glass-float-filter: blur(10px) saturate(130%) contrast(0.82) brightness(1.1);
 }
 body[data-glass-style="liquid"][data-nt-ready="1"][data-theme="dark"] {
-  --x-nt-glass-filter: blur(1px) saturate(150%) contrast(0.78) brightness(0.8);
-  --x-nt-glass-float-filter: blur(10px) saturate(170%) contrast(0.82) brightness(0.82);
+  --x-nt-glass-filter: blur(1px) saturate(120%) brightness(0.78);
+  --x-nt-glass-float-filter: blur(10px) saturate(130%) brightness(0.76);
 }
 /* Tint density adapts per plate: newtab.js samples the wallpaper under each one and sets
    --x-nt-glass-density (0 thin, 1 dense) and --x-nt-glass-saturate (how much of the material's
@@ -396,11 +401,11 @@ body[data-glass-style="liquid"][data-nt-ready="1"]:not([data-theme="dark"]) :is(
 )[data-glass-ink="dark"] {
   /* brightness is 1 / (0.5 + contrast / 2): whites stay white, the darks lift toward them, so the
      veil lightens the scene instead of graying it. */
-  --x-nt-glass-filter: blur(1px) saturate(150%) contrast(0.74) brightness(1.15);
-  --x-nt-glass-float-filter: blur(10px) saturate(160%) contrast(0.76) brightness(1.14);
+  --x-nt-glass-filter: blur(1px) saturate(115%) contrast(0.74) brightness(1.15);
+  --x-nt-glass-float-filter: blur(10px) saturate(125%) contrast(0.76) brightness(1.14);
 }
 body[data-glass-style="liquid"][data-nt-ready="1"]:not([data-theme="dark"]) :is(.x-nt-recent-card-visual, .x-nt-bookmark-card)[data-glass-ink="dark"] {
-  --x-nt-glass-filter: blur(1px) saturate(160%) contrast(0.8) brightness(1.11);
+  --x-nt-glass-filter: blur(1px) saturate(118%) contrast(0.8) brightness(1.11);
 }
 /* The search bar takes the results' veil and tint, so it reads the same pane closed and open. */
 body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(
@@ -409,6 +414,14 @@ body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(
 )[data-glass-ink="dark"] {
   --x-nt-glass-tint-thin: 0.42;
   --x-nt-glass-tint-dense: 0.62;
+}
+/* The bookmarks bar's clear glass follows the page's liquid material: a small saturation boost,
+   and on dark glass the same dim. */
+body[data-glass-style="liquid"] .x-nt-bookmarks-topbar[data-surface-mode="clear"] {
+  --x-nt-bookmarks-topbar-saturate: 120%;
+}
+body[data-glass-style="liquid"] .x-nt-bookmarks-topbar[data-surface-mode="clear"]:is([data-glass-ink="light"], body[data-theme="dark"] *) {
+  --x-nt-bookmarks-topbar-liquid-tone: brightness(0.8);
 }
 /* The bookmarks bar carries a row of labels across the top of the scene. */
 body[data-glass-style="liquid"]:not([data-theme="dark"]) .x-nt-bookmarks-topbar[data-surface-mode="clear"][data-glass-ink="dark"] {
