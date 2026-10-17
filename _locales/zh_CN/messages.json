@@ -3358,5 +3358,38 @@
   },
   "settings_search_source_order_redone": {
     "message": "已恢复排序"
+  },
+  "shortcut_bookmarks_choose": {
+    "message": "从书签选择"
+  },
+  "shortcut_bookmarks_search": {
+    "message": "搜索书签"
+  },
+  "shortcut_bookmarks_search_hint": {
+    "message": "名称、网址或文件夹"
+  },
+  "shortcut_bookmarks_loading": {
+    "message": "正在读取书签…"
+  },
+  "shortcut_bookmarks_error": {
+    "message": "无法读取书签，请重试。"
+  },
+  "shortcut_bookmarks_empty": {
+    "message": "暂无可选的书签，你也可以在下方手动填写网址。"
+  },
+  "shortcut_bookmarks_no_results": {
+    "message": "没有匹配的书签，换个关键词试试。"
+  },
+  "shortcut_bookmarks_results": {
+    "message": "匹配的书签"
+  },
+  "shortcut_bookmarks_retry": {
+    "message": "重试"
+  },
+  "shortcut_bookmarks_added": {
+    "message": "已添加"
+  },
+  "shortcut_bookmarks_more": {
+    "message": "显示更多"
   }
 }

@@ -94,6 +94,96 @@
         font-weight: 600;
         line-height: 1.25;
       }
+      .x-nt-shortcut-bookmark-trigger {
+        justify-content: center;
+        gap: 8px;
+        min-height: 36px;
+      }
+      .x-nt-shortcut-bookmark-panel {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .x-nt-shortcut-bookmark-status {
+        margin: 0;
+        font-size: var(--lumno-font-size-sm);
+        line-height: 1.5;
+        color: color-mix(in srgb, var(--panel-text) 58%, transparent);
+      }
+      .x-nt-shortcut-bookmark-status[data-quiet="true"] {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+      .x-nt-shortcut-bookmark-results {
+        list-style: none;
+        margin: 0 -6px;
+        padding: 0;
+        max-height: min(232px, 32dvh);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+      }
+      /* The thin bar the other New Tab lists use; overlay bars stay native. */
+      :root:not([data-lumno-scrollbars="overlay"]) .x-nt-shortcut-bookmark-results {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148, 163, 184, 0.62) transparent;
+      }
+      .x-nt-shortcut-bookmark-result {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        min-height: 46px;
+        padding: 6px;
+        border: 0;
+        border-radius: var(--lumno-radius-md);
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        text-align: start;
+        cursor: pointer;
+      }
+      .x-nt-shortcut-bookmark-result:hover:not(:disabled) { background: var(--control-bg); }
+      .x-nt-shortcut-bookmark-result:disabled { cursor: default; }
+      .x-nt-shortcut-bookmark-result:disabled .x-nt-shortcut-bookmark-icon,
+      .x-nt-shortcut-bookmark-result:disabled .x-nt-shortcut-bookmark-copy { opacity: 0.5; }
+      .x-nt-shortcut-bookmark-result:focus-visible,
+      .x-nt-shortcut-bookmark-trigger:focus-visible {
+        outline: 2px solid var(--input-focus-color);
+        outline-offset: -2px;
+      }
+      .x-nt-shortcut-bookmark-icon {
+        position: relative;
+        flex: 0 0 32px;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: var(--control-bg);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: color-mix(in srgb, var(--panel-text) 58%, transparent);
+      }
+      .x-nt-shortcut-bookmark-icon img {
+        position: absolute;
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        background: var(--control-bg);
+      }
+      .x-nt-shortcut-bookmark-copy { display: grid; gap: 2px; min-width: 0; flex: 1 1 auto; }
+      .x-nt-shortcut-bookmark-copy strong { font-size: var(--lumno-font-size-md); font-weight: 500; line-height: 1.35; }
+      .x-nt-shortcut-bookmark-meta { font-size: var(--lumno-font-size-sm); line-height: 1.4; color: color-mix(in srgb, var(--panel-text) 58%, transparent); }
+      .x-nt-shortcut-bookmark-copy strong,
+      .x-nt-shortcut-bookmark-meta { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+      .x-nt-shortcut-bookmark-added {
+        flex: 0 0 auto;
+        font-size: var(--lumno-font-size-sm);
+        color: color-mix(in srgb, var(--panel-text) 58%, transparent);
+      }
       .x-nt-shortcut-dialog-description {
         margin: -4px 0 2px;
         color: var(--panel-subtext, #64748b);

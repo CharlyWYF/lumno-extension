@@ -3358,5 +3358,38 @@
   },
   "settings_search_source_order_redone": {
     "message": "Order change redone"
+  },
+  "shortcut_bookmarks_choose": {
+    "message": "Choose from bookmarks"
+  },
+  "shortcut_bookmarks_search": {
+    "message": "Search bookmarks"
+  },
+  "shortcut_bookmarks_search_hint": {
+    "message": "Title, URL or folder"
+  },
+  "shortcut_bookmarks_loading": {
+    "message": "Loading bookmarks…"
+  },
+  "shortcut_bookmarks_error": {
+    "message": "Could not read bookmarks. Try again."
+  },
+  "shortcut_bookmarks_empty": {
+    "message": "No available bookmarks. You can enter a URL below."
+  },
+  "shortcut_bookmarks_no_results": {
+    "message": "No matching bookmarks. Try another keyword."
+  },
+  "shortcut_bookmarks_results": {
+    "message": "Results"
+  },
+  "shortcut_bookmarks_retry": {
+    "message": "Retry"
+  },
+  "shortcut_bookmarks_added": {
+    "message": "Already added"
+  },
+  "shortcut_bookmarks_more": {
+    "message": "Show more"
   }
 }
