@@ -53,7 +53,18 @@ export function createDefaultPanelState(): WallpaperPanelState {
     },
     open: false,
     panelLabel: 'Appearance',
-    frostedGlass: { sectionTitle: 'Style', title: 'Frosted glass style', infoTooltip: 'Works best with a dark theme and a wallpaper.', toggle: toggle('Frosted glass style') },
+    glassStyle: {
+      ariaLabel: 'Material',
+      infoTooltip: 'Works best with a wallpaper.',
+      options: [
+        { value: 'none', label: 'Default' },
+        { value: 'frosted', label: 'Frosted glass' },
+        { value: 'liquid', label: 'Liquid glass' }
+      ],
+      sectionTitle: 'Style',
+      title: 'Material',
+      value: 'none'
+    },
     quote: { infoTooltip: '' },
     search: {
       autoFocus: { infoLabel: '', infoTooltip: '', title: '', toggle: toggle('Automatically focus input') },

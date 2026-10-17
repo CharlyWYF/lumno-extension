@@ -190,7 +190,19 @@
     '_x_extension_newtab_feedback_button_visible_2026_unique_';
   const NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY = SETTINGS.NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY ||
     '_x_extension_newtab_appearance_button_visible_2026_unique_';
-  const NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY = SETTINGS.NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY;
+  const NEWTAB_GLASS_STYLE_STORAGE_KEY = SETTINGS.NEWTAB_GLASS_STYLE_STORAGE_KEY;
+  // The plates that sit straight on the wallpaper; floating menus and panels keep a fixed dense tint.
+  const NEWTAB_GLASS_ADAPTIVE_SELECTOR = [
+    '#_x_extension_newtab_root_2024_unique_',
+    '.x-nt-shortcut-icon',
+    '.x-nt-bookmark-card:not(.x-nt-bookmarks-topbar .x-nt-bookmark-card):not(.x-nt-bookmark-card-drag-preview)',
+    '.x-nt-recent-card-visual',
+    '.x-nt-wallpaper-button',
+    '.x-nt-feedback-button',
+    '.x-nt-bookmarks-pager-btn:not(.x-nt-bookmarks-topbar *)',
+    '.x-nt-section-mode-select ._x_extension_select_trigger_2024_unique_:not(.x-nt-bookmarks-topbar *)',
+    '.x-nt-bookmark-cascade-debug-button'
+  ].join(',');
   const NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY = SETTINGS.NEWTAB_OPEN_IN_NEW_TAB_STORAGE_KEY ||
     '_x_extension_newtab_open_in_new_tab_2026_unique_';
   const NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY = SETTINGS.NUMBER_SHORTCUT_INSTANT_ENABLED_STORAGE_KEY ||
@@ -2023,7 +2035,72 @@
         minHeight: 64,
         disabled: !isBottomDockScrollbarShown()
       }
-    ].concat(shortcutToneTargets);
+    ].concat(shortcutToneTargets, createGlassToneTargets());
+  }
+
+  // Under a glass style each plate also samples the wallpaper right behind it, to set how dense its
+  // tint is and how much saturation it keeps (glass-style.css reads both).
+  function createGlassToneTargets() {
+    if (!document.body || !document.body.hasAttribute('data-glass-style')) {
+      return [];
+    }
+    // Plates in one row share an ink (light or dark text), so neighbors never alternate.
+    const groupOf = (element) => {
+      if (element.closest('.x-nt-shortcuts-section')) {
+        return 'shortcuts';
+      }
+      if (element.closest('#_x_extension_newtab_recent_sites_2024_unique_')) {
+        return 'recent';
+      }
+      if (element.closest('#_x_extension_newtab_bookmarks_2024_unique_')) {
+        return element.matches('.x-nt-bookmark-card') ? 'bookmarks' : 'bookmarks-header';
+      }
+      return element === root ? 'search' : '';
+    };
+    const targets = Array.from(document.querySelectorAll(NEWTAB_GLASS_ADAPTIVE_SELECTOR)).map((element) => ({
+      element,
+      sampleElement: element,
+      glass: true,
+      glassGroup: groupOf(element)
+    }));
+    // The open search stack reads as one sheet: the bar, the plate behind the results and the result
+    // rows (a separate layer) share one ink, sampled over the whole plate while it is open.
+    const suggestionsSurface = document.getElementById('_x_extension_newtab_suggestions_surface_2026_unique_');
+    const suggestionsOpen = document.body.getAttribute('data-nt-suggestions-open') === 'true';
+    // Looked up by id: this can run before the page structure further down has been created.
+    const suggestionsList = document.getElementById('_x_extension_newtab_suggestions_container_2024_unique_');
+    [suggestionsSurface, suggestionsList].forEach((element) => {
+      if (element) {
+        targets.push({
+          element,
+          sampleElement: suggestionsOpen && suggestionsSurface ? suggestionsSurface : root,
+          glass: true,
+          glassGroup: 'search',
+          // The result rows' own icons and chips switch to their dark-theme styling with the ink.
+          paletteSwap: element === suggestionsList
+        });
+      }
+    });
+    // A frosted bookmarks bar samples like a plate. Out of frosted it drops what this sets, since
+    // the bar's other surfaces style its ink themselves.
+    const bookmarksBar = document.querySelector('.x-nt-bookmarks-topbar');
+    const barTakesGlass = bookmarksBar &&
+      (bookmarksBar.dataset.surfaceMode === 'frosted' || bookmarksBar.dataset.surfaceMode === 'clear');
+    if (barTakesGlass && bookmarksBar.dataset.visible === 'true') {
+      targets.push({ element: bookmarksBar, sampleElement: bookmarksBar, glass: true, glassGroup: 'topbar' });
+    } else if (bookmarksBar && bookmarksBar.hasAttribute('data-glass-ink')) {
+      bookmarksBar.removeAttribute('data-glass-ink');
+      bookmarksBar.style.removeProperty('--x-nt-glass-density');
+      bookmarksBar.style.removeProperty('--x-nt-glass-saturate');
+    }
+    // Floating panels and menus take the same material and ink as the plates; flipped to light ink
+    // they switch their controls to the dark palette (paletteSwap).
+    document.querySelectorAll(
+      '.x-nt-wallpaper-panel, ._x_extension_menu_surface_2024_unique_, .x-lumno-feature-hint'
+    ).forEach((element) => {
+      targets.push({ element, sampleElement: element, glass: true, paletteSwap: true });
+    });
+    return targets;
   }
 
   function getBottomDockScrollbarGutter() {
@@ -2206,12 +2283,12 @@
     inputAutoFocusReady: initialNewtabInputAutoFocusReadyTask,
     getInputAutoFocusEnabled: () => pageState.newtabInputAutoFocusEnabled,
     setInputAutoFocusEnabled: setNewtabInputAutoFocusEnabled,
-    getFrostedGlassEnabled: () => document.body.getAttribute('data-frosted-glass') === 'true',
-    setFrostedGlassEnabled(value) {
-      const enabled = SETTINGS.normalizeNewtabFrostedGlassEnabled(value);
-      applyNewtabFrostedGlass(enabled);
+    getGlassStyle: () => SETTINGS.normalizeNewtabGlassStyle(document.body.getAttribute('data-glass-style')),
+    setGlassStyle(value) {
+      const style = SETTINGS.normalizeNewtabGlassStyle(value);
+      applyNewtabGlassStyle(style);
       if (storageArea) {
-        storageArea.set({ [NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY]: enabled });
+        storageArea.set({ [NEWTAB_GLASS_STYLE_STORAGE_KEY]: style });
       }
     },
     getAdaptiveToneTargets: createWallpaperAdaptiveToneTargets,
@@ -2590,8 +2667,8 @@
     }
     setNewtabTimeSecondsVisible(nextValue);
   });
-  storageChanges.on(NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY, (changes) => {
-    applyNewtabFrostedGlass(changes[NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY].newValue);
+  storageChanges.on(NEWTAB_GLASS_STYLE_STORAGE_KEY, (changes) => {
+    applyNewtabGlassStyle(changes[NEWTAB_GLASS_STYLE_STORAGE_KEY].newValue);
   });
   storageChanges.on(NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY, (changes) => {
     const raw = changes[NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY].newValue;
@@ -3117,7 +3194,7 @@
     NEWTAB_QUOTE_PREFS_STORAGE_KEY,
     NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY,
     NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY,
-    NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY,
+    NEWTAB_GLASS_STYLE_STORAGE_KEY,
     NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
     NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
     NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY,
@@ -3880,21 +3957,13 @@
     options.push({
       value: '__bookmark_topbar_surface_adaptive__',
       action: `${BOOKMARK_TOPBAR_SURFACE_MODE_ACTION}:adaptive`,
-      labelKey: 'bookmark_topbar_surface_adaptive',
-      fallback: 'Adaptive mist',
+      labelKey: 'bookmark_topbar_surface_follow',
+      fallback: 'Match style',
       radio: true,
       checked: effectiveSurfaceMode === 'adaptive',
       dividerBefore: true,
       groupTitleKey: 'bookmark_topbar_surface_title',
       groupTitleFallback: 'Bar background'
-    });
-    options.push({
-      value: '__bookmark_topbar_surface_clear__',
-      action: `${BOOKMARK_TOPBAR_SURFACE_MODE_ACTION}:clear`,
-      labelKey: 'bookmark_topbar_surface_clear',
-      fallback: 'Liquid glass',
-      radio: true,
-      checked: effectiveSurfaceMode === 'clear'
     });
     options.push({
       value: '__bookmark_topbar_surface_transparent__',
@@ -6524,20 +6593,103 @@
     setNewtabActionControlVisibility(wallpaperControl, newtabAppearanceButtonVisible);
   }
 
-  function applyNewtabFrostedGlass(value) {
-    const enabled = SETTINGS.normalizeNewtabFrostedGlassEnabled(value);
-    document.body.setAttribute('data-frosted-glass', enabled ? 'true' : 'false');
-    updateWallpaperAppearanceSelectionUi();
+  // Surfaces whose rim bends the wallpaper under the liquid style; the same ones glass-style.css paints.
+  const NEWTAB_LIQUID_SURFACE_SELECTOR = [
+    '#_x_extension_newtab_root_2024_unique_',
+    '.x-nt-shortcut-icon',
+    '.x-nt-bookmark-card:not(.x-nt-bookmarks-topbar .x-nt-bookmark-card):not(.x-nt-bookmark-card-drag-preview)',
+    '.x-nt-recent-card-visual',
+    '.x-nt-wallpaper-button',
+    '.x-nt-feedback-button',
+    '.x-nt-bookmarks-pager-btn:not(.x-nt-bookmarks-topbar *)',
+    '.x-nt-wallpaper-panel',
+    // Not the results plate: it resizes with nearly every keystroke, and each size is a new map.
+    '._x_extension_menu_surface_2024_unique_'
+  ].join(',');
+  let newtabLiquidSurfaces = null;
+
+  function syncNewtabLiquidSurfaces(enabled) {
+    if (!enabled) {
+      if (newtabLiquidSurfaces) {
+        newtabLiquidSurfaces.destroy();
+        newtabLiquidSurfaces = null;
+      }
+      return;
+    }
+    const api = globalThis.LumnoNewtabLiquidSurfaces;
+    if (newtabLiquidSurfaces || !api || typeof api.create !== 'function') {
+      return;
+    }
+    newtabLiquidSurfaces = api.create({
+      documentObj: document,
+      windowObj: window,
+      selector: NEWTAB_LIQUID_SURFACE_SELECTOR,
+      property: '--x-nt-glass-refraction'
+    });
   }
 
-  function loadNewtabFrostedGlass() {
+  // Floating surfaces sample the wallpaper where they open, so resample as they open and close.
+  let newtabGlassOpenObserver = null;
+  function syncNewtabGlassOpenObserver(enabled) {
+    if (!enabled) {
+      if (newtabGlassOpenObserver) {
+        newtabGlassOpenObserver.disconnect();
+        newtabGlassOpenObserver = null;
+      }
+      return;
+    }
+    if (newtabGlassOpenObserver || typeof MutationObserver !== 'function') {
+      return;
+    }
+    newtabGlassOpenObserver = new MutationObserver(scheduleWallpaperAdaptiveToneUpdate);
+    newtabGlassOpenObserver.observe(document.body, {
+      attributes: true,
+      subtree: true,
+      attributeFilter: ['data-open', 'data-nt-suggestions-open', 'data-wallpaper-panel-open']
+    });
+  }
+
+  // Plates open in the ink the last page's wallpaper sample settled on (light text over a dark
+  // wallpaper), so they do not start white and flip once this page's sample lands.
+  function applyRememberedGlassInkHint() {
+    const tone = globalThis.LumnoNewtabWallpaperAdaptiveTone;
+    if (!tone || document.body.hasAttribute('data-glass-ink-hint')) {
+      return;
+    }
+    try {
+      const hint = window.localStorage.getItem(tone.GLASS_INK_HINT_STORAGE_KEY);
+      if (hint === 'light' || hint === 'dark') {
+        document.body.setAttribute('data-glass-ink-hint', hint);
+      }
+    } catch (_error) {
+      // Without the hint the plates start in the theme's ink and the sample flips them.
+    }
+  }
+
+  function applyNewtabGlassStyle(value) {
+    const style = SETTINGS.normalizeNewtabGlassStyle(value);
+    if (style === 'none') {
+      document.body.removeAttribute('data-glass-style');
+    } else {
+      document.body.setAttribute('data-glass-style', style);
+      applyRememberedGlassInkHint();
+    }
+    syncNewtabLiquidSurfaces(style === 'liquid');
+    syncNewtabGlassOpenObserver(style !== 'none');
+    // The bookmarks bar's "match style" background follows the page's material.
+    syncBookmarkTopbarSurfaceAppearance({ updateMenu: false });
+    updateWallpaperAppearanceSelectionUi();
+    scheduleWallpaperAdaptiveToneUpdate();
+  }
+
+  function loadNewtabGlassStyle() {
     if (!storageArea) {
-      applyNewtabFrostedGlass(false);
+      applyNewtabGlassStyle('none');
       return Promise.resolve();
     }
     return new Promise((resolve) => {
-      storageArea.get([NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY], (result) => {
-        applyNewtabFrostedGlass(result && result[NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY]);
+      storageArea.get([NEWTAB_GLASS_STYLE_STORAGE_KEY], (result) => {
+        applyNewtabGlassStyle(result && result[NEWTAB_GLASS_STYLE_STORAGE_KEY]);
         resolve();
       });
     });
@@ -7145,7 +7297,7 @@
   }, { passive: true });
   bottomDockRuntime.onScroll(scheduleWallpaperAdaptiveToneUpdate, { passive: true });
   const actionButtonVisibilityReadyPromise = loadNewtabActionButtonVisibility();
-  const frostedGlassReadyPromise = loadNewtabFrostedGlass();
+  const glassStyleReadyPromise = loadNewtabGlassStyle();
   observeNewtabStartupTask('action-button-visibility', actionButtonVisibilityReadyPromise);
   const shortcutPreferencesReadyPromise = loadNewtabShortcutPreferences();
   observeNewtabStartupTask('shortcut-preferences', shortcutPreferencesReadyPromise);
@@ -7178,7 +7330,7 @@
     initialBookmarkViewModeReadyPromise,
     loadZenMode(),
     actionButtonVisibilityReadyPromise,
-    frostedGlassReadyPromise,
+    glassStyleReadyPromise,
     initialMotionPreferenceReadyTask,
     initialLanguageReadyTask,
     sectionPolicyReadyPromise,

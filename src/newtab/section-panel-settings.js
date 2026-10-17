@@ -9,7 +9,7 @@
   // menus, so the panel reads through getters, writes through setters and re-reads whenever
   // one of those keys changes elsewhere.
   const BOOKMARK_VIEW_MODES = ['folder', 'list', 'top'];
-  const BOOKMARK_TOPBAR_SURFACE_MODES = ['adaptive', 'clear', 'transparent', 'custom'];
+  const BOOKMARK_TOPBAR_SURFACE_MODES = ['adaptive', 'transparent', 'custom'];
   // Section counts are stored in multiples of four, one row each.
   const ITEMS_PER_ROW = 4;
   const BOOKMARK_ROWS_MIN = 1;
@@ -108,8 +108,7 @@
         view.renderBookmarkTopbarSurfaceSelect({
           ariaLabel: t('bookmark_topbar_surface_title', 'Bar background'),
           options: [
-            surfaceOption('adaptive', 'bookmark_topbar_surface_adaptive', 'Adaptive mist'),
-            surfaceOption('clear', 'bookmark_topbar_surface_clear', 'Liquid glass'),
+            surfaceOption('adaptive', 'bookmark_topbar_surface_follow', 'Match style'),
             surfaceOption('transparent', 'bookmark_topbar_surface_transparent', 'Transparent'),
             surfaceOption('custom', 'bookmark_topbar_surface_custom', 'Custom color', {
               trailingIconClass: 'ri-dropper-line'

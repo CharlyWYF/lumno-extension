@@ -107,11 +107,6 @@
         normalize: S.normalizeNewtabAppearanceButtonVisible
       },
       {
-        inputId: '_x_extension_newtab_frosted_glass_toggle_2026_unique_',
-        key: S.NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY,
-        normalize: S.normalizeNewtabFrostedGlassEnabled
-      },
-      {
         inputId: '_x_extension_update_notice_toggle_2026_unique_',
         kind: 'update-notice',
         key: S.UPDATE_NOTICE_ENABLED_STORAGE_KEY,

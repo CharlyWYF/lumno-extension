@@ -955,7 +955,7 @@ function assertThemeAwareAlternateFaviconAsset() {
     const html = readPageSource(filePath);
     assert.match(
       html,
-      /body\[data-theme="dark"\]\s+\.x-nt-favicon-svg-preview\s*\{[\s\S]*?color:\s*#f1f3f4;[\s\S]*?--x-nt-favicon-main-opacity:\s*0\.72;/,
+      /body\[data-theme="dark"\]\s+\.x-nt-favicon-svg-preview(?:,[^{]*)?\s*\{[\s\S]*?color:\s*#f1f3f4;[\s\S]*?--x-nt-favicon-main-opacity:\s*0\.72;/,
       `${filePath} should tint the SVG picker preview from the actual UI dark theme`
     );
   });

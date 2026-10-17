@@ -689,6 +689,53 @@
       formatRgb(borderColor.red, borderColor.green, borderColor.blue, ink === 'dark' ? 8 : 13));
   }
 
+  // How a glass plate should read over this patch of wallpaper.
+  // - ink: under the light theme a plate over a dark patch flips to light text on a thin dark tint,
+  //   so dark wallpaper stays see-through instead of turning milky; with hysteresis, so a plate near
+  //   the threshold does not flicker. The dark theme always reads light.
+  // - density (0 thin, 1 dense): how much tint the plate needs for its ink to read. It grows with
+  //   texture and color, and with how close the patch's brightness is to the ink's own.
+  // - saturate: how much of the material's saturation boost to keep; a vivid patch keeps less, or
+  //   the plate turns the wallpaper's own color up to a flat blue or orange.
+  // groupLuminance, when given, decides the ink for a whole row of plates so neighbors never mix.
+  // fixedInk pins the ink for surfaces whose controls are styled per theme (the Appearance panel, menus).
+  function getGlassAdaptation(luminance, textureContrast, color, themeMode, previousInk, groupLuminance, fixedInk) {
+    const lum = clampNumber(Number(luminance) || 0, 0, 1);
+    const texture = clampNumber(Number(textureContrast) || 0, 0, 1);
+    const chroma = clampNumber(getColorChroma(getValidToneColor(color)), 0, 1);
+    const inkLuminance = Number.isFinite(groupLuminance) ? clampNumber(groupLuminance, 0, 1) : lum;
+    let ink = 'light';
+    if (fixedInk === 'light' || fixedInk === 'dark') {
+      ink = fixedInk;
+    } else if (themeMode !== 'dark') {
+      const darkThreshold = previousInk === 'light' ? 0.5 : 0.4;
+      ink = inkLuminance < darkThreshold ? 'light' : 'dark';
+    }
+    const nearInk = ink === 'dark'
+      ? smoothstep(clampNumber((0.8 - lum) / 0.35, 0, 1))
+      : smoothstep(clampNumber((lum - 0.12) / 0.4, 0, 1));
+    const density = clampNumber((nearInk * 0.55) + (texture * 0.7) + (chroma * 0.3), 0, 1);
+    const saturate = clampNumber(1 - (chroma * 0.75), 0.45, 1);
+    return { ink, density, saturate };
+  }
+
+  function applyGlassAdaptationStyles(element, adaptation) {
+    if (element.getAttribute('data-glass-ink') !== adaptation.ink) {
+      element.setAttribute('data-glass-ink', adaptation.ink);
+    }
+    setStyleProperty(element, '--x-nt-glass-density', adaptation.density.toFixed(3));
+    setStyleProperty(element, '--x-nt-glass-saturate', adaptation.saturate.toFixed(3));
+  }
+
+  function clearGlassAdaptationStyles(element) {
+    element.removeAttribute('data-glass-ink');
+    element.removeAttribute('data-glass-ink-theme');
+    element.style.removeProperty('--x-nt-glass-density');
+    element.style.removeProperty('--x-nt-glass-saturate');
+  }
+
+  const GLASS_INK_HINT_STORAGE_KEY = '_x_extension_newtab_glass_ink_hint_2026_unique_';
+
   function createWallpaperAdaptiveTone(options) {
     const documentObj = getOption(options, 'documentObj', root.document);
     const windowObj = getOption(options, 'windowObj', root.window);
@@ -761,6 +808,7 @@
       element.style.removeProperty('--x-nt-wallpaper-local-luma');
       clearForcedIconBackgroundStyles(element);
       clearAdaptiveToneStyles(element);
+      clearGlassAdaptationStyles(element);
     }
 
     function cancelScheduledApply() {
@@ -785,6 +833,10 @@
 
     function getSampleRect(rect, target) {
       const viewport = getViewportSize();
+      // Glass blurs only what lies under its own plate.
+      if (target && target.glass) {
+        return rect;
+      }
       const minWidth = Math.max(1, Number(target && target.minWidth) || 80);
       const minHeight = Math.max(1, Number(target && target.minHeight) || 40);
       const width = Math.min(viewport.width, Math.max(rect.width + 32, minWidth));
@@ -1017,6 +1069,7 @@
       const effectType = documentObj.body.getAttribute('data-wallpaper-effect') || '';
       const overlayLuminance = clampNumber(getOverlayLuminance(), 0, 1);
       const themeMode = getDocumentThemeMode();
+      const glassSamples = [];
       getToneTargets().forEach((target) => {
         if (!target || !target.element) {
           return;
@@ -1041,6 +1094,14 @@
         const sampleRect = getSampleRect(rect, target);
         const sample = sampleToneForRect(sampler, sampleRect, target, overlayLuminance, effectType);
         const luminance = sample ? sample.luminance : null;
+        if (target.glass) {
+          if (Number.isFinite(luminance)) {
+            glassSamples.push({ target, sample });
+          } else {
+            clearGlassAdaptationStyles(target.element);
+          }
+          return;
+        }
         if (!Number.isFinite(luminance)) {
           target.element.removeAttribute('data-wallpaper-overlay-cover');
           clearForcedIconBackgroundStyles(target.element);
@@ -1107,7 +1168,65 @@
           clearForcedIconBackgroundStyles(target.element);
         }
       });
+      applyGlassSamples(glassSamples, themeMode);
       applyWordmarkThemeAppearance();
+    }
+
+    // The whole page reads in one ink, chosen from the mean brightness under all its glass, so no
+    // plate or menu stays white beside dark ones; each still sets its own tint density from what lies
+    // under it, so a plate over a brighter patch thickens rather than flipping.
+    function applyGlassSamples(entries, themeMode) {
+      const inkCounts = { light: 0, dark: 0 };
+      if (entries.length === 0) {
+        return;
+      }
+      const pageLuminance = entries.reduce((total, entry) => total + entry.sample.luminance, 0) / entries.length;
+      const previousInk = documentObj.body ? documentObj.body.getAttribute('data-glass-ink-hint') : '';
+      [entries].forEach((members) => {
+        const groupLuminance = pageLuminance;
+        members.forEach((entry) => {
+          const adaptation = getGlassAdaptation(
+              entry.sample.luminance,
+              entry.sample.textureContrast,
+              entry.sample.color,
+              themeMode,
+              previousInk,
+              groupLuminance,
+              entry.target.themeInk ? (themeMode === 'dark' ? 'light' : 'dark') : ''
+          );
+          applyGlassAdaptationStyles(entry.target.element, adaptation);
+          // Panels and menus carry controls styled per theme; flipped to light ink under the light
+          // theme they take the dark theme's palette (glass-style.css scopes it to this attribute).
+          if (entry.target.paletteSwap) {
+            if (themeMode !== 'dark' && adaptation.ink === 'light') {
+              entry.target.element.setAttribute('data-glass-ink-theme', 'dark');
+            } else {
+              entry.target.element.removeAttribute('data-glass-ink-theme');
+            }
+          } else if (!entry.target.themeInk) {
+            inkCounts[adaptation.ink] += 1;
+          }
+        });
+      });
+      rememberGlassInkHint(inkCounts);
+    }
+
+    // The ink most plates settled on, for the next page to open in (newtab.js reads it back).
+    function rememberGlassInkHint(inkCounts) {
+      if (!documentObj.body || inkCounts.light + inkCounts.dark === 0) {
+        return;
+      }
+      const hint = inkCounts.light > inkCounts.dark ? 'light' : 'dark';
+      if (documentObj.body.getAttribute('data-glass-ink-hint') !== hint) {
+        documentObj.body.setAttribute('data-glass-ink-hint', hint);
+      }
+      try {
+        if (windowObj.localStorage.getItem(GLASS_INK_HINT_STORAGE_KEY) !== hint) {
+          windowObj.localStorage.setItem(GLASS_INK_HINT_STORAGE_KEY, hint);
+        }
+      } catch (_error) {
+        // localStorage is only a head start; the sample corrects the ink either way.
+      }
     }
 
     function schedule() {
@@ -1175,7 +1294,9 @@
   }
 
   root.LumnoNewtabWallpaperAdaptiveTone = {
+    GLASS_INK_HINT_STORAGE_KEY,
     createWallpaperAdaptiveTone,
+    getGlassAdaptation,
     chooseReadableInk,
     getAdaptiveInkTones,
     getContrastRatio,

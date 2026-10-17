@@ -205,10 +205,28 @@
       return NEWTAB_BOOKMARKS_TOPBAR.normalizeSurfaceMode(value, 'adaptive');
     }
 
+    // The background picked in the menus: match the page's glass style, transparent or a custom
+    // color. 'clear' (liquid glass) was a choice of its own before the style setting took it over.
     function getEffectiveBookmarkTopbarSurfaceMode() {
+      if (bookmarkTopbarSurfaceMode === 'clear') {
+        return 'adaptive';
+      }
       return bookmarkTopbarSurfaceMode === 'custom' && !currentBookmarkTopbarSurfaceColor
         ? 'adaptive'
         : bookmarkTopbarSurfaceMode;
+    }
+
+    // The surface the bar draws: matching the style means adaptive mist, frosted or liquid glass.
+    function getAppliedBookmarkTopbarSurfaceMode() {
+      const selected = getEffectiveBookmarkTopbarSurfaceMode();
+      if (selected !== 'adaptive') {
+        return selected;
+      }
+      const glassStyle = document.body ? document.body.getAttribute('data-glass-style') : '';
+      if (glassStyle === 'liquid') {
+        return 'clear';
+      }
+      return glassStyle === 'frosted' ? 'frosted' : 'adaptive';
     }
 
     function persistBookmarkTopbarSurfaceMode(value) {
@@ -224,7 +242,7 @@
 
     function syncBookmarkTopbarSurfaceAppearance(options) {
       const config = options && typeof options === 'object' ? options : {};
-      const effectiveMode = getEffectiveBookmarkTopbarSurfaceMode();
+      const effectiveMode = getAppliedBookmarkTopbarSurfaceMode();
       if (pageState.bookmarkTopbarRuntime) {
         if (typeof pageState.bookmarkTopbarRuntime.setLayout === 'function') {
           pageState.bookmarkTopbarRuntime.setLayout(bookmarkTopbarLayout);

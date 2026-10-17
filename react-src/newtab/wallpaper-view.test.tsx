@@ -109,27 +109,29 @@ function key(target: HTMLElement, name: string) {
 }
 
 describe('New Tab React wallpaper view', () => {
-  it('toggles frosted glass and follows updated preferences without remounting', () => {
+  it('picks a glass style and follows updated preferences without remounting', () => {
     const { state, actions } = createState();
     mount(state);
-    const toggle = refs().frostedGlassToggle as HTMLInputElement;
-    expect(toggle.checked).toBe(false);
-    act(() => toggle.click());
-    expect(actions.setFrostedGlass).toHaveBeenCalledWith(true);
-    state.frostedGlass.toggle.checked = true;
+    const host = refs().glassStyleSelectHost;
+    const select = host.querySelector('select');
+    expect(select?.value).toBe('none');
+    act(() => host.querySelector<HTMLButtonElement>('button')!.click());
+    const liquid = document.querySelector<HTMLElement>(
+      '[data-react-select-owner="x-nt-glass-style"] [data-value="liquid"]'
+    );
+    act(() => liquid?.click());
+    expect(actions.setGlassStyle).toHaveBeenCalledWith('liquid');
+    state.glassStyle.value = 'frosted';
     rerender(state);
-    expect(refs().frostedGlassToggle).toBe(toggle);
-    expect(toggle.checked).toBe(true);
+    expect(refs().glassStyleSelectHost.querySelector('select')).toBe(select);
+    expect(select?.value).toBe('frosted');
     act(() => refs().styleSectionTrigger.click());
     expect(refs().styleSectionBody.hidden).toBe(true);
-    state.frostedGlass.toggle.checked = false;
     rerender(state);
     expect(refs().styleSectionBody.hidden).toBe(true);
     act(() => refs().styleSectionTrigger.click());
     expect(refs().styleSectionBody.hidden).toBe(false);
-    expect(toggle.checked).toBe(false);
-    expect(toggle.closest('.x-nt-appearance-setting-row')?.querySelector('[title]')?.getAttribute('title'))
-      .toBe(state.frostedGlass.infoTooltip);
+    expect(refs().glassStyleTitle.textContent).toBe(state.glassStyle.title);
   });
 
   it('renders the complete appearance panel contract', () => {

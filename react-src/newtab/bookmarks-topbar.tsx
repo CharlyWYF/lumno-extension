@@ -16,6 +16,7 @@ export const BOOKMARK_TOPBAR_HEIGHT_PX = 36;
 export type BookmarkTopbarSurfaceMode =
   | 'adaptive'
   | 'clear'
+  | 'frosted'
   | 'transparent'
   | 'custom';
 
@@ -24,6 +25,7 @@ export function normalizeSurfaceMode(
   fallback: BookmarkTopbarSurfaceMode = 'adaptive'
 ): BookmarkTopbarSurfaceMode {
   return value === 'clear' ||
+    value === 'frosted' ||
     value === 'transparent' ||
     value === 'custom' ||
     value === 'adaptive'
@@ -314,6 +316,7 @@ export function createBookmarksTopbar(
     if (overflowRight !== nextOverflowRight) {
       overflowRight = nextOverflowRight;
       edgeFade.dataset.visible = overflowRight ? 'true' : 'false';
+      viewport.dataset.overflowEnd = overflowRight ? 'true' : 'false';
     }
     return overflowRight;
   };
@@ -322,6 +325,11 @@ export function createBookmarksTopbar(
     const scrollWidth = Number(viewport.scrollWidth) || 0;
     const clientWidth = Number(viewport.clientWidth) || 0;
     const scrollLeft = Math.max(0, Number(viewport.scrollLeft) || 0);
+    // Items scrolled past the start fade out there too, rather than being cut at the bar's edge.
+    const overflowStart = active && visible && clientWidth > 0 && scrollLeft > 1;
+    if (viewport.dataset.overflowStart !== String(overflowStart)) {
+      viewport.dataset.overflowStart = String(overflowStart);
+    }
     return setOverflowFadeVisible(
       active &&
         visible &&

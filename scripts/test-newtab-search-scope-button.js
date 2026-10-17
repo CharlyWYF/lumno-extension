@@ -100,7 +100,7 @@ assert.match(
 );
 assert.match(
   newtabHtml,
-  /body\[data-theme="dark"\]\s*\{[\s\S]*?--x-nt-settings-action-hover-bg:\s*rgba\(255, 255, 255, 0\.08\);[\s\S]*?--x-nt-settings-action-hover-color:\s*#e5e7eb;/,
+  /body\[data-theme="dark"\][^{]*\{[\s\S]*?--x-nt-settings-action-hover-bg:\s*rgba\(255, 255, 255, 0\.08\);[\s\S]*?--x-nt-settings-action-hover-color:\s*#e5e7eb;/,
   'the New Tab settings action should use a restrained dark-theme hover surface with a light icon'
 );
 assert.match(

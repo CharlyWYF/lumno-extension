@@ -83,6 +83,7 @@
   const restrictedActionSelect = document.getElementById('_x_extension_restricted_action_select_2024_unique_');
   const searchResultPrioritySelect = document.getElementById('_x_extension_search_result_priority_select_2026_unique_');
   const searchResultTabPositionSelect = document.getElementById('_x_extension_search_result_tab_position_select_2026_unique_');
+  const newtabGlassStyleSelect = document.getElementById('_x_extension_newtab_glass_style_select_2026_unique_');
   const searchResultSourceTypeGroupHost = document.getElementById('_x_extension_search_result_source_types_2026_unique_');
   const searchResultSourceTypeInputs = Array.from(document.querySelectorAll('input[data-search-result-source-type]'));
   const overlayPageThemeAdaptationRow = document.getElementById('_x_extension_overlay_page_theme_adaptation_row_2026_unique_');
@@ -853,6 +854,7 @@
   [
     [languageSelect, 'language'],
     [searchResultTabPositionSelect, 'search-result-tab-position'],
+    [newtabGlassStyleSelect, 'newtab-glass-style'],
     [selectionQuickActionsProviderSelect, 'selection-quick-actions-provider']
   ].forEach(([select, kind]) => {
     const record = registerOptionsSelectControl(select, kind);
@@ -3143,6 +3145,16 @@
       handleSearchResultPrioritySelection(searchResultPrioritySelect.value);
     });
   }
+  if (newtabGlassStyleSelect) {
+    newtabGlassStyleSelect.addEventListener('change', () => {
+      const style = SETTINGS.normalizeNewtabGlassStyle(newtabGlassStyleSelect.value);
+      newtabGlassStyleSelect.value = style;
+      if (storageArea) {
+        storageArea.set({ [SETTINGS.NEWTAB_GLASS_STYLE_STORAGE_KEY]: style });
+      }
+      refreshCustomSelects();
+    });
+  }
   if (searchResultTabPositionSelect) {
     searchResultTabPositionSelect.addEventListener('change', () => {
       const position = SETTINGS.normalizeSearchResultTabPosition(searchResultTabPositionSelect.value);
@@ -3437,6 +3449,18 @@
       }
       setSearchResultPriorityTabState(priority);
     },
+    repairOnChange: false,
+    refreshSelects: true
+  });
+  settingBinder.bindSetting({
+    key: SETTINGS.NEWTAB_GLASS_STYLE_STORAGE_KEY,
+    normalize: SETTINGS.normalizeNewtabGlassStyle,
+    apply(style) {
+      if (newtabGlassStyleSelect) {
+        newtabGlassStyleSelect.value = style;
+      }
+    },
+    repairOnLoad: false,
     repairOnChange: false,
     refreshSelects: true
   });

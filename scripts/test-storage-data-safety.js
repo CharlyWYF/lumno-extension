@@ -54,8 +54,8 @@ const expectedSyncKeys = [
   '_x_extension_newtab_shortcut_dock_magnification_enabled_2026_unique_',
   '_x_extension_newtab_feedback_button_visible_2026_unique_',
   '_x_extension_newtab_appearance_button_visible_2026_unique_',
-  // Additive preference: missing values preserve the original New Tab material.
-  '_x_extension_newtab_frosted_glass_enabled_2026_unique_',
+  // Additive preference: a missing value keeps the original New Tab surfaces.
+  '_x_extension_newtab_glass_style_2026_unique_',
   '_x_extension_newtab_shortcut_width_2026_unique_',
   '_x_extension_newtab_shortcut_columns_2026_unique_',
   '_x_extension_newtab_shortcut_size_2026_unique_',

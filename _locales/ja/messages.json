@@ -1502,6 +1502,9 @@
   "bookmark_topbar_surface_title": {
     "message": "バーの背景"
   },
+  "bookmark_topbar_surface_follow": {
+    "message": "スタイルに合わせる"
+  },
   "bookmark_topbar_surface_adaptive": {
     "message": "自動調整フロスト"
   },
@@ -3314,10 +3317,19 @@
   "newtab_style_section_title": {
     "message": "スタイル"
   },
-  "settings_newtab_frosted_glass_title": {
-    "message": "すりガラススタイル"
+  "settings_newtab_glass_style_title": {
+    "message": "マテリアル"
   },
-  "settings_newtab_frosted_glass_desc": {
-    "message": "新しいタブの検索バー、カード、ボタンに軽やかなすりガラス効果を適用します。ダークテーマと壁紙の組み合わせがおすすめです。"
+  "settings_newtab_glass_style_desc": {
+    "message": "検索バー、カード、ボタン、メニュー、外観パネルをガラスの質感にします。壁紙との組み合わせがおすすめです。"
+  },
+  "settings_newtab_glass_style_none": {
+    "message": "デフォルト"
+  },
+  "settings_newtab_glass_style_frosted": {
+    "message": "フロストガラス"
+  },
+  "settings_newtab_glass_style_liquid": {
+    "message": "リキッドグラス"
   }
 }

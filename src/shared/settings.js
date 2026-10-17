@@ -33,7 +33,9 @@
   const NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY = '_x_extension_newtab_shortcut_dock_magnification_enabled_2026_unique_';
   const NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY = '_x_extension_newtab_feedback_button_visible_2026_unique_';
   const NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY = '_x_extension_newtab_appearance_button_visible_2026_unique_';
-  const NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY = '_x_extension_newtab_frosted_glass_enabled_2026_unique_';
+  const NEWTAB_GLASS_STYLE_STORAGE_KEY = '_x_extension_newtab_glass_style_2026_unique_';
+  // 'none' keeps the original New Tab surfaces; the others swap in a glass material.
+  const NEWTAB_GLASS_STYLES = Object.freeze(['none', 'frosted', 'liquid']);
   const NEWTAB_SHORTCUT_WIDTH_STORAGE_KEY = '_x_extension_newtab_shortcut_width_2026_unique_';
   const NEWTAB_SHORTCUT_WIDTH_MIN = 360;
   const NEWTAB_SHORTCUT_WIDTH_MAX = 1440;
@@ -205,7 +207,7 @@
     NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY,
     NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY,
     NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY,
-    NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY,
+    NEWTAB_GLASS_STYLE_STORAGE_KEY,
     NEWTAB_SHORTCUT_WIDTH_STORAGE_KEY,
     NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY,
     NEWTAB_SHORTCUT_SIZE_STORAGE_KEY,
@@ -409,8 +411,8 @@
     return value !== false;
   }
 
-  function normalizeNewtabFrostedGlassEnabled(value) {
-    return value === true;
+  function normalizeNewtabGlassStyle(value) {
+    return NEWTAB_GLASS_STYLES.includes(value) ? value : 'none';
   }
 
   function normalizeNewtabShortcutWidth(value, options) {
@@ -1304,7 +1306,8 @@
     NEWTAB_SHORTCUT_DOCK_MAGNIFICATION_ENABLED_STORAGE_KEY,
     NEWTAB_FEEDBACK_BUTTON_VISIBLE_STORAGE_KEY,
     NEWTAB_APPEARANCE_BUTTON_VISIBLE_STORAGE_KEY,
-    NEWTAB_FROSTED_GLASS_ENABLED_STORAGE_KEY,
+    NEWTAB_GLASS_STYLE_STORAGE_KEY,
+    NEWTAB_GLASS_STYLES,
     NEWTAB_SHORTCUT_WIDTH_STORAGE_KEY,
     NEWTAB_SHORTCUT_WIDTH_MIN,
     NEWTAB_SHORTCUT_WIDTH_MAX,
@@ -1381,7 +1384,7 @@
     normalizeNewtabShortcutDockMagnificationEnabled,
     normalizeNewtabFeedbackButtonVisible,
     normalizeNewtabAppearanceButtonVisible,
-    normalizeNewtabFrostedGlassEnabled,
+    normalizeNewtabGlassStyle,
     normalizeNewtabShortcutWidth,
     normalizeNewtabShortcutColumns,
     normalizeNewtabShortcutSize,

@@ -16,7 +16,12 @@ const suggestionsReact = fs.readFileSync(
 );
 
 function getCssRuleBlock(source, selector) {
-  const start = source.indexOf(`${selector} {`);
+  // The selector may share its rule with siblings (the glass style's dark-palette variants).
+  let start = source.indexOf(`${selector} {`);
+  if (start === -1) {
+    const listed = source.indexOf(`${selector},\n`);
+    start = listed !== -1 && !source.slice(listed, source.indexOf('{', listed)).includes('}') ? listed : -1;
+  }
   assert.notStrictEqual(start, -1, `missing CSS rule: ${selector}`);
   const end = source.indexOf('}', start);
   assert.notStrictEqual(end, -1, `unterminated CSS rule: ${selector}`);

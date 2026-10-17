@@ -229,11 +229,11 @@
       typeof options.inputAutoFocusReady.then === 'function'
       ? options.inputAutoFocusReady
       : Promise.resolve();
-    const getFrostedGlassEnabled = typeof options.getFrostedGlassEnabled === 'function'
-      ? options.getFrostedGlassEnabled
-      : function() { return false; };
-    const setFrostedGlassEnabled = typeof options.setFrostedGlassEnabled === 'function'
-      ? options.setFrostedGlassEnabled
+    const getGlassStyle = typeof options.getGlassStyle === 'function'
+      ? options.getGlassStyle
+      : function() { return 'none'; };
+    const setGlassStyle = typeof options.setGlassStyle === 'function'
+      ? options.setGlassStyle
       : function() {};
     const featureHintVisibilityGate = options.featureHintVisibilityGate &&
       typeof options.featureHintVisibilityGate.then === 'function'
@@ -4263,11 +4263,17 @@
         button: { active: Boolean(currentWallpaperId), label: getWallpaperButtonLabel() },
         header: buildWallpaperPanelHeaderState(),
         theme: buildWallpaperThemeState(),
-        frostedGlass: {
+        glassStyle: {
           sectionTitle: t('newtab_style_section_title', 'Style'),
-          title: t('settings_newtab_frosted_glass_title', 'Frosted glass style'),
-          infoTooltip: t('settings_newtab_frosted_glass_desc', 'Apply a light frosted finish to the New Tab search bar, cards, and buttons. Works best with a dark theme and a wallpaper.'),
-          toggle: buildPanelToggle(getFrostedGlassEnabled(), t('settings_newtab_frosted_glass_title', 'Frosted glass style'))
+          title: t('settings_newtab_glass_style_title', 'Material'),
+          infoTooltip: t('settings_newtab_glass_style_desc', 'Give the search bar, cards, buttons, menus, and this panel a glass finish. Works best with a wallpaper.'),
+          ariaLabel: t('settings_newtab_glass_style_title', 'Material'),
+          value: getGlassStyle(),
+          options: [
+            { value: 'none', label: t('settings_newtab_glass_style_none', 'Default') },
+            { value: 'frosted', label: t('settings_newtab_glass_style_frosted', 'Frosted glass') },
+            { value: 'liquid', label: t('settings_newtab_glass_style_liquid', 'Liquid glass') }
+          ]
         },
         search: buildWallpaperSearchState(),
         shortcuts: buildWallpaperShortcutsState(),
@@ -4373,8 +4379,8 @@
           setInputAutoFocusEnabled(enabled);
           renderWallpaperPanelState();
         },
-        setFrostedGlass(enabled) {
-          setFrostedGlassEnabled(enabled);
+        setGlassStyle(value) {
+          setGlassStyle(value);
           renderWallpaperPanelState();
         },
         selectTopContent: (mode) => persistTopContentMode(mode),

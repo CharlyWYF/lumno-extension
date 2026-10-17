@@ -13,6 +13,7 @@ import { createToastApi } from './toast';
 import { createTopContentApi } from './wordmark';
 import { createPageStructureApi } from './page-structure';
 import { createBookmarksTopbarApi } from './bookmarks-topbar';
+import { createLiquidSurfaces } from './liquid-glass';
 import { createPageNoticeApi } from './page-notice';
 import { createBookmarkCascadeViewApi } from './bookmark-cascade-view';
 import { createWallpaperViewApi } from './wallpaper-view';
@@ -76,6 +77,7 @@ const runtime = globalThis as typeof globalThis & {
   LumnoNewtabPageStructureReact?: ReturnType<typeof createPageStructureApi>;
   LumnoNewtabBookmarksTopbar?: ReturnType<typeof createBookmarksTopbarApi>;
   LumnoNewtabBookmarksTopbarReact?: ReturnType<typeof createBookmarksTopbarApi>;
+  LumnoNewtabLiquidSurfaces?: { create: typeof createLiquidSurfaces };
   LumnoNewtabPageNotice?: ReturnType<typeof createPageNoticeApi>;
   LumnoNewtabPageNoticeReact?: ReturnType<typeof createPageNoticeApi>;
   LumnoNewtabBookmarkCascadeView?: ReturnType<
@@ -129,6 +131,7 @@ if (!bootstrapState || !bootstrapState.reactReady) {
   const tabSwitcherApi =
     runtime.LumnoOverlayTabSwitcherView || createTabSwitcherViewApi();
 
+  runtime.LumnoNewtabLiquidSurfaces = { create: createLiquidSurfaces };
   runtime.LumnoNewtabBookmarksViewReact = bookmarksApi;
   runtime.LumnoNewtabBookmarksView = bookmarksApi;
   runtime.LumnoNewtabDockReact = dockApi;
