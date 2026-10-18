@@ -58,7 +58,7 @@ export function createDefaultPanelState(): WallpaperPanelState {
       infoTooltip: 'Works best with a wallpaper.',
       options: [
         { value: 'none', label: 'Default' },
-        { value: 'frosted', label: 'Frosted glass' },
+        { value: 'frosted', label: 'Acrylic' },
         { value: 'liquid', label: 'Liquid glass' }
       ],
       sectionTitle: 'Style',
