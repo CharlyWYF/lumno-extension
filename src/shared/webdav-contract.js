@@ -32,6 +32,20 @@
   // Records whose fields are independent settings merge field by field, so
   // two devices editing different fields of one record do not conflict.
   // Folder colors merge per folder for the same reason.
+  // Every preference this version reads and writes. A state carries its
+  // writer's list as `keys`, so a reader can tell a value the writer removed
+  // from one the writer never knew: an older version drops what it does not
+  // know whenever it saves. States without the list were written by 1.0.0 or
+  // earlier, which knew every key except these.
+  const KNOWN_KEYS = Object.freeze([...PREFERENCE_KEYS, ...LOCAL_PREFERENCE_KEYS]);
+  const KEYS_UNKNOWN_TO_LEGACY_WRITERS = Object.freeze([
+    settings.NEWTAB_GLASS_STYLE_STORAGE_KEY,
+    settings.NEWTAB_TIME_FONT_SIZE_STORAGE_KEY,
+    settings.NEWTAB_TIME_OPACITY_STORAGE_KEY,
+    settings.NEWTAB_TIME_FONT_STORAGE_KEY,
+    settings.SEARCH_SOURCE_ORDER_STORAGE_KEY,
+    CUSTOM_QUOTES_KEY
+  ].filter(Boolean));
   const FIELD_MERGE_KEYS = [settings.NEWTAB_QUOTE_PREFS_STORAGE_KEY,
     settings.BOOKMARK_FOLDER_COLOR_REFS_STORAGE_KEY].filter(Boolean);
   const MAX_STATE_BYTES = 2 * 1024 * 1024;
@@ -55,6 +69,30 @@
   }
   function fieldNames(...records) {
     return [...new Set(records.flatMap((record) => Object.keys(record || {})))].sort();
+  }
+  function writerKnows(state, key) {
+    return Array.isArray(state.keys) ? state.keys.includes(key) : !KEYS_UNKNOWN_TO_LEGACY_WRITERS.includes(key);
+  }
+  // The other side's value for a key, or `fallback` when its writer never
+  // knew the key and so has no say in it.
+  function sideValue(state, key, fallback) {
+    return writerKnows(state, key) ? state.data[key] : fallback;
+  }
+  // Same content, whichever version wrote each side. Comparing writer lists
+  // too would make two versions rewrite the server after each other forever.
+  function sameContent(left, right) {
+    const { keys: _leftKeys, ...leftContent } = left || {};
+    const { keys: _rightKeys, ...rightContent } = right || {};
+    return equal(leftContent, rightContent);
+  }
+  // The remote state as this device applies it: values for keys its writer
+  // never knew stay as they are here.
+  function adoptRemote(local, remote) {
+    const data = { ...remote.data };
+    KNOWN_KEYS.forEach((key) => {
+      if (!writerKnows(remote, key) && own(local.data, key)) data[key] = local.data[key];
+    });
+    return validateState({ ...remote, data, keys: KNOWN_KEYS });
   }
   function readShortcutState(values, overflow) {
     return shortcutStore.readShortcutState(values, overflow);
@@ -128,6 +166,11 @@
     });
     const state = { version: value.version, data: selectPreferences(value.data), groups: shortcutState.groups, shortcuts,
       icons, wallpapers, assets };
+    if (own(value, 'keys')) {
+      if (!Array.isArray(value.keys) || value.keys.length > 2000 || value.keys.some((key) => typeof key !== 'string' ||
+          key.length > 200)) fail('invalid-state');
+      state.keys = [...new Set(value.keys)].sort();
+    }
     state.assets = collectAssets(state);
     return state;
   }
@@ -140,7 +183,7 @@
     const remoteIds = new Set(remote.wallpapers.map((item) => item.id));
     const wallpapers = remote.wallpapers.concat(local.wallpapers.filter((item) =>
       !remoteImages.has(item.image) && !remoteIds.has(item.id)));
-    const data = { ...remote.data };
+    const data = { ...adoptRemote(local, remote).data };
     const remoteLinks = Array.isArray(remote.data[LINK_WALLPAPERS_KEY]) ? remote.data[LINK_WALLPAPERS_KEY] : [];
     const localLinks = Array.isArray(local.data[LINK_WALLPAPERS_KEY]) ? local.data[LINK_WALLPAPERS_KEY] : [];
     const linkUrls = new Set(remoteLinks.map((item) => item && item.url));
@@ -152,7 +195,8 @@
     }
     try {
       return validateState({ version: Math.max(local.version, remote.version), data, groups: remote.groups,
-        shortcuts: remote.shortcuts, icons: remote.icons, wallpapers, assets: { ...local.assets, ...remote.assets } });
+        shortcuts: remote.shortcuts, icons: remote.icons, wallpapers, assets: { ...local.assets, ...remote.assets },
+        keys: KNOWN_KEYS });
     } catch (cause) {
       if (cause.code === 'state-too-large') fail('merge-too-large');
       throw cause;
@@ -190,10 +234,14 @@
       return record;
     }
     const data = {};
-    [...PREFERENCE_KEYS, ...LOCAL_PREFERENCE_KEYS].forEach((key) => {
-      const value = fieldMergeable(key, base.data[key], local.data[key], remote.data[key])
-        ? chooseFields(key, base.data[key], local.data[key], remote.data[key])
-        : choose(key, base.data[key], local.data[key], remote.data[key]);
+    KNOWN_KEYS.forEach((key) => {
+      // A side whose writer never knew the key left it as it was.
+      const previous = own(base.data, key) ? base.data[key] : sideValue(base, key, local.data[key]);
+      const left = local.data[key];
+      const right = sideValue(remote, key, previous);
+      const value = fieldMergeable(key, previous, left, right)
+        ? chooseFields(key, previous, left, right)
+        : choose(key, previous, left, right);
       if (typeof value !== 'undefined') data[key] = value;
     });
     // Groups and the shortcuts inside them change together as one list.
@@ -206,7 +254,7 @@
     const wallpapers = choose('wallpapers', base.wallpapers, local.wallpapers, remote.wallpapers);
     const state = validateState({ version: Math.max(base.version, local.version, remote.version), data,
       groups: shortcutState.groups, shortcuts: shortcutList, icons, wallpapers,
-      assets: { ...base.assets, ...remote.assets, ...local.assets } });
+      assets: { ...base.assets, ...remote.assets, ...local.assets }, keys: KNOWN_KEYS });
     return { state, conflicts: [...new Set(conflicts)] };
   }
   // A conflict summary is display data only: names are capped and values are
@@ -339,6 +387,7 @@
   }
   return Object.freeze({ SHORTCUT_KEYS, SHORTCUT_SYNC_KEYS, FIELD_MERGE_KEYS, OVERFLOW_KEY, ICONS_KEY, WALLPAPER_KEY,
     LOCAL_WALLPAPER_KEY, LOCAL_PREFERENCE_KEYS, PREFERENCE_KEYS, GROUPED_STATE_VERSION, LEGACY_MAX_SHORTCUTS, MAX_SHORTCUTS,
-    MAX_STATE_BYTES, MAX_ASSET_BYTES, canonical, equal, byteLength, readShortcutState, needsGroupedState,
-    selectPreferences, validateState, mergeStates, mergeInitialWallpapers, describeConflict, planChromeBackup });
+    MAX_STATE_BYTES, MAX_ASSET_BYTES, KNOWN_KEYS, canonical, equal, sameContent, byteLength, readShortcutState,
+    needsGroupedState, selectPreferences, validateState, adoptRemote, mergeStates, mergeInitialWallpapers, describeConflict,
+    planChromeBackup });
 });

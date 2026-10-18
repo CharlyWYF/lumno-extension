@@ -1171,6 +1171,7 @@ async function run() {
   assert.strictEqual(deviceA.chrome.storage.sync.values[theme], 'light');
 
   await testShortcutGroups();
+  testOlderWriters();
   await testBackgroundRounds();
 
   const bigLinks = Array.from({ length: 40 }, (_, index) => ({ id: `link-big${index}xx`, url: `https://big.example/${'x'.repeat(200)}/${index}.jpg`, addedAt: index }));
@@ -1242,6 +1243,40 @@ async function testShortcutGroups() {
   assert.deepStrictEqual(mergedItems.state.shortcuts.map((item) => item.groupId), ['g0', 'work']);
 }
 // Waits until the controller's queue is idle and the status leaves 'syncing'.
+// An older version drops the settings it does not know whenever it saves; that
+// must not read as removing them.
+function testOlderWriters() {
+  const glass = settings.NEWTAB_GLASS_STYLE_STORAGE_KEY;
+  const size = settings.NEWTAB_TIME_FONT_SIZE_STORAGE_KEY;
+  const quotes = '_x_extension_custom_quotes_2026_unique_';
+  const shared = '_x_extension_recent_count_2024_unique_';
+  const own = (data) => contract.validateState({ ...empty(data), keys: contract.KNOWN_KEYS });
+  const mine = own({ [shared]: 1, [glass]: 'liquid', [size]: 72, [quotes]: { v: 1, items: ['a'] } });
+  assert.strictEqual(contract.validateState(mine).keys.length, contract.KNOWN_KEYS.length, 'a state keeps its writer list');
+
+  // 1.0.0 saved a change of its own and dropped the keys it never knew.
+  const legacy = contract.validateState(empty({ [shared]: 2 }));
+  const merged = contract.mergeStates(mine, mine, legacy);
+  assert.deepStrictEqual(merged.conflicts, []);
+  assert.strictEqual(merged.state.data[shared], 2, 'the older device\'s own change arrives');
+  assert.strictEqual(merged.state.data[glass], 'liquid', 'a setting the older device never knew stays');
+  assert.strictEqual(merged.state.data[size], 72);
+  assert.deepStrictEqual(merged.state.data[quotes], { v: 1, items: ['a'] });
+  assert.ok(!contract.sameContent(merged.state, legacy), 'the restored settings go back to the server');
+  assert.deepStrictEqual(contract.adoptRemote(mine, legacy).data,
+    { [shared]: 2, [glass]: 'liquid', [size]: 72, [quotes]: { v: 1, items: ['a'] } },
+    'choosing the server copy keeps what its writer never knew');
+
+  // A writer that knows a key and leaves it out removed it.
+  const removed = own({ [shared]: 1, [size]: 72, [quotes]: { v: 1, items: ['a'] } });
+  assert.ok(!Object.prototype.hasOwnProperty.call(contract.mergeStates(mine, mine, removed).state.data, glass));
+
+  // Two versions with different lists do not rewrite the server after each other.
+  const newer = contract.validateState({ ...mine, keys: [...contract.KNOWN_KEYS, '_x_extension_future_2030_unique_'] });
+  assert.ok(contract.sameContent(contract.mergeStates(mine, mine, newer).state, newer));
+  assert.throws(() => contract.validateState({ ...empty(), keys: [1] }), /invalid-state/);
+}
+
 async function settle(device) {
   for (let wait = 0; wait < 100; wait += 1) {
     const current = await device.controller.handle({ operation: 'status' });

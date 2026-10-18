@@ -246,7 +246,7 @@
         ? contract.GROUPED_STATE_VERSION
         : regular.some((item) => item.type === 'folder') || baseVersion === 2 ? 2 : 1;
       const state = { version, data: contract.selectPreferences({ ...values, ...pickLocalPreferences(local) }),
-        groups: shortcutState.groups, shortcuts: regular, icons: {}, wallpapers: [], assets: {} };
+        groups: shortcutState.groups, shortcuts: regular, icons: {}, wallpapers: [], assets: {}, keys: contract.KNOWN_KEYS };
       // This device's own data failing the contract must not read as a bad
       // remote copy, so its codes carry a local- prefix.
       try {
@@ -564,7 +564,7 @@
       else if (decision === 'local') target = captured.state;
       else if (decision === 'remote') {
         if (!remote) fail('remote-missing');
-        target = remote.state;
+        target = contract.adoptRemote(captured.state, remote.state);
       } else if (!remote) {
         if (base) fail('remote-missing');
         target = captured.state;
@@ -581,7 +581,7 @@
         target = merged.state;
       }
       await prepareChrome(target, captured);
-      if (!remote || !contract.equal(target, remote.state)) await publish(target, remote, client, captured.generation);
+      if (!remote || !contract.sameContent(target, remote.state)) await publish(target, remote, client, captured.generation);
       if (!contract.equal(target, captured.state)) {
         // The server now holds target: the captured state plus what only the
         // server changed. Until target is applied here, the captured state is
@@ -671,11 +671,11 @@
       const captured = await capture(INITIAL_DECISIONS.includes(decision));
       await privateStore.put('migrationBackup', { captured, savedAt: Date.now() });
       await privateStore.put('migrationBackupMeta', { savedAt: Date.now() });
-      const target = remote && decision === 'remote' ? remote.state
+      const target = remote && decision === 'remote' ? contract.adoptRemote(captured.state, remote.state)
         : remote && decision === 'merge' ? contract.mergeInitialWallpapers(captured.state, remote.state)
           : captured.state;
       await prepareChrome(target, captured);
-      if (!remote || decision === 'local' || !contract.equal(target, remote.state)) {
+      if (!remote || decision === 'local' || !contract.sameContent(target, remote.state)) {
         await publish(target, remote, client, captured.generation);
       }
       if (opts.managed && contract.equal(target, captured.state) && runtime.isActiveAreaName('sync')) {
