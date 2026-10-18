@@ -710,6 +710,18 @@
   "newtab_time_font_weight_reset": {
     "message": "恢复默认字重"
   },
+  "newtab_time_font_size_title": {
+    "message": "时间字号"
+  },
+  "newtab_time_font_size_reset": {
+    "message": "恢复默认字号"
+  },
+  "newtab_time_opacity_title": {
+    "message": "时间不透明度"
+  },
+  "newtab_time_opacity_reset": {
+    "message": "恢复默认不透明度"
+  },
   "newtab_time_show_seconds_title": {
     "message": "显示秒数"
   },

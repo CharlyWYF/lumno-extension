@@ -16,6 +16,10 @@
       '_x_extension_newtab_wordmark_visible_2026_unique_',
     timeFontWeight: SETTINGS.NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY ||
       '_x_extension_newtab_time_font_weight_2026_unique_',
+    timeFontSize: SETTINGS.NEWTAB_TIME_FONT_SIZE_STORAGE_KEY ||
+      '_x_extension_newtab_time_font_size_2026_unique_',
+    timeOpacity: SETTINGS.NEWTAB_TIME_OPACITY_STORAGE_KEY ||
+      '_x_extension_newtab_time_opacity_2026_unique_',
     timeFont: SETTINGS.NEWTAB_TIME_FONT_STORAGE_KEY ||
       '_x_extension_newtab_time_font_2026_unique_',
     timeSecondsVisible: SETTINGS.NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY ||
@@ -117,6 +121,8 @@
     const NEWTAB_WALLPAPER_EFFECT_STORAGE_KEY = storageKeys.effect;
     const NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY = storageKeys.topContentMode;
     const NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY = storageKeys.timeFontWeight;
+    const NEWTAB_TIME_FONT_SIZE_STORAGE_KEY = storageKeys.timeFontSize;
+    const NEWTAB_TIME_OPACITY_STORAGE_KEY = storageKeys.timeOpacity;
     const NEWTAB_TIME_FONT_STORAGE_KEY = storageKeys.timeFont;
     const NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY = storageKeys.timeSecondsVisible;
     const NEWTAB_FAVICON_STORAGE_KEY = storageKeys.favicon;
@@ -279,6 +285,18 @@
       : function() { return NEWTAB_TIME_FONT_WEIGHT_DEFAULT; };
     const setTimeFontWeight = typeof options.setTimeFontWeight === 'function'
       ? options.setTimeFontWeight
+      : function() {};
+    const getTimeFontSize = typeof options.getTimeFontSize === 'function'
+      ? options.getTimeFontSize
+      : function() { return SETTINGS.NEWTAB_TIME_FONT_SIZE_DEFAULT; };
+    const setTimeFontSize = typeof options.setTimeFontSize === 'function'
+      ? options.setTimeFontSize
+      : function() {};
+    const getTimeOpacity = typeof options.getTimeOpacity === 'function'
+      ? options.getTimeOpacity
+      : function() { return SETTINGS.NEWTAB_TIME_OPACITY_DEFAULT; };
+    const setTimeOpacity = typeof options.setTimeOpacity === 'function'
+      ? options.setTimeOpacity
       : function() {};
     const hasTimeFontGetter = typeof options.getTimeFont === 'function';
     const getTimeFont = hasTimeFontGetter
@@ -2570,6 +2588,29 @@
       storageArea.set({ [NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]: nextValue });
     }
 
+    // The clock follows the slider at once; the value is saved once it settles.
+    function persistTimeFontSizeFromSlider(value, change) {
+      const size = SETTINGS.normalizeNewtabTimeFontSize(value);
+      setTimeFontSize(size);
+      renderWallpaperPanelState();
+      saveSliderSetting('timeFontSize', () => {
+        if (storageArea && NEWTAB_TIME_FONT_SIZE_STORAGE_KEY) {
+          storageArea.set({ [NEWTAB_TIME_FONT_SIZE_STORAGE_KEY]: size });
+        }
+      }, change);
+    }
+
+    function persistTimeOpacityFromSlider(value, change) {
+      const opacity = SETTINGS.normalizeNewtabTimeOpacity(value);
+      setTimeOpacity(opacity);
+      renderWallpaperPanelState();
+      saveSliderSetting('timeOpacity', () => {
+        if (storageArea && NEWTAB_TIME_OPACITY_STORAGE_KEY) {
+          storageArea.set({ [NEWTAB_TIME_OPACITY_STORAGE_KEY]: opacity });
+        }
+      }, change);
+    }
+
     function applyTimeFont(value) {
       currentTimeFont = SETTINGS.normalizeNewtabTimeFont(value);
       setTimeFont(currentTimeFont);
@@ -4027,9 +4068,19 @@
             uniqueSorted([0, 8, 16, 24].map(normalizeShortcutGapValue)),
             (value) => getShortcutLayoutPercent(value, shortcutGapConfig, 0, 24, 4)
           ),
-          timeWeight: [50]
+          timeWeight: [50],
+          // The default size, which the reset button returns to.
+          timeSize: [getSliderMarkPercent(
+            SETTINGS.NEWTAB_TIME_FONT_SIZE_DEFAULT,
+            SETTINGS.NEWTAB_TIME_FONT_SIZE_MIN,
+            SETTINGS.NEWTAB_TIME_FONT_SIZE_MAX
+          )]
         }
       };
+    }
+
+    function getSliderMarkPercent(value, min, max) {
+      return max > min ? Math.round(((value - min) / (max - min)) * 10000) / 100 : 0;
     }
 
     function buildWallpaperPanelHeaderState() {
@@ -4109,6 +4160,8 @@
       const timeFont = SETTINGS.getNewtabTimeFont(currentTimeFont);
       const timeFontWeight = SETTINGS.resolveNewtabTimeFontWeight(timeFont.id, currentTimeFontWeight);
       const timeFontTitle = t('newtab_time_font_title', 'Time font');
+      const timeFontSize = SETTINGS.normalizeNewtabTimeFontSize(getTimeFontSize());
+      const timeOpacity = SETTINGS.normalizeNewtabTimeOpacity(getTimeOpacity());
       const width = normalizeSearchWidthValue(getSearchWidth());
       const timeVisible = currentTopContentMode === 'time';
       const autoFocusTitle = t('newtab_input_auto_focus_title', 'Automatically focus input');
@@ -4161,6 +4214,27 @@
           max: timeFont.maxWeight,
           resetLabel: t('newtab_time_font_weight_reset', 'Reset time font weight'),
           resetVisible: timeFontWeight !== timeFont.defaultWeight
+        },
+        timeSize: {
+          visible: timeVisible,
+          label: t('newtab_time_font_size_title', 'Time size'),
+          value: timeFontSize,
+          min: SETTINGS.NEWTAB_TIME_FONT_SIZE_MIN,
+          max: SETTINGS.NEWTAB_TIME_FONT_SIZE_MAX,
+          suffix: ' px',
+          resetLabel: t('newtab_time_font_size_reset', 'Reset time size'),
+          resetVisible: timeFontSize !== SETTINGS.NEWTAB_TIME_FONT_SIZE_DEFAULT
+        },
+        timeOpacity: {
+          visible: timeVisible,
+          label: t('newtab_time_opacity_title', 'Time opacity'),
+          value: timeOpacity,
+          min: SETTINGS.NEWTAB_TIME_OPACITY_MIN,
+          max: SETTINGS.NEWTAB_TIME_OPACITY_MAX,
+          suffix: '%',
+          valueText: `${timeOpacity}%`,
+          resetLabel: t('newtab_time_opacity_reset', 'Reset time opacity'),
+          resetVisible: timeOpacity !== SETTINGS.NEWTAB_TIME_OPACITY_DEFAULT
         },
         seconds: {
           visible: timeVisible,
@@ -4729,6 +4803,10 @@
         selectTopContent: (mode) => persistTopContentMode(mode),
         setTimeFontWeight: (value) => persistTimeFontWeight(value),
         resetTimeFontWeight: () => persistTimeFontWeight(SETTINGS.getNewtabTimeFont(currentTimeFont).defaultWeight),
+        setTimeFontSize: (value, change) => persistTimeFontSizeFromSlider(value, change),
+        resetTimeFontSize: () => persistTimeFontSizeFromSlider(SETTINGS.NEWTAB_TIME_FONT_SIZE_DEFAULT, { final: true }),
+        setTimeOpacity: (value, change) => persistTimeOpacityFromSlider(value, change),
+        resetTimeOpacity: () => persistTimeOpacityFromSlider(SETTINGS.NEWTAB_TIME_OPACITY_DEFAULT, { final: true }),
         setTimeFont: (value) => persistTimeFont(value),
         setTimeSecondsVisible: (visible) => persistTimeSecondsVisible(visible),
         setShortcutsVisible(visible) {

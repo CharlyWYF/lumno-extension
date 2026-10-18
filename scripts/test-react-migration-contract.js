@@ -161,12 +161,13 @@ const assertWithinBudget = (actualBytes, budgetKiB, label) => {
 // Saving a Bing or curated photo to the local wallpapers from its right-click menu, with the local
 // wallpaper limit, moved the New Tab route to 416 KiB and the total to 811 KiB.
 // The time font picker in the appearance panel moved the New Tab route to 417 KiB and the total
-// to 812 KiB.
+// to 812 KiB. The time size and opacity sliders moved the New Tab route to 418 KiB and the
+// total to 813 KiB.
 const bundleBudgets = {
-  newtab: { uncompressed: 417, gzip: 125 },
+  newtab: { uncompressed: 418, gzip: 125 },
   options: { uncompressed: 290, gzip: 85 },
   overlay: { uncompressed: 274, gzip: 83 },
-  total: { uncompressed: 812, gzip: 237 }
+  total: { uncompressed: 813, gzip: 237 }
 };
 
 const retiredNewtabRendererScripts = [

@@ -160,7 +160,7 @@ const syncOptionsVisibility = getFunctionSource(
 assert.match(syncOptionsVisibility, /currentNewtabTopContentMode === 'time'/);
 assert.match(
   syncOptionsVisibility,
-  /\[newtabTimeFontRow, newtabTimeFontWeightRow, newtabTimeSecondsRow\]/
+  /\[\s*newtabTimeFontRow,\s*newtabTimeFontWeightRow,\s*newtabTimeFontSizeRow,\s*newtabTimeOpacityRow,\s*newtabTimeSecondsRow\s*\]/
 );
 assert.match(
   syncOptionsVisibility,

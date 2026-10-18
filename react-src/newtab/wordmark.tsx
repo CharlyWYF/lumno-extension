@@ -20,10 +20,14 @@ export interface TopContentModel {
   animateEntry: boolean;
   ariaLabel: string;
   font?: TopContentClockFont;
+  /** The clock's size at full window width, in px. */
+  fontSize?: number;
   fontWeight?: number;
   imageSrc: string;
   locale?: string;
   mode: NewtabTopContentMode;
+  /** The clock's opacity, 0-1. */
+  opacity?: number;
   showSeconds?: boolean;
 }
 
@@ -85,6 +89,20 @@ const clockStyle: CSSProperties = {
   position: 'relative',
   textRendering: 'geometricPrecision'
 };
+
+const CLOCK_DEFAULT_FONT_SIZE = 54;
+
+// The default clamp(42px, 4.2vw, 54px), scaled so narrow windows shrink a
+// custom size the same way.
+function getClockFontSize(fontSize: number | undefined) {
+  if (typeof fontSize !== 'number' || !Number.isFinite(fontSize) ||
+      fontSize === CLOCK_DEFAULT_FONT_SIZE) {
+    return clockStyle.fontSize;
+  }
+  const scale = fontSize / CLOCK_DEFAULT_FONT_SIZE;
+  const round = (value: number) => Math.round(value * 100) / 100;
+  return `clamp(${round(42 * scale)}px, ${round(4.2 * scale)}vw, ${round(fontSize)}px)`;
+}
 
 const clockDigitsStyle = {
   '--number-flow-mask-height': '0.16em',
@@ -402,10 +420,18 @@ function ClockMark({
       style={{
         ...clockStyle,
         ...fontStyle,
+        fontSize: getClockFontSize(model.fontSize),
         fontWeight
       }}
     >
-      <span aria-hidden="true">
+      {/* The entry animation runs on the <time> element's opacity, so the
+          chosen opacity sits on the digits inside it. */}
+      <span
+        aria-hidden="true"
+        style={typeof model.opacity === 'number' && model.opacity < 1
+          ? { opacity: model.opacity }
+          : undefined}
+      >
         <ClockHourMinuteDigits
           hours={time.hours}
           locale={model.locale}

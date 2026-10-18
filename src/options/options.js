@@ -70,6 +70,10 @@
   const newtabTimeFontSelect = document.getElementById('_x_extension_newtab_time_font_select_2026_unique_');
   const newtabTimeFontWeightRow = document.getElementById('_x_extension_newtab_time_font_weight_row_2026_unique_');
   const newtabTimeFontWeightControlHost = document.getElementById('_x_extension_newtab_time_font_weight_control_2026_unique_');
+  const newtabTimeFontSizeRow = document.getElementById('_x_extension_newtab_time_font_size_row_2026_unique_');
+  const newtabTimeFontSizeControlHost = document.getElementById('_x_extension_newtab_time_font_size_control_2026_unique_');
+  const newtabTimeOpacityRow = document.getElementById('_x_extension_newtab_time_opacity_row_2026_unique_');
+  const newtabTimeOpacityControlHost = document.getElementById('_x_extension_newtab_time_opacity_control_2026_unique_');
   const newtabTimeSecondsRow = document.getElementById('_x_extension_newtab_time_seconds_row_2026_unique_');
   const newtabShortcutsToggle = document.getElementById('_x_extension_newtab_shortcuts_toggle_2026_unique_');
   const newtabShortcutAddRow = document.getElementById('_x_extension_newtab_shortcut_add_row_2026_unique_');
@@ -852,6 +856,8 @@
   let currentBookmarkColumns = 6;
   let currentNewtabTopContentMode = 'brand';
   let currentNewtabTimeFontWeight = NEWTAB_TIME_FONT_WEIGHT_DEFAULT;
+  let currentNewtabTimeFontSize = SETTINGS.NEWTAB_TIME_FONT_SIZE_DEFAULT;
+  let currentNewtabTimeOpacity = SETTINGS.NEWTAB_TIME_OPACITY_DEFAULT;
   let currentNewtabTimeFont = SETTINGS.NEWTAB_TIME_FONT_DEFAULT;
   // Set once the daily quote rows are wired; language refreshes may run earlier.
   let dailyQuoteSettings = null;
@@ -989,6 +995,83 @@
         { align: 'end', label: String(timeFont.maxWeight) }
       ],
       value: SETTINGS.resolveNewtabTimeFontWeight(timeFont.id, currentNewtabTimeFontWeight)
+    });
+  }
+  const newtabTimeFontSizeController =
+    optionsSettingsControlsApi.createRangeSliderControlController(
+      newtabTimeFontSizeControlHost,
+      {
+        kind: 'newtab-time-font-size',
+        onInput(value) {
+          currentNewtabTimeFontSize = SETTINGS.normalizeNewtabTimeFontSize(value);
+          if (storageArea) {
+            storageArea.set({ [SETTINGS.NEWTAB_TIME_FONT_SIZE_STORAGE_KEY]: currentNewtabTimeFontSize });
+          }
+        }
+      }
+    );
+  function renderNewtabTimeFontSizeControl(value) {
+    if (!newtabTimeFontSizeController) {
+      return;
+    }
+    currentNewtabTimeFontSize = SETTINGS.normalizeNewtabTimeFontSize(value);
+    const min = SETTINGS.NEWTAB_TIME_FONT_SIZE_MIN;
+    const max = SETTINGS.NEWTAB_TIME_FONT_SIZE_MAX;
+    const defaultValue = SETTINGS.NEWTAB_TIME_FONT_SIZE_DEFAULT;
+    newtabTimeFontSizeController.render({
+      ariaLabel: getMessage('newtab_time_font_size_title', 'Time size'),
+      defaultValue,
+      id: '_x_extension_newtab_time_font_size_slider_2026_unique_',
+      min,
+      max,
+      resetAriaLabel: getMessage('newtab_time_font_size_reset', 'Reset time size'),
+      resetButtonId: '_x_extension_newtab_time_font_size_reset_2026_unique_',
+      step: 1,
+      ticks: [
+        { align: 'start', label: String(min) },
+        { label: String(defaultValue), percent: ((defaultValue - min) / (max - min)) * 100 },
+        { align: 'end', label: String(max) }
+      ],
+      value: currentNewtabTimeFontSize,
+      valueSuffix: ' px'
+    });
+  }
+  const newtabTimeOpacityController =
+    optionsSettingsControlsApi.createRangeSliderControlController(
+      newtabTimeOpacityControlHost,
+      {
+        kind: 'newtab-time-opacity',
+        onInput(value) {
+          currentNewtabTimeOpacity = SETTINGS.normalizeNewtabTimeOpacity(value);
+          if (storageArea) {
+            storageArea.set({ [SETTINGS.NEWTAB_TIME_OPACITY_STORAGE_KEY]: currentNewtabTimeOpacity });
+          }
+        }
+      }
+    );
+  function renderNewtabTimeOpacityControl(value) {
+    if (!newtabTimeOpacityController) {
+      return;
+    }
+    currentNewtabTimeOpacity = SETTINGS.normalizeNewtabTimeOpacity(value);
+    const min = SETTINGS.NEWTAB_TIME_OPACITY_MIN;
+    const max = SETTINGS.NEWTAB_TIME_OPACITY_MAX;
+    newtabTimeOpacityController.render({
+      ariaLabel: getMessage('newtab_time_opacity_title', 'Time opacity'),
+      defaultValue: SETTINGS.NEWTAB_TIME_OPACITY_DEFAULT,
+      id: '_x_extension_newtab_time_opacity_slider_2026_unique_',
+      min,
+      max,
+      resetAriaLabel: getMessage('newtab_time_opacity_reset', 'Reset time opacity'),
+      resetButtonId: '_x_extension_newtab_time_opacity_reset_2026_unique_',
+      step: 1,
+      ticks: [
+        { align: 'start', label: `${min}%` },
+        { label: `${Math.round((min + max) / 2)}%` },
+        { align: 'end', label: `${max}%` }
+      ],
+      value: currentNewtabTimeOpacity,
+      valueSuffix: '%'
     });
   }
   const newtabShortcutColumnsController =
@@ -1278,6 +1361,8 @@
     });
   }
   renderNewtabTimeFontWeightControl(NEWTAB_TIME_FONT_WEIGHT_DEFAULT);
+  renderNewtabTimeFontSizeControl(SETTINGS.NEWTAB_TIME_FONT_SIZE_DEFAULT);
+  renderNewtabTimeOpacityControl(SETTINGS.NEWTAB_TIME_OPACITY_DEFAULT);
   renderNewtabShortcutColumnsControl(NEWTAB_SHORTCUT_COLUMNS_DEFAULT, false);
   renderNewtabShortcutSizeControl(NEWTAB_SHORTCUT_SIZE_DEFAULT, false);
   renderNewtabShortcutGapControl(NEWTAB_SHORTCUT_GAP_DEFAULT, false);
@@ -1886,7 +1971,13 @@
     const visible = currentNewtabTopContentMode === 'time';
     animateOptionsPanelHeight(() => {
       let changed = false;
-      [newtabTimeFontRow, newtabTimeFontWeightRow, newtabTimeSecondsRow].forEach((row) => {
+      [
+        newtabTimeFontRow,
+        newtabTimeFontWeightRow,
+        newtabTimeFontSizeRow,
+        newtabTimeOpacityRow,
+        newtabTimeSecondsRow
+      ].forEach((row) => {
         changed = setConditionalSettingsElementVisibility(row, visible) || changed;
       });
       return changed;
@@ -2629,6 +2720,8 @@
       setRestrictedActionTabState(currentRestrictedAction);
       setNewtabTopContentTabState(currentNewtabTopContentMode);
       renderNewtabTimeFontWeightControl(currentNewtabTimeFontWeight);
+      renderNewtabTimeFontSizeControl(currentNewtabTimeFontSize);
+      renderNewtabTimeOpacityControl(currentNewtabTimeOpacity);
       if (dailyQuoteSettings) {
         dailyQuoteSettings.updateLanguage();
       }
@@ -3686,6 +3779,21 @@
     key: NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
     normalize: normalizeNewtabTimeFontWeight,
     apply: renderNewtabTimeFontWeightControl
+  });
+  // Unset stays unset, so opening Options does not write the defaults.
+  settingBinder.bindSetting({
+    key: SETTINGS.NEWTAB_TIME_FONT_SIZE_STORAGE_KEY,
+    normalize: SETTINGS.normalizeNewtabTimeFontSize,
+    apply: renderNewtabTimeFontSizeControl,
+    repairOnLoad: false,
+    repairOnChange: false
+  });
+  settingBinder.bindSetting({
+    key: SETTINGS.NEWTAB_TIME_OPACITY_STORAGE_KEY,
+    normalize: SETTINGS.normalizeNewtabTimeOpacity,
+    apply: renderNewtabTimeOpacityControl,
+    repairOnLoad: false,
+    repairOnChange: false
   });
   [
     [NEWTAB_SHORTCUT_COLUMNS_STORAGE_KEY, normalizeNewtabShortcutColumns, renderNewtabShortcutColumnsControl],

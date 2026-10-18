@@ -31,6 +31,21 @@
     const WORDMARK_WALLPAPER_SOLID_OPACITY = '0.6';
     const TOP_CONTENT_LAYOUT_TRANSITION_MS = 260;
     const TOP_CONTENT_LAYOUT_TRANSITION_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
+    // The area fits the wordmark and the default 54px clock; a larger clock
+    // gets the same headroom for its size.
+    const TOP_CONTENT_MAX_HEIGHT_PX = 74;
+    const TOP_CONTENT_DEFAULT_TIME_FONT_SIZE = Number(SETTINGS.NEWTAB_TIME_FONT_SIZE_DEFAULT) || 54;
+
+    function getTopContentMaxHeight() {
+      if (pageState.newtabTopContentMode !== 'time') {
+        return TOP_CONTENT_MAX_HEIGHT_PX;
+      }
+      const fontSize = SETTINGS.normalizeNewtabTimeFontSize(pageState.newtabTimeFontSize);
+      return Math.max(
+        TOP_CONTENT_MAX_HEIGHT_PX,
+        Math.ceil((fontSize * TOP_CONTENT_MAX_HEIGHT_PX) / TOP_CONTENT_DEFAULT_TIME_FONT_SIZE)
+      );
+    }
 
     function getTopContentMotionElements() {
       return [
@@ -189,7 +204,7 @@
       } else {
         pageState.topContentContainer.style.setProperty('height', '0px');
       }
-      pageState.topContentContainer.style.setProperty('max-height', nextVisible ? '74px' : '0');
+      pageState.topContentContainer.style.setProperty('max-height', nextVisible ? `${getTopContentMaxHeight()}px` : '0');
       pageState.topContentContainer.style.setProperty('margin-bottom', nextVisible ? '28px' : '0');
       pageState.topContentContainer.style.setProperty('opacity', nextVisible ? '1' : '0');
       pageState.topContentContainer.style.removeProperty('transform');
@@ -345,10 +360,12 @@
           stretch: timeFont.stretch,
           tracking: SETTINGS.getNewtabTimeFontTracking(timeFont.id, pageState.newtabTimeFontWeight)
         },
+        fontSize: SETTINGS.normalizeNewtabTimeFontSize(pageState.newtabTimeFontSize),
         fontWeight: SETTINGS.resolveNewtabTimeFontWeight(timeFont.id, pageState.newtabTimeFontWeight),
         imageSrc: '../../assets/images/lumno-wordmark.svg',
         locale: document.documentElement ? document.documentElement.lang : undefined,
         mode: pageState.newtabTopContentMode === 'time' ? 'time' : 'brand',
+        opacity: SETTINGS.normalizeNewtabTimeOpacity(pageState.newtabTimeOpacity) / 100,
         showSeconds: pageState.newtabTimeSecondsVisible
       });
       pageState.wordmarkImageEl = pageState.topContentController.getImage();
@@ -387,6 +404,34 @@
       const nextValue = normalizeNewtabTimeFontWeight(value);
       const changed = nextValue !== pageState.newtabTimeFontWeight;
       pageState.newtabTimeFontWeight = nextValue;
+      if (changed && pageState.newtabTopContentMode === 'time') {
+        renderNewtabTopContent(false);
+      }
+      updateNewtabTimeFontWeightUi();
+      return nextValue;
+    }
+
+    function setNewtabTimeFontSize(value) {
+      const nextValue = SETTINGS.normalizeNewtabTimeFontSize(value);
+      const changed = nextValue !== pageState.newtabTimeFontSize;
+      pageState.newtabTimeFontSize = nextValue;
+      if (changed && pageState.newtabTopContentMode === 'time') {
+        renderNewtabTopContent(false);
+        if (pageState.topContentContainer &&
+            pageState.topContentContainer.getAttribute('data-visible') !== 'false') {
+          pageState.topContentContainer.style.setProperty('max-height', `${getTopContentMaxHeight()}px`);
+          updateSearchEntryLayout();
+          updateSuggestionsFloatingLayout();
+        }
+      }
+      updateNewtabTimeFontWeightUi();
+      return nextValue;
+    }
+
+    function setNewtabTimeOpacity(value) {
+      const nextValue = SETTINGS.normalizeNewtabTimeOpacity(value);
+      const changed = nextValue !== pageState.newtabTimeOpacity;
+      pageState.newtabTimeOpacity = nextValue;
       if (changed && pageState.newtabTopContentMode === 'time') {
         renderNewtabTopContent(false);
       }
@@ -447,6 +492,8 @@
       renderNewtabTopContent,
       setNewtabTopContentMode,
       setNewtabTimeFontWeight,
+      setNewtabTimeFontSize,
+      setNewtabTimeOpacity,
       setNewtabTimeFont,
       loadNewtabTimeFont,
       setNewtabTimeSecondsVisible

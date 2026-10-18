@@ -209,7 +209,7 @@ describe('New Tab React wallpaper view', () => {
     expect(refs().effectSelectHost.closest('.x-nt-appearance-setting-row'))
       .toBe(refs().effectLabel.parentElement);
     const sliderRows = view.control.querySelectorAll<HTMLElement>('.x-nt-range-slider-row');
-    expect(sliderRows).toHaveLength(16);
+    expect(sliderRows).toHaveLength(18);
     sliderRows.forEach((row) => {
       const slider = row.querySelector<HTMLInputElement>('input[type="range"]');
       const valueInput = row.querySelector<HTMLInputElement>('input[type="number"]');
@@ -245,6 +245,21 @@ describe('New Tab React wallpaper view', () => {
         value: 600,
         visible: true
       };
+      draft.search.timeSize = {
+        ...draft.search.timeSize,
+        resetLabel: 'Reset time size',
+        resetVisible: true,
+        value: 80,
+        visible: true
+      };
+      draft.search.timeOpacity = {
+        ...draft.search.timeOpacity,
+        resetLabel: 'Reset time opacity',
+        resetVisible: false,
+        value: 100,
+        valueText: '100%',
+        visible: true
+      };
       draft.search.seconds = { ...draft.search.seconds, visible: true, toggle: { checked: true, label: 'Show seconds' } };
       draft.wallpaper.overlay = { ...draft.wallpaper.overlay, value: 72 };
       draft.wallpaper.effect.sliders.spacing = {
@@ -278,6 +293,16 @@ describe('New Tab React wallpaper view', () => {
     expect(weightReset.getAttribute('aria-label')).toBe('Reset time font weight');
     act(() => weightReset.click());
     expect(next.actions.resetTimeFontWeight).toHaveBeenCalled();
+    expect(refs().topContentSizeControl.hidden).toBe(false);
+    expect((refs().topContentSizeSlider as HTMLInputElement).value).toBe('80');
+    const sizeReset = refs().topContentSizeResetButton as HTMLButtonElement;
+    expect(sizeReset.disabled).toBe(false);
+    expect(sizeReset.getAttribute('aria-label')).toBe('Reset time size');
+    act(() => sizeReset.click());
+    expect(next.actions.resetTimeFontSize).toHaveBeenCalled();
+    expect(refs().topContentOpacitySlider.getAttribute('aria-valuetext')).toBe('100%');
+    expect(refs().topContentOpacitySlider.closest('.x-nt-range-slider-row')?.getAttribute('data-value-suffix')).toBe('%');
+    expect((refs().topContentOpacityResetButton as HTMLButtonElement).disabled).toBe(true);
     expect((refs().topContentSecondsToggle as HTMLInputElement).checked).toBe(true);
     expect((refs().overlaySlider as HTMLInputElement).value).toBe('72');
     expect((refs().overlaySliderValueInput as HTMLInputElement).value).toBe('72');

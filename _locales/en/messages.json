@@ -710,6 +710,18 @@
   "newtab_time_font_weight_reset": {
     "message": "Reset time font weight"
   },
+  "newtab_time_font_size_title": {
+    "message": "Time size"
+  },
+  "newtab_time_font_size_reset": {
+    "message": "Reset time size"
+  },
+  "newtab_time_opacity_title": {
+    "message": "Time opacity"
+  },
+  "newtab_time_opacity_reset": {
+    "message": "Reset time opacity"
+  },
   "newtab_time_show_seconds_title": {
     "message": "Show seconds"
   },

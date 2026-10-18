@@ -39,7 +39,7 @@ assert.match(
 );
 assert.match(
   optionsJs,
-  /function syncNewtabTimeSecondsVisibility\(\)[\s\S]*?animateOptionsPanelHeight\([\s\S]*?newtabTimeFontWeightRow,\s*newtabTimeSecondsRow/,
+  /function syncNewtabTimeSecondsVisibility\(\)[\s\S]*?animateOptionsPanelHeight\([\s\S]*?newtabTimeFontWeightRow,\s*newtabTimeFontSizeRow,\s*newtabTimeOpacityRow,\s*newtabTimeSecondsRow/,
   'time-only subsettings should share the panel height animator'
 );
 assert.match(

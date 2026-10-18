@@ -220,6 +220,10 @@
     SETTINGS.NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY ||
     '_x_extension_newtab_time_font_weight_2026_unique_';
   const NEWTAB_TIME_FONT_WEIGHT_DEFAULT = Number(SETTINGS.NEWTAB_TIME_FONT_WEIGHT_DEFAULT) || 320;
+  const NEWTAB_TIME_FONT_SIZE_STORAGE_KEY = SETTINGS.NEWTAB_TIME_FONT_SIZE_STORAGE_KEY ||
+    '_x_extension_newtab_time_font_size_2026_unique_';
+  const NEWTAB_TIME_OPACITY_STORAGE_KEY = SETTINGS.NEWTAB_TIME_OPACITY_STORAGE_KEY ||
+    '_x_extension_newtab_time_opacity_2026_unique_';
   const NEWTAB_TIME_FONT_STORAGE_KEY = SETTINGS.NEWTAB_TIME_FONT_STORAGE_KEY ||
     '_x_extension_newtab_time_font_2026_unique_';
   const NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY =
@@ -631,6 +635,8 @@
   let pageNoticeController = null;
   pageState.newtabTopContentMode = 'brand';
   pageState.newtabTimeFontWeight = NEWTAB_TIME_FONT_WEIGHT_DEFAULT;
+  pageState.newtabTimeFontSize = Number(SETTINGS.NEWTAB_TIME_FONT_SIZE_DEFAULT) || 54;
+  pageState.newtabTimeOpacity = Number(SETTINGS.NEWTAB_TIME_OPACITY_DEFAULT) || 100;
   pageState.newtabTimeFont = SETTINGS.NEWTAB_TIME_FONT_DEFAULT || 'open-sans';
   pageState.newtabTimeSecondsVisible = false;
   pageState.newtabInputAutoFocusEnabled = false;
@@ -2262,6 +2268,8 @@
       effect: NEWTAB_WALLPAPER_EFFECT_STORAGE_KEY,
       topContentMode: NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
       timeFontWeight: NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
+      timeFontSize: NEWTAB_TIME_FONT_SIZE_STORAGE_KEY,
+      timeOpacity: NEWTAB_TIME_OPACITY_STORAGE_KEY,
       timeFont: NEWTAB_TIME_FONT_STORAGE_KEY,
       timeSecondsVisible: NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY,
       favicon: NEWTAB_FAVICON_STORAGE_KEY
@@ -2286,6 +2294,10 @@
     },
     getTimeFontWeight: () => pageState.newtabTimeFontWeight,
     setTimeFontWeight: (...args) => setNewtabTimeFontWeight(...args),
+    getTimeFontSize: () => pageState.newtabTimeFontSize,
+    setTimeFontSize: (...args) => setNewtabTimeFontSize(...args),
+    getTimeOpacity: () => pageState.newtabTimeOpacity,
+    setTimeOpacity: (...args) => setNewtabTimeOpacity(...args),
     getTimeFont: () => pageState.newtabTimeFont,
     setTimeFont: (...args) => setNewtabTimeFont(...args),
     getTimeSecondsVisible: () => pageState.newtabTimeSecondsVisible,
@@ -2702,6 +2714,22 @@
     }
     setNewtabTimeFontWeight(nextValue);
   });
+  storageChanges.on(NEWTAB_TIME_FONT_SIZE_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_TIME_FONT_SIZE_STORAGE_KEY].newValue;
+    const nextValue = SETTINGS.normalizeNewtabTimeFontSize(raw);
+    if (storageArea && raw !== undefined && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_TIME_FONT_SIZE_STORAGE_KEY]: nextValue });
+    }
+    setNewtabTimeFontSize(nextValue);
+  });
+  storageChanges.on(NEWTAB_TIME_OPACITY_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_TIME_OPACITY_STORAGE_KEY].newValue;
+    const nextValue = SETTINGS.normalizeNewtabTimeOpacity(raw);
+    if (storageArea && raw !== undefined && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_TIME_OPACITY_STORAGE_KEY]: nextValue });
+    }
+    setNewtabTimeOpacity(nextValue);
+  });
   storageChanges.on(NEWTAB_TIME_FONT_STORAGE_KEY, (changes) => {
     const raw = changes[NEWTAB_TIME_FONT_STORAGE_KEY].newValue;
     const nextValue = normalizeNewtabTimeFont(raw);
@@ -3012,6 +3040,8 @@
     storageArea.get([
       NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
       NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
+      NEWTAB_TIME_FONT_SIZE_STORAGE_KEY,
+      NEWTAB_TIME_OPACITY_STORAGE_KEY,
       NEWTAB_TIME_FONT_STORAGE_KEY,
       NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY
     ], (result) => {
@@ -3040,6 +3070,9 @@
       pageState.newtabTimeFont = nextFont;
       resolveInitialTimeFontReady(nextValue === 'time' ? loadNewtabTimeFont(nextFont) : true);
       setNewtabTimeFontWeight(nextFontWeight);
+      // Unset stays unset, so the defaults can still change later.
+      setNewtabTimeFontSize(result[NEWTAB_TIME_FONT_SIZE_STORAGE_KEY]);
+      setNewtabTimeOpacity(result[NEWTAB_TIME_OPACITY_STORAGE_KEY]);
       setNewtabTimeSecondsVisible(nextSecondsVisible);
       setNewtabTopContentMode(nextValue);
       if (pageState.wallpaperRuntime && typeof pageState.wallpaperRuntime.updateTopContentModeUi === 'function') {
@@ -3268,6 +3301,8 @@
     NEWTAB_GLASS_STYLE_STORAGE_KEY,
     NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
     NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
+    NEWTAB_TIME_FONT_SIZE_STORAGE_KEY,
+    NEWTAB_TIME_OPACITY_STORAGE_KEY,
     NEWTAB_TIME_FONT_STORAGE_KEY,
     NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY,
     NEWTAB_THEME_MODE_STORAGE_KEY,
@@ -3565,6 +3600,8 @@
     renderNewtabTopContent,
     setNewtabTopContentMode,
     setNewtabTimeFontWeight,
+    setNewtabTimeFontSize,
+    setNewtabTimeOpacity,
     setNewtabTimeFont,
     loadNewtabTimeFont,
     setNewtabTimeSecondsVisible

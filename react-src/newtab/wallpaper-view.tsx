@@ -78,7 +78,7 @@ export interface WallpaperPanelModel {
   >>;
   quoteFontSize?: { defaultValue?: number; max?: number; min?: number };
   /** Notches (0-100) drawn on each slider's track. */
-  marks?: Partial<Record<'searchWidth' | 'shortcutColumns' | 'shortcutSize' | 'shortcutGap' | 'timeWeight', number[]>>;
+  marks?: Partial<Record<'searchWidth' | 'shortcutColumns' | 'shortcutSize' | 'shortcutGap' | 'timeWeight' | 'timeSize', number[]>>;
   wallpapers?: WallpaperItem[];
 }
 
@@ -129,6 +129,8 @@ export interface WallpaperPanelActions extends TooltipActions {
   resetShortcutGap(): void;
   resetShortcutSize(): void;
   resetTimeFontWeight(): void;
+  resetTimeFontSize(): void;
+  resetTimeOpacity(): void;
   restoreDailyWallpaper(): void;
   selectBingWallpaper(id: string): void;
   selectCuratedCategory(category: string): void;
@@ -157,6 +159,8 @@ export interface WallpaperPanelActions extends TooltipActions {
   setShortcutSize(value: number, change: SliderChange): void;
   setShortcutsVisible(visible: boolean): void;
   setTimeFontWeight(value: number, change: SliderChange): void;
+  setTimeFontSize(value: number, change: SliderChange): void;
+  setTimeOpacity(value: number, change: SliderChange): void;
   setTimeFont(value: string): void;
   setTimeSecondsVisible(visible: boolean): void;
   setWallpaperEnabled(enabled: boolean): void;
@@ -202,6 +206,8 @@ export interface WallpaperPanelState {
     seconds: { title: string; toggle: ToggleState; visible: boolean };
     timeFont: { ariaLabel: string; options: SelectMenuOption[]; title: string; value: string; visible: boolean };
     timeWeight: SliderState & { resetLabel: string; resetVisible: boolean; visible: boolean };
+    timeSize: SliderState & { resetLabel: string; resetVisible: boolean; visible: boolean };
+    timeOpacity: SliderState & { resetLabel: string; resetVisible: boolean; visible: boolean };
     title: string;
     topContent: { title: string; tabs: SegmentState<TopContentMode> };
     width: SliderState;
@@ -1199,6 +1205,49 @@ function WallpaperPanel({
                     visible: state.search.timeWeight.resetVisible
                   }}
                   slider={state.search.timeWeight}
+                />
+              </div>
+              <div
+                {...ref('topContentSizeControl')}
+                {...collapsible(state.search.timeSize.visible)}
+                className="x-nt-time-weight-control x-nt-time-size-control x-nt-panel-collapsible"
+              >
+                <PanelSlider
+                  bubble={sliderBubble}
+                  className="x-nt-overlay-slider-wrap x-nt-time-weight-slider-wrap"
+                  inputClass="x-nt-overlay-slider x-nt-time-size-slider"
+                  labelRef="topContentSizeTitle"
+                  marks={marks.timeSize}
+                  name="topContentSizeSlider"
+                  onChange={actions.setTimeFontSize}
+                  reset={{
+                    label: state.search.timeSize.resetLabel,
+                    name: 'topContentSizeResetButton',
+                    onReset: actions.resetTimeFontSize,
+                    visible: state.search.timeSize.resetVisible
+                  }}
+                  slider={state.search.timeSize}
+                />
+              </div>
+              <div
+                {...ref('topContentOpacityControl')}
+                {...collapsible(state.search.timeOpacity.visible)}
+                className="x-nt-time-weight-control x-nt-time-opacity-control x-nt-panel-collapsible"
+              >
+                <PanelSlider
+                  bubble={sliderBubble}
+                  className="x-nt-overlay-slider-wrap x-nt-time-weight-slider-wrap"
+                  inputClass="x-nt-overlay-slider x-nt-time-opacity-slider"
+                  labelRef="topContentOpacityTitle"
+                  name="topContentOpacitySlider"
+                  onChange={actions.setTimeOpacity}
+                  reset={{
+                    label: state.search.timeOpacity.resetLabel,
+                    name: 'topContentOpacityResetButton',
+                    onReset: actions.resetTimeOpacity,
+                    visible: state.search.timeOpacity.resetVisible
+                  }}
+                  slider={state.search.timeOpacity}
                 />
               </div>
               <div

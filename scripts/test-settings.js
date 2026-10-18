@@ -22,7 +22,8 @@ assert.strictEqual(settings.addStorageChangeListener({
 // The Search sources order record added one additive preference. An absent
 // value keeps every list in its usual order, so it carries no migration.
 // The New Tab time font is another: an absent value keeps Open Sans.
-assert.strictEqual(settings.CHROME_SYNC_STORAGE_KEYS.length, 80);
+// So are the time size and opacity: absent values keep 54px and 100%.
+assert.strictEqual(settings.CHROME_SYNC_STORAGE_KEYS.length, 82);
 assert(settings.CHROME_SYNC_STORAGE_KEYS.includes('_x_extension_newtab_time_font_2026_unique_'));
 assert(settings.CHROME_SYNC_STORAGE_KEYS.includes('_x_extension_search_source_order_2026_unique_'));
 assert.strictEqual(
@@ -146,6 +147,17 @@ assert.strictEqual(settings.normalizeNewtabTimeFontWeight(299), 300);
 assert.strictEqual(settings.normalizeNewtabTimeFontWeight(320), 320);
 assert.strictEqual(settings.normalizeNewtabTimeFontWeight('537'), 537);
 assert.strictEqual(settings.normalizeNewtabTimeFontWeight(801), 800);
+assert(settings.CHROME_SYNC_STORAGE_KEYS.includes(settings.NEWTAB_TIME_FONT_SIZE_STORAGE_KEY));
+assert(settings.CHROME_SYNC_STORAGE_KEYS.includes(settings.NEWTAB_TIME_OPACITY_STORAGE_KEY));
+assert.strictEqual(settings.normalizeNewtabTimeFontSize(undefined), 54);
+assert.strictEqual(settings.normalizeNewtabTimeFontSize(null), 54);
+assert.strictEqual(settings.normalizeNewtabTimeFontSize(10), 32);
+assert.strictEqual(settings.normalizeNewtabTimeFontSize('72.4'), 72);
+assert.strictEqual(settings.normalizeNewtabTimeFontSize(500), 96);
+assert.strictEqual(settings.normalizeNewtabTimeOpacity(undefined), 100);
+assert.strictEqual(settings.normalizeNewtabTimeOpacity(0), 20);
+assert.strictEqual(settings.normalizeNewtabTimeOpacity(65), 65);
+assert.strictEqual(settings.normalizeNewtabTimeOpacity(140), 100);
 assert.strictEqual(
   settings.NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
   '_x_extension_newtab_time_font_weight_2026_unique_'

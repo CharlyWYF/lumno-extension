@@ -710,6 +710,18 @@
   "newtab_time_font_weight_reset": {
     "message": "時刻の文字の太さを初期値に戻す"
   },
+  "newtab_time_font_size_title": {
+    "message": "時刻の文字サイズ"
+  },
+  "newtab_time_font_size_reset": {
+    "message": "時刻の文字サイズを初期値に戻す"
+  },
+  "newtab_time_opacity_title": {
+    "message": "時刻の不透明度"
+  },
+  "newtab_time_opacity_reset": {
+    "message": "時刻の不透明度を初期値に戻す"
+  },
   "newtab_time_show_seconds_title": {
     "message": "秒を表示"
   },

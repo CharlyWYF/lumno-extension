@@ -85,6 +85,18 @@ export function createDefaultPanelState(): WallpaperPanelState {
         resetVisible: false,
         visible: false
       },
+      timeSize: {
+        ...slider('Time size', 54, 32, 96, { suffix: ' px' }),
+        resetLabel: '',
+        resetVisible: false,
+        visible: false
+      },
+      timeOpacity: {
+        ...slider('Time opacity', 100, 20, 100, { suffix: '%' }),
+        resetLabel: '',
+        resetVisible: false,
+        visible: false
+      },
       title: 'Search box',
       topContent: {
         tabs: {

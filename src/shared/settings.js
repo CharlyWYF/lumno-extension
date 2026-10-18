@@ -168,6 +168,17 @@
   const NEWTAB_TIME_FONT_WEIGHT_MIN = 300;
   const NEWTAB_TIME_FONT_WEIGHT_MAX = 800;
   const NEWTAB_TIME_FONT_WEIGHT_DEFAULT = 320;
+  // The clock's size at full window width, in px; narrower windows scale it
+  // down in proportion.
+  const NEWTAB_TIME_FONT_SIZE_STORAGE_KEY = '_x_extension_newtab_time_font_size_2026_unique_';
+  const NEWTAB_TIME_FONT_SIZE_MIN = 32;
+  const NEWTAB_TIME_FONT_SIZE_MAX = 96;
+  const NEWTAB_TIME_FONT_SIZE_DEFAULT = 54;
+  // The clock's opacity, in percent.
+  const NEWTAB_TIME_OPACITY_STORAGE_KEY = '_x_extension_newtab_time_opacity_2026_unique_';
+  const NEWTAB_TIME_OPACITY_MIN = 20;
+  const NEWTAB_TIME_OPACITY_MAX = 100;
+  const NEWTAB_TIME_OPACITY_DEFAULT = 100;
   const NEWTAB_TIME_FONT_STORAGE_KEY = '_x_extension_newtab_time_font_2026_unique_';
   const NEWTAB_TIME_FONT_DEFAULT = 'open-sans';
   // The stored weight stays within 300-800; each face clamps it to the range
@@ -315,6 +326,8 @@
     OVERLAY_TAB_PRIORITY_STORAGE_KEY,
     NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
     NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
+    NEWTAB_TIME_FONT_SIZE_STORAGE_KEY,
+    NEWTAB_TIME_OPACITY_STORAGE_KEY,
     NEWTAB_TIME_FONT_STORAGE_KEY,
     NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY,
     RESTRICTED_ACTION_STORAGE_KEY,
@@ -480,6 +493,28 @@
     return Math.min(
       NEWTAB_TIME_FONT_WEIGHT_MAX,
       Math.max(NEWTAB_TIME_FONT_WEIGHT_MIN, Math.round(number))
+    );
+  }
+
+  function normalizeNewtabTimeFontSize(value) {
+    const number = Number(value);
+    if (value === null || value === '' || !Number.isFinite(number)) {
+      return NEWTAB_TIME_FONT_SIZE_DEFAULT;
+    }
+    return Math.min(
+      NEWTAB_TIME_FONT_SIZE_MAX,
+      Math.max(NEWTAB_TIME_FONT_SIZE_MIN, Math.round(number))
+    );
+  }
+
+  function normalizeNewtabTimeOpacity(value) {
+    const number = Number(value);
+    if (value === null || value === '' || !Number.isFinite(number)) {
+      return NEWTAB_TIME_OPACITY_DEFAULT;
+    }
+    return Math.min(
+      NEWTAB_TIME_OPACITY_MAX,
+      Math.max(NEWTAB_TIME_OPACITY_MIN, Math.round(number))
     );
   }
 
@@ -1495,6 +1530,14 @@
     NEWTAB_TIME_FONT_WEIGHT_MIN,
     NEWTAB_TIME_FONT_WEIGHT_MAX,
     NEWTAB_TIME_FONT_WEIGHT_DEFAULT,
+    NEWTAB_TIME_FONT_SIZE_STORAGE_KEY,
+    NEWTAB_TIME_FONT_SIZE_MIN,
+    NEWTAB_TIME_FONT_SIZE_MAX,
+    NEWTAB_TIME_FONT_SIZE_DEFAULT,
+    NEWTAB_TIME_OPACITY_STORAGE_KEY,
+    NEWTAB_TIME_OPACITY_MIN,
+    NEWTAB_TIME_OPACITY_MAX,
+    NEWTAB_TIME_OPACITY_DEFAULT,
     NEWTAB_TIME_FONT_STORAGE_KEY,
     NEWTAB_TIME_FONT_DEFAULT,
     NEWTAB_TIME_FONTS,
@@ -1507,6 +1550,8 @@
     normalizeNewtabQuotePrefs,
     normalizeNewtabWordmarkVisible,
     normalizeNewtabTimeFontWeight,
+    normalizeNewtabTimeFontSize,
+    normalizeNewtabTimeOpacity,
     getNewtabTimeFont,
     normalizeNewtabTimeFont,
     resolveNewtabTimeFontWeight,
