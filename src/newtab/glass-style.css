@@ -108,7 +108,7 @@ body[data-glass-style="frosted"][data-nt-ready="1"][data-theme="dark"] {
      down, so the glass dims instead of going muddy.
    The saturation boost stays small, so a strongly colored wallpaper does not stain the glass. */
 body[data-glass-style="liquid"][data-nt-ready="1"] {
-  --x-nt-glass-filter: blur(1px) saturate(120%) contrast(0.86) brightness(1.075);
+  --x-nt-glass-filter: blur(2px) saturate(120%) contrast(0.86) brightness(1.075);
   /* Floating layers carry lists of text: still clear glass, the scene behind softened rather than
      erased, with a little more tint than the plates to hold the labels. */
   --x-nt-glass-float-filter: blur(10px) saturate(130%) contrast(0.82) brightness(1.1);
@@ -261,10 +261,15 @@ body[data-glass-style] .x-nt-wallpaper-panel[data-open="true"] {
 /* Liquid: the results grow out of the search bar as the same pane of glass, with the bar's light
    blur, tint and refraction, so opening or closing the list changes nothing under the bar (the
    sampler gives the bar and the plate one tint, measured over the area the plate can cover). */
+/* One rim for the bar and the plate (read by createLiquidSurfaces): the plate takes over the bar's
+   backdrop as it opens, so a rim of its own would visibly bend and fringe the bar differently. */
+body[data-glass-style="liquid"] :is(
+  #_x_extension_newtab_root_2024_unique_,
+  #_x_extension_newtab_suggestions_surface_2026_unique_
+) {
+  --x-nt-glass-rim: 16px;
+}
 body[data-glass-style="liquid"] #_x_extension_newtab_suggestions_surface_2026_unique_ {
-  /* A wider rim than the bar's 14px (read by createLiquidSurfaces), so the bend still shows along
-     a plate this size; the closed bar keeps its own. */
-  --x-nt-glass-rim: 22px;
   background: var(--x-nt-glass-fill);
   border-color: transparent;
   box-shadow: var(--x-nt-glass-edge), var(--x-nt-glass-float-shadow);
@@ -406,11 +411,11 @@ body[data-glass-style="liquid"][data-nt-ready="1"]:not([data-theme="dark"]) :is(
 )[data-glass-ink="dark"] {
   /* brightness is 1 / (0.5 + contrast / 2): whites stay white, the darks lift toward them, so the
      veil lightens the scene instead of graying it. */
-  --x-nt-glass-filter: blur(1px) saturate(115%) contrast(0.74) brightness(1.15);
+  --x-nt-glass-filter: blur(2px) saturate(115%) contrast(0.74) brightness(1.15);
   --x-nt-glass-float-filter: blur(10px) saturate(125%) contrast(0.76) brightness(1.14);
 }
 body[data-glass-style="liquid"][data-nt-ready="1"]:not([data-theme="dark"]) :is(.x-nt-recent-card-visual, .x-nt-bookmark-card)[data-glass-ink="dark"] {
-  --x-nt-glass-filter: blur(1px) saturate(118%) contrast(0.8) brightness(1.11);
+  --x-nt-glass-filter: blur(2px) saturate(118%) contrast(0.8) brightness(1.11);
 }
 /* The search bar takes the results' veil and tint, so it reads the same pane closed and open. */
 body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(

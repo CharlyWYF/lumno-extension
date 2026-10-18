@@ -6641,8 +6641,10 @@
   // own (will-change: transform) as its displacement map instead of the bent backdrop when another
   // layer appears, such as a tooltip: menus and the Appearance panel, which need their layers, go
   // without the bend, and the cards drop their will-change under liquid glass (glass-style.css).
-  // Every lensed surface fringes into colors along its rim. A surface can widen its rim in
-  // --x-nt-glass-rim (the open results plate does, in glass-style.css).
+  // Only the search bar and its results fringe into colors along the rim: a card's wide rim turns
+  // even a slight split, softened by the blur ahead of the lens, into an orange and blue haze in its
+  // corners. A surface can set its rim in --x-nt-glass-rim (the search bar and its results plate
+  // share one, in glass-style.css).
   const NEWTAB_LIQUID_SEARCH_SELECTOR = [
     '#_x_extension_newtab_root_2024_unique_',
     '#_x_extension_newtab_suggestions_surface_2026_unique_'
@@ -6670,7 +6672,7 @@
       documentObj: document,
       windowObj: window,
       selector: NEWTAB_LIQUID_SURFACE_SELECTOR,
-      dispersionSelector: NEWTAB_LIQUID_SURFACE_SELECTOR,
+      dispersionSelector: NEWTAB_LIQUID_SEARCH_SELECTOR,
       property: '--x-nt-glass-refraction',
       rimProperty: '--x-nt-glass-rim'
     });

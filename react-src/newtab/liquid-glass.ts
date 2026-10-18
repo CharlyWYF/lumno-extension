@@ -17,8 +17,9 @@ const BEZEL_PX = 16;
 // with a hard seam inside it.
 export const LIQUID_GLASS_DISPLACEMENT_SCALE = 16;
 // Blue bends further than red: each channel samples the backdrop at its own share of the bend, so
-// the rim fringes where the wallpaper has edges. Nothing splits in the flat middle.
-export const LIQUID_GLASS_DISPERSION = 0.25;
+// the rim fringes where the wallpaper has edges. Nothing splits in the flat middle. Kept small: the
+// split grows with the bend, so it only suits a narrow rim.
+export const LIQUID_GLASS_DISPERSION = 0.12;
 const FLOATING_RADIUS_PX = 14;
 
 export type LiquidGlassShape = 'docked' | 'floating';
@@ -61,7 +62,11 @@ export function getRimDisplacement(
     }
     return [0, -rimStrength(distance / bezel)];
   }
-  const radius = Math.min(geometry.radius ?? FLOATING_RADIUS_PX, width / 2, height / 2);
+  // The rim turns its corners on a curve at least as wide as the rim. On a tighter one, the rim's
+  // inner edge has a sharp corner, so the bend snaps from sideways to upward along its diagonal: a
+  // seam that the color split lights as a glow in each corner. Past the surface's own, tighter
+  // curve the rim is at full strength anyway.
+  const radius = Math.min(Math.max(geometry.radius ?? FLOATING_RADIUS_PX, bezel), width / 2, height / 2);
   const centerX = width / 2;
   const centerY = height / 2;
   const qx = Math.abs(x - centerX) - (centerX - radius);

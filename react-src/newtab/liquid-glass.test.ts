@@ -54,11 +54,20 @@ describe('New Tab bookmarks bar liquid glass', () => {
     expect(getSurfaceDisplacementScale(16)).toBe(16);
     expect(getSurfaceDisplacementScale(30)).toBe(30);
     // A rounder corner pushes the rim's bend off the straight edge near the corner.
-    const sharp = getRimDisplacement(4, 2, 48, 48, 'floating', { radius: 4, bezel: 16 });
+    const straight = getRimDisplacement(40, 2, 120, 120, 'floating', { radius: 4, bezel: 16 });
     const round = getRimDisplacement(4, 2, 48, 48, 'floating', { radius: 16, bezel: 16 });
-    expect(sharp[0]).toBe(0);
+    expect(straight[0]).toBe(0);
     expect(round[0]).toBeGreaterThan(0);
     expect(getRimDisplacement(24, 24, 48, 48, 'floating', { radius: 16, bezel: 16 })).toEqual([0, 0]);
+    // A corner tighter than its rim turns the bend as one as wide as the rim does, so it never
+    // snaps from sideways to upward along the corner's diagonal.
+    const tight = { radius: 22, bezel: 40 };
+    expect(getRimDisplacement(30, 32, 230, 165, 'floating', tight))
+      .toEqual(getRimDisplacement(30, 32, 230, 165, 'floating', { radius: 40, bezel: 40 }));
+    const [beforeX, beforeY] = getRimDisplacement(29.5, 30.5, 230, 165, 'floating', tight);
+    const [afterX, afterY] = getRimDisplacement(30.5, 29.5, 230, 165, 'floating', tight);
+    expect(Math.abs(beforeX - afterX)).toBeLessThan(0.03);
+    expect(Math.abs(beforeY - afterY)).toBeLessThan(0.03);
   });
 
   it('eases the bend out to nothing at the rim\'s inner edge, without folding the scene', () => {
