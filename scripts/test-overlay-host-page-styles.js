@@ -46,7 +46,7 @@ function listHostStyleNodes(document) {
         `only @font-face rules may reach the host page, found: ${rule.cssText}`);
     });
     const families = hostRules.map((rule) => rule.style.getPropertyValue('font-family').replace(/["']/g, ''));
-    assert.deepStrictEqual(families.sort(), ['Lumno Open Sans', 'lumno-remixicon'],
+    assert.deepStrictEqual([...new Set(families)].sort(), ['Lumno Open Sans', 'lumno-remixicon'],
       'host-level faces must not reuse the page-visible "Open Sans" or "remixicon" family names');
     assert.ok(/remixicon\.woff2/.test(fontFaceStyle.textContent));
     assert.ok(/OpenSans-VariableFont/.test(fontFaceStyle.textContent));

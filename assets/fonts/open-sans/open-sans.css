@@ -1,7 +1,26 @@
+/*
+ * One variable font, declared in three weight bands so src/shared/cjk-font-faces.js
+ * can add a CJK face to the middle band only. Faces compose into one font only when
+ * their descriptors match, so the bands must stay in step with that file.
+ */
 @font-face {
   font-family: "Open Sans";
   src: url("./OpenSans-VariableFont-wdth-wght.woff2") format("woff2");
   font-style: normal;
-  font-weight: 300 800;
+  font-weight: 300 549;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Open Sans";
+  src: url("./OpenSans-VariableFont-wdth-wght.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 550 649;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Open Sans";
+  src: url("./OpenSans-VariableFont-wdth-wght.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 650 800;
   font-display: swap;
 }

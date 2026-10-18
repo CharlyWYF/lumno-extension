@@ -43,6 +43,7 @@ const injectedScriptFiles = [
   'src/shared/community-links.js',
   'src/shared/browser-profile.js',
   'src/shared/settings.js',
+  'src/shared/cjk-font-faces.js',
   'src/shared/search-utils.js',
   'src/shared/site-search-store.js',
   'src/shared/suggestion-navigation.js',

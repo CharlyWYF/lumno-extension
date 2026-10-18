@@ -572,14 +572,20 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     };
     const style = document.createElement('style');
     style.id = styleId;
-    style.textContent = [
+    // The same weight bands as open-sans.css, so applyOverlayCjkFontFace can
+    // add its CJK face to the middle one.
+    const openSansUrl = toCssUrl('assets/fonts/open-sans/OpenSans-VariableFont-wdth-wght.woff2');
+    const openSansFaces = ['300 549', '550 649', '650 800'].map((weight) => [
       '@font-face {',
       '  font-family: "Lumno Open Sans";',
-      `  src: ${toCssUrl('assets/fonts/open-sans/OpenSans-VariableFont-wdth-wght.woff2')} format("woff2");`,
+      `  src: ${openSansUrl} format("woff2");`,
       '  font-style: normal;',
-      '  font-weight: 300 800;',
+      `  font-weight: ${weight};`,
       '  font-display: swap;',
-      '}',
+      '}'
+    ].join('\n'));
+    style.textContent = [
+      ...openSansFaces,
       '@font-face {',
       '  font-family: "lumno-remixicon";',
       `  src: ${toCssUrl('assets/remixicon/fonts/remixicon.woff2')} format("woff2");`,
@@ -590,6 +596,18 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
   }
 
   ensureOverlayFontFaces();
+
+  function applyOverlayCjkFontFace(locale) {
+    const cjkFontFaces = globalThis.LumnoCjkFontFaces;
+    if (!cjkFontFaces) {
+      return;
+    }
+    cjkFontFaces.install(document, {
+      family: 'Lumno Open Sans',
+      lang: SETTINGS.localeToHtmlLang(locale),
+      styleId: '_x_extension_overlay_cjk_font_faces_2026_unique_'
+    });
+  }
 
 
   function getSystemLocale() {
@@ -640,6 +658,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     const targetLocale = overlayLanguageMode === 'system'
       ? getSystemLocale()
       : SETTINGS.normalizeLocale(overlayLanguageMode);
+    applyOverlayCjkFontFace(targetLocale);
     currentMessages = await loadPreferredLocaleMessages(targetLocale, null);
   }
 
@@ -2282,6 +2301,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
       const targetLocale = overlayLanguageMode === 'system'
         ? getSystemLocale()
         : SETTINGS.normalizeLocale(overlayLanguageMode);
+      applyOverlayCjkFontFace(targetLocale);
       loadPreferredLocaleMessages(targetLocale, null).then((messages) => {
         currentMessages = messages || {};
         applyLanguageStrings();

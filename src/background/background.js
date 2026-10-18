@@ -2194,6 +2194,7 @@ function openOverlayOnTab(activeTab, tabs, source, options) {
   const shouldInjectOverlayCodexDebugSurface = codexDebugBridge.isEnabled();
   const overlayInjectionFiles = [
     'src/shared/icon-font-preload.js',
+    'src/shared/cjk-font-faces.js',
     ...(shouldInjectOverlayCodexDebugSurface ? ['src/shared/codex-debug-surface.js'] : []),
     'src/shared/settings.js',
     'src/shared/blacklist-utils.js',
