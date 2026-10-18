@@ -135,7 +135,9 @@ body[data-glass-style] :is(
   #_x_extension_newtab_suggestions_surface_2026_unique_,
   ._x_extension_menu_surface_2024_unique_,
   .x-nt-wallpaper-panel,
-  .x-nt-bookmarks-topbar
+  .x-nt-bookmarks-topbar,
+  .x-nt-feedback-popover,
+  .x-lumno-toast
 ) {
   --x-nt-glass-tint-alpha: calc(
     var(--x-nt-glass-tint-thin) +
@@ -239,14 +241,17 @@ body[data-glass-style] #_x_extension_newtab_search_layer_2024_unique_ {
   border-color: transparent;
   box-shadow: none;
 }
-/* The open search stack, menus and the Appearance panel float: the same material as the plates,
-   density adapting the same way, from a higher floor because they carry more to read. Under the
-   liquid material the open search stack is the exception, below. */
+/* The open search stack, menus, the Appearance panel, the feedback menu, dialogs and toasts float:
+   the same material as the plates, density adapting the same way, from a higher floor because they
+   carry more to read. Under the liquid material the open search stack is the exception, below. */
 body[data-glass-style]:not([data-glass-style="liquid"]) #_x_extension_newtab_suggestions_surface_2026_unique_,
 /* :is() lifts menus to the specificity of a menu's own dark-palette surface rule (the shortcut
    context menu paints one), so the glass wins as the later sheet. */
 body[data-glass-style] ._x_extension_menu_surface_2024_unique_:is(*, [data-glass-ink]),
-body[data-glass-style] .x-nt-wallpaper-panel {
+body[data-glass-style] .x-nt-wallpaper-panel,
+body[data-glass-style] .x-nt-feedback-popover,
+/* Failures keep their red. */
+body[data-glass-style] .x-lumno-toast:not([data-tone="error"]) {
   --x-nt-glass-tint-rgb: var(--x-nt-glass-float-rgb);
   --x-nt-glass-tint-thin: var(--x-nt-glass-float-thin);
   --x-nt-glass-tint-dense: var(--x-nt-glass-float-dense);
@@ -259,7 +264,10 @@ body[data-glass-style] .x-nt-wallpaper-panel {
    page's few closed menus cost every frame as much as open ones. */
 body[data-glass-style][data-nt-suggestions-open="true"] #_x_extension_newtab_suggestions_surface_2026_unique_,
 body[data-glass-style] ._x_extension_menu_surface_2024_unique_:is([data-open="true"], [data-open="true"] > :not([data-open])),
-body[data-glass-style] .x-nt-wallpaper-panel[data-open="true"] {
+body[data-glass-style] .x-nt-wallpaper-panel[data-open="true"],
+body[data-glass-style] .x-lumno-toast[data-show="true"]:not([data-tone="error"]),
+/* The feedback menu leaves the page (hidden) once closed. */
+body[data-glass-style] .x-nt-feedback-popover {
   backdrop-filter: var(--x-nt-glass-float-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1)) var(--x-nt-glass-refraction,);
   -webkit-backdrop-filter: var(--x-nt-glass-float-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1)) var(--x-nt-glass-refraction,);
 }
@@ -308,6 +316,16 @@ body[data-glass-style] #_x_extension_newtab_suggestions_outline_2026_unique_ {
   body[data-glass-style] .x-nt-wallpaper-panel[data-open="true"] {
     transition: opacity var(--lumno-duration-sm) ease, visibility var(--lumno-duration-sm) ease,
       transform var(--lumno-duration-lg) cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  body[data-glass-style] .x-lumno-toast {
+    transition: opacity var(--lumno-duration-sm) ease, transform var(--lumno-duration-lg) ease,
+      top var(--lumno-duration-md) ease,
+      backdrop-filter 0s linear var(--lumno-duration-sm) allow-discrete,
+      -webkit-backdrop-filter 0s linear var(--lumno-duration-sm) allow-discrete;
+  }
+  body[data-glass-style] .x-lumno-toast[data-show="true"] {
+    transition: opacity var(--lumno-duration-sm) ease, transform var(--lumno-duration-lg) ease,
+      top var(--lumno-duration-md) ease;
   }
   body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint {
     transition: opacity var(--lumno-duration-md, 0.18s) ease, transform var(--lumno-duration-md, 0.18s) ease,
@@ -424,7 +442,9 @@ body[data-glass-style="liquid"][data-nt-ready="1"]:not([data-theme="dark"]) :is(
   .x-nt-recent-card-visual,
   .x-nt-bookmark-card,
   ._x_extension_menu_surface_2024_unique_,
-  .x-nt-wallpaper-panel
+  .x-nt-wallpaper-panel,
+  .x-nt-feedback-popover,
+  .x-lumno-toast
 )[data-glass-ink="dark"] {
   /* brightness is 1 / (0.5 + contrast / 2): whites stay white, the darks lift toward them, so the
      veil lightens the scene instead of graying it. */
@@ -470,7 +490,12 @@ body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(.x-nt-recent-card-v
   --x-nt-glass-tint-dense: 0.54;
   --x-nt-glass-inset: rgba(255, 255, 255, 0.42);
 }
-body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(._x_extension_menu_surface_2024_unique_, .x-nt-wallpaper-panel)[data-glass-ink="dark"] {
+body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(
+  ._x_extension_menu_surface_2024_unique_,
+  .x-nt-wallpaper-panel,
+  .x-nt-feedback-popover,
+  .x-lumno-toast
+)[data-glass-ink="dark"] {
   --x-nt-glass-tint-thin: 0.42;
   --x-nt-glass-tint-dense: 0.62;
 }
@@ -776,6 +801,119 @@ body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:is([data-glass-i
   --x-lumno-feature-hint-badge-gloss: transparent;
   --x-lumno-feature-hint-badge-border: rgba(255, 255, 255, 0.14);
   --x-lumno-feature-hint-badge-shadow: none;
+}
+
+/* The feedback menu's links are lifted layers of its glass, the community button keeps its primary
+   face. The variables are set on every element in the menu, since a flipped menu's dark palette
+   sets them on each of them. */
+body[data-glass-style] :is(.x-nt-feedback-popover, .x-nt-feedback-popover *) {
+  --x-nt-feedback-ink: var(--x-nt-text);
+  --x-nt-feedback-detail-ink: var(--x-nt-text);
+  --x-nt-feedback-action-ink: var(--x-nt-text);
+  --x-nt-feedback-action-face: var(--x-nt-glass-raised);
+  --x-nt-feedback-action-edge: var(--x-nt-glass-raised-edge);
+  --x-nt-feedback-action-hover-face:
+    linear-gradient(var(--x-nt-glass-row-hover), var(--x-nt-glass-row-hover)), var(--x-nt-glass-raised);
+  --x-nt-feedback-action-hover-edge: var(--x-nt-glass-raised-edge);
+  --x-nt-feedback-action-press-edge: var(--x-nt-glass-raised-edge);
+  --x-nt-feedback-detail-action-ink: var(--x-nt-glass-ink-secondary);
+  --x-nt-feedback-detail-action-hover-ink: var(--x-nt-text);
+  --x-nt-feedback-detail-action-hover-bg: var(--x-nt-glass-chip);
+  --x-nt-feedback-detail-action-press-bg: var(--x-nt-glass-chip-strong);
+  --x-nt-feedback-qr-bg: var(--x-nt-glass-chip);
+}
+
+/* Toasts: the glass with the page's ink. */
+body[data-glass-style] .x-lumno-toast:not([data-tone="error"]) {
+  color: var(--x-nt-text);
+}
+
+/* Dialogs are a thick glass: a whole form reads on them, so the scene behind is blurred until no
+   shape shows through and the tint is near solid; the wallpaper's colors still show. The tint is the
+   floating one, flipped to dark glass on the dialog's backdrop layer where the wallpaper is dark. */
+body[data-glass-style] :is(.x-nt-shortcut-dialog, .x-nt-recent-history-dialog) {
+  background: rgb(var(--x-nt-glass-float-rgb) / var(--x-nt-glass-modal-alpha));
+  box-shadow: var(--x-nt-glass-edge), var(--x-nt-glass-float-shadow);
+  backdrop-filter: var(--x-nt-glass-modal-filter);
+  -webkit-backdrop-filter: var(--x-nt-glass-modal-filter);
+}
+/* The tint and filter resolve on the backdrop layer, where the sample sets the density. */
+body[data-glass-style] :is(.x-nt-shortcut-dialog-backdrop, .x-nt-recent-history-backdrop, #_x_extension_community_qr_dialog_2026_unique_) {
+  --x-nt-glass-modal-alpha: calc(0.74 + 0.12 * var(--x-nt-glass-density, 0.35));
+  --x-nt-glass-modal-filter: blur(40px) saturate(150%) brightness(var(--x-nt-glass-backdrop-brightness, 1));
+}
+
+/* Dialogs. A dialog sits inside a backdrop layer that dims the page as it fades in. Under glass
+   that layer keeps full opacity and no filter of its own: either makes it the backdrop root of the
+   dialog, whose glass would then blur only the dim, never the wallpaper. The dim and its light blur
+   move to a layer behind the dialog that fades on its own, the dialog fades itself as before, and
+   the dim is lighter, so the glass still shows the wallpaper's colors. The backdrop layer is where
+   the wallpaper sample sets the dialog's ink (newtab.js). */
+body[data-glass-style] :is(.x-nt-shortcut-dialog-backdrop, .x-nt-recent-history-backdrop) {
+  background: none;
+  opacity: 1;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+body[data-glass-style] :is(.x-nt-shortcut-dialog-backdrop, .x-nt-recent-history-backdrop)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(15, 23, 42, 0.22);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--lumno-duration-sm) ease;
+}
+body[data-glass-style][data-theme="dark"] :is(.x-nt-shortcut-dialog-backdrop, .x-nt-recent-history-backdrop)::before {
+  background: rgba(0, 0, 0, 0.3);
+}
+body[data-glass-style] :is(.x-nt-shortcut-dialog-backdrop, .x-nt-recent-history-backdrop)[data-open="true"]::before {
+  opacity: 1;
+}
+/* Fields, selects and the icon tile are recessed in the glass; set on every element in the
+   dialog, since a flipped dialog's dark palette sets them on each of them. The dialog color stands
+   in for the solid fill where a control is cut out of it (a chosen swatch's ring). */
+body[data-glass-style] .x-nt-shortcut-dialog {
+  --x-nt-shortcut-dialog-bg: rgb(var(--x-nt-glass-float-rgb));
+  color: var(--panel-text);
+}
+body[data-glass-style] :is(.x-nt-shortcut-dialog, .x-nt-shortcut-dialog *) {
+  --control-bg: var(--x-nt-glass-chip);
+  --control-hover-bg: var(--x-nt-glass-chip-strong);
+  --control-open-bg: var(--x-nt-glass-chip-strong);
+  --tab-border: transparent;
+  --input-focus-bg: var(--x-nt-glass-chip-strong);
+  --input-placeholder: var(--x-nt-placeholder);
+}
+body[data-glass-style] :is(.x-nt-shortcut-dialog-description, .x-nt-shortcut-icon-source-hint) {
+  color: var(--x-nt-glass-ink-secondary);
+}
+body[data-glass-style] .x-nt-folder-color-stage {
+  --x-nt-folder-color-dot: var(--x-nt-glass-well);
+}
+body[data-glass-style] .x-nt-folder-color-actions {
+  border-top-color: var(--x-nt-glass-divider);
+}
+/* Secondary buttons on floating glass are lifted, lit layers of it, like a segmented tab's pill. */
+body[data-glass-style] :is(.x-nt-shortcut-dialog, .x-nt-recent-history-dialog, .x-nt-wallpaper-panel) .x-lumno-action-button--secondary {
+  --x-lumno-action-border-color: transparent;
+  --x-lumno-action-bg: var(--x-nt-glass-raised);
+  --x-lumno-action-color: var(--x-nt-text);
+  --x-lumno-action-shadow: var(--x-nt-glass-raised-edge);
+  --x-lumno-action-hover-bg:
+    linear-gradient(var(--x-nt-glass-row-hover), var(--x-nt-glass-row-hover)), var(--x-nt-glass-raised);
+  --x-lumno-action-hover-border-color: transparent;
+  --x-lumno-action-hover-shadow: var(--x-nt-glass-raised-edge);
+}
+/* The dark theme's colors that the dialog sets per theme, for a dialog flipped to light ink. */
+body[data-glass-style] [data-glass-ink-theme="dark"] :is(.x-nt-shortcut-error, .x-nt-shortcut-icon-error) {
+  color: #fca5a5;
+}
+body[data-glass-style] [data-glass-ink-theme="dark"] .x-nt-shortcut-online-icon-preview[data-builtin-monochrome="true"] img {
+  filter: invert(1);
 }
 
 /* Light theme over dark wallpaper. A plate whose backdrop is dark (data-glass-ink="light", set by

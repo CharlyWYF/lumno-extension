@@ -154,8 +154,62 @@
     :host([data-theme="dark"]) .qr {
       background: #18181b;
     }
+    /* Glass (the New Tab's material, read from the host's custom properties). The backdrop keeps
+       full opacity and no filter, either of which would stop the card's glass at the dim instead of
+       the page: the dim fades on a layer of its own behind the card, and the card fades itself. */
+    :host([data-glass]) .backdrop {
+      background: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      opacity: 1;
+    }
+    :host([data-glass]) .backdrop::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.18);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 170ms ease;
+    }
+    :host([data-glass][data-theme="dark"]) .backdrop::before {
+      background: rgba(0, 0, 0, 0.3);
+    }
+    :host([data-glass][data-open="true"]) .backdrop::before {
+      opacity: 1;
+    }
+    :host([data-glass]) .card {
+      position: relative;
+      background: rgb(var(--x-nt-glass-float-rgb) / var(--x-nt-glass-modal-alpha));
+      border-color: transparent;
+      box-shadow: var(--x-nt-glass-edge), var(--x-nt-glass-float-shadow);
+      backdrop-filter: var(--x-nt-glass-modal-filter);
+      -webkit-backdrop-filter: var(--x-nt-glass-modal-filter);
+      color: var(--x-nt-text);
+      opacity: 0;
+      transition: opacity 170ms ease, transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    :host([data-glass][data-open="true"]) .card {
+      opacity: 1;
+    }
+    :host([data-glass]) .close {
+      color: var(--x-nt-glass-ink-secondary);
+    }
+    :host([data-glass]) .close:hover {
+      color: var(--x-nt-text);
+      background: var(--x-nt-glass-chip);
+    }
+    :host([data-glass]) .close:active {
+      background: var(--x-nt-glass-chip-strong);
+    }
+    :host([data-glass]) .qr {
+      background: var(--x-nt-glass-chip);
+    }
     @media (prefers-reduced-motion: reduce) {
       .backdrop,
+      .backdrop::before,
       .card {
         transition: none;
       }
@@ -179,7 +233,9 @@
 
   /**
    * Opens the dialog. options: { imageUrl, title, alt, closeLabel, theme
-   * ('light' | 'dark'), documentObj, returnFocus (element focused on close) }.
+   * ('light' | 'dark'), documentObj, returnFocus (element focused on close),
+   * glass (draw the card in the page's glass material; the dialog then opens in
+   * the body, where the page sets the material's custom properties) }.
    */
   function open(options) {
     const config = options && typeof options === 'object' ? options : {};
@@ -196,6 +252,9 @@
     host.id = HOST_ID;
     host.setAttribute('data-theme', config.theme === 'dark' ? 'dark' : 'light');
     host.setAttribute('data-open', 'false');
+    if (config.glass === true) {
+      host.setAttribute('data-glass', '');
+    }
     const shadow = host.attachShadow({ mode: 'open' });
 
     const style = documentObj.createElement('style');
@@ -299,7 +358,7 @@
       host.addEventListener(type, stopPropagation);
     });
 
-    documentObj.documentElement.appendChild(host);
+    (config.glass === true && documentObj.body ? documentObj.body : documentObj.documentElement).appendChild(host);
     active = controller;
     closeButton.focus({ preventScroll: true });
     // Lay out the closed state first so the enter transition runs.
