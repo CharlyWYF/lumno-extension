@@ -29,18 +29,18 @@ body[data-glass-style="frosted"] {
   --x-nt-glass-float-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
 }
 body[data-glass-style="frosted"][data-theme="dark"] {
-  --x-nt-glass-tint-rgb: 104 104 110;
+  /* A near-black tint: a mid-gray one lifted the dark backdrop into a flat gray. */
+  --x-nt-glass-tint-rgb: 40 40 44;
   --x-nt-glass-tint-thin: 0.24;
   --x-nt-glass-tint-dense: 0.48;
-  --x-nt-glass-sheen: rgba(255, 255, 255, 0.05);
+  --x-nt-glass-sheen: transparent;
   --x-nt-glass-float-rgb: 36 36 40;
   --x-nt-glass-float-thin: 0.62;
   --x-nt-glass-float-dense: 0.84;
   --x-nt-glass-inset: rgba(255, 255, 255, 0.06);
   --x-nt-glass-edge:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
     inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-    inset 0 0 18px rgba(255, 255, 255, 0.04),
     0 0 0 0.5px rgba(0, 0, 0, 0.32);
   --x-nt-glass-inset-edge: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   --x-nt-glass-float-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
@@ -97,7 +97,7 @@ body[data-glass-style="frosted"][data-nt-ready="1"] {
   --x-nt-glass-float-filter: var(--x-nt-glass-filter);
 }
 body[data-glass-style="frosted"][data-nt-ready="1"][data-theme="dark"] {
-  --x-nt-glass-filter: blur(30px) saturate(150%) contrast(0.62) brightness(0.62);
+  --x-nt-glass-filter: blur(30px) saturate(150%) contrast(0.82) brightness(0.7);
   --x-nt-glass-float-filter: var(--x-nt-glass-filter);
 }
 /* Liquid glass lightens or dims the scene inside the backdrop filter, the way a screen or multiply
@@ -505,6 +505,36 @@ body[data-glass-style] :is(._x_extension_menu_surface_2024_unique_) {
   --select-selected-bg: var(--x-nt-glass-row-active);
   --select-selected-text: var(--x-nt-text);
 }
+/* The site search panel is a menu surface, but it paints its fill inline and search-input.css turns
+   its backdrop off and gives its footer an opaque bar, all with the weight to beat the menu glass
+   above. Here it is one pane of that glass: the footer a band of it, the keys and the chosen tile
+   layers of it. The backdrop stays for as long as the panel shows, since its own transition list
+   (also !important) leaves no room for the menus' delayed drop on close. */
+body[data-glass-style] .x-lumno-search-input-mode__menu[data-surface="newtab"] {
+  background: var(--x-nt-glass-fill) !important;
+  border-color: transparent !important;
+  box-shadow: var(--x-nt-glass-edge), var(--x-nt-glass-float-shadow) !important;
+}
+body[data-glass-style] .x-lumno-search-input-mode__menu[data-surface="newtab"]:not([hidden]) {
+  backdrop-filter: var(--x-nt-glass-float-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1)) var(--x-nt-glass-refraction,) !important;
+  -webkit-backdrop-filter: var(--x-nt-glass-float-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1)) var(--x-nt-glass-refraction,) !important;
+}
+body[data-glass-style] .x-lumno-search-input-mode__menu[data-surface="newtab"] .x-lumno-search-input-mode__menu-footer {
+  background: transparent !important;
+  border-top-color: var(--x-nt-glass-divider) !important;
+}
+body[data-glass-style] .x-lumno-search-input-mode__menu[data-surface="newtab"] .x-lumno-search-input-mode__menu-footer-key {
+  background: var(--x-nt-glass-chip) !important;
+  border-color: transparent !important;
+  color: var(--x-nt-subtext) !important;
+}
+body[data-glass-style] .x-lumno-search-input-mode__menu[data-surface="newtab"] .x-lumno-search-input-mode__menu-item[aria-checked="true"] {
+  background: var(--x-nt-glass-row-active) !important;
+}
+body[data-glass-style] .x-lumno-search-input-mode__menu[data-surface="newtab"] .x-lumno-search-input-mode__menu-match {
+  background: var(--x-nt-glass-chip) !important;
+  color: inherit !important;
+}
 
 /* Controls on a glass panel are layers of the glass too: fields and tracks sit recessed in it, a
    segmented tab's pill is lifted and lit. The variables are set on the controls themselves because
@@ -595,13 +625,14 @@ body[data-glass-style]:not([data-theme="dark"]) :is(
 ) {
   --x-nt-glass-tint-rgb: 16 18 22;
   --x-nt-glass-float-rgb: 16 18 22;
-  --x-nt-glass-sheen: rgba(255, 255, 255, 0.08);
+  /* Dark glass stays flat: no sheen and no inner glow, only a faint rim. A top-down sheen and a
+     glow along the inside made the plates read as pillows. */
+  --x-nt-glass-sheen: transparent;
   --x-nt-glass-inset: rgba(255, 255, 255, 0.08);
   --x-nt-glass-inset-edge: inset 0 1px 0 rgba(255, 255, 255, 0.1);
   --x-nt-glass-edge:
-    inset 0 1px 0 rgba(255, 255, 255, 0.34),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
-    inset 0 0 16px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
     0 0 0 0.5px rgba(0, 0, 0, 0.3);
   --x-nt-text: #f5f5f7;
   --x-nt-subtext: rgba(235, 235, 245, 0.62);
@@ -626,7 +657,25 @@ body[data-glass-style="frosted"]:not([data-theme="dark"]) :is(
   --x-nt-glass-tint-dense: 0.58;
   --x-nt-glass-float-thin: 0.36;
   --x-nt-glass-float-dense: 0.66;
-  --x-nt-glass-backdrop-brightness: 0.62;
+  --x-nt-glass-backdrop-brightness: 0.7;
+}
+/* The light material pulls its backdrop toward a mid tone, which on a dark plate reads as gray.
+   Dark plates keep more of the wallpaper's contrast, as the dark theme does. */
+body[data-glass-style="frosted"][data-nt-ready="1"]:not([data-theme="dark"]) :is(
+  [data-glass-ink="light"],
+  body[data-glass-ink-hint="light"] :is(
+    #_x_extension_newtab_root_2024_unique_,
+    #_x_extension_newtab_suggestions_surface_2026_unique_,
+    #_x_extension_newtab_suggestions_container_2024_unique_,
+    .x-nt-shortcut-icon,
+    .x-nt-bookmark-card,
+    .x-nt-recent-card-visual,
+    .x-nt-wallpaper-button,
+    .x-nt-feedback-button,
+    .x-nt-bookmarks-pager-btn
+  ):not([data-glass-ink]):not(.x-nt-bookmarks-topbar *)
+) {
+  --x-nt-glass-filter: blur(30px) saturate(150%) contrast(0.82);
 }
 body[data-glass-style="liquid"]:not([data-theme="dark"]) :is(
   [data-glass-ink="light"],
