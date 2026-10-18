@@ -2,6 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { bundlePageScripts } = require('./helpers/page-script-bundles');
 
 const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
 const storeManifest = { ...manifest };
@@ -16,6 +17,11 @@ const packageRoots = [
   '_locales',
   'assets',
   'newtab.html'
+];
+const bundledScriptPages = [
+  'newtab.html',
+  'src/options/options.html',
+  'src/onboarding/onboarding.html'
 ];
 const developmentOnlyFiles = new Set([
   'src/background/codex-debug-bridge.js',
@@ -111,6 +117,19 @@ packageRoots.forEach((packageRoot) => {
   });
 });
 fs.writeFileSync(stagedPath('manifest.json'), `${JSON.stringify(storeManifest, null, 3)}\n`);
+
+function getHtmlBaseHref(source) {
+  const baseMatch = source.match(/<base\s+[^>]*href=["']([^"']+)["']/i);
+  return baseMatch ? baseMatch[1] : '';
+}
+
+// Directory that a page's relative src/href values resolve against.
+function getHtmlReferenceBase(packageFile, source) {
+  const baseHref = getHtmlBaseHref(source);
+  return baseHref
+    ? path.normalize(path.join(path.dirname(packageFile), baseHref))
+    : path.dirname(packageFile);
+}
 
 function replaceRequired(source, pattern, replacement, expectedCount, label) {
   let count = 0;
@@ -232,6 +251,43 @@ stagedBackgroundScriptPaths.forEach((file) => {
   if (/codex-debug-(?:bridge|surface)\.js|LumnoCodexDebug|codexDebugBridge/.test(fs.readFileSync(file, 'utf8'))) {
     throw new Error(`Development-only debug bridge reference remained in staged ${packagePathForFile(file)}.`);
   }
+});
+
+// Each script tag is a separate request, so join runs of plain tags (after the
+// debug surface is gone) into one file per run. The original files stay in
+// the package for content scripts, injection and getURL callers.
+let pageScriptBundleCount = 0;
+bundledScriptPages.forEach((page) => {
+  const htmlPath = stagedPath(page);
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  const referenceBase = getHtmlReferenceBase(page, html);
+  const pageName = path.basename(page, '.html');
+  const result = bundlePageScripts({
+    html,
+    label: page,
+    resolveScript(src) {
+      const scriptPath = normalizePackagePath(path.normalize(path.join(referenceBase, src.split(/[?#]/)[0])));
+      if (!fs.existsSync(stagedPath(scriptPath))) {
+        throw new Error(`${page} loads ${src}, which is missing from the store package stage.`);
+      }
+      return { path: scriptPath, source: fs.readFileSync(stagedPath(scriptPath), 'utf8') };
+    },
+    bundleTarget(index) {
+      const src = `${pageName}-bundle-${index}.js`;
+      return { src, path: normalizePackagePath(path.join(referenceBase, src)) };
+    }
+  });
+  if (result.bundles.length === 0) {
+    throw new Error(`Store package expected script runs to bundle in ${page}, found none.`);
+  }
+  result.bundles.forEach((bundle) => {
+    if (fs.existsSync(stagedPath(bundle.path))) {
+      throw new Error(`Store package script bundle would overwrite ${bundle.path}.`);
+    }
+    fs.writeFileSync(stagedPath(bundle.path), bundle.source);
+  });
+  fs.writeFileSync(htmlPath, result.html);
+  pageScriptBundleCount += result.bundles.length;
 });
 
 let zipResult = null;
@@ -431,11 +487,8 @@ function checkHtmlReferences() {
   files.forEach((file) => {
     const source = fs.readFileSync(file, 'utf8');
     const packageFile = packagePathForFile(file);
-    const baseMatch = source.match(/<base\s+[^>]*href=["']([^"']+)["']/i);
-    const baseHref = baseMatch ? baseMatch[1] : '';
-    const referenceBase = baseHref
-      ? path.normalize(path.join(path.dirname(packageFile), baseHref))
-      : path.dirname(packageFile);
+    const baseHref = getHtmlBaseHref(source);
+    const referenceBase = getHtmlReferenceBase(packageFile, source);
     const referenceFile = path.join(referenceBase, path.basename(packageFile));
     checkCssUrlReferences(referenceFile, source);
     let match = null;
@@ -521,3 +574,4 @@ if (missing.length > 0) {
 cleanupPackageStage();
 console.log(`Created ${zipPath}`);
 console.log(`Entries: ${entries.length}`);
+console.log(`Page script bundles: ${pageScriptBundleCount}`);
