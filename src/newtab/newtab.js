@@ -6636,18 +6636,20 @@
     setNewtabActionControlVisibility(wallpaperControl, newtabAppearanceButtonVisible);
   }
 
-  // Surfaces whose rim bends the wallpaper under the liquid style; the search bar and the results
-  // plate it grows into, and the dock's cards. Chrome 155 sometimes draws a lens on a layer of its
-  // own (will-change: transform) as its displacement map instead of the bent backdrop when another
-  // layer appears, such as a tooltip: menus and the Appearance panel, which need their layers, go
-  // without the bend, and the cards drop their will-change under liquid glass (glass-style.css).
-  // Only the search bar and its results fringe into colors along the rim: a card's wide rim turns
-  // even a slight split, softened by the blur ahead of the lens, into an orange and blue haze in its
-  // corners. A surface can set its rim in --x-nt-glass-rim (the search bar and its results plate
+  // Surfaces whose rim bends the wallpaper under the liquid style; the search bar, the results
+  // plate it grows into and the site search panel that opens under it, and the dock's cards.
+  // Chrome 155 sometimes draws a lens on a layer of its own (will-change: transform) as its
+  // displacement map instead of the bent backdrop when another layer appears, such as a tooltip:
+  // menus and the Appearance panel, which need their layers, go without the bend, and the cards drop
+  // their will-change under liquid glass (glass-style.css). Only the search bar, its results and the
+  // site search panel fringe into colors along the rim: a card's wide rim turns even a slight split,
+  // softened by the blur ahead of the lens, into an orange and blue haze in its corners. A surface
+  // can set its rim in --x-nt-glass-rim (the search bar, its results plate and the site search panel
   // share one, in glass-style.css).
   const NEWTAB_LIQUID_SEARCH_SELECTOR = [
     '#_x_extension_newtab_root_2024_unique_',
-    '#_x_extension_newtab_suggestions_surface_2026_unique_'
+    '#_x_extension_newtab_suggestions_surface_2026_unique_',
+    '.x-lumno-search-input-mode__menu[data-surface="newtab"]'
   ].join(',');
   const NEWTAB_LIQUID_SURFACE_SELECTOR = [
     NEWTAB_LIQUID_SEARCH_SELECTOR,

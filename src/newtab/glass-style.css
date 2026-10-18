@@ -389,8 +389,9 @@ body[data-glass-style] .x-nt-shortcut-group-header {
     opacity var(--lumno-duration-sm) ease;
 }
 /* They leave at once, so none shows half under the plate as it grows or as a blur behind it,
-   and come back with a fade once it has closed. */
-body[data-glass-style][data-nt-suggestions-open="true"] :is(.x-nt-shortcut-icon, .x-nt-shortcut-group-header) {
+   and come back with a fade once it has closed. The site search panel covers them the same way. */
+body[data-glass-style][data-nt-suggestions-open="true"] :is(.x-nt-shortcut-icon, .x-nt-shortcut-group-header),
+body[data-glass-style]:has(.x-lumno-search-input-mode__menu[data-surface="newtab"]:not([hidden])) :is(.x-nt-shortcut-icon, .x-nt-shortcut-group-header) {
   opacity: 0;
   transition-duration: var(--x-nt-shortcut-dock-duration, 300ms), var(--lumno-duration-sm), var(--lumno-duration-sm), var(--lumno-duration-sm), 0s;
 }
@@ -509,8 +510,13 @@ body[data-glass-style] :is(._x_extension_menu_surface_2024_unique_) {
    its backdrop off and gives its footer an opaque bar, all with the weight to beat the menu glass
    above. Here it is one pane of that glass: the footer a band of it, the keys and the chosen tile
    layers of it. The backdrop stays for as long as the panel shows, since its own transition list
-   (also !important) leaves no room for the menus' delayed drop on close. */
+   (also !important) leaves no room for the menus' delayed drop on close. Under the liquid material
+   it bends its rim like the results plate (newtab.js lists it among the lensed surfaces). */
 body[data-glass-style] .x-lumno-search-input-mode__menu[data-surface="newtab"] {
+  /* It sits inside the search bar: until its own lens is ready, none, rather than the bar's, which
+     is sized to the bar. */
+  --x-nt-glass-refraction: initial;
+  --x-nt-glass-rim: 16px;
   background: var(--x-nt-glass-fill) !important;
   border-color: transparent !important;
   box-shadow: var(--x-nt-glass-edge), var(--x-nt-glass-float-shadow) !important;
@@ -518,6 +524,44 @@ body[data-glass-style] .x-lumno-search-input-mode__menu[data-surface="newtab"] {
 body[data-glass-style] .x-lumno-search-input-mode__menu[data-surface="newtab"]:not([hidden]) {
   backdrop-filter: var(--x-nt-glass-float-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1)) var(--x-nt-glass-refraction,) !important;
   -webkit-backdrop-filter: var(--x-nt-glass-float-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1)) var(--x-nt-glass-refraction,) !important;
+}
+/* Liquid: the panel opens under the search bar as the results plate does, so it is the same clear
+   pane: the bar's light blur and the bar's tint (inherited from the bar, where the menus' denser
+   floating tint would be set), which leaves the scene sharp enough behind it for the rim to bend. */
+body[data-glass-style="liquid"] .x-lumno-search-input-mode__menu[data-surface="newtab"]:is(*, [data-glass-ink]) {
+  --x-nt-glass-tint-rgb: inherit;
+  --x-nt-glass-tint-thin: inherit;
+  --x-nt-glass-tint-dense: inherit;
+}
+body[data-glass-style="liquid"] .x-lumno-search-input-mode__menu[data-surface="newtab"]:not([hidden]) {
+  backdrop-filter: var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1)) var(--x-nt-glass-refraction,) !important;
+  -webkit-backdrop-filter: var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1)) var(--x-nt-glass-refraction,) !important;
+}
+/* The panel opens inside the search bar, and an element with a backdrop filter is the backdrop root
+   of everything in it: the panel's blur would see only the bar's empty inside, never the wallpaper.
+   While the panel shows, the bar's glass moves onto a layer behind its content, so the bar itself
+   filters nothing. Only then: the bar fades in on entry, and an ancestor below full opacity would
+   cut the layer off the wallpaper the same way. */
+body[data-glass-style]:not([data-nt-suggestions-open="true"])
+  #_x_extension_newtab_root_2024_unique_:has(.x-lumno-search-input-mode__menu[data-surface="newtab"]:not([hidden])) {
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+body[data-glass-style]:not([data-nt-suggestions-open="true"])
+  #_x_extension_newtab_root_2024_unique_:has(.x-lumno-search-input-mode__menu[data-surface="newtab"]:not([hidden]))::before {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--x-nt-search-shell-border-width, 1px));
+  z-index: -1;
+  border-radius: inherit;
+  corner-shape: inherit;
+  pointer-events: none;
+  background: var(--x-nt-glass-fill);
+  box-shadow: var(--x-nt-glass-edge);
+  backdrop-filter: var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1)) var(--x-nt-glass-refraction,);
+  -webkit-backdrop-filter: var(--x-nt-glass-filter) saturate(var(--x-nt-glass-saturate, 1)) brightness(var(--x-nt-glass-backdrop-brightness, 1)) var(--x-nt-glass-refraction,);
 }
 body[data-glass-style] .x-lumno-search-input-mode__menu[data-surface="newtab"] .x-lumno-search-input-mode__menu-footer {
   background: transparent !important;
