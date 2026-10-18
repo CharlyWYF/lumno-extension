@@ -48,8 +48,18 @@
     '--x-nt-shortcut-add-bg',
     '--x-nt-shortcut-add-color'
   ];
-  const WORDMARK_MIN_CONTRAST = 3.25;
-  const WORDMARK_TEXTURED_MIN_CONTRAST = 4.5;
+  // The wordmark and clock are display text: dark ink sits well clear of the
+  // wallpaper, light ink at least at AA, and both go further on busy textures.
+  const WORDMARK_DARK_INK_CONTRAST = 5.5;
+  const WORDMARK_DARK_INK_TEXTURED_CONTRAST = 7;
+  const WORDMARK_LIGHT_INK_CONTRAST = 4.5;
+  const WORDMARK_LIGHT_INK_TEXTURED_CONTRAST = 6;
+  // Lightness ranges the ink is searched in, from its gentlest to its extreme.
+  const WORDMARK_DARK_INK_LIGHTNESS = [0.3, 0.08];
+  const WORDMARK_LIGHT_INK_LIGHTNESS = [0.94, 1];
+  // Neutral wallpapers take the page's slate hue instead of a hue they lack.
+  const WORDMARK_NEUTRAL_SATURATION = 0.06;
+  const WORDMARK_NEUTRAL_HUE = 215;
   // WCAG AA for small text, and for the secondary text set in the muted ink.
   const ADAPTIVE_INK_MIN_CONTRAST = 4.5;
   const ADAPTIVE_INK_MUTED_MIN_CONTRAST = 3;
@@ -130,84 +140,96 @@
       : { red: 38, green: 38, blue: 38 };
   }
 
+  function rgbToHsl(color) {
+    const red = clampNumber(color.red, 0, 255) / 255;
+    const green = clampNumber(color.green, 0, 255) / 255;
+    const blue = clampNumber(color.blue, 0, 255) / 255;
+    const max = Math.max(red, green, blue);
+    const min = Math.min(red, green, blue);
+    const lightness = (max + min) / 2;
+    const delta = max - min;
+    if (delta === 0) {
+      return { hue: 0, saturation: 0, lightness };
+    }
+    const saturation = delta / (1 - Math.abs((2 * lightness) - 1));
+    let hue;
+    if (max === red) {
+      hue = ((green - blue) / delta) % 6;
+    } else if (max === green) {
+      hue = ((blue - red) / delta) + 2;
+    } else {
+      hue = ((red - green) / delta) + 4;
+    }
+    return { hue: ((hue * 60) + 360) % 360, saturation: clampNumber(saturation, 0, 1), lightness };
+  }
+
+  function hslToRgb(hue, saturation, lightness) {
+    const chroma = (1 - Math.abs((2 * lightness) - 1)) * saturation;
+    const segment = ((hue % 360) + 360) % 360 / 60;
+    const second = chroma * (1 - Math.abs((segment % 2) - 1));
+    const [red, green, blue] = segment < 1 ? [chroma, second, 0]
+      : segment < 2 ? [second, chroma, 0]
+        : segment < 3 ? [0, chroma, second]
+          : segment < 4 ? [0, second, chroma]
+            : segment < 5 ? [second, 0, chroma]
+              : [chroma, 0, second];
+    const offset = lightness - (chroma / 2);
+    return {
+      red: Math.round((red + offset) * 255),
+      green: Math.round((green + offset) * 255),
+      blue: Math.round((blue + offset) * 255)
+    };
+  }
+
+  // The hue the wordmark ink and its shadow borrow from the wallpaper, with a
+  // restrained saturation so the ink reads as a tinted neutral, not a color.
+  function getWordmarkTint(color) {
+    const hsl = rgbToHsl(color);
+    if (hsl.saturation < WORDMARK_NEUTRAL_SATURATION) {
+      return { hue: WORDMARK_NEUTRAL_HUE, saturation: 0.14 };
+    }
+    return { hue: hsl.hue, saturation: clampNumber(hsl.saturation * 0.6, 0.12, 0.38) };
+  }
+
   function getWordmarkInkColor(color, luminance, ink, overlayAlpha, overlayLuminance, textureContrast, effectType) {
     const resolvedOverlayAlpha = clampNumber(overlayAlpha, 0, 1);
     if (isWallpaperOverlayCovered(resolvedOverlayAlpha)) {
       return getWallpaperOffWordmarkColor(clampNumber(overlayLuminance, 0, 1));
     }
-    const baseColor = color && Number.isFinite(color.red) &&
-      Number.isFinite(color.green) &&
-      Number.isFinite(color.blue)
-      ? color
-      : { red: 128, green: 140, blue: 156 };
-    const overlayAmount = smoothstep((resolvedOverlayAlpha - 0.36) / 0.64);
+    const baseColor = getValidToneColor(color);
     const highTexture = isHighTextureTone(textureContrast, effectType, 0.16);
-    const darkOverlay = clampNumber(overlayLuminance, 0, 1) < 0.5;
-    const lightTarget = darkOverlay
-      ? { red: 118, green: 126, blue: 136 }
-      : { red: 250, green: 251, blue: 253 };
-    const baseLift = darkOverlay
-      ? (ink === 'light' ? 0.24 : 0.2)
-      : (ink === 'light' ? 0.9 : 0.84);
-    const textureLift = highTexture ? (darkOverlay ? 0.01 : 0.04) : 0;
-    const preferredColor = mixColor(
-      baseColor,
-      lightTarget,
-      clampNumber(baseLift + textureLift, 0, 0.94)
-    );
-    const contrastBackground = effectType && effectType !== 'none'
+    const background = effectType && effectType !== 'none'
       ? {
           red: clampNumber(luminance, 0, 1) * 255,
           green: clampNumber(luminance, 0, 1) * 255,
           blue: clampNumber(luminance, 0, 1) * 255
         }
       : baseColor;
-    return ensureWordmarkReadable(
-      mixColor(preferredColor, lightTarget, overlayAmount * 0.36),
-      contrastBackground,
-      ink,
-      highTexture
-    );
-  }
-
-  function ensureWordmarkReadable(color, backgroundColor, ink, highTexture) {
-    const background = getValidToneColor(backgroundColor);
-    const minimumContrast = highTexture
-      ? WORDMARK_TEXTURED_MIN_CONTRAST
-      : WORDMARK_MIN_CONTRAST;
-    if (getContrastRatio(color, background) >= minimumContrast) {
-      return color;
+    const dark = ink === 'dark';
+    const tint = getWordmarkTint(baseColor);
+    const saturation = dark ? tint.saturation : tint.saturation * 0.5;
+    const [gentlest, extreme] = dark ? WORDMARK_DARK_INK_LIGHTNESS : WORDMARK_LIGHT_INK_LIGHTNESS;
+    const minimumContrast = dark
+      ? (highTexture ? WORDMARK_DARK_INK_TEXTURED_CONTRAST : WORDMARK_DARK_INK_CONTRAST)
+      : (highTexture ? WORDMARK_LIGHT_INK_TEXTURED_CONTRAST : WORDMARK_LIGHT_INK_CONTRAST);
+    const inkAt = (amount) => hslToRgb(tint.hue, saturation, mixNumber(gentlest, extreme, amount));
+    // The ink keeps the wallpaper's hue and settles only its lightness: the
+    // gentlest lightness that reaches the floor, or the extreme when none does
+    // (mid tones, where the shadow carries the rest).
+    if (getContrastRatio(inkAt(0), background) >= minimumContrast) {
+      return inkAt(0);
     }
-    const lightTarget = { red: 248, green: 250, blue: 252 };
-    const darkTarget = { red: 15, green: 23, blue: 42 };
-    const preferredTarget = ink === 'dark' ? darkTarget : lightTarget;
-    const alternateTarget = ink === 'dark' ? lightTarget : darkTarget;
-    // Mid-tone backgrounds can sit in a band where neither extreme reaches the
-    // target ratio. Only flip polarity when that actually buys more contrast;
-    // otherwise keep the sampled ink family and let the halo carry the rest.
-    const preferredContrast = getContrastRatio(preferredTarget, background);
-    const target = preferredContrast >= minimumContrast ||
-      preferredContrast >= getContrastRatio(alternateTarget, background)
-      ? preferredTarget
-      : alternateTarget;
-    return mixColorToMinContrast(color, target, background, minimumContrast);
-  }
-
-  function mixColorToMinContrast(color, target, backgroundColor, minimumContrast) {
     let low = 0;
     let high = 1;
-    let best = target;
     for (let index = 0; index < 10; index += 1) {
       const amount = (low + high) / 2;
-      const mixed = mixColor(color, target, amount);
-      if (getContrastRatio(mixed, backgroundColor) >= minimumContrast) {
-        best = mixed;
+      if (getContrastRatio(inkAt(amount), background) >= minimumContrast) {
         high = amount;
       } else {
         low = amount;
       }
     }
-    return best;
+    return inkAt(high);
   }
 
   function mixColorToMaxLuminance(color, target, maxLuminance) {
@@ -495,20 +517,23 @@
       formatSolidRgb(getIconSolidForegroundColor(hoverBackgroundColor)));
   }
 
-  function applyWordmarkToneStyles(element, luminance, wordmarkInk, protection) {
-    // The wordmark ink may leave the sampled ink family to reach its contrast
-    // floor, so its shadow follows the ink it actually rendered.
+  function applyWordmarkToneStyles(element, luminance, wordmarkInk, protection, color) {
+    // The shadow follows the ink actually rendered. Light ink gets a soft,
+    // diffuse shadow in a deep tone of the wallpaper's own hue, so it lifts
+    // the ink without a grey smudge; dark ink has no offset shadow at all, only
+    // a light bloom where busy textures or mid tones need separating.
     if (getColorLuminance(wordmarkInk) > luminance) {
+      const tint = getWordmarkTint(getValidToneColor(color));
+      const shadow = hslToRgb(tint.hue, tint.saturation, 0.1);
       setStyleProperty(element, '--x-nt-wallpaper-wordmark-shadow',
-        formatRgb(15, 23, 42, mixNumber(18, 40, protection)));
+        formatRgb(shadow.red, shadow.green, shadow.blue, mixNumber(16, 30, protection)));
       setStyleProperty(element, '--x-nt-wallpaper-wordmark-halo',
-        formatRgb(15, 23, 42, mixNumber(10, 28, protection)));
+        formatRgb(shadow.red, shadow.green, shadow.blue, mixNumber(8, 20, protection)));
       return;
     }
-    setStyleProperty(element, '--x-nt-wallpaper-wordmark-shadow',
-      formatRgb(248, 250, 252, mixNumber(0, 36, protection)));
+    setStyleProperty(element, '--x-nt-wallpaper-wordmark-shadow', 'transparent');
     setStyleProperty(element, '--x-nt-wallpaper-wordmark-halo',
-      formatRgb(248, 250, 252, mixNumber(0, 46, protection)));
+      formatRgb(248, 250, 252, mixNumber(0, 34, protection)));
   }
 
   // A translucent tone is seen blended with the wallpaper behind it, so its contrast
@@ -636,7 +661,7 @@
       effectType
     );
     setStyleProperty(element, '--x-nt-wallpaper-wordmark-ink', formatSolidRgb(wordmarkInk));
-    applyWordmarkToneStyles(element, luminance, wordmarkInk, protection);
+    applyWordmarkToneStyles(element, luminance, wordmarkInk, protection, color);
     const tones = getAdaptiveInkTones(luminance, ink, color, effectType);
     const amount = tones.amount;
     const hover = tones.hoverColor;
@@ -1366,6 +1391,7 @@
     getGlassAdaptation,
     chooseReadableInk,
     getAdaptiveInkTones,
+    getWordmarkInkColor,
     getContrastRatio,
     getTranslucentToneContrast
   };

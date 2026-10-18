@@ -4759,8 +4759,8 @@ body[data-wallpaper-active="true"]
 body[data-nt-ready="1"][data-wallpaper-active="true"]
   #_x_extension_newtab_wordmark_2026_unique_[data-enter="done"]:not([data-wallpaper-overlay-cover="true"])
   > .x-nt-wordmark-content {
-  filter: drop-shadow(0 1px 1px var(--x-nt-wallpaper-wordmark-shadow, transparent))
-    drop-shadow(0 0 12px var(--x-nt-wallpaper-wordmark-halo, transparent));
+  filter: drop-shadow(0 1px 3px var(--x-nt-wallpaper-wordmark-shadow, transparent))
+    drop-shadow(0 0 16px var(--x-nt-wallpaper-wordmark-halo, transparent));
 }
 body[data-wallpaper-active="true"] .x-nt-bookmarks-title-wrap,
 body[data-wallpaper-active="true"] .x-nt-bookmarks-pager,

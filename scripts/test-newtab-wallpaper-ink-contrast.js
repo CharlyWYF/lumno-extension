@@ -5,6 +5,7 @@ require('../src/newtab/wallpaper-adaptive-tone.js');
 const {
   chooseReadableInk,
   getAdaptiveInkTones,
+  getWordmarkInkColor,
   getContrastRatio,
   getTranslucentToneContrast
 } = globalThis.LumnoNewtabWallpaperAdaptiveTone;
@@ -96,5 +97,36 @@ assert.strictEqual(chooseReadableInk('dark', sampledLuminance(gray(230)), gray(2
   const tones = getAdaptiveInkTones(0.5, ink, saturated, 'dither');
   assert.ok(blendedContrast(tones.ink, gray(Math.round(0.5 * 255))) >= 4.45);
 }
+
+// The wordmark and clock ink keeps the wallpaper's hue at a decisive
+// lightness: never the washed grey that sat right at a 3.25:1 floor.
+function wordmarkInk(color, ink, effectType = 'none', textureContrast = 0.05) {
+  return getWordmarkInkColor(color, sampledLuminance(color), ink, 0, 0, textureContrast, effectType);
+}
+const paleSky = { red: 200, green: 214, blue: 228 };
+const paleSkyInk = wordmarkInk(paleSky, 'dark');
+assert.ok(getContrastRatio(paleSkyInk, paleSky) >= 5.5, 'dark wordmark ink clears 5.5:1');
+assert.ok(paleSkyInk.blue > paleSkyInk.red, 'dark wordmark ink keeps the sky blue hue');
+const cream = { red: 236, green: 226, blue: 206 };
+const creamInk = wordmarkInk(cream, 'dark');
+assert.ok(creamInk.red > creamInk.blue, 'dark wordmark ink keeps a warm wallpaper warm');
+const navy = { red: 22, green: 30, blue: 52 };
+const navyInk = wordmarkInk(navy, 'light');
+assert.ok(Math.min(navyInk.red, navyInk.green, navyInk.blue) >= 230, 'light wordmark ink is a near white, not a mid grey');
+assert.ok(getContrastRatio(navyInk, navy) >= 4.5);
+const busy = { red: 210, green: 214, blue: 220 };
+assert.ok(
+  getContrastRatio(wordmarkInk(busy, 'dark', 'dither'), gray(Math.round(sampledLuminance(busy) * 255))) >= 7,
+  'busy textures raise the dark ink floor'
+);
+// Mid tones that no lightness can lift to the floor take the extreme.
+const midGreen = { red: 104, green: 132, blue: 88 };
+const midGreenInk = wordmarkInk(midGreen, 'dark');
+assert.ok(Math.max(midGreenInk.red, midGreenInk.green, midGreenInk.blue) < 40);
+// A fully covered wallpaper keeps the plain off-wallpaper wordmark color.
+assert.deepStrictEqual(
+  { ...getWordmarkInkColor(paleSky, 0.8, 'dark', 1, 0.9, 0, 'none') },
+  { red: 242, green: 242, blue: 242 }
+);
 
 console.log('new tab wallpaper adaptive ink contrast tests passed');

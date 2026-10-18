@@ -450,13 +450,13 @@ function getCssRgbChannels(value) {
     Math.min(...midToneWordmarkInk) > 200,
     'a mid tone where neither extreme reaches the textured contrast floor should keep the light ink family'
   );
+  const midToneShadow = target.style.getPropertyValue('--x-nt-wallpaper-wordmark-shadow');
   assert.ok(
-    target.style.getPropertyValue('--x-nt-wallpaper-wordmark-shadow').startsWith('rgb(15 23 42 /'),
-    'light wordmark ink should be backed by a dark shadow'
+    Math.max(...getCssRgbChannels(midToneShadow)) < 40 && / \/ 30%\)$/.test(midToneShadow),
+    'light wordmark ink should be backed by a deep, full-strength shadow on a textured mid tone'
   );
-  assert.strictEqual(
-    target.style.getPropertyValue('--x-nt-wallpaper-wordmark-halo'),
-    'rgb(15 23 42 / 28%)',
+  assert.ok(
+    / \/ 20%\)$/.test(target.style.getPropertyValue('--x-nt-wallpaper-wordmark-halo')),
     'a textured mid tone should get the full-strength halo'
   );
   assert.strictEqual(
@@ -490,6 +490,11 @@ function getCssRgbChannels(value) {
     target.style.getPropertyValue('--x-nt-wallpaper-wordmark-halo').startsWith('rgb(248 250 252 /') &&
       calmHaloAlpha <= 12,
     'dark wordmark ink on a calm background should only get a faint light halo'
+  );
+  assert.strictEqual(
+    target.style.getPropertyValue('--x-nt-wallpaper-wordmark-shadow'),
+    'transparent',
+    'dark wordmark ink should not get an offset shadow under its strokes'
   );
 
   // A caption and its heading read one sample over the box around both, so a
