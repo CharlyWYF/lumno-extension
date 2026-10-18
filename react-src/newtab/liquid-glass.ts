@@ -10,16 +10,18 @@
 // every surface; a surface that resizes only moves its tiles, in the same frame, so nothing is
 // rebuilt, encoded or decoded while the page resizes or the results plate grows.
 
+// The rim follows Figma's glass effect, measured off its renders: the outer edge samples the
+// scene `refraction` times the rim width inward, and the bend falls off quadratically to nothing
+// 0.7 of the way across the rim. The falloff is steepest at the edge, so the outer part of the rim
+// folds the scene back on itself (a mirrored, squeezed band, as a thick glass edge shows) and the
+// inner part magnifies it into the flat middle.
 const BEZEL_PX = 16;
-// feDisplacementMap moves a pixel by up to half the scale, so the rim samples up to half a rim
-// inward (a little more in the bluest channel): as far as the bend goes while the scene only
-// stretches toward the edge. Any further and it folds back on itself, mirroring the scene there
-// with a hard seam inside it.
-export const LIQUID_GLASS_DISPLACEMENT_SCALE = 16;
-// Blue bends further than red: each channel samples the backdrop at its own share of the bend, so
-// the rim fringes where the wallpaper has edges. Nothing splits in the flat middle. Kept small: the
-// split grows with the bend, so it only suits a narrow rim.
-export const LIQUID_GLASS_DISPERSION = 0.12;
+export const LIQUID_GLASS_REFRACTION = 0.8;
+const RIM_REACH = 0.7;
+// Red bends further than blue, as in Figma: each channel samples the backdrop at its own share of
+// the bend, so the rim fringes where the wallpaper has edges. Nothing splits in the flat middle.
+// About Figma's dispersion at 50%; the split grows with the bend, so it stays small.
+export const LIQUID_GLASS_DISPERSION = 0.06;
 const FLOATING_RADIUS_PX = 14;
 
 export type LiquidGlassShape = 'docked' | 'floating';
@@ -96,12 +98,11 @@ export function getRimDisplacement(
   ];
 }
 
-// The bend eases in from the rim's inner edge and levels off at the outer edge (a smoothstep), so
-// the rim melts into the flat middle without a visible line, and the stretch it puts on the scene
-// is spread across the rim instead of piled at one end, which lets the bend go further unfolded.
+// Full at the outer edge, falling off quadratically to nothing at RIM_REACH of the rim, where its
+// slope also reaches zero, so the rim melts into the flat middle without a visible line.
 function rimStrength(progressFromRim: number) {
-  const rest = 1 - Math.min(1, progressFromRim);
-  return rest * rest * (3 - 2 * rest);
+  const rest = 1 - Math.min(1, progressFromRim / RIM_REACH);
+  return rest * rest;
 }
 
 export interface LensTiles {
@@ -225,7 +226,7 @@ export function buildLensFilter(
     '<feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" ' +
     `scale="${channelScale.toFixed(1)}"`;
   const bend = dispersion
-    ? 'rgb'.split('').map((name, index) => `${pass(scale * (1 + (index - 1) * LIQUID_GLASS_DISPERSION))}/>` +
+    ? 'rgb'.split('').map((name, index) => `${pass(scale * (1 + (1 - index) * LIQUID_GLASS_DISPERSION))}/>` +
       // Keeps this channel and alpha only: a 1 on the diagonal of the 4x5 color matrix.
       `<feColorMatrix type="matrix" values="${Array.from({ length: 20 }, (_, cell) =>
         Number(cell === index * 6 || cell === 18)).join(' ')}" result="${name}"/>`).join('') +
@@ -436,7 +437,7 @@ export function createLiquidGlass(options: {
       const shape = shapeOf();
       const radius = shape === 'floating' ? Math.round(Math.min(FLOATING_RADIUS_PX, width / 2, height / 2)) : 0;
       const bezel = Math.round(Math.min(BEZEL_PX, height / 2));
-      lens.update(`${shape}:${radius}:${bezel}`, shape, radius, bezel, LIQUID_GLASS_DISPLACEMENT_SCALE, false);
+      lens.update(`${shape}:${radius}:${bezel}`, shape, radius, bezel, getSurfaceDisplacementScale(bezel), false);
     },
     destroy() {
       destroyed = true;
@@ -446,8 +447,8 @@ export function createLiquidGlass(options: {
 }
 
 // The ring around a New Tab plate: wide enough on a card for the bend to show over a calm
-// wallpaper. The smoothstep keeps the inner part of the ring nearly flat, so even a plate whose
-// ring takes up most of its height still reads as a clear window in the middle.
+// wallpaper. The bend stops short of the ring's inner edge, so even a plate whose ring takes up
+// most of its height still reads as a clear window in the middle.
 const SURFACE_BEZEL_PX = 40;
 
 // Rim width for a surface of this size, narrowed so small plates keep a flat middle.
@@ -455,9 +456,10 @@ export function getSurfaceBezel(width: number, height: number) {
   return Math.max(4, Math.min(SURFACE_BEZEL_PX, Math.min(width, height) / 3.5));
 }
 
-// How far the rim moves the backdrop: the bar's bend per pixel of rim.
+// How far the rim moves the backdrop. feDisplacementMap moves a pixel by up to half the scale, so
+// the outer edge samples LIQUID_GLASS_REFRACTION of the rim inward.
 export function getSurfaceDisplacementScale(bezel: number) {
-  return Math.round((LIQUID_GLASS_DISPLACEMENT_SCALE * bezel) / BEZEL_PX);
+  return Math.round(2 * LIQUID_GLASS_REFRACTION * bezel);
 }
 
 function readCornerRadius(style: CSSStyleDeclaration, width: number, height: number) {
