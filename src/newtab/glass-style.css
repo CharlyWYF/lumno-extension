@@ -222,9 +222,14 @@ body[data-glass-style]:not([data-nt-suggestions-open="true"])
 }
 /* Focus keeps the plate's tint: the caret marks it, and a plate that thinned whenever focus moved
    (a right click on a shortcut, a menu, a panel) would flicker under every one of them. */
-/* Icons in the plate share the placeholder's translucent ink. */
+/* Icons in the plate share the placeholder's translucent ink.
+   The rim changes only when the bar hands its glass to the results plate or to the layer behind the
+   site search panel, and those draw theirs at once: a rim fading on the bar over them doubles it, so
+   the bar flashes as the plate or the panel opens. It hands its rim over at once, as its fill and
+   blur already do. */
 body[data-glass-style] #_x_extension_newtab_root_2024_unique_ {
   --x-ext-input-icon: var(--x-nt-placeholder);
+  transition: none;
 }
 body[data-glass-style] #_x_extension_newtab_root_2024_unique_ .x-nt-close-other-tabs:not(:hover) {
   color: var(--x-nt-placeholder);
