@@ -6031,7 +6031,8 @@ body[data-glass-style] .x-nt-row-select[data-glass-ink-theme="dark"] {
   border-radius: inherit;
 }
 .x-nt-wallpaper-tile:hover .x-nt-wallpaper-thumb img,
-.x-nt-wallpaper-tile:focus-visible .x-nt-wallpaper-thumb img {
+.x-nt-wallpaper-tile:focus-visible .x-nt-wallpaper-thumb img,
+.x-nt-wallpaper-tile[data-context-menu-open="true"] .x-nt-wallpaper-thumb img {
   filter: var(--x-nt-thumb-hover-filter);
 }
 .x-nt-wallpaper-custom-image[hidden],

@@ -368,6 +368,29 @@ describe('New Tab React wallpaper view', () => {
     expect(actions.showTooltip).toHaveBeenLastCalledWith(refs().appearanceInfoButton, state.theme.infoTooltip);
   });
 
+  it('opens the save menu on a right-clicked photo and stops uploads at the limit', () => {
+    const { actions, state } = createState((draft) => {
+      draft.wallpaper.curated.tiles = [
+        { id: 'picsum-28', label: 'Select Bridge', selected: false, thumbnailUrl: '/28.jpg', tooltip: 'Bridge' }
+      ];
+      draft.wallpaper.local.upload.full = true;
+    });
+    mount(state);
+    const tile = refs().curatedItemsHost.querySelector<HTMLElement>('[data-wallpaper-id="picsum-28"]')!;
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 40, clientY: 60 });
+    act(() => {
+      tile.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
+    expect(actions.hideTooltip).toHaveBeenCalled();
+    expect(actions.openOnlineWallpaperMenu).toHaveBeenCalledWith('picsum-28', tile, { x: 40, y: 60 });
+    const fileInput = refs().customInput as HTMLInputElement;
+    const pick = vi.spyOn(fileInput, 'click');
+    act(() => refs().uploadTile.click());
+    expect(actions.showLocalWallpaperLimit).toHaveBeenCalled();
+    expect(pick).not.toHaveBeenCalled();
+  });
+
   it('selects the filter from the state and reports a new one', () => {
     const { actions, state } = createState((draft) => {
       draft.wallpaper.effect.select = {

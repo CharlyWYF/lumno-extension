@@ -575,6 +575,11 @@
     const LINK_WALLPAPER_URL_MAX_LENGTH = 2048;
     // chrome.storage.sync holds 8 KB per item; normalized URLs are ASCII, so length counts bytes.
     const LINK_WALLPAPERS_MAX_BYTES = 8000;
+    // Uploads and links together. A library already past this keeps every wallpaper; only adding stops.
+    const LOCAL_WALLPAPER_LIMIT = 30;
+    // The online photo the save menu is open for.
+    let onlineWallpaperMenu = null;
+    let onlineWallpaperMenuTarget = null;
     let wallpaperStorageChangeSeq = 0;
     let wallpaperVisualSeq = 0;
     let wallpaperVisualRefreshTimer = 0;
@@ -3148,8 +3153,22 @@
       writeCurrentWallpaperPrefs({ showError: true });
     }
 
+    function isLocalWallpaperLibraryFull() {
+      return customWallpapers.length + linkWallpapers.length >= LOCAL_WALLPAPER_LIMIT;
+    }
+
+    function showLocalWallpaperLimitToast() {
+      showToast(formatMessage('newtab_wallpaper_local_limit',
+        'You can keep up to {count} local wallpapers. Delete some and try again.',
+        { count: LOCAL_WALLPAPER_LIMIT }), true);
+    }
+
     function importCustomWallpaperFile(file) {
       if (!file || customWallpaperImporting) {
+        return;
+      }
+      if (isLocalWallpaperLibraryFull()) {
+        showLocalWallpaperLimitToast();
         return;
       }
       customWallpaperImporting = true;
@@ -3405,6 +3424,182 @@
       showToast(t('newtab_wallpaper_delete_done', 'Deleted'), false);
     }
 
+    // A new synced link entry, or null after telling the user the link no longer fits sync storage.
+    function createLinkWallpaperEntry(url) {
+      const entry = {
+        id: `link-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
+        url,
+        addedAt: Date.now()
+      };
+      if (url.length > LINK_WALLPAPER_URL_MAX_LENGTH ||
+          JSON.stringify(linkWallpapers.concat(entry)).length > LINK_WALLPAPERS_MAX_BYTES) {
+        showToast(t('newtab_wallpaper_url_limit',
+          'This link is too long, or too many links are saved. Remove some and try again.'), true);
+        return null;
+      }
+      return entry;
+    }
+
+    function getOnlineWallpaperUrl(id) {
+      const wallpaper = remoteClient.getWallpaper(id);
+      return normalizeCustomWallpaperUrl(wallpaper && wallpaper.imageUrl);
+    }
+
+    function isOnlineWallpaperSaved(id) {
+      const url = getOnlineWallpaperUrl(id);
+      return Boolean(url) && linkWallpapers.some((item) => item.url === url);
+    }
+
+    // A Bing or curated photo joins the local library as a link, so it syncs like one; the copy this
+    // device already keeps for the photo becomes the link's copy.
+    function saveOnlineWallpaperToLocal(id) {
+      const url = getOnlineWallpaperUrl(id);
+      if (!url || customWallpaperImporting) {
+        return;
+      }
+      customWallpaperImporting = true;
+      renderWallpaperPanelState();
+      let toastTask = null;
+      loadCustomWallpapers().then(() => {
+        if (linkWallpapers.some((item) => item.url === url)) {
+          showToast(t('newtab_wallpaper_in_local', 'Already in local wallpapers'), false);
+          return null;
+        }
+        if (isLocalWallpaperLibraryFull()) {
+          showLocalWallpaperLimitToast();
+          return null;
+        }
+        const entry = createLinkWallpaperEntry(url);
+        if (!entry) {
+          return null;
+        }
+        toastTask = beginToast(t('newtab_wallpaper_saving_local', 'Saving to local wallpapers…'));
+        return readCachedWallpaperImages([id]).then(() => getCachedWallpaperImage(id, url) ||
+          fetchCustomWallpaperFile(url).then(buildCustomWallpaperRecordFromFile)).then((record) => {
+          rememberCachedWallpaperImage(entry.id, url, record);
+          writeLinkWallpapers(linkWallpapers.concat(entry));
+          toastTask.done(t('newtab_wallpaper_saved_local', 'Saved to local wallpapers'));
+        });
+      }).catch(() => {
+        if (toastTask) {
+          toastTask.fail(t('newtab_wallpaper_save_error', 'Failed to save wallpaper'));
+        } else {
+          showToast(t('newtab_wallpaper_save_error', 'Failed to save wallpaper'), true);
+        }
+      }).finally(() => {
+        customWallpaperImporting = false;
+        renderWallpaperPanelState();
+      });
+    }
+
+    function isOnlineWallpaperMenuOpen() {
+      return Boolean(onlineWallpaperMenu && onlineWallpaperMenu.controller.isOpen(onlineWallpaperMenu.control));
+    }
+
+    function isOnlineWallpaperMenuNode(node) {
+      return Boolean(node && onlineWallpaperMenu &&
+        (onlineWallpaperMenu.control.contains(node) || onlineWallpaperMenu.menu.contains(node)));
+    }
+
+    function closeOnlineWallpaperMenu() {
+      const wasOpen = Boolean(onlineWallpaperMenuTarget);
+      if (onlineWallpaperMenuTarget) {
+        onlineWallpaperMenuTarget.element.removeAttribute('data-context-menu-open');
+        onlineWallpaperMenuTarget = null;
+      }
+      if (isOnlineWallpaperMenuOpen()) {
+        onlineWallpaperMenu.controller.setOpen(onlineWallpaperMenu.control, false);
+      }
+      return wasOpen;
+    }
+
+    function getOnlineWallpaperMenuOptions(id) {
+      const saved = isOnlineWallpaperSaved(id);
+      return [{
+        action: 'save-local',
+        value: 'save-local',
+        label: saved
+          ? t('newtab_wallpaper_in_local', 'Already in local wallpapers')
+          : t('newtab_wallpaper_save_to_local', 'Save to local wallpapers'),
+        disabled: saved
+      }];
+    }
+
+    function createOnlineWallpaperMenu() {
+      const selectMenuApi = globalThis.LumnoNewtabSelectMenu;
+      if (!selectMenuApi || typeof selectMenuApi.createController !== 'function') {
+        return null;
+      }
+      const controller = selectMenuApi.createController({
+        documentObj: document,
+        windowObj,
+        onBeforeOpen: () => hideTopActionTooltip()
+      });
+      const created = controller.createSelect({
+        id: '_x_extension_newtab_wallpaper_context_menu_2026_unique_',
+        selectId: '_x_extension_newtab_wallpaper_context_menu_select_2026_unique_',
+        className: 'x-nt-shortcut-context-menu',
+        iconOnly: true,
+        triggerIconClass: 'ri-more-line',
+        menuClassName: 'x-nt-shortcut-context-menu-portal',
+        menuAlign: 'middle',
+        menuWidth: 'content',
+        menuMinWidth: 124,
+        menuMaxWidth: 220,
+        menuPortal: true,
+        menuPortalZIndex: 10050,
+        menuPortalOffset: -6,
+        value: 'save-local',
+        ariaLabel: t('newtab_wallpaper_context_menu_label', 'Wallpaper actions'),
+        options: [],
+        onAction(payload) {
+          const target = onlineWallpaperMenuTarget;
+          closeOnlineWallpaperMenu();
+          if (target && payload && payload.action === 'save-local') {
+            saveOnlineWallpaperToLocal(target.id);
+          }
+        }
+      });
+      if (!created) {
+        return null;
+      }
+      created.trigger.tabIndex = -1;
+      [created.wrapper, created.menu].forEach((element) => {
+        element.addEventListener('contextmenu', (event) => event.preventDefault());
+      });
+      document.addEventListener('pointerdown', (event) => {
+        if (onlineWallpaperMenuTarget && !isOnlineWallpaperMenuNode(event.target)) {
+          closeOnlineWallpaperMenu();
+        }
+      }, true);
+      globalThis.LumnoNewtabDismissStack.getDismissStack().register('wallpaper-context-menu', {
+        isOpen: () => Boolean(onlineWallpaperMenuTarget || isOnlineWallpaperMenuOpen()),
+        close: () => closeOnlineWallpaperMenu()
+      });
+      (document.body || document.documentElement).appendChild(created.wrapper);
+      return { controller, control: created.wrapper, menu: created.menu };
+    }
+
+    function openOnlineWallpaperMenu(id, element, point) {
+      if (!getOnlineWallpaperUrl(id) || !element) {
+        return;
+      }
+      if (!onlineWallpaperMenu) {
+        onlineWallpaperMenu = createOnlineWallpaperMenu();
+      }
+      if (!onlineWallpaperMenu) {
+        return;
+      }
+      closeOnlineWallpaperMenu();
+      hideTopActionTooltip();
+      onlineWallpaperMenuTarget = { id, element };
+      element.setAttribute('data-context-menu-open', 'true');
+      onlineWallpaperMenu.control.style.left = `${Math.round(point.x)}px`;
+      onlineWallpaperMenu.control.style.top = `${Math.round(point.y)}px`;
+      onlineWallpaperMenu.controller.setOptions(onlineWallpaperMenu.control, getOnlineWallpaperMenuOptions(id), 'save-local');
+      onlineWallpaperMenu.controller.setOpen(onlineWallpaperMenu.control, true);
+    }
+
     function finishCustomWallpaperUrlEntry() {
       customWallpaperUrlClearToken += 1;
       setCustomWallpaperUrlFormOpen(false);
@@ -3429,15 +3624,12 @@
         finishCustomWallpaperUrlEntry();
         return;
       }
-      const entry = {
-        id: `link-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
-        url,
-        addedAt: Date.now()
-      };
-      if (url.length > LINK_WALLPAPER_URL_MAX_LENGTH ||
-          JSON.stringify(linkWallpapers.concat(entry)).length > LINK_WALLPAPERS_MAX_BYTES) {
-        showToast(t('newtab_wallpaper_url_limit',
-          'This link is too long, or too many links are saved. Remove some and try again.'), true);
+      if (isLocalWallpaperLibraryFull()) {
+        showLocalWallpaperLimitToast();
+        return;
+      }
+      const entry = createLinkWallpaperEntry(url);
+      if (!entry) {
         return;
       }
       customWallpaperImporting = true;
@@ -3968,7 +4160,8 @@
         deleteLabel: t('newtab_wallpaper_delete_local', 'Delete imported wallpaper'),
         upload: {
           label: t('newtab_wallpaper_add_local', 'Add local wallpaper'),
-          loading: customWallpaperImporting
+          loading: customWallpaperImporting,
+          full: isLocalWallpaperLibraryFull()
         },
         url: {
           open: customWallpaperUrlFormOpen,
@@ -4465,10 +4658,17 @@
         deleteWallpaper: (id) => deleteCustomWallpaper(id),
         importWallpaperFile: (file) => importCustomWallpaperFile(file),
         toggleUrlForm() {
-          if (!customWallpaperImporting) {
-            setCustomWallpaperUrlFormOpen(!customWallpaperUrlFormOpen);
+          if (customWallpaperImporting) {
+            return;
           }
+          if (!customWallpaperUrlFormOpen && isLocalWallpaperLibraryFull()) {
+            showLocalWallpaperLimitToast();
+            return;
+          }
+          setCustomWallpaperUrlFormOpen(!customWallpaperUrlFormOpen);
         },
+        openOnlineWallpaperMenu: (id, element, point) => openOnlineWallpaperMenu(id, element, point),
+        showLocalWallpaperLimit: () => showLocalWallpaperLimitToast(),
         submitWallpaperUrl(url) {
           if (!customWallpaperImporting) {
             submitCustomWallpaperUrl(url);
@@ -4959,6 +5159,7 @@
       }
       cancelWallpaperPanelActiveControls();
       wallpaperViewController.closeOpenSelect();
+      closeOnlineWallpaperMenu();
       const wasOpen = wallpaperPanelOpen;
       wallpaperPanelOpen = false;
       // The close itself is drawn, so the panel animates out.
@@ -5114,6 +5315,9 @@
         return false;
       }
       if (wallpaperControl && (target === wallpaperControl || wallpaperControl.contains(target))) {
+        return true;
+      }
+      if (isOnlineWallpaperMenuNode(target)) {
         return true;
       }
       return Boolean(wallpaperViewController && wallpaperViewController.containsSelectMenuTarget(target));

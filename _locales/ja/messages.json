@@ -3140,6 +3140,24 @@
   "newtab_wallpaper_url_import_error": {
     "message": "このリンクから画像を追加できませんでした"
   },
+  "newtab_wallpaper_save_to_local": {
+    "message": "この端末の壁紙に保存"
+  },
+  "newtab_wallpaper_in_local": {
+    "message": "この端末の壁紙に保存済み"
+  },
+  "newtab_wallpaper_saving_local": {
+    "message": "この端末の壁紙に保存しています…"
+  },
+  "newtab_wallpaper_saved_local": {
+    "message": "この端末の壁紙に保存しました"
+  },
+  "newtab_wallpaper_local_limit": {
+    "message": "追加できる壁紙は {count} 枚までです。いくつか削除してからもう一度お試しください。"
+  },
+  "newtab_wallpaper_context_menu_label": {
+    "message": "壁紙の操作"
+  },
   "newtab_quote_font_size": {
     "message": "文字サイズ"
   },

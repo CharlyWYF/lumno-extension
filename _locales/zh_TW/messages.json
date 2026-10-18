@@ -3140,6 +3140,24 @@
   "newtab_wallpaper_url_import_error": {
     "message": "無法從這個連結新增圖片"
   },
+  "newtab_wallpaper_save_to_local": {
+    "message": "儲存到本機桌布"
+  },
+  "newtab_wallpaper_in_local": {
+    "message": "已在本機桌布中"
+  },
+  "newtab_wallpaper_saving_local": {
+    "message": "正在儲存到本機桌布…"
+  },
+  "newtab_wallpaper_saved_local": {
+    "message": "已儲存到本機桌布"
+  },
+  "newtab_wallpaper_local_limit": {
+    "message": "本機桌布最多儲存 {count} 張，請刪除一些後再試"
+  },
+  "newtab_wallpaper_context_menu_label": {
+    "message": "桌布操作"
+  },
   "newtab_quote_font_size": {
     "message": "字號"
   },

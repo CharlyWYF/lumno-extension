@@ -158,11 +158,13 @@ const assertWithinBudget = (actualBytes, budgetKiB, label) => {
 // Options lists and a sortable result type group (gzip keeps headroom for Node 20's zlib, as above).
 // The daily quote's source tabs and TXT / MD import controls moved the New Tab route to 415 KiB
 // and the total to 810 KiB.
+// Saving a Bing or curated photo to the local wallpapers from its right-click menu, with the local
+// wallpaper limit, moved the New Tab route to 416 KiB and the total to 811 KiB.
 const bundleBudgets = {
-  newtab: { uncompressed: 415, gzip: 125 },
+  newtab: { uncompressed: 416, gzip: 125 },
   options: { uncompressed: 290, gzip: 85 },
   overlay: { uncompressed: 274, gzip: 83 },
-  total: { uncompressed: 810, gzip: 237 }
+  total: { uncompressed: 811, gzip: 237 }
 };
 
 const retiredNewtabRendererScripts = [

@@ -3140,6 +3140,24 @@
   "newtab_wallpaper_url_import_error": {
     "message": "无法从这个链接添加图片"
   },
+  "newtab_wallpaper_save_to_local": {
+    "message": "保存到本地壁纸"
+  },
+  "newtab_wallpaper_in_local": {
+    "message": "已在本地壁纸中"
+  },
+  "newtab_wallpaper_saving_local": {
+    "message": "正在保存到本地壁纸…"
+  },
+  "newtab_wallpaper_saved_local": {
+    "message": "已保存到本地壁纸"
+  },
+  "newtab_wallpaper_local_limit": {
+    "message": "本地壁纸最多保存 {count} 张，请删除一些后再试"
+  },
+  "newtab_wallpaper_context_menu_label": {
+    "message": "壁纸操作"
+  },
   "newtab_quote_font_size": {
     "message": "字号"
   },

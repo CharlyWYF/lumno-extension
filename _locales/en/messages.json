@@ -3140,6 +3140,24 @@
   "newtab_wallpaper_url_import_error": {
     "message": "Could not add an image from this link"
   },
+  "newtab_wallpaper_save_to_local": {
+    "message": "Save to local wallpapers"
+  },
+  "newtab_wallpaper_in_local": {
+    "message": "Already in local wallpapers"
+  },
+  "newtab_wallpaper_saving_local": {
+    "message": "Saving to local wallpapers…"
+  },
+  "newtab_wallpaper_saved_local": {
+    "message": "Saved to local wallpapers"
+  },
+  "newtab_wallpaper_local_limit": {
+    "message": "You can keep up to {count} local wallpapers. Delete some and try again."
+  },
+  "newtab_wallpaper_context_menu_label": {
+    "message": "Wallpaper actions"
+  },
   "newtab_quote_font_size": {
     "message": "Font size"
   },

@@ -122,6 +122,8 @@ export interface WallpaperPanelActions extends TooltipActions {
   clearUrlInvalid(): void;
   deleteWallpaper(id: string): void;
   importWallpaperFile(file: File): void;
+  /** Right-click on a Bing or curated photo. */
+  openOnlineWallpaperMenu(id: string, element: HTMLElement, point: { x: number; y: number }): void;
   primeWallpaper(id: string): void;
   refreshBing(): void;
   resetShortcutGap(): void;
@@ -158,6 +160,7 @@ export interface WallpaperPanelActions extends TooltipActions {
   setTimeSecondsVisible(visible: boolean): void;
   setWallpaperEnabled(enabled: boolean): void;
   showButtonTooltip(anchor: HTMLElement): void;
+  showLocalWallpaperLimit(): void;
   showMoreCurated(): void;
   submitWallpaperUrl(url: string): void;
   togglePanel(): void;
@@ -252,7 +255,7 @@ export interface WallpaperPanelState {
       deleteLabel: string;
       label: string;
       tiles: TileState[];
-      upload: { label: string; loading: boolean };
+      upload: { full?: boolean; label: string; loading: boolean };
       url: {
         clearToken: number;
         disabled: boolean;
@@ -747,6 +750,11 @@ function OnlineTiles({
           disabled={tile.disabled}
           key={tile.id}
           onClick={() => onSelect(tile.id)}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            actions.hideTooltip();
+            actions.openOnlineWallpaperMenu(tile.id, event.currentTarget, { x: event.clientX, y: event.clientY });
+          }}
           onPointerEnter={name === 'curated' ? () => actions.primeWallpaper(tile.id) : undefined}
           type="button"
         >
@@ -912,6 +920,10 @@ function WallpaperPanel({
   const openFilePicker = () => {
     if (local.upload.loading) return;
     actions.hideTooltip();
+    if (local.upload.full) {
+      actions.showLocalWallpaperLimit();
+      return;
+    }
     fileInput.current?.click();
   };
   const showUploadTooltip = (event: { currentTarget: HTMLElement }) => {
