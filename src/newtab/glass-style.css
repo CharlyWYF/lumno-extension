@@ -546,7 +546,9 @@ body[data-glass-style="liquid"] .x-lumno-search-input-mode__menu[data-surface="n
    of everything in it: the panel's blur would see only the bar's empty inside, never the wallpaper.
    While the panel shows, the bar's glass moves onto a layer behind its content, so the bar itself
    filters nothing. Only then: the bar fades in on entry, and an ancestor below full opacity would
-   cut the layer off the wallpaper the same way. */
+   cut the layer off the wallpaper the same way. The layer covers the bar's border box and keeps a
+   clear border as wide as the bar's, so its fill and blur reach the same edge and its inset rim sits
+   inside that border as the bar's does, not a border's width further out. */
 body[data-glass-style]:not([data-nt-suggestions-open="true"])
   #_x_extension_newtab_root_2024_unique_:has(.x-lumno-search-input-mode__menu[data-surface="newtab"]:not([hidden])) {
   background: transparent;
@@ -559,6 +561,7 @@ body[data-glass-style]:not([data-nt-suggestions-open="true"])
   content: "";
   position: absolute;
   inset: calc(-1 * var(--x-nt-search-shell-border-width, 1px));
+  border: var(--x-nt-search-shell-border-width, 1px) solid transparent;
   z-index: -1;
   border-radius: inherit;
   corner-shape: inherit;
