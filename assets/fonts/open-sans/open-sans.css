@@ -1,6 +1,6 @@
 @font-face {
   font-family: "Open Sans";
-  src: url("./OpenSans-VariableFont-wdth-wght.ttf") format("truetype");
+  src: url("./OpenSans-VariableFont-wdth-wght.woff2") format("woff2");
   font-style: normal;
   font-weight: 300 800;
   font-display: swap;

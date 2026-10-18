@@ -575,7 +575,7 @@ window._x_extension_toggleSearchOverlay_2026_unique_ = function(tabs, overlayCon
     style.textContent = [
       '@font-face {',
       '  font-family: "Lumno Open Sans";',
-      `  src: ${toCssUrl('assets/fonts/open-sans/OpenSans-VariableFont-wdth-wght.ttf')} format("truetype");`,
+      `  src: ${toCssUrl('assets/fonts/open-sans/OpenSans-VariableFont-wdth-wght.woff2')} format("woff2");`,
       '  font-style: normal;',
       '  font-weight: 300 800;',
       '  font-display: swap;',
