@@ -312,12 +312,23 @@ body[data-glass-style] #_x_extension_newtab_suggestions_outline_2026_unique_ {
   body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint {
     transition: opacity var(--lumno-duration-md, 0.18s) ease, transform var(--lumno-duration-md, 0.18s) ease,
       visibility var(--lumno-duration-md, 0.18s) ease,
+      --x-lumno-feature-hint-shown var(--lumno-duration-md, 0.18s) ease,
       backdrop-filter 0s linear var(--lumno-duration-md, 0.18s) allow-discrete,
       -webkit-backdrop-filter 0s linear var(--lumno-duration-md, 0.18s) allow-discrete;
   }
   body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint[data-visible="true"] {
     transition: opacity var(--lumno-duration-md, 0.18s) ease, transform var(--lumno-duration-md, 0.18s) ease,
-      visibility var(--lumno-duration-md, 0.18s) ease;
+      visibility var(--lumno-duration-md, 0.18s) ease,
+      --x-lumno-feature-hint-shown var(--lumno-duration-md, 0.18s) ease;
+  }
+  body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)::before,
+  body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)::after {
+    transition: backdrop-filter 0s linear var(--lumno-duration-md, 0.18s) allow-discrete,
+      -webkit-backdrop-filter 0s linear var(--lumno-duration-md, 0.18s) allow-discrete;
+  }
+  body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint[data-visible="true"]::before,
+  body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint[data-visible="true"]::after {
+    transition: none;
   }
 }
 /* The panel's header sits outside its scrolling body, so it can share the panel's glass. */
@@ -642,6 +653,119 @@ body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint {
 body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint[data-visible="true"] {
   backdrop-filter: var(--x-nt-glass-float-filter);
   -webkit-backdrop-filter: var(--x-nt-glass-float-filter);
+}
+/* A hint's tail is glass too. The hint's own backdrop filter stops at its box and the tail sits
+   outside it, so the plate (::before) and the tail (::after) are two layers of the same glass. The
+   plate's shadow leaves a hole under the tail, or the tail would sample it and read darker than the
+   plate. A layer's backdrop also stops at an ancestor below full opacity, so the hint stays opaque
+   and fades its layers and content with --x-lumno-feature-hint-shown. The pill notices have no
+   tail and keep the single plate above. */
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice) {
+  --x-lumno-feature-hint-tail-at: calc(50% - var(--x-lumno-feature-hint-arrow-fill-size));
+  opacity: 1;
+  background: none;
+  box-shadow: none;
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)[data-arrow-align="start"] {
+  --x-lumno-feature-hint-tail-at: calc(var(--x-lumno-feature-hint-arrow-fill-inset) + 1px);
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)[data-arrow-align="end"] {
+  --x-lumno-feature-hint-tail-at: calc(100% - var(--x-lumno-feature-hint-arrow-fill-inset) - 1px - 2 * var(--x-lumno-feature-hint-arrow-fill-size));
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)[data-visible="true"] {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)::before,
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)::after {
+  z-index: -1;
+  border: 0;
+  background: rgb(var(--x-nt-glass-float-rgb) / var(--x-nt-glass-float-dense));
+  opacity: var(--x-lumno-feature-hint-shown);
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)[data-visible="true"]::before,
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)[data-visible="true"]::after {
+  backdrop-filter: var(--x-nt-glass-float-filter);
+  -webkit-backdrop-filter: var(--x-nt-glass-float-filter);
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice) > :not(.x-lumno-feature-hint__arrow-tip) {
+  /* A filter, not opacity, so it multiplies with the links' own opacity. */
+  filter: opacity(var(--x-lumno-feature-hint-shown));
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice) > .x-lumno-feature-hint__arrow-tip {
+  display: none;
+}
+/* The plate covers the border box. */
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)::before {
+  inset: -1px;
+  width: auto;
+  height: auto;
+  border-radius: inherit;
+  transform: none;
+  box-shadow: var(--x-nt-glass-edge), var(--x-nt-glass-float-shadow);
+}
+/* The tail meets the plate's edge without overlapping it, and keeps the rounded tip. */
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice):is([data-arrow-side="top"], [data-arrow-side="bottom"])::after {
+  width: calc(2 * var(--x-lumno-feature-hint-arrow-fill-size));
+  height: var(--x-lumno-feature-hint-arrow-fill-size);
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice):is([data-arrow-side="left"], [data-arrow-side="right"])::after {
+  width: var(--x-lumno-feature-hint-arrow-fill-size);
+  height: calc(2 * var(--x-lumno-feature-hint-arrow-fill-size));
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)[data-arrow-side="bottom"]::after {
+  bottom: calc(-1px - var(--x-lumno-feature-hint-arrow-fill-size));
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  clip-path: shape(from 0 0, line to 100% 0, line to calc(50% + 1.6px) calc(100% - 1.6px),
+    curve to calc(50% - 1.6px) calc(100% - 1.6px) with 50% 100%, close);
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)[data-arrow-side="top"]::after {
+  top: calc(-1px - var(--x-lumno-feature-hint-arrow-fill-size));
+  clip-path: polygon(0 100%, 100% 100%, 50% 0);
+  clip-path: shape(from 0 100%, line to 100% 100%, line to calc(50% + 1.6px) 1.6px,
+    curve to calc(50% - 1.6px) 1.6px with 50% 0, close);
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)[data-arrow-side="right"]::after {
+  right: calc(-1px - var(--x-lumno-feature-hint-arrow-fill-size));
+  clip-path: polygon(0 0, 0 100%, 100% 50%);
+  clip-path: shape(from 0 0, line to 0 100%, line to calc(100% - 1.6px) calc(50% + 1.6px),
+    curve to calc(100% - 1.6px) calc(50% - 1.6px) with 100% 50%, close);
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)[data-arrow-side="left"]::after {
+  left: calc(-1px - var(--x-lumno-feature-hint-arrow-fill-size));
+  clip-path: polygon(100% 0, 100% 100%, 0 50%);
+  clip-path: shape(from 100% 0, line to 100% 100%, line to 1.6px calc(50% + 1.6px),
+    curve to 1.6px calc(50% - 1.6px) with 0 50%, close);
+}
+/* The hole in the plate's shadow: a frame wide enough for the shadow, with the tail cut out of it,
+   half a pixel inside the tail so no shadow-free edge shows around it. */
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)[data-arrow-side="bottom"]::before {
+  clip-path: polygon(evenodd, -80px -80px, calc(100% + 80px) -80px, calc(100% + 80px) calc(100% + 80px), -80px calc(100% + 80px), -80px -80px,
+    calc(var(--x-lumno-feature-hint-tail-at) + 0.5px) 100%,
+    calc(var(--x-lumno-feature-hint-tail-at) + 2 * var(--x-lumno-feature-hint-arrow-fill-size) - 0.5px) 100%,
+    calc(var(--x-lumno-feature-hint-tail-at) + var(--x-lumno-feature-hint-arrow-fill-size)) calc(100% + var(--x-lumno-feature-hint-arrow-fill-size) - 1.5px),
+    calc(var(--x-lumno-feature-hint-tail-at) + 0.5px) 100%);
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)[data-arrow-side="top"]::before {
+  clip-path: polygon(evenodd, -80px -80px, calc(100% + 80px) -80px, calc(100% + 80px) calc(100% + 80px), -80px calc(100% + 80px), -80px -80px,
+    calc(var(--x-lumno-feature-hint-tail-at) + 0.5px) 0,
+    calc(var(--x-lumno-feature-hint-tail-at) + 2 * var(--x-lumno-feature-hint-arrow-fill-size) - 0.5px) 0,
+    calc(var(--x-lumno-feature-hint-tail-at) + var(--x-lumno-feature-hint-arrow-fill-size)) calc(1.5px - var(--x-lumno-feature-hint-arrow-fill-size)),
+    calc(var(--x-lumno-feature-hint-tail-at) + 0.5px) 0);
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)[data-arrow-side="right"]::before {
+  clip-path: polygon(evenodd, -80px -80px, calc(100% + 80px) -80px, calc(100% + 80px) calc(100% + 80px), -80px calc(100% + 80px), -80px -80px,
+    100% calc(var(--x-lumno-feature-hint-tail-at) + 0.5px),
+    100% calc(var(--x-lumno-feature-hint-tail-at) + 2 * var(--x-lumno-feature-hint-arrow-fill-size) - 0.5px),
+    calc(100% + var(--x-lumno-feature-hint-arrow-fill-size) - 1.5px) calc(var(--x-lumno-feature-hint-tail-at) + var(--x-lumno-feature-hint-arrow-fill-size)),
+    100% calc(var(--x-lumno-feature-hint-tail-at) + 0.5px));
+}
+body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:not(.x-lumno-feature-hint--update-notice, .x-lumno-feature-hint--engagement-notice)[data-arrow-side="left"]::before {
+  clip-path: polygon(evenodd, -80px -80px, calc(100% + 80px) -80px, calc(100% + 80px) calc(100% + 80px), -80px calc(100% + 80px), -80px -80px,
+    0 calc(var(--x-lumno-feature-hint-tail-at) + 0.5px),
+    0 calc(var(--x-lumno-feature-hint-tail-at) + 2 * var(--x-lumno-feature-hint-arrow-fill-size) - 0.5px),
+    calc(1.5px - var(--x-lumno-feature-hint-arrow-fill-size)) calc(var(--x-lumno-feature-hint-tail-at) + var(--x-lumno-feature-hint-arrow-fill-size)),
+    0 calc(var(--x-lumno-feature-hint-tail-at) + 0.5px));
 }
 body[data-glass-style][data-nt-ready="1"] .x-lumno-feature-hint:is([data-glass-ink="light"], body[data-theme="dark"] *) {
   --x-lumno-feature-hint-arrow-border: rgba(255, 255, 255, 0.16);

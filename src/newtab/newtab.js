@@ -6428,7 +6428,15 @@
     if (!pageState.helpCenterAskHintController || !pageState.helpCenterAskHintController.element) {
       return newtabEntryAnimationReadyPromise.then(() => false);
     }
-    pageState.inputParts.container.appendChild(pageState.helpCenterAskHintController.element);
+    // Beside the search plate, anchored to the input, where CSS anchors work: inside it, the plate's
+    // own backdrop filter would keep the hint's glass from reaching the wallpaper.
+    const helpCenterAskHint = pageState.helpCenterAskHintController.element;
+    if (window.CSS && CSS.supports('anchor-name: --x-nt-search-input')) {
+      helpCenterAskHint.setAttribute('data-search-anchored', 'true');
+      root.after(helpCenterAskHint);
+    } else {
+      pageState.inputParts.container.appendChild(helpCenterAskHint);
+    }
     const providerReady = getSiteSearchProviders()
       .then((items) => (Array.isArray(items) ? items : [])
         .find((item) => SEARCH_UTILS.isHelpCenterSiteSearchProvider(item)) || null)

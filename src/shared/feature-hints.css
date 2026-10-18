@@ -1,3 +1,11 @@
+/* How far a hint is shown, 0 to 1, following its opacity. The New Tab glass styles fade a hint's
+   layers and content with it instead of the hint's own opacity (glass-style.css). */
+@property --x-lumno-feature-hint-shown {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
 .x-lumno-feature-hint {
   --x-lumno-feature-hint-bg-top: #ffffff;
   --x-lumno-feature-hint-bg-bottom: #f7f9fc;
@@ -49,14 +57,17 @@
   white-space: normal;
   text-align: left;
   pointer-events: none;
+  --x-lumno-feature-hint-shown: 0;
   opacity: 0;
   visibility: hidden;
   transform: translateY(6px) scale(0.98);
   transform-origin: right bottom;
-  transition: opacity var(--lumno-duration-md, 0.18s) ease, transform var(--lumno-duration-md, 0.18s) ease, visibility var(--lumno-duration-md, 0.18s) ease;
+  transition: opacity var(--lumno-duration-md, 0.18s) ease, transform var(--lumno-duration-md, 0.18s) ease, visibility var(--lumno-duration-md, 0.18s) ease,
+    --x-lumno-feature-hint-shown var(--lumno-duration-md, 0.18s) ease;
 }
 
 .x-lumno-feature-hint[data-visible="true"] {
+  --x-lumno-feature-hint-shown: 1;
   visibility: visible;
   opacity: 1;
   pointer-events: auto;
@@ -114,6 +125,7 @@
 }
 
 body[data-nt-suggestions-open="true"] .x-lumno-feature-hint--newtab-ai-quick-jump {
+  --x-lumno-feature-hint-shown: 0;
   visibility: hidden;
   opacity: 0;
   pointer-events: none;
@@ -136,6 +148,7 @@ body[data-nt-suggestions-open="true"] .x-lumno-feature-hint--newtab-ai-quick-jum
 }
 
 body[data-nt-suggestions-open="true"] .x-lumno-feature-hint--newtab-tab-switcher {
+  --x-lumno-feature-hint-shown: 0;
   visibility: hidden;
   opacity: 0;
   pointer-events: none;
@@ -158,6 +171,7 @@ body[data-nt-suggestions-open="true"] .x-lumno-feature-hint--newtab-tab-switcher
 }
 
 body[data-nt-suggestions-open="true"] .x-lumno-feature-hint--newtab-webdav-sync {
+  --x-lumno-feature-hint-shown: 0;
   visibility: hidden;
   opacity: 0;
   pointer-events: none;
@@ -185,7 +199,22 @@ body[data-nt-suggestions-open="true"] .x-lumno-feature-hint--newtab-webdav-sync 
   transform: scale(1);
 }
 
+/* Where CSS anchors work, newtab.js puts the hint beside the search plate instead of inside it, and
+   it keeps the same spot by anchoring to the input. */
+#_x_extension_newtab_input_container_2024_unique_ {
+  anchor-name: --x-nt-search-input;
+}
+
+.x-lumno-feature-hint--newtab-help-center-ask[data-search-anchored="true"] {
+  position-anchor: --x-nt-search-input;
+  z-index: 3;
+  left: calc(anchor(left) + 16px);
+  bottom: calc(anchor(top) + 14px);
+  max-width: min(calc(anchor-size(width) - 32px), calc(100vw - 28px));
+}
+
 body[data-nt-suggestions-open="true"] .x-lumno-feature-hint--newtab-help-center-ask {
+  --x-lumno-feature-hint-shown: 0;
   visibility: hidden;
   opacity: 0;
   pointer-events: none;
