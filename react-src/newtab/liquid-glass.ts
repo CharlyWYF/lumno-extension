@@ -11,11 +11,11 @@
 // rebuilt, encoded or decoded while the page resizes or the results plate grows.
 
 const BEZEL_PX = 16;
-// feDisplacementMap moves a pixel by up to half the scale, so the rim samples up to 6px inward,
-// under half the rim even in the bluest channel: the scene stretches out toward the edge but
-// never folds back on itself. A bend past the rim mirrors the scene there, and the fold leaves a
-// hard seam inside it.
-export const LIQUID_GLASS_DISPLACEMENT_SCALE = 12;
+// feDisplacementMap moves a pixel by up to half the scale, so the rim samples up to half a rim
+// inward (a little more in the bluest channel): as far as the bend goes while the scene only
+// stretches toward the edge. Any further and it folds back on itself, mirroring the scene there
+// with a hard seam inside it.
+export const LIQUID_GLASS_DISPLACEMENT_SCALE = 16;
 // Blue bends further than red: each channel samples the backdrop at its own share of the bend, so
 // the rim fringes where the wallpaper has edges. Nothing splits in the flat middle.
 export const LIQUID_GLASS_DISPERSION = 0.25;
@@ -91,11 +91,12 @@ export function getRimDisplacement(
   ];
 }
 
-// The bend is strongest at the edge and eases out to nothing at the rim's inner edge, with no
-// slope left there, so the rim melts into the flat middle without a visible line.
+// The bend eases in from the rim's inner edge and levels off at the outer edge (a smoothstep), so
+// the rim melts into the flat middle without a visible line, and the stretch it puts on the scene
+// is spread across the rim instead of piled at one end, which lets the bend go further unfolded.
 function rimStrength(progressFromRim: number) {
   const rest = 1 - Math.min(1, progressFromRim);
-  return rest * rest;
+  return rest * rest * (3 - 2 * rest);
 }
 
 export interface LensTiles {
@@ -439,13 +440,14 @@ export function createLiquidGlass(options: {
   };
 }
 
-// The ring around a New Tab plate: a fifth of its height on the search bar, so most of the plate
-// stays a clear, flat window.
-const SURFACE_BEZEL_PX = 14;
+// The ring around a New Tab plate: wide enough on a card for the bend to show over a calm
+// wallpaper. The smoothstep keeps the inner part of the ring nearly flat, so even a plate whose
+// ring takes up most of its height still reads as a clear window in the middle.
+const SURFACE_BEZEL_PX = 40;
 
 // Rim width for a surface of this size, narrowed so small plates keep a flat middle.
 export function getSurfaceBezel(width: number, height: number) {
-  return Math.max(4, Math.min(SURFACE_BEZEL_PX, Math.min(width, height) / 4));
+  return Math.max(4, Math.min(SURFACE_BEZEL_PX, Math.min(width, height) / 3.5));
 }
 
 // How far the rim moves the backdrop: the bar's bend per pixel of rim.

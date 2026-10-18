@@ -46,12 +46,13 @@ describe('New Tab bookmarks bar liquid glass', () => {
   });
 
   it('fits the rim to any surface size and corner radius', () => {
-    expect(getSurfaceBezel(800, 72)).toBe(14);
-    expect(getSurfaceBezel(44, 44)).toBe(11);
+    expect(getSurfaceBezel(800, 200)).toBe(40);
+    expect(getSurfaceBezel(800, 70)).toBe(20);
+    expect(getSurfaceBezel(42, 42)).toBe(12);
     expect(getSurfaceBezel(8, 8)).toBe(4);
-    // Every surface bends as far per pixel of rim as the bookmarks bar's 12 over 16px.
-    expect(getSurfaceDisplacementScale(16)).toBe(12);
-    expect(getSurfaceDisplacementScale(30)).toBe(23);
+    // Every surface bends as far per pixel of rim as the bookmarks bar's 16 over 16px.
+    expect(getSurfaceDisplacementScale(16)).toBe(16);
+    expect(getSurfaceDisplacementScale(30)).toBe(30);
     // A rounder corner pushes the rim's bend off the straight edge near the corner.
     const sharp = getRimDisplacement(4, 2, 48, 48, 'floating', { radius: 4, bezel: 16 });
     const round = getRimDisplacement(4, 2, 48, 48, 'floating', { radius: 16, bezel: 16 });
@@ -306,8 +307,8 @@ describe('New Tab bookmarks bar liquid glass', () => {
       await settle();
       const first = pointedAt();
       const builds = encoded.mock.calls.length;
-      // The default would widen the rim from 14px only once the plate reached 88px; this one is
-      // 22px from the start, so growing never asks for new tiles.
+      // The default would widen the rim as the plate grew, up to 40px at 140px; this one is 22px
+      // from the start, so growing never asks for new tiles.
       const map = () => (filters()[0].querySelector('feDisplacementMap') as Element).getAttribute('scale');
       expect(map()).toBe(getSurfaceDisplacementScale(22).toFixed(1));
       resize(640, 180);
