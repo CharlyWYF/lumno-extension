@@ -66,6 +66,8 @@
   const selectionQuickActionsGroupRow = document.getElementById('_x_extension_selection_quick_actions_group_row_2026_unique_');
   const selectionQuickActionsGroupToggle = document.getElementById('_x_extension_selection_quick_actions_group_toggle_2026_unique_');
   const newtabTopContentTabsWrap = document.getElementById('_x_extension_newtab_top_content_tabs_wrap_2026_unique_');
+  const newtabTimeFontRow = document.getElementById('_x_extension_newtab_time_font_row_2026_unique_');
+  const newtabTimeFontSelect = document.getElementById('_x_extension_newtab_time_font_select_2026_unique_');
   const newtabTimeFontWeightRow = document.getElementById('_x_extension_newtab_time_font_weight_row_2026_unique_');
   const newtabTimeFontWeightControlHost = document.getElementById('_x_extension_newtab_time_font_weight_control_2026_unique_');
   const newtabTimeSecondsRow = document.getElementById('_x_extension_newtab_time_seconds_row_2026_unique_');
@@ -677,8 +679,6 @@
     NEWTAB_SHORTCUT_GAP_DEFAULT,
     NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
     NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
-    NEWTAB_TIME_FONT_WEIGHT_MIN,
-    NEWTAB_TIME_FONT_WEIGHT_MAX,
     NEWTAB_TIME_FONT_WEIGHT_DEFAULT,
     RESTRICTED_ACTION_STORAGE_KEY,
     RESTRICTED_ACTION_AUTO_BROWSER_SETTING_DONE_STORAGE_KEY,
@@ -852,6 +852,7 @@
   let currentBookmarkColumns = 6;
   let currentNewtabTopContentMode = 'brand';
   let currentNewtabTimeFontWeight = NEWTAB_TIME_FONT_WEIGHT_DEFAULT;
+  let currentNewtabTimeFont = SETTINGS.NEWTAB_TIME_FONT_DEFAULT;
   // Set once the daily quote rows are wired; language refreshes may run earlier.
   let dailyQuoteSettings = null;
   let currentNewtabShortcutColumns = NEWTAB_SHORTCUT_COLUMNS_DEFAULT;
@@ -927,10 +928,21 @@
     select.value = String(value);
     renderOptionsSelectControl(select);
   }
+  // Face names are proper names, so the list comes straight from settings.
+  if (newtabTimeFontSelect) {
+    SETTINGS.NEWTAB_TIME_FONTS.forEach((font) => {
+      const option = document.createElement('option');
+      option.value = font.id;
+      option.textContent = font.label;
+      newtabTimeFontSelect.appendChild(option);
+    });
+    newtabTimeFontSelect.value = currentNewtabTimeFont;
+  }
   [
     [languageSelect, 'language'],
     [searchResultTabPositionSelect, 'search-result-tab-position'],
     [newtabGlassStyleSelect, 'newtab-glass-style'],
+    [newtabTimeFontSelect, 'newtab-time-font'],
     [selectionQuickActionsProviderSelect, 'selection-quick-actions-provider']
   ].forEach(([select, kind]) => {
     const record = registerOptionsSelectControl(select, kind);
@@ -957,12 +969,14 @@
       return;
     }
     currentNewtabTimeFontWeight = normalizeNewtabTimeFontWeight(value);
+    // The slider spans the range the chosen face draws well.
+    const timeFont = SETTINGS.getNewtabTimeFont(currentNewtabTimeFont);
     newtabTimeFontWeightController.render({
       ariaLabel: getMessage('newtab_time_font_weight_title', 'Time font weight'),
-      defaultValue: NEWTAB_TIME_FONT_WEIGHT_DEFAULT,
+      defaultValue: timeFont.defaultWeight,
       id: '_x_extension_newtab_time_font_weight_slider_2026_unique_',
-      min: NEWTAB_TIME_FONT_WEIGHT_MIN,
-      max: NEWTAB_TIME_FONT_WEIGHT_MAX,
+      min: timeFont.minWeight,
+      max: timeFont.maxWeight,
       resetAriaLabel: getMessage(
         'newtab_time_font_weight_reset',
         'Reset time font weight'
@@ -970,11 +984,11 @@
       resetButtonId: '_x_extension_newtab_time_font_weight_reset_2026_unique_',
       step: 1,
       ticks: [
-        { align: 'start', label: String(NEWTAB_TIME_FONT_WEIGHT_MIN) },
-        { label: String(Math.round((NEWTAB_TIME_FONT_WEIGHT_MIN + NEWTAB_TIME_FONT_WEIGHT_MAX) / 2)) },
-        { align: 'end', label: String(NEWTAB_TIME_FONT_WEIGHT_MAX) }
+        { align: 'start', label: String(timeFont.minWeight) },
+        { label: String(Math.round((timeFont.minWeight + timeFont.maxWeight) / 2)) },
+        { align: 'end', label: String(timeFont.maxWeight) }
       ],
-      value: currentNewtabTimeFontWeight
+      value: SETTINGS.resolveNewtabTimeFontWeight(timeFont.id, currentNewtabTimeFontWeight)
     });
   }
   const newtabShortcutColumnsController =
@@ -1872,7 +1886,7 @@
     const visible = currentNewtabTopContentMode === 'time';
     animateOptionsPanelHeight(() => {
       let changed = false;
-      [newtabTimeFontWeightRow, newtabTimeSecondsRow].forEach((row) => {
+      [newtabTimeFontRow, newtabTimeFontWeightRow, newtabTimeSecondsRow].forEach((row) => {
         changed = setConditionalSettingsElementVisibility(row, visible) || changed;
       });
       return changed;
@@ -3224,6 +3238,23 @@
       handleSearchResultPrioritySelection(searchResultPrioritySelect.value);
     });
   }
+  if (newtabTimeFontSelect) {
+    // Each face opens at its own default weight, as in New Tab's panel.
+    newtabTimeFontSelect.addEventListener('change', () => {
+      const font = SETTINGS.normalizeNewtabTimeFont(newtabTimeFontSelect.value);
+      const weight = SETTINGS.getNewtabTimeFont(font).defaultWeight;
+      newtabTimeFontSelect.value = font;
+      currentNewtabTimeFont = font;
+      renderNewtabTimeFontWeightControl(weight);
+      if (storageArea) {
+        storageArea.set({
+          [SETTINGS.NEWTAB_TIME_FONT_STORAGE_KEY]: font,
+          [NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]: weight
+        });
+      }
+      refreshCustomSelects();
+    });
+  }
   if (newtabGlassStyleSelect) {
     newtabGlassStyleSelect.addEventListener('change', () => {
       const style = SETTINGS.normalizeNewtabGlassStyle(newtabGlassStyleSelect.value);
@@ -3635,6 +3666,20 @@
     key: NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
     normalize: normalizeNewtabTopContentMode,
     apply: setNewtabTopContentTabState,
+    refreshSelects: true
+  });
+  settingBinder.bindSetting({
+    key: SETTINGS.NEWTAB_TIME_FONT_STORAGE_KEY,
+    normalize: SETTINGS.normalizeNewtabTimeFont,
+    apply(font) {
+      currentNewtabTimeFont = font;
+      if (newtabTimeFontSelect) {
+        newtabTimeFontSelect.value = font;
+      }
+      renderNewtabTimeFontWeightControl(currentNewtabTimeFontWeight);
+    },
+    repairOnLoad: false,
+    repairOnChange: false,
     refreshSelects: true
   });
   settingBinder.bindSetting({

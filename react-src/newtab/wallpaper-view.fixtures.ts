@@ -69,6 +69,16 @@ export function createDefaultPanelState(): WallpaperPanelState {
     search: {
       autoFocus: { infoLabel: '', infoTooltip: '', title: '', toggle: toggle('Automatically focus input') },
       seconds: { title: 'Show seconds', toggle: toggle('Show seconds'), visible: false },
+      timeFont: {
+        ariaLabel: 'Time font',
+        options: [
+          { value: 'open-sans', label: 'Open Sans' },
+          { value: 'bitcount', label: 'Bitcount' }
+        ],
+        title: 'Time font',
+        value: 'open-sans',
+        visible: false
+      },
       timeWeight: {
         ...slider('Time font weight', 320, 300, 800),
         resetLabel: '',

@@ -220,6 +220,8 @@
     SETTINGS.NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY ||
     '_x_extension_newtab_time_font_weight_2026_unique_';
   const NEWTAB_TIME_FONT_WEIGHT_DEFAULT = Number(SETTINGS.NEWTAB_TIME_FONT_WEIGHT_DEFAULT) || 320;
+  const NEWTAB_TIME_FONT_STORAGE_KEY = SETTINGS.NEWTAB_TIME_FONT_STORAGE_KEY ||
+    '_x_extension_newtab_time_font_2026_unique_';
   const NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY =
     SETTINGS.NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY ||
     '_x_extension_newtab_time_seconds_visible_2026_unique_';
@@ -629,6 +631,7 @@
   let pageNoticeController = null;
   pageState.newtabTopContentMode = 'brand';
   pageState.newtabTimeFontWeight = NEWTAB_TIME_FONT_WEIGHT_DEFAULT;
+  pageState.newtabTimeFont = SETTINGS.NEWTAB_TIME_FONT_DEFAULT || 'open-sans';
   pageState.newtabTimeSecondsVisible = false;
   pageState.newtabInputAutoFocusEnabled = false;
   let newtabFeedbackButtonVisible = true;
@@ -1441,6 +1444,7 @@
     normalizeNewtabTopContentMode,
     normalizeNewtabTimeSecondsVisible,
     normalizeNewtabTimeFontWeight,
+    normalizeNewtabTimeFont,
     normalizeNewtabShortcutsVisible,
     normalizeNewtabShortcutAddVisible,
     normalizeNewtabShortcutDockMagnificationEnabled,
@@ -2119,9 +2123,22 @@
     // Floating panels and menus take the same material and ink as the plates; flipped to light ink
     // they switch their controls to the dark palette (paletteSwap).
     document.querySelectorAll(
-      '.x-nt-wallpaper-panel, ._x_extension_menu_surface_2024_unique_, .x-lumno-feature-hint'
+      '.x-nt-wallpaper-panel, ._x_extension_menu_surface_2024_unique_, .x-lumno-feature-hint, ' +
+      '.x-nt-feedback-popover, .x-lumno-toast'
     ).forEach((element) => {
       targets.push({ element, sampleElement: element, glass: true, paletteSwap: true });
+    });
+    // A dialog samples the wallpaper under itself and sets its ink on its backdrop layer, which hands
+    // it down to the dialog and its controls; the WeChat group dialog's card is in its shadow root.
+    document.querySelectorAll(
+      '.x-nt-shortcut-dialog-backdrop, .x-nt-recent-history-backdrop, #_x_extension_community_qr_dialog_2026_unique_'
+    ).forEach((element) => {
+      const dialog = element.shadowRoot
+        ? element.shadowRoot.querySelector('.card')
+        : element.querySelector('.x-nt-shortcut-dialog, .x-nt-recent-history-dialog');
+      if (dialog) {
+        targets.push({ element, sampleElement: dialog, glass: true, paletteSwap: true });
+      }
     });
     return targets;
   }
@@ -2245,6 +2262,7 @@
       effect: NEWTAB_WALLPAPER_EFFECT_STORAGE_KEY,
       topContentMode: NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
       timeFontWeight: NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
+      timeFont: NEWTAB_TIME_FONT_STORAGE_KEY,
       timeSecondsVisible: NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY,
       favicon: NEWTAB_FAVICON_STORAGE_KEY
     },
@@ -2268,6 +2286,8 @@
     },
     getTimeFontWeight: () => pageState.newtabTimeFontWeight,
     setTimeFontWeight: (...args) => setNewtabTimeFontWeight(...args),
+    getTimeFont: () => pageState.newtabTimeFont,
+    setTimeFont: (...args) => setNewtabTimeFont(...args),
     getTimeSecondsVisible: () => pageState.newtabTimeSecondsVisible,
     setTimeSecondsVisible: (...args) => setNewtabTimeSecondsVisible(...args),
     getSearchWidth: getEffectiveNewtabSearchWidth,
@@ -2682,6 +2702,14 @@
     }
     setNewtabTimeFontWeight(nextValue);
   });
+  storageChanges.on(NEWTAB_TIME_FONT_STORAGE_KEY, (changes) => {
+    const raw = changes[NEWTAB_TIME_FONT_STORAGE_KEY].newValue;
+    const nextValue = normalizeNewtabTimeFont(raw);
+    if (storageArea && raw !== nextValue) {
+      storageArea.set({ [NEWTAB_TIME_FONT_STORAGE_KEY]: nextValue });
+    }
+    setNewtabTimeFont(nextValue);
+  });
   storageChanges.on(NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY, (changes) => {
     const raw = changes[NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY].newValue;
     const nextValue = normalizeNewtabTimeSecondsVisible(raw);
@@ -2890,6 +2918,16 @@
     });
   }
 
+  // Settles once the stored clock face has loaded, so the first reveal never
+  // draws the clock in a fallback face.
+  let resolveInitialTimeFontReady = () => {};
+  const initialTimeFontReadyTask = new Promise((resolve) => {
+    resolveInitialTimeFontReady = resolve;
+  });
+  if (!storageArea) {
+    resolveInitialTimeFontReady(true);
+  }
+
   if (storageArea) {
     bootstrapInitialLanguageMode();
     storageArea.get([settingsRuntimeApi.PROGRESS_TRACKING_ENABLED_STORAGE_KEY], (result) => {
@@ -2974,12 +3012,15 @@
     storageArea.get([
       NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
       NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
+      NEWTAB_TIME_FONT_STORAGE_KEY,
       NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY
     ], (result) => {
       const raw = result[NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY];
       const nextValue = normalizeNewtabTopContentMode(raw);
       const rawFontWeight = result[NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY];
       const nextFontWeight = normalizeNewtabTimeFontWeight(rawFontWeight);
+      const rawFont = result[NEWTAB_TIME_FONT_STORAGE_KEY];
+      const nextFont = normalizeNewtabTimeFont(rawFont);
       const rawSecondsVisible = result[NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY];
       const nextSecondsVisible = normalizeNewtabTimeSecondsVisible(rawSecondsVisible);
       if (raw !== nextValue) {
@@ -2988,9 +3029,16 @@
       if (rawFontWeight !== nextFontWeight) {
         storageArea.set({ [NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]: nextFontWeight });
       }
+      if (rawFont !== undefined && rawFont !== nextFont) {
+        storageArea.set({ [NEWTAB_TIME_FONT_STORAGE_KEY]: nextFont });
+      }
       if (rawSecondsVisible !== nextSecondsVisible) {
         storageArea.set({ [NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY]: nextSecondsVisible });
       }
+      // The face is set before the mode so the first clock render already
+      // uses it, and the startup reveal waits for it to load.
+      pageState.newtabTimeFont = nextFont;
+      resolveInitialTimeFontReady(nextValue === 'time' ? loadNewtabTimeFont(nextFont) : true);
       setNewtabTimeFontWeight(nextFontWeight);
       setNewtabTimeSecondsVisible(nextSecondsVisible);
       setNewtabTopContentMode(nextValue);
@@ -3220,6 +3268,7 @@
     NEWTAB_GLASS_STYLE_STORAGE_KEY,
     NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
     NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
+    NEWTAB_TIME_FONT_STORAGE_KEY,
     NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY,
     NEWTAB_THEME_MODE_STORAGE_KEY,
     NEWTAB_THEME_SCOPE_STORAGE_KEY,
@@ -3516,6 +3565,8 @@
     renderNewtabTopContent,
     setNewtabTopContentMode,
     setNewtabTimeFontWeight,
+    setNewtabTimeFont,
+    loadNewtabTimeFont,
     setNewtabTimeSecondsVisible
   } = NEWTAB_TOP_CONTENT_RUNTIME.createTopContentRuntime({
     root,
@@ -3529,6 +3580,7 @@
     scheduleWallpaperAdaptiveToneUpdate,
     normalizeNewtabTopContentMode,
     normalizeNewtabTimeFontWeight,
+    normalizeNewtabTimeFont,
     normalizeNewtabTimeSecondsVisible,
     pageState
   });
@@ -6396,6 +6448,7 @@
       alt: t('newtab_feedback_wechat_qr_alt', 'Lumno 微信群二维码'),
       closeLabel: t('newtab_feedback_wechat_close_tooltip', '关闭'),
       theme: document.body.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
+      glass: document.body.hasAttribute('data-glass-style'),
       returnFocus: document.activeElement
     });
   }
@@ -6705,7 +6758,7 @@
     newtabGlassOpenObserver.observe(document.body, {
       attributes: true,
       subtree: true,
-      attributeFilter: ['data-open', 'data-nt-suggestions-open', 'data-wallpaper-panel-open']
+      attributeFilter: ['data-open', 'data-menu-open', 'data-show', 'data-nt-suggestions-open', 'data-wallpaper-panel-open']
     });
   }
 
@@ -7396,6 +7449,7 @@
       ? document.fonts.ready.catch(() => true)
       : Promise.resolve(true);
   observeNewtabStartupTask('fonts', initialFontsReadyTask);
+  observeNewtabStartupTask('time-font', initialTimeFontReadyTask);
   observeNewtabStartupTask('quote', initialQuoteReadyTask);
   const initialVisualReadyPromise = Promise.all([
     initialAppearanceReadyTask,
@@ -7411,6 +7465,7 @@
     initialHiddenRecentSitesReadyTask,
     initialLayoutStorageReadyTask,
     initialFontsReadyTask,
+    initialTimeFontReadyTask,
     initialQuoteReadyTask
   ]).catch((error) => {
     console.warn('[Lumno] Initial new tab layout setup failed.', error);

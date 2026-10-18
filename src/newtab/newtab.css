@@ -5391,7 +5391,8 @@ body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-open="true"]:not(
 .x-nt-time-weight-control[data-visible="false"] {
   display: none;
 }
-.x-nt-top-content-seconds-row {
+.x-nt-top-content-seconds-row,
+.x-nt-top-content-font-row {
   min-width: 0;
   display: flex;
   align-items: center;
@@ -5401,7 +5402,9 @@ body[data-wallpaper-active="true"] .x-nt-wallpaper-button[data-open="true"]:not(
   box-sizing: border-box;
 }
 .x-nt-top-content-seconds-row[hidden],
-.x-nt-top-content-seconds-row[data-visible="false"] {
+.x-nt-top-content-seconds-row[data-visible="false"],
+.x-nt-top-content-font-row[hidden],
+.x-nt-top-content-font-row[data-visible="false"] {
   display: none;
 }
 .x-nt-top-content-seconds-title {

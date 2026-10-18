@@ -701,6 +701,9 @@
   "newtab_top_content_off": {
     "message": "非表示"
   },
+  "newtab_time_font_title": {
+    "message": "時刻のフォント"
+  },
   "newtab_time_font_weight_title": {
     "message": "時刻の文字の太さ"
   },

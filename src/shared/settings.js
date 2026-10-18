@@ -168,6 +168,90 @@
   const NEWTAB_TIME_FONT_WEIGHT_MIN = 300;
   const NEWTAB_TIME_FONT_WEIGHT_MAX = 800;
   const NEWTAB_TIME_FONT_WEIGHT_DEFAULT = 320;
+  const NEWTAB_TIME_FONT_STORAGE_KEY = '_x_extension_newtab_time_font_2026_unique_';
+  const NEWTAB_TIME_FONT_DEFAULT = 'open-sans';
+  // The stored weight stays within 300-800; each face clamps it to the range
+  // it draws well. The "Lumno Clock" faces are digit-only subsets declared in
+  // assets/fonts/clock/clock-fonts.css (scripts/subset-clock-fonts.py), so
+  // their weight ranges must match the ones built there. tracking is the
+  // letter spacing in em at the face's lightest and heaviest weight: light
+  // strokes leave room to set digits tighter, heavy ones need air. null keeps
+  // Open Sans's stepped weight-based tracking.
+  const NEWTAB_TIME_FONTS = Object.freeze([
+    Object.freeze({
+      id: 'open-sans',
+      label: 'Open Sans',
+      family: '"Open Sans", sans-serif',
+      stretch: '86%',
+      minWeight: 300,
+      maxWeight: 800,
+      defaultWeight: 320,
+      tracking: null,
+      colonGap: 0.055,
+      colonShift: -0.035
+    }),
+    Object.freeze({
+      id: 'geist',
+      label: 'Geist',
+      family: '"Lumno Clock Geist", "Open Sans", sans-serif',
+      stretch: '',
+      minWeight: 300,
+      maxWeight: 800,
+      defaultWeight: 320,
+      tracking: [-0.045, -0.02],
+      colonGap: 0.04,
+      colonShift: -0.06
+    }),
+    Object.freeze({
+      id: 'jetbrains-mono',
+      label: 'JetBrains Mono',
+      family: '"Lumno Clock JetBrains Mono", "Open Sans", monospace',
+      stretch: '',
+      minWeight: 300,
+      maxWeight: 800,
+      defaultWeight: 320,
+      tracking: [-0.06, -0.035],
+      colonGap: -0.06,
+      colonShift: -0.02
+    }),
+    Object.freeze({
+      id: 'bricolage-grotesque',
+      label: 'Bricolage Grotesque',
+      family: '"Lumno Clock Bricolage Grotesque", "Open Sans", sans-serif',
+      stretch: '',
+      minWeight: 300,
+      maxWeight: 800,
+      defaultWeight: 320,
+      tracking: [-0.045, -0.015],
+      colonGap: 0.1,
+      colonShift: -0.06
+    }),
+    Object.freeze({
+      id: 'unbounded',
+      label: 'Unbounded',
+      family: '"Lumno Clock Unbounded", "Open Sans", sans-serif',
+      stretch: '',
+      minWeight: 300,
+      maxWeight: 800,
+      defaultWeight: 320,
+      tracking: [-0.05, -0.02],
+      colonGap: 0.05,
+      colonShift: -0.04
+    }),
+    // Solid round dots; past 550 the dots run into each other.
+    Object.freeze({
+      id: 'bitcount',
+      label: 'Bitcount',
+      family: '"Lumno Clock Bitcount", "Open Sans", monospace',
+      stretch: '',
+      minWeight: 300,
+      maxWeight: 550,
+      defaultWeight: 480,
+      tracking: [-0.03, 0],
+      colonGap: -0.08,
+      colonShift: -0.09
+    })
+  ]);
   const NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY =
     '_x_extension_newtab_time_seconds_visible_2026_unique_';
   // User-controlled preferences that are safe to store in chrome.storage.sync.
@@ -231,6 +315,7 @@
     OVERLAY_TAB_PRIORITY_STORAGE_KEY,
     NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY,
     NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY,
+    NEWTAB_TIME_FONT_STORAGE_KEY,
     NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY,
     RESTRICTED_ACTION_STORAGE_KEY,
     SEARCH_RESULT_PRIORITY_STORAGE_KEY,
@@ -395,6 +480,39 @@
     return Math.min(
       NEWTAB_TIME_FONT_WEIGHT_MAX,
       Math.max(NEWTAB_TIME_FONT_WEIGHT_MIN, Math.round(number))
+    );
+  }
+
+  function getNewtabTimeFont(value) {
+    return NEWTAB_TIME_FONTS.find((font) => font.id === value) ||
+      NEWTAB_TIME_FONTS.find((font) => font.id === NEWTAB_TIME_FONT_DEFAULT);
+  }
+
+  function normalizeNewtabTimeFont(value) {
+    return getNewtabTimeFont(value).id;
+  }
+
+  // Letter spacing in em for a face at a weight, or null for Open Sans's own
+  // stepped tracking.
+  function getNewtabTimeFontTracking(fontId, weight) {
+    const font = getNewtabTimeFont(fontId);
+    if (!Array.isArray(font.tracking)) {
+      return null;
+    }
+    const resolvedWeight = resolveNewtabTimeFontWeight(font.id, weight);
+    const span = font.maxWeight - font.minWeight;
+    const amount = span > 0 ? (resolvedWeight - font.minWeight) / span : 0;
+    const [light, heavy] = font.tracking;
+    return Math.round((light + ((heavy - light) * amount)) * 1000) / 1000;
+  }
+
+  // The weight a face actually draws with: the stored weight, held to the
+  // range that face supports.
+  function resolveNewtabTimeFontWeight(fontId, weight) {
+    const font = getNewtabTimeFont(fontId);
+    return Math.min(
+      font.maxWeight,
+      Math.max(font.minWeight, normalizeNewtabTimeFontWeight(weight))
     );
   }
 
@@ -1377,6 +1495,9 @@
     NEWTAB_TIME_FONT_WEIGHT_MIN,
     NEWTAB_TIME_FONT_WEIGHT_MAX,
     NEWTAB_TIME_FONT_WEIGHT_DEFAULT,
+    NEWTAB_TIME_FONT_STORAGE_KEY,
+    NEWTAB_TIME_FONT_DEFAULT,
+    NEWTAB_TIME_FONTS,
     NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY,
     normalizeLocale,
     localeToHtmlLang,
@@ -1386,6 +1507,10 @@
     normalizeNewtabQuotePrefs,
     normalizeNewtabWordmarkVisible,
     normalizeNewtabTimeFontWeight,
+    getNewtabTimeFont,
+    normalizeNewtabTimeFont,
+    resolveNewtabTimeFontWeight,
+    getNewtabTimeFontTracking,
     normalizeNewtabTimeSecondsVisible,
     normalizeNewtabShortcutsVisible,
     normalizeNewtabShortcutAddVisible,

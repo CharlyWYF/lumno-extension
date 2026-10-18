@@ -16,6 +16,8 @@
       '_x_extension_newtab_wordmark_visible_2026_unique_',
     timeFontWeight: SETTINGS.NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY ||
       '_x_extension_newtab_time_font_weight_2026_unique_',
+    timeFont: SETTINGS.NEWTAB_TIME_FONT_STORAGE_KEY ||
+      '_x_extension_newtab_time_font_2026_unique_',
     timeSecondsVisible: SETTINGS.NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY ||
       '_x_extension_newtab_time_seconds_visible_2026_unique_',
     favicon: '_x_extension_newtab_favicon_2026_unique_'
@@ -23,8 +25,6 @@
   const PRELOAD_STORAGE_KEY = '_x_extension_newtab_wallpaper_preload_2026_unique_';
   const PRELOAD_STORAGE_VERSION = 4;
   const WALLPAPER_EFFECT_MODE_STORAGE_VERSION = 11;
-  const NEWTAB_TIME_FONT_WEIGHT_MIN = Number(SETTINGS.NEWTAB_TIME_FONT_WEIGHT_MIN) || 300;
-  const NEWTAB_TIME_FONT_WEIGHT_MAX = Number(SETTINGS.NEWTAB_TIME_FONT_WEIGHT_MAX) || 800;
   const NEWTAB_TIME_FONT_WEIGHT_DEFAULT = Number(SETTINGS.NEWTAB_TIME_FONT_WEIGHT_DEFAULT) || 320;
   const CRT_PARAMETER_PHYSICAL_MAX = Object.freeze({
     crtStrength: 20,
@@ -117,6 +117,7 @@
     const NEWTAB_WALLPAPER_EFFECT_STORAGE_KEY = storageKeys.effect;
     const NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY = storageKeys.topContentMode;
     const NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY = storageKeys.timeFontWeight;
+    const NEWTAB_TIME_FONT_STORAGE_KEY = storageKeys.timeFont;
     const NEWTAB_TIME_SECONDS_VISIBLE_STORAGE_KEY = storageKeys.timeSecondsVisible;
     const NEWTAB_FAVICON_STORAGE_KEY = storageKeys.favicon;
     const t = typeof options.t === 'function'
@@ -278,6 +279,13 @@
       : function() { return NEWTAB_TIME_FONT_WEIGHT_DEFAULT; };
     const setTimeFontWeight = typeof options.setTimeFontWeight === 'function'
       ? options.setTimeFontWeight
+      : function() {};
+    const hasTimeFontGetter = typeof options.getTimeFont === 'function';
+    const getTimeFont = hasTimeFontGetter
+      ? options.getTimeFont
+      : function() { return SETTINGS.NEWTAB_TIME_FONT_DEFAULT; };
+    const setTimeFont = typeof options.setTimeFont === 'function'
+      ? options.setTimeFont
       : function() {};
     const hasTimeSecondsVisibleGetter = typeof options.getTimeSecondsVisible === 'function';
     const getTimeSecondsVisible = hasTimeSecondsVisibleGetter
@@ -639,6 +647,7 @@
     };
     let currentTopContentMode = normalizeNewtabTopContentMode(getTopContentMode());
     let currentTimeFontWeight = normalizeNewtabTimeFontWeight(getTimeFontWeight());
+    let currentTimeFont = SETTINGS.normalizeNewtabTimeFont(getTimeFont());
     let currentTimeSecondsVisible = normalizeNewtabTimeSecondsVisible(getTimeSecondsVisible());
     let currentNewtabFaviconId = NEWTAB_FAVICON_DEFAULT_ID;
 
@@ -2561,6 +2570,29 @@
       storageArea.set({ [NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]: nextValue });
     }
 
+    function applyTimeFont(value) {
+      currentTimeFont = SETTINGS.normalizeNewtabTimeFont(value);
+      setTimeFont(currentTimeFont);
+      renderWallpaperPanelState();
+    }
+
+    // Each face opens at the weight it reads best at, so switching faces
+    // also moves the weight to the new face's default.
+    function persistTimeFont(value) {
+      const nextValue = SETTINGS.normalizeNewtabTimeFont(value);
+      const nextWeight = SETTINGS.getNewtabTimeFont(nextValue).defaultWeight;
+      currentTimeFontWeight = nextWeight;
+      setTimeFontWeight(nextWeight);
+      applyTimeFont(nextValue);
+      if (!storageArea || !NEWTAB_TIME_FONT_STORAGE_KEY) {
+        return;
+      }
+      storageArea.set({
+        [NEWTAB_TIME_FONT_STORAGE_KEY]: nextValue,
+        [NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]: nextWeight
+      });
+    }
+
     function applyTimeSecondsVisible(value) {
       currentTimeSecondsVisible = normalizeNewtabTimeSecondsVisible(value);
       setTimeSecondsVisible(currentTimeSecondsVisible);
@@ -4068,9 +4100,15 @@
       if (hasTimeFontWeightGetter) {
         currentTimeFontWeight = normalizeNewtabTimeFontWeight(getTimeFontWeight());
       }
+      if (hasTimeFontGetter) {
+        currentTimeFont = SETTINGS.normalizeNewtabTimeFont(getTimeFont());
+      }
       if (hasTimeSecondsVisibleGetter) {
         currentTimeSecondsVisible = normalizeNewtabTimeSecondsVisible(getTimeSecondsVisible());
       }
+      const timeFont = SETTINGS.getNewtabTimeFont(currentTimeFont);
+      const timeFontWeight = SETTINGS.resolveNewtabTimeFontWeight(timeFont.id, currentTimeFontWeight);
+      const timeFontTitle = t('newtab_time_font_title', 'Time font');
       const width = normalizeSearchWidthValue(getSearchWidth());
       const timeVisible = currentTopContentMode === 'time';
       const autoFocusTitle = t('newtab_input_auto_focus_title', 'Automatically focus input');
@@ -4108,14 +4146,21 @@
             ].map((option) => Object.assign(option, { ariaLabel: option.label }))
           }
         },
+        timeFont: {
+          visible: timeVisible,
+          title: timeFontTitle,
+          ariaLabel: timeFontTitle,
+          value: timeFont.id,
+          options: SETTINGS.NEWTAB_TIME_FONTS.map((font) => ({ value: font.id, label: font.label }))
+        },
         timeWeight: {
           visible: timeVisible,
           label: t('newtab_time_font_weight_title', 'Time font weight'),
-          value: currentTimeFontWeight,
-          min: NEWTAB_TIME_FONT_WEIGHT_MIN,
-          max: NEWTAB_TIME_FONT_WEIGHT_MAX,
+          value: timeFontWeight,
+          min: timeFont.minWeight,
+          max: timeFont.maxWeight,
           resetLabel: t('newtab_time_font_weight_reset', 'Reset time font weight'),
-          resetVisible: currentTimeFontWeight !== NEWTAB_TIME_FONT_WEIGHT_DEFAULT
+          resetVisible: timeFontWeight !== timeFont.defaultWeight
         },
         seconds: {
           visible: timeVisible,
@@ -4683,7 +4728,8 @@
         },
         selectTopContent: (mode) => persistTopContentMode(mode),
         setTimeFontWeight: (value) => persistTimeFontWeight(value),
-        resetTimeFontWeight: () => persistTimeFontWeight(NEWTAB_TIME_FONT_WEIGHT_DEFAULT),
+        resetTimeFontWeight: () => persistTimeFontWeight(SETTINGS.getNewtabTimeFont(currentTimeFont).defaultWeight),
+        setTimeFont: (value) => persistTimeFont(value),
         setTimeSecondsVisible: (visible) => persistTimeSecondsVisible(visible),
         setShortcutsVisible(visible) {
           setShortcutsVisible(visible, { persist: true });
@@ -5340,6 +5386,15 @@
         applyTimeFontWeight(nextValue);
         if (storageArea && raw !== nextValue) {
           storageArea.set({ [NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]: nextValue });
+        }
+        handled = true;
+      }
+      if (NEWTAB_TIME_FONT_STORAGE_KEY && changes[NEWTAB_TIME_FONT_STORAGE_KEY]) {
+        const raw = changes[NEWTAB_TIME_FONT_STORAGE_KEY].newValue;
+        const nextValue = SETTINGS.normalizeNewtabTimeFont(raw);
+        applyTimeFont(nextValue);
+        if (storageArea && raw !== nextValue) {
+          storageArea.set({ [NEWTAB_TIME_FONT_STORAGE_KEY]: nextValue });
         }
         handled = true;
       }

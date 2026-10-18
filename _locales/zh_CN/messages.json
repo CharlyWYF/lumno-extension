@@ -701,6 +701,9 @@
   "newtab_top_content_off": {
     "message": "隐藏"
   },
+  "newtab_time_font_title": {
+    "message": "时间字体"
+  },
   "newtab_time_font_weight_title": {
     "message": "时间字重"
   },

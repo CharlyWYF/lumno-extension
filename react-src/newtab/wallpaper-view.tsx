@@ -157,6 +157,7 @@ export interface WallpaperPanelActions extends TooltipActions {
   setShortcutSize(value: number, change: SliderChange): void;
   setShortcutsVisible(visible: boolean): void;
   setTimeFontWeight(value: number, change: SliderChange): void;
+  setTimeFont(value: string): void;
   setTimeSecondsVisible(visible: boolean): void;
   setWallpaperEnabled(enabled: boolean): void;
   showButtonTooltip(anchor: HTMLElement): void;
@@ -199,6 +200,7 @@ export interface WallpaperPanelState {
   search: {
     autoFocus: { infoLabel: string; infoTooltip: string; title: string; toggle: ToggleState };
     seconds: { title: string; toggle: ToggleState; visible: boolean };
+    timeFont: { ariaLabel: string; options: SelectMenuOption[]; title: string; value: string; visible: boolean };
     timeWeight: SliderState & { resetLabel: string; resetVisible: boolean; visible: boolean };
     title: string;
     topContent: { title: string; tabs: SegmentState<TopContentMode> };
@@ -826,8 +828,10 @@ const QUOTE_POSITION_SELECT_ID = 'x-nt-quote-position';
 const BOOKMARK_VIEW_MODE_SELECT_ID = 'x-nt-bookmark-view-mode';
 const BOOKMARK_TOPBAR_SURFACE_SELECT_ID = 'x-nt-bookmark-topbar-surface';
 const GLASS_STYLE_SELECT_ID = 'x-nt-glass-style';
+const TIME_FONT_SELECT_ID = 'x-nt-time-font';
 const SELECT_HOST_REFS: Record<string, string> = {
   [GLASS_STYLE_SELECT_ID]: 'glassStyleSelectHost',
+  [TIME_FONT_SELECT_ID]: 'timeFontSelectHost',
   [EFFECT_SELECT_ID]: 'effectSelectHost',
   [QUOTE_POSITION_SELECT_ID]: 'quotePositionSelectHost',
   [BOOKMARK_VIEW_MODE_SELECT_ID]: 'bookmarkViewModeSelectHost',
@@ -1152,6 +1156,27 @@ function WallpaperPanel({
                   segment={state.search.topContent.tabs}
                   valueAttribute="data-newtab-top-content"
                   visible={state.open && searchExpanded}
+                />
+              </div>
+              <div
+                {...ref('topContentFontRow')}
+                {...collapsible(state.search.timeFont.visible)}
+                className="x-nt-top-content-font-row x-nt-panel-collapsible"
+              >
+                <span {...ref('topContentFontTitle')} className="x-nt-top-content-seconds-title">
+                  {state.search.timeFont.title}
+                </span>
+                <PanelSelect
+                  documentObj={documentObj}
+                  hostRef="timeFontSelectHost"
+                  id={TIME_FONT_SELECT_ID}
+                  registerControls={registerSelect}
+                  select={{
+                    ariaLabel: state.search.timeFont.ariaLabel,
+                    onChange: actions.setTimeFont,
+                    options: state.search.timeFont.options,
+                    value: state.search.timeFont.value
+                  }}
                 />
               </div>
               <div

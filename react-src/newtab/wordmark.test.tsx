@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createTopContentApi,
   createTopContentController,
+  type TopContentClockFont,
   type TopContentController
 } from './wordmark';
 
@@ -12,7 +13,8 @@ function createController(
   animateEntry = true,
   mode: 'brand' | 'time' = 'brand',
   showSeconds = false,
-  fontWeight?: number
+  fontWeight?: number,
+  font?: TopContentClockFont
 ) {
   const host = document.createElement('div');
   const onActivate = vi.fn();
@@ -31,7 +33,8 @@ function createController(
       locale: 'zh-CN',
       mode,
       showSeconds,
-      fontWeight
+      fontWeight,
+      font
     });
   });
   return { controller, host, onActivate, onEntryAnimationComplete };
@@ -107,6 +110,41 @@ describe('New Tab top-content React island', () => {
     const clock = host.querySelector<HTMLElement>('time.x-nt-time-mark');
 
     expect(clock?.style.fontWeight).toBe('650');
+    expect(clock?.style.letterSpacing).toBe('-0.043em');
+  });
+
+  it('draws the clock in the chosen face with its own tracking and colon placement', () => {
+    const { host } = createController(true, 'time', false, 480, {
+      colonGap: -0.08,
+      colonShift: 0,
+      family: '"Lumno Clock Bitcount", "Open Sans", monospace',
+      id: 'bitcount',
+      stretch: '',
+      tracking: 0
+    });
+    const clock = host.querySelector<HTMLElement>('time.x-nt-time-mark');
+
+    expect(clock?.dataset.timeFont).toBe('bitcount');
+    expect(clock?.style.fontFamily).toContain('Lumno Clock Bitcount');
+    expect(clock?.style.fontStretch).toBe('normal');
+    expect(clock?.style.fontWeight).toBe('480');
+    expect(clock?.style.letterSpacing).toBe('0em');
+    expect(clock?.style.getPropertyValue('--x-nt-clock-colon-gap')).toBe('-0.08em');
+    expect(clock?.style.getPropertyValue('--x-nt-clock-colon-shift')).toBe('0em');
+  });
+
+  it("keeps Open Sans's weight-based tracking when the face has none of its own", () => {
+    const { host } = createController(true, 'time', false, 650, {
+      colonGap: 0.055,
+      colonShift: -0.035,
+      family: '"Open Sans", sans-serif',
+      id: 'open-sans',
+      stretch: '86%',
+      tracking: null
+    });
+    const clock = host.querySelector<HTMLElement>('time.x-nt-time-mark');
+
+    expect(clock?.style.fontStretch).toBe('86%');
     expect(clock?.style.letterSpacing).toBe('-0.043em');
   });
 

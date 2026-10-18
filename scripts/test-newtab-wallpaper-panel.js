@@ -2848,7 +2848,7 @@ async function testEffectSpecificParametersRoundTrip() {
 async function testTimeSettingsFollowTheContentAboveTheSearchBar() {
   const settings = REAL_WALLPAPER_DEPENDENCIES.LumnoSettings;
   const storageArea = createMemoryStorage({});
-  const page = { mode: 'brand', weight: 320, seconds: false };
+  const page = { mode: 'brand', weight: 320, font: 'open-sans', seconds: false };
   const { documentObj: testDocument, windowObj: testWindow, sandbox: testSandbox } = createWallpaperSandbox();
   const testRuntime = testSandbox.LumnoNewtabWallpaper.createWallpaperRuntime({
     documentObj: testDocument,
@@ -2858,6 +2858,8 @@ async function testTimeSettingsFollowTheContentAboveTheSearchBar() {
     setTopContentMode: (mode) => { page.mode = mode; },
     getTimeFontWeight: () => page.weight,
     setTimeFontWeight: (weight) => { page.weight = weight; },
+    getTimeFont: () => page.font,
+    setTimeFont: (font) => { page.font = font; },
     getTimeSecondsVisible: () => page.seconds,
     setTimeSecondsVisible: (visible) => { page.seconds = visible; },
     t: (_key, fallback) => fallback || '',
@@ -2868,7 +2870,13 @@ async function testTimeSettingsFollowTheContentAboveTheSearchBar() {
   const search = () => panelState(testRuntime).search;
   assert.strictEqual(search().topContent.tabs.active, 'brand');
   assert.strictEqual(search().timeWeight.visible, false, 'the brand mark has no font weight setting');
+  assert.strictEqual(search().timeFont.visible, false, 'the brand mark has no font setting');
   assert.strictEqual(search().seconds.visible, false);
+  assert.strictEqual(search().timeFont.value, 'open-sans');
+  assert.deepStrictEqual(
+    search().timeFont.options.map((option) => option.label),
+    ['Open Sans', 'Geist', 'JetBrains Mono', 'Bricolage Grotesque', 'Unbounded', 'Bitcount']
+  );
   assert.deepStrictEqual(
     [search().timeWeight.min, search().timeWeight.max, search().timeWeight.value, search().timeWeight.step],
     [300, 800, 320, undefined],
@@ -2880,7 +2888,36 @@ async function testTimeSettingsFollowTheContentAboveTheSearchBar() {
   assert.strictEqual(page.mode, 'time');
   assert.strictEqual(storageArea.data[settings.NEWTAB_TOP_CONTENT_MODE_STORAGE_KEY], 'time');
   assert.strictEqual(search().timeWeight.visible, true, 'the time shows its font weight setting');
+  assert.strictEqual(search().timeFont.visible, true, 'the time shows its font setting');
   assert.strictEqual(search().seconds.visible, true, 'the time shows its seconds setting');
+
+  // Picking a face moves the weight to that face's default and the slider to its range.
+  panelActions(testRuntime).setTimeFontWeight(700, NOT_DRAGGING);
+  panelActions(testRuntime).setTimeFont('bitcount');
+  assert.strictEqual(page.font, 'bitcount');
+  assert.strictEqual(page.weight, 480);
+  assert.strictEqual(storageArea.data[settings.NEWTAB_TIME_FONT_STORAGE_KEY], 'bitcount');
+  assert.strictEqual(storageArea.data[settings.NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY], 480);
+  assert.deepStrictEqual(
+    [search().timeFont.value, search().timeWeight.min, search().timeWeight.max, search().timeWeight.value],
+    ['bitcount', 300, 550, 480]
+  );
+  assert.strictEqual(search().timeWeight.resetVisible, false, "the face's own default has nothing to reset");
+  // A heavier synced weight shows at the face's ceiling; the stored weight is kept
+  // for the faces that can draw it.
+  testRuntime.handleStorageChange({ [settings.NEWTAB_TIME_FONT_WEIGHT_STORAGE_KEY]: { newValue: 800 } });
+  assert.strictEqual(page.weight, 800);
+  assert.strictEqual(search().timeWeight.value, 550);
+  panelActions(testRuntime).resetTimeFontWeight();
+  assert.strictEqual(page.weight, 480, "reset returns to the face's own default");
+  // Another device picks a face; an unknown one falls back to Open Sans.
+  testRuntime.handleStorageChange({ [settings.NEWTAB_TIME_FONT_STORAGE_KEY]: { newValue: 'geist' } });
+  assert.strictEqual(page.font, 'geist');
+  assert.strictEqual(search().timeWeight.max, 800);
+  testRuntime.handleStorageChange({ [settings.NEWTAB_TIME_FONT_STORAGE_KEY]: { newValue: 'papyrus' } });
+  assert.strictEqual(page.font, 'open-sans');
+  assert.strictEqual(storageArea.data[settings.NEWTAB_TIME_FONT_STORAGE_KEY], 'open-sans');
+  panelActions(testRuntime).setTimeFontWeight(320, NOT_DRAGGING);
 
   panelActions(testRuntime).setTimeFontWeight(612, NOT_DRAGGING);
   assert.strictEqual(page.weight, 612);

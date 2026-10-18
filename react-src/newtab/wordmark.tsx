@@ -6,9 +6,20 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react';
 
 export type NewtabTopContentMode = 'brand' | 'time';
 
+// One of the clock faces from NEWTAB_TIME_FONTS in src/shared/settings.js.
+export interface TopContentClockFont {
+  colonGap: number;
+  colonShift: number;
+  family: string;
+  id: string;
+  stretch: string;
+  tracking: number | null;
+}
+
 export interface TopContentModel {
   animateEntry: boolean;
   ariaLabel: string;
+  font?: TopContentClockFont;
   fontWeight?: number;
   imageSrc: string;
   locale?: string;
@@ -80,11 +91,12 @@ const clockDigitsStyle = {
   '--number-flow-mask-width': '0.24em'
 } as CSSProperties;
 
+// Each face sets these on the clock; the defaults are Open Sans's.
 const colonStyle: CSSProperties = {
   display: 'inline-block',
-  margin: '0 0.055em',
+  margin: '0 var(--x-nt-clock-colon-gap, 0.055em)',
   opacity: 0.72,
-  transform: 'translateY(-0.035em)'
+  transform: 'translateY(var(--x-nt-clock-colon-shift, -0.035em))'
 };
 
 const twoDigitFormat = Object.freeze({
@@ -307,6 +319,19 @@ function ClockMark({
 }) {
   const showSeconds = model.showSeconds === true;
   const fontWeight = model.fontWeight ?? 320;
+  const font = model.font;
+  const fontStyle = font
+    ? ({
+        fontFamily: font.family,
+        fontStretch: font.stretch || 'normal',
+        letterSpacing:
+          typeof font.tracking === 'number'
+            ? `${font.tracking}em`
+            : getClockLetterSpacing(fontWeight),
+        '--x-nt-clock-colon-gap': `${font.colonGap}em`,
+        '--x-nt-clock-colon-shift': `${font.colonShift}em`
+      } as CSSProperties)
+    : { letterSpacing: getClockLetterSpacing(fontWeight) };
   const [time, setTime] = useState(getCurrentTime);
   const dateTime = getClockDateTime(time, showSeconds);
   const secondsText = String(time.seconds).padStart(2, '0');
@@ -369,14 +394,15 @@ function ClockMark({
       aria-label={getLocalizedTimeLabel(localizedTimeFormatter, dateTime)}
       className="x-nt-wordmark-content x-nt-time-mark"
       data-show-seconds={showSeconds ? 'true' : 'false'}
+      data-time-font={font?.id}
       dateTime={dateTime}
       onAnimationEnd={(event) =>
         onEntryAnimationComplete(event.animationName || undefined)
       }
       style={{
         ...clockStyle,
-        fontWeight,
-        letterSpacing: getClockLetterSpacing(fontWeight)
+        ...fontStyle,
+        fontWeight
       }}
     >
       <span aria-hidden="true">

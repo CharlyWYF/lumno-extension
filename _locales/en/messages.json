@@ -701,6 +701,9 @@
   "newtab_top_content_off": {
     "message": "Hide"
   },
+  "newtab_time_font_title": {
+    "message": "Time font"
+  },
   "newtab_time_font_weight_title": {
     "message": "Time font weight"
   },

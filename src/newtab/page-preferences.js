@@ -60,6 +60,10 @@
       return SETTINGS.normalizeNewtabTimeFontWeight(value);
     }
 
+    function normalizeNewtabTimeFont(value) {
+      return SETTINGS.normalizeNewtabTimeFont(value);
+    }
+
     function normalizeNewtabShortcutsVisible(value) {
       return SETTINGS.normalizeNewtabShortcutsVisible(value);
     }
@@ -356,6 +360,7 @@
       normalizeNewtabTopContentMode,
       normalizeNewtabTimeSecondsVisible,
       normalizeNewtabTimeFontWeight,
+      normalizeNewtabTimeFont,
       normalizeNewtabShortcutsVisible,
       normalizeNewtabShortcutAddVisible,
       normalizeNewtabShortcutDockMagnificationEnabled,

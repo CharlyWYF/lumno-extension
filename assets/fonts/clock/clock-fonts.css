@@ -1,0 +1,42 @@
+/* Digit-only clock faces for the New Tab time (SIL OFL 1.1, see OFL-*.txt).
+   Rebuild with scripts/subset-clock-fonts.py. */
+@font-face {
+  font-family: "Lumno Clock Geist";
+  src: url("./geist.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: block;
+  unicode-range: U+30-3A;
+}
+@font-face {
+  font-family: "Lumno Clock JetBrains Mono";
+  src: url("./jetbrains-mono.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: block;
+  unicode-range: U+30-3A;
+}
+@font-face {
+  font-family: "Lumno Clock Bricolage Grotesque";
+  src: url("./bricolage-grotesque.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: block;
+  unicode-range: U+30-3A;
+}
+@font-face {
+  font-family: "Lumno Clock Unbounded";
+  src: url("./unbounded.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: block;
+  unicode-range: U+30-3A;
+}
+@font-face {
+  font-family: "Lumno Clock Bitcount";
+  src: url("./bitcount.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 300 550;
+  font-display: block;
+  unicode-range: U+30-3A;
+}

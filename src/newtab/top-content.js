@@ -14,6 +14,7 @@
       scheduleWallpaperAdaptiveToneUpdate,
       normalizeNewtabTopContentMode,
       normalizeNewtabTimeFontWeight,
+      normalizeNewtabTimeFont,
       normalizeNewtabTimeSecondsVisible
     } = deps;
 
@@ -332,10 +333,19 @@
       if (!pageState.topContentController) {
         return;
       }
+      const timeFont = SETTINGS.getNewtabTimeFont(pageState.newtabTimeFont);
       pageState.topContentController.render({
         animateEntry: Boolean(animateEntry),
         ariaLabel: `Lumno ${COMMUNITY_LINKS.getStoreListing().name}`,
-        fontWeight: pageState.newtabTimeFontWeight,
+        font: {
+          id: timeFont.id,
+          colonGap: timeFont.colonGap,
+          colonShift: timeFont.colonShift,
+          family: timeFont.family,
+          stretch: timeFont.stretch,
+          tracking: SETTINGS.getNewtabTimeFontTracking(timeFont.id, pageState.newtabTimeFontWeight)
+        },
+        fontWeight: SETTINGS.resolveNewtabTimeFontWeight(timeFont.id, pageState.newtabTimeFontWeight),
         imageSrc: '../../assets/images/lumno-wordmark.svg',
         locale: document.documentElement ? document.documentElement.lang : undefined,
         mode: pageState.newtabTopContentMode === 'time' ? 'time' : 'brand',
@@ -384,6 +394,33 @@
       return nextValue;
     }
 
+    // Starts loading the face so the clock never draws in a fallback; the
+    // promise settles once the face is usable (or failed to load).
+    function loadNewtabTimeFont(fontId) {
+      const timeFont = SETTINGS.getNewtabTimeFont(fontId);
+      if (!document.fonts || typeof document.fonts.load !== 'function') {
+        return Promise.resolve(true);
+      }
+      const weight = SETTINGS.resolveNewtabTimeFontWeight(timeFont.id, pageState.newtabTimeFontWeight);
+      return document.fonts.load(`${weight} 54px ${timeFont.family}`, '0123456789:')
+        .then(() => true, () => true);
+    }
+
+    function setNewtabTimeFont(value) {
+      const nextValue = normalizeNewtabTimeFont(value);
+      const changed = nextValue !== pageState.newtabTimeFont;
+      pageState.newtabTimeFont = nextValue;
+      if (changed && pageState.newtabTopContentMode === 'time') {
+        loadNewtabTimeFont(nextValue).then(() => {
+          if (pageState.newtabTimeFont === nextValue && pageState.newtabTopContentMode === 'time') {
+            renderNewtabTopContent(false);
+          }
+        });
+      }
+      updateNewtabTimeFontWeightUi();
+      return nextValue;
+    }
+
     function setNewtabTimeSecondsVisible(value) {
       const nextValue = normalizeNewtabTimeSecondsVisible(value);
       const changed = nextValue !== pageState.newtabTimeSecondsVisible;
@@ -410,6 +447,8 @@
       renderNewtabTopContent,
       setNewtabTopContentMode,
       setNewtabTimeFontWeight,
+      setNewtabTimeFont,
+      loadNewtabTimeFont,
       setNewtabTimeSecondsVisible
     };
   }

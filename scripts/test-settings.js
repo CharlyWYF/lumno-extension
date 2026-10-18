@@ -21,7 +21,9 @@ assert.strictEqual(settings.addStorageChangeListener({
 
 // The Search sources order record added one additive preference. An absent
 // value keeps every list in its usual order, so it carries no migration.
-assert.strictEqual(settings.CHROME_SYNC_STORAGE_KEYS.length, 79);
+// The New Tab time font is another: an absent value keeps Open Sans.
+assert.strictEqual(settings.CHROME_SYNC_STORAGE_KEYS.length, 80);
+assert(settings.CHROME_SYNC_STORAGE_KEYS.includes('_x_extension_newtab_time_font_2026_unique_'));
 assert(settings.CHROME_SYNC_STORAGE_KEYS.includes('_x_extension_search_source_order_2026_unique_'));
 assert.strictEqual(
   new Set(settings.CHROME_SYNC_STORAGE_KEYS).size,
