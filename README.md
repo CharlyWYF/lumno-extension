@@ -44,7 +44,7 @@
   </a>
 </p>
 
-<p align="center">Current version: <code>1.0.1</code></p>
+<p align="center">Current version: <code>1.1.0</code></p>
 
 <img width="1200" height="480" alt="Lumno command bar for Chrome: search tabs, bookmarks and history from any page" src="./assets/images/readme/banner.webp" decoding="async" />
 

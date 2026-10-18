@@ -141,14 +141,14 @@ const assertWithinBudget = (actualBytes, budgetKiB, label) => {
 // New Tab moved to 386 KiB at 0.9.61 for the shared search input clear button.
 // The total moved to 776 KiB at 1.0.0 for the Help Center ask demo in Options.
 // New Tab moved to 390 KiB / 116 KiB gzip (the total to 780 KiB / 226 KiB gzip) at 1.0.0 for the help result passage card.
-// New Tab moved to 394 KiB / 117 KiB gzip (the total to 784 KiB / 227 KiB gzip) at 1.0.1 for the bookmarks bar's floating layout and liquid glass.
-// New Tab moved to 395 KiB / 118 KiB gzip, the Overlay to 274 KiB and the total to 788 KiB / 228 KiB gzip at 1.0.1 for the search input's close-other-tabs popconfirm.
-// New Tab moved to 399 KiB / 119 KiB gzip (the total to 792 KiB / 229 KiB gzip) at 1.0.1 for shortcut group titles.
-// The Overlay moved to 83 KiB gzip (the total to 230 KiB gzip) at 1.0.1: the close-other-tabs popconfirm and shortcut group titles fit only under Node 22's zlib, and CI measures with Node 20 (.nvmrc), which compresses slightly worse.
-// New Tab moved to 402 KiB / 120 KiB gzip (the total to 794 KiB / 231 KiB gzip) at 1.0.1 for the bookmark and site card sections in the appearance panel.
-// New Tab moved to 409 KiB / 123 KiB gzip (the total to 801 KiB / 234 KiB gzip) at 1.0.1: the appearance panel's controls moved
+// New Tab moved to 394 KiB / 117 KiB gzip (the total to 784 KiB / 227 KiB gzip) at 1.1.0 for the bookmarks bar's floating layout and liquid glass.
+// New Tab moved to 395 KiB / 118 KiB gzip, the Overlay to 274 KiB and the total to 788 KiB / 228 KiB gzip at 1.1.0 for the search input's close-other-tabs popconfirm.
+// New Tab moved to 399 KiB / 119 KiB gzip (the total to 792 KiB / 229 KiB gzip) at 1.1.0 for shortcut group titles.
+// The Overlay moved to 83 KiB gzip (the total to 230 KiB gzip) at 1.1.0: the close-other-tabs popconfirm and shortcut group titles fit only under Node 22's zlib, and CI measures with Node 20 (.nvmrc), which compresses slightly worse.
+// New Tab moved to 402 KiB / 120 KiB gzip (the total to 794 KiB / 231 KiB gzip) at 1.1.0 for the bookmark and site card sections in the appearance panel.
+// New Tab moved to 409 KiB / 123 KiB gzip (the total to 801 KiB / 234 KiB gzip) at 1.1.0: the appearance panel's controls moved
 // from the classic wallpaper.js (about 84 KiB smaller) into its React view.
-// The total moved to 802 KiB at 1.0.1 for the tab switcher's close button, which ships twice: in the injected
+// The total moved to 802 KiB at 1.1.0 for the tab switcher's close button, which ships twice: in the injected
 // Overlay bundle and in the shared tab switcher bundle.
 // The opt-in glass style moved the New Tab route to 413 KiB and the total to 807 KiB: its Style
 // section and select, and the liquid rim refraction shared by many surfaces.

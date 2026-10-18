@@ -44,7 +44,7 @@
   </a>
 </p>
 
-<p align="center">当前版本：<code>1.0.1</code></p>
+<p align="center">当前版本：<code>1.1.0</code></p>
 
 <img width="1200" height="480" alt="Lumno Chrome 命令栏插件：在任意网页搜索标签页、书签和历史记录" src="./assets/images/readme/banner.webp" decoding="async" />
 

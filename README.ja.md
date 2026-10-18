@@ -44,7 +44,7 @@
   </a>
 </p>
 
-<p align="center">現在のバージョン：<code>1.0.1</code></p>
+<p align="center">現在のバージョン：<code>1.1.0</code></p>
 
 <img width="1200" height="480" alt="Lumno Chrome コマンドバー拡張機能：どのページからでもタブ、ブックマーク、履歴を検索" src="./assets/images/readme/banner.webp" decoding="async" />
 
