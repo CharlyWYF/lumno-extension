@@ -9,8 +9,7 @@
       hideTopActionTooltip,
       getBookmarkGridColumnCount,
       renderBookmarks,
-      updateBookmarkSectionPosition,
-      stableHashCode
+      updateBookmarkSectionPosition
     } = deps;
 
     // The page state object shared with newtab.js and the other modules.
@@ -117,7 +116,10 @@
       pageState.bookmarkGrid.style.setProperty('min-height', `${Math.ceil(minHeight)}px`);
     }
 
+    let finishPageAnimation = null;
+
     function renderCurrentBookmarkPage() {
+      if (finishPageAnimation) finishPageAnimation();
       renderBookmarks(getBookmarkPageItems());
       updateBookmarkPagerState();
     }
@@ -143,107 +145,62 @@
       if (pageState.bookmarkPageAnimating) {
         return;
       }
-      // With reduced motion asked for, the page switches without sliding.
+      const grid = pageState.bookmarkGrid;
       const crossSurfaceDrag = root.LumnoNewtabCrossSurfaceDrag;
-      if (!pageState.bookmarkGrid || (crossSurfaceDrag && crossSurfaceDrag.prefersReducedMotion(window))) {
+      const motionDisabled = document.documentElement.getAttribute('data-lumno-motion-effects') === 'off';
+      if (!grid || typeof grid.animate !== 'function' || motionDisabled ||
+          (crossSurfaceDrag && crossSurfaceDrag.prefersReducedMotion(window))) {
         pageState.bookmarkCurrentPage = targetPage;
         renderCurrentBookmarkPage();
         updateBookmarkSectionPosition();
         return;
       }
       const direction = targetPage > pageState.bookmarkCurrentPage ? 1 : -1;
-      const offsetPx = 34;
-      const durationMs = 220;
-      const fadeDurationMs = 150;
-      const colStaggerMs = 24;
-      const rowStaggerMs = 10;
-      const randomJitterRangeMs = 6;
-      const handoffOverlapMs = 70;
-      const cols = getBookmarkGridColumnCount();
-      const easing = 'cubic-bezier(0.22, 1, 0.36, 1)';
-      pageState.bookmarkPageAnimating = true;
-      const getCards = () => Array.from(pageState.bookmarkGrid.children || []);
-      const getDelayByIndex = (card, index, pageSeed) => {
-        const col = index % cols;
-        const row = Math.floor(index / cols);
-        const seedText = `${pageSeed || 0}|${index}|${card && card._xTitleText ? card._xTitleText : ''}`;
-        const seed = Math.abs(stableHashCode(seedText));
-        const jitter = (seed % (randomJitterRangeMs * 2 + 1)) - randomJitterRangeMs;
-        return Math.max(0, (col * colStaggerMs) + (row * rowStaggerMs) + jitter);
-      };
-
-      const cleanupCards = (cards) => {
-        cards.forEach((card) => {
-          card.style.removeProperty('transition');
-          card.style.removeProperty('transform');
-          card.style.removeProperty('opacity');
-          card.style.removeProperty('will-change');
-        });
-      };
-
-      const cleanup = (cards) => {
-        cleanupCards(cards);
-        pageState.bookmarkPageAnimating = false;
-      };
-
-      const enterNextPage = () => {
-        pageState.bookmarkCurrentPage = targetPage;
-        renderCurrentBookmarkPage();
-        updateBookmarkSectionPosition();
-        const nextCards = getCards();
-        if (nextCards.length === 0) {
-          cleanup(nextCards);
-          return;
-        }
-        nextCards.forEach((card, index) => {
-          card.style.setProperty('will-change', 'transform, opacity');
-          card.style.setProperty('transition', 'none');
-          card.style.setProperty('opacity', '0');
-          card.style.setProperty('transform', `translateX(${direction * offsetPx}px)`);
-        });
-        void pageState.bookmarkGrid.offsetHeight;
-        let maxInDelay = 0;
-        nextCards.forEach((card, index) => {
-          const delay = getDelayByIndex(card, index, targetPage);
-          if (delay > maxInDelay) {
-            maxInDelay = delay;
-          }
-          card.style.setProperty(
-            'transition',
-            `transform ${durationMs}ms ${easing} ${delay}ms, opacity ${fadeDurationMs}ms ${easing} ${delay}ms`
-          );
-          card.style.setProperty('opacity', '1');
-          card.style.setProperty('transform', 'translateX(0)');
-        });
-        const inTotalMs = durationMs + maxInDelay;
-        window.setTimeout(() => cleanup(nextCards), inTotalMs + 20);
-      };
-
-      const currentCards = getCards();
-      if (currentCards.length === 0) {
-        enterNextPage();
-        return;
-      }
-      let maxOutDelay = 0;
-      currentCards.forEach((card, index) => {
-        const delay = getDelayByIndex(card, index, pageState.bookmarkCurrentPage);
-        if (delay > maxOutDelay) {
-          maxOutDelay = delay;
-        }
-        card.style.setProperty('will-change', 'transform, opacity');
-        card.style.setProperty(
-          'transition',
-          `transform ${durationMs}ms ${easing} ${delay}ms, opacity ${fadeDurationMs}ms ${easing} ${delay}ms`
-        );
-        card.style.setProperty('opacity', '0');
-        card.style.setProperty('transform', `translateX(${direction * -offsetPx}px)`);
+      const gridStyle = window.getComputedStyle(grid);
+      const distance = grid.getBoundingClientRect().width + (Number.parseFloat(gridStyle.columnGap) || 0);
+      const outgoing = grid.cloneNode(true);
+      outgoing.removeAttribute('id');
+      outgoing.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id'));
+      outgoing.setAttribute('aria-hidden', 'true');
+      outgoing.inert = true;
+      Object.assign(outgoing.style, {
+        position: 'absolute', inset: '0', width: '100%', display: 'grid',
+        gridTemplateColumns: gridStyle.gridTemplateColumns,
+        columnGap: gridStyle.columnGap, rowGap: gridStyle.rowGap,
+        alignContent: 'start', pointerEvents: 'none'
       });
-      const outTotalMs = durationMs + maxOutDelay;
-      const handoffDelayMs = Math.max(0, outTotalMs - handoffOverlapMs);
-      window.setTimeout(() => {
-        cleanupCards(currentCards);
-        enterNextPage();
-      }, handoffDelayMs);
+      pageState.bookmarkCurrentPage = targetPage;
+      renderCurrentBookmarkPage();
+      updateBookmarkSectionPosition();
+      const incomingCards = Array.from(grid.children);
+      const previousOverflow = grid.style.getPropertyValue('overflow');
+      const previousPriority = grid.style.getPropertyPriority('overflow');
+      grid.style.setProperty('overflow', 'hidden');
+      grid.appendChild(outgoing);
+      pageState.bookmarkPageAnimating = true;
+      // Slide directly to the destination with a long, smooth deceleration.
+      const timing = { duration: 520, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' };
+      const slideFrames = (from, to) => [
+        { transform: `translateX(${from}px)`, offset: 0 },
+        { transform: `translateX(${to}px)`, offset: 1 }
+      ];
+      const animations = [outgoing.animate(slideFrames(0, -direction * distance), timing),
+        ...incomingCards.map((card) => card.animate(slideFrames(direction * distance, 0), timing))];
+      const startTime = animations[0].startTime;
+      if (startTime !== null) animations.forEach((animation) => { animation.startTime = startTime; });
+      let finished = false;
+      const cleanup = () => {
+        if (finished) return;
+        finished = true;
+        animations.forEach((animation) => animation.cancel());
+        outgoing.remove();
+        if (previousOverflow) grid.style.setProperty('overflow', previousOverflow, previousPriority);
+        else grid.style.removeProperty('overflow');
+        pageState.bookmarkPageAnimating = false;
+        finishPageAnimation = null;
+      };
+      finishPageAnimation = cleanup;
+      Promise.all(animations.map((animation) => animation.finished)).then(cleanup).catch(cleanup);
     }
 
     return {

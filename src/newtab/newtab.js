@@ -4963,7 +4963,7 @@
     chrome.runtime.sendMessage({ action: 'openBookmarkManager' });
   });
   bookmarkSection.addEventListener('wheel', (event) => {
-    if (!event) {
+    if (!event || event.ctrlKey) {
       return;
     }
     if (!isContentSectionVisible(bookmarkSection)) {
@@ -4973,8 +4973,12 @@
     if (pageCount <= 1) {
       return;
     }
-    const deltaY = Number(event.deltaY) || 0;
-    if (Math.abs(deltaY) < 6) {
+    const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerWidth : 1;
+    const deltaX = (Number(event.deltaX) || 0) * unit;
+    const deltaY = (Number(event.deltaY) || 0) * unit;
+    // Trackpads can report both axes; use the dominant one for a single turn.
+    const delta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY;
+    if (Math.abs(delta) < 6) {
       return;
     }
     event.preventDefault();
@@ -4986,9 +4990,9 @@
       return;
     }
     let targetPage = pageState.bookmarkCurrentPage;
-    if (deltaY > 0 && pageState.bookmarkCurrentPage < (pageCount - 1)) {
+    if (delta > 0 && pageState.bookmarkCurrentPage < (pageCount - 1)) {
       targetPage = pageState.bookmarkCurrentPage + 1;
-    } else if (deltaY < 0 && pageState.bookmarkCurrentPage > 0) {
+    } else if (delta < 0 && pageState.bookmarkCurrentPage > 0) {
       targetPage = pageState.bookmarkCurrentPage - 1;
     }
     if (targetPage === pageState.bookmarkCurrentPage) {
@@ -5014,7 +5018,6 @@
     getBookmarkGridColumnCount,
     renderBookmarks: (...args) => renderBookmarks(...args),
     updateBookmarkSectionPosition,
-    stableHashCode,
     pageState
   });
 
