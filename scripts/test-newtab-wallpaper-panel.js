@@ -1966,6 +1966,55 @@ async function testLegacySyncedCustomWallpaperMigratesToLocalOnlySelection() {
   );
 }
 
+async function testOversizedDataUrlWallpaperRendersThroughBlobUrl() {
+  // Chrome drops a CSS custom property over 2 MB, so a stored wallpaper whose data URL is longer
+  // would leave the page blank; it has to reach --x-nt-wallpaper-image as a blob URL.
+  const customWallpaperId = `${CUSTOM_WALLPAPER_ID_PREFIX}oversized`;
+  const payload = 'A'.repeat(2 * 1024 * 1024 + 400);
+  const localStoreApi = createLocalWallpaperStoreApi([{
+    id: customWallpaperId,
+    imageDataUrl: `data:image/webp;base64,${payload}`,
+    thumbnailDataUrl: 'data:image/webp;base64,thumb',
+    updatedAt: 1
+  }]);
+  const { documentObj: testDocument, windowObj: testWindow, sandbox: testSandbox } = createWallpaperSandbox({
+    localStoreApi
+  });
+  const created = [];
+  testWindow.atob = (value) => Buffer.from(value, 'base64').toString('binary');
+  testWindow.Blob = Blob;
+  testWindow.URL = {
+    createObjectURL(blob) {
+      created.push(blob);
+      return `blob:chrome-extension://abc/wallpaper-${created.length}`;
+    },
+    revokeObjectURL() {}
+  };
+  const testRuntime = testSandbox.LumnoNewtabWallpaper.createWallpaperRuntime({
+    documentObj: testDocument,
+    windowObj: testWindow,
+    storageArea: createMemoryStorage(),
+    localWallpaperStorageArea: createMemoryStorage({ [LOCAL_WALLPAPER_STORAGE_KEY]: customWallpaperId }),
+    storageKeys: {
+      wallpaper: WALLPAPER_STORAGE_KEY,
+      localWallpaper: LOCAL_WALLPAPER_STORAGE_KEY
+    },
+    t: (_key, fallback) => fallback || '',
+    getRiSvg: () => ''
+  });
+
+  await testRuntime.bootstrapInitialWallpaper();
+
+  assert.strictEqual(
+    testDocument.documentElement.style.getPropertyValue('--x-nt-wallpaper-image'),
+    'url("blob:chrome-extension://abc/wallpaper-1")',
+    'an oversized data URL wallpaper should be set as a blob URL'
+  );
+  assert.strictEqual(created.length, 1);
+  assert.strictEqual(created[0].type, 'image/webp');
+  assert.strictEqual(created[0].size, Buffer.from(payload, 'base64').byteLength);
+}
+
 async function testInitialThemeResolutionDoesNotPaintFallbackBeforeCustomWallpaper() {
   for (const mode of ['light', 'dark']) {
     const customWallpaperId = `${CUSTOM_WALLPAPER_ID_PREFIX}initial-${mode}`;
@@ -3864,6 +3913,7 @@ Promise.resolve()
   .then(testRapidWallpaperSelectionNeverAppliesStaleDecode)
   .then(testSyncedCustomWallpaperWithoutLocalRecordFallsBackToDefault)
   .then(testLegacySyncedCustomWallpaperMigratesToLocalOnlySelection)
+  .then(testOversizedDataUrlWallpaperRendersThroughBlobUrl)
   .then(testInitialThemeResolutionDoesNotPaintFallbackBeforeCustomWallpaper)
   .then(testWallpaperModeConsistencyDefaultsOnAndCopiesLegacySelectionWhenDisabled)
   .then(testDisablingWallpaperModeConsistencyIgnoresStaleLocalDisabledOverride)

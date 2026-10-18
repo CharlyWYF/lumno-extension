@@ -108,7 +108,12 @@ function createIndexedDbWindow(records, calls) {
 
 async function run() {
   assert.strictEqual(wallpaperStoreApi.MAX_SOURCE_BYTES, 25 * 1024 * 1024);
-  assert.strictEqual(wallpaperStoreApi.MAX_WALLPAPER_BYTES, 2 * 1024 * 1024);
+  assert.strictEqual(wallpaperStoreApi.MAX_CSS_URL_LENGTH, 2 * 1024 * 1024);
+  // The page applies a wallpaper through a CSS custom property, which Chrome drops past 2 MB, so
+  // the largest allowed WebP must still fit there as url("data:…").
+  const largestWallpaperCssValue =
+    `url("data:image/webp;base64,${Buffer.alloc(wallpaperStoreApi.MAX_WALLPAPER_BYTES).toString('base64')}")`;
+  assert(largestWallpaperCssValue.length <= wallpaperStoreApi.MAX_CSS_URL_LENGTH);
   assert.strictEqual(wallpaperStoreApi.MAX_THUMBNAIL_BYTES, 160 * 1024);
   assert.deepStrictEqual(
     Array.from(wallpaperStoreApi.ACCEPTED_SOURCE_MIME_TYPES),

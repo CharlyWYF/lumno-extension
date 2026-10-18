@@ -13,7 +13,13 @@
   const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
   const MAX_SOURCE_DIMENSION = 8192;
   const MAX_SOURCE_PIXELS = 40 * 1000 * 1000;
-  const MAX_WALLPAPER_BYTES = 2 * 1024 * 1024;
+  // Chrome drops a CSS custom property whose value is longer than this, and the page shows a
+  // wallpaper through var(--x-nt-wallpaper-image), so a stored data URL must stay under it.
+  const MAX_CSS_URL_LENGTH = 2 * 1024 * 1024;
+  const WEBP_DATA_URL_PREFIX = 'data:image/webp;base64,';
+  // Largest WebP whose base64 data URL, wrapped in the CSS url() function, still fits: about 1.5 MB.
+  const MAX_WALLPAPER_BYTES =
+    Math.floor((MAX_CSS_URL_LENGTH - WEBP_DATA_URL_PREFIX.length - 'url("")'.length) / 4) * 3;
   const MAX_THUMBNAIL_BYTES = 160 * 1024;
   const WEBP_QUALITIES = Object.freeze([0.88, 0.82, 0.76, 0.7, 0.64, 0.58]);
   const ACCEPTED_SOURCE_MIME_TYPES = Object.freeze([
@@ -369,7 +375,7 @@
         );
         for (const quality of WEBP_QUALITIES) {
           const dataUrl = canvas.toDataURL('image/webp', quality);
-          if (!dataUrl || !dataUrl.startsWith('data:image/webp;base64,')) {
+          if (!dataUrl || !dataUrl.startsWith(WEBP_DATA_URL_PREFIX)) {
             throw new Error('WebP encoding is not available.');
           }
           const byteSize = getDataUrlByteLength(dataUrl);
@@ -501,6 +507,7 @@
     CUSTOM_WALLPAPER_ID,
     CUSTOM_WALLPAPER_ID_PREFIX,
     MAX_SOURCE_BYTES,
+    MAX_CSS_URL_LENGTH,
     MAX_SOURCE_DIMENSION,
     MAX_SOURCE_PIXELS,
     MAX_WALLPAPER_BYTES,

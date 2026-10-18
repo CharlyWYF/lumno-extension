@@ -1204,6 +1204,64 @@
       return safe ? `url("${safe}")` : 'none';
     }
 
+    // Chrome drops a CSS custom property longer than 2 MB, so a large data URL set through
+    // --x-nt-wallpaper-image leaves the page with no wallpaper. Uploads and cached museum prints
+    // stored before that was capped can exceed it; those are handed to CSS as a blob URL instead.
+    const WALLPAPER_CSS_URL_MAX_LENGTH = WALLPAPER_LOCAL_STORE.MAX_CSS_URL_LENGTH || 2 * 1024 * 1024;
+    let wallpaperCssObjectUrl = { source: '', url: '' };
+
+    function dataUrlToObjectUrl(dataUrl) {
+      const comma = dataUrl.indexOf(',');
+      const meta = dataUrl.slice(5, comma);
+      const isBase64 = /;base64$/i.test(meta);
+      const type = meta.replace(/;base64$/i, '') || 'application/octet-stream';
+      const payload = dataUrl.slice(comma + 1);
+      let bytes;
+      if (isBase64) {
+        const binary = windowObj.atob(payload);
+        bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index += 1) {
+          bytes[index] = binary.charCodeAt(index);
+        }
+      } else {
+        bytes = new TextEncoder().encode(decodeURIComponent(payload));
+      }
+      return windowObj.URL.createObjectURL(new windowObj.Blob([bytes], { type }));
+    }
+
+    function releaseWallpaperCssObjectUrl() {
+      const previous = wallpaperCssObjectUrl.url;
+      wallpaperCssObjectUrl = { source: '', url: '' };
+      if (previous) {
+        // A transition layer may still be fading the old image out; free it once that is done.
+        windowObj.setTimeout(() => windowObj.URL.revokeObjectURL(previous),
+          Math.max(WALLPAPER_VISUAL_TRANSITION_MS, WALLPAPER_FILTER_TRANSITION_MS) + 1000);
+      }
+    }
+
+    function getCssSafeWallpaperUrl(url) {
+      const value = String(url || '');
+      if (wallpaperCssObjectUrl.source && wallpaperCssObjectUrl.source === value) {
+        return wallpaperCssObjectUrl.url;
+      }
+      const tooLong = value.startsWith('data:') &&
+        getCssUrlValue(value).length > WALLPAPER_CSS_URL_MAX_LENGTH;
+      if (!tooLong || !windowObj.URL || typeof windowObj.URL.createObjectURL !== 'function') {
+        releaseWallpaperCssObjectUrl();
+        return value;
+      }
+      let objectUrl = '';
+      try {
+        objectUrl = dataUrlToObjectUrl(value);
+      } catch (_error) {
+        releaseWallpaperCssObjectUrl();
+        return value;
+      }
+      releaseWallpaperCssObjectUrl();
+      wallpaperCssObjectUrl = { source: value, url: objectUrl };
+      return objectUrl;
+    }
+
     function cacheWallpaperImageReady(url, promise) {
       if (!url || !promise) {
         return;
@@ -1343,7 +1401,8 @@
       appliedWallpaperVisualUrl = imageUrl;
       appliedWallpaperVisualActive = Boolean(wallpaper);
       if (target) {
-        target.style.setProperty('--x-nt-wallpaper-image', imageUrl ? getCssUrlValue(imageUrl) : 'none');
+        target.style.setProperty('--x-nt-wallpaper-image',
+          imageUrl ? getCssUrlValue(getCssSafeWallpaperUrl(imageUrl)) : 'none');
         target.style.setProperty('--x-nt-wallpaper-size', 'cover');
         target.style.setProperty('--x-nt-wallpaper-position', 'center center');
         target.setAttribute('data-wallpaper-active', wallpaper ? 'true' : 'false');
